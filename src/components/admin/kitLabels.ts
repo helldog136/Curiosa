@@ -3,7 +3,7 @@ import type { Translator } from "@/core/i18n/dictionary";
 import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
 import { summarizeGroup } from "@/core/adminkit/summary";
 import type { FormLabels } from "./AdminBlocks";
-import type { TableLabels } from "./AdminTable";
+import type { TableLabels } from "./TableView";
 import { periodLabels } from "./periodLabels";
 
 /** Les textes (traduits côté serveur) du bloc `table` enrichi. */

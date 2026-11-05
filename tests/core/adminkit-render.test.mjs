@@ -452,7 +452,7 @@ test("formulaire de module : un champ `period` avec `openEnded` accepte une seul
 });
 
 test("tableau enrichi, vignette tombée : une pastille neutre avec la première lettre et le texte alternatif, jamais d'icône cassée", async () => {
-  const { ThumbView } = await import("@/components/admin/AdminTable");
+  const { ThumbView } = await import("@/components/admin/TableView");
   const out = html(h(ThumbView, { image: { src: "/uploads/absente.webp", alt: "Jaquette de Zelda" }, initial: "zelda", failed: true }));
   assert.doesNotMatch(out, /<img/);
   assert.match(out, /role="img" aria-label="Jaquette de Zelda"[^>]*>Z</);

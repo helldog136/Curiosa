@@ -138,8 +138,8 @@ test("instance : la case « Afficher dans le menu de mon site » ajoute / retire
   assert.match(actions, /errors: \{ showInNav: t\("navigation\.totalFull"\) \}/, "menu plein : message sous la case");
 });
 
-test("migration : lancée au démarrage et avant toute création d'instance ; l'assistant de départ retient les suggestions", () => {
-  assert.match(read("src/instrumentation.ts"), /ensureMenuMigrated\(\)/);
+test("migration: run before any instance creation (no longer at start-up: the 0.6.10 bridge did it); the setup assistant keeps the suggestions", () => {
+  assert.doesNotMatch(read("src/instrumentation.ts"), /ensureMenuMigrated/, "support floor 0.6.10: the start-up call is gone");
   assert.match(read("src/core/instanceService.ts"), /await ensureMenuMigrated\(db\);\s*\n\s*let basePath/);
   assert.match(read("src/app/admin/(auth)/setup/actions.ts"), /menu: "suggested"/);
   assert.ok(!/menu: "suggested"/.test(read("src/app/admin/(panel)/modules/actions.ts")), "installer un module n'ajoute rien au menu");

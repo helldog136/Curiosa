@@ -4,22 +4,58 @@ import { cache } from "react";
 import { isBackgroundImage, isPreset, type BackgroundPreset } from "./background";
 import { isGlowLevel, normalizeTuning, type GlowLevel, type GlowTuning } from "./glow";
 import { prisma } from "./db";
+import { settingsGeneration } from "./settingsGeneration";
 import { isHexColor, type ThemeExtra } from "./color";
 import { normalizePlacement, type SearchPlacementConfig } from "./search/config";
 
 type Stored = Record<string, Record<string, unknown>>; // key → locale → value
+type RawRows = Map<string, Map<string, string>>; // key → locale → JSON text
 
-const loadAll = cache(async (): Promise<Stored> => {
-  const rows = await prisma.setting.findMany();
-  const out: Stored = {};
-  for (const row of rows) {
-    let value: unknown;
-    try {
-      value = JSON.parse(row.value);
-    } catch {
-      continue;
+/**
+ * The raw rows of the Setting table, cached for the whole process. Valid while no write to the table happened (generation counter bumped by the database client,
+ * see db.ts) and for at most `MAX_AGE_MS` (a safety net for a writer in another process, e.g. a maintenance script). Only the JSON TEXT is cached: every read
+ * parses its own copy, so a caller that mutates a value can never change what the next request sees. Before this cache every `getSetting` outside a page render
+ * (sitemap, feeds, routes, MCP, start-up) read the whole table again: 578 times for one sitemap.xml.
+ */
+const MAX_AGE_MS = 15_000;
+let rawCache: { generation: number; at: number; rows: Promise<RawRows> } | null = null;
+
+/** Tests and tools that change the database behind the client's back. */
+export function resetSettingsCache(): void { rawCache = null; }
+
+function rawRows(): Promise<RawRows> {
+  const generation = settingsGeneration();
+  const now = Date.now();
+  if (rawCache && rawCache.generation === generation && now - rawCache.at < MAX_AGE_MS) return rawCache.rows;
+  const rows = prisma.setting.findMany().then((list) => {
+    const out: RawRows = new Map();
+    for (const row of list) {
+      let byLocale = out.get(row.key);
+      if (!byLocale) out.set(row.key, (byLocale = new Map()));
+      byLocale.set(row.locale, row.value);
     }
-    (out[row.key] ??= {})[row.locale] = value;
+    return out;
+  });
+  const entry = { generation, at: now, rows };
+  rawCache = entry;
+  rows.catch(() => { if (rawCache === entry) rawCache = null; });
+  return rows;
+}
+
+const parse = (text: string | undefined): unknown => {
+  if (text === undefined) return undefined;
+  try { return JSON.parse(text); } catch { return undefined; }
+};
+
+/** Every setting, parsed (a fresh copy). Used by `getSiteConfig`; single settings go through `getSetting`, which parses only what it needs. */
+const loadAll = cache(async (): Promise<Stored> => {
+  const out: Stored = {};
+  for (const [key, byLocale] of await rawRows()) {
+    for (const [locale, text] of byLocale) {
+      const value = parse(text);
+      if (value === undefined) continue; // unreadable JSON is skipped, as before
+      (out[key] ??= {})[locale] = value;
+    }
   }
   return out;
 });
@@ -29,19 +65,24 @@ const loadAll = cache(async (): Promise<Stored> => {
  * puis la langue par défaut du site, puis la valeur non traduite.
  */
 export async function getSetting<T = unknown>(key: string, locale?: string): Promise<T | undefined> {
-  const all = await loadAll();
-  const byLocale = all[key];
+  const rows = await rawRows();
+  const byLocale = rows.get(key);
   if (!byLocale) return undefined;
-  if (locale && byLocale[locale] !== undefined) return byLocale[locale] as T;
-  if (byLocale[""] !== undefined) return byLocale[""] as T;
-  const def = (all["i18n.default"]?.[""] as string | undefined) ?? undefined;
-  if (def && byLocale[def] !== undefined) return byLocale[def] as T;
+  const read = (l: string): unknown => parse(byLocale.get(l));
+  if (locale) { const v = read(locale); if (v !== undefined) return v as T; }
+  const plain = read("");
+  if (plain !== undefined) return plain as T;
+  const def = parse(rows.get("i18n.default")?.get("")) as string | undefined;
+  if (def) { const v = read(def); if (v !== undefined) return v as T; }
   return undefined;
 }
 
 /** Toutes les valeurs d'un réglage, par langue ("" = non traduit). */
 export async function getSettingByLocale(key: string): Promise<Record<string, unknown>> {
-  return (await loadAll())[key] ?? {};
+  const byLocale = (await rawRows()).get(key);
+  const out: Record<string, unknown> = {};
+  if (byLocale) for (const [locale, text] of byLocale) { const v = parse(text); if (v !== undefined) out[locale] = v; }
+  return out;
 }
 
 export async function setSetting(key: string, value: unknown, locale = ""): Promise<void> {

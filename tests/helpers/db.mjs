@@ -66,6 +66,8 @@ export async function useTestDb() {
     async reset() {
       await settleBackground();
       for (const t of tables) await prisma.$executeRawUnsafe(`DELETE FROM "${t}"`);
+      // Raw SQL bypasses the client's write hook: the process-level settings cache must be dropped by hand.
+      (await import("@/core/settings")).resetSettingsCache();
       globalThis.curiosaBuiltinsSynced = false; globalThis.curiosaBuiltinsSyncing = null;
       globalThis.curiosaModuleCache?.clear?.();
       // Modules installés depuis git : on repart d'un dossier vide.

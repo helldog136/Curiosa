@@ -1,4 +1,5 @@
 import { Blocks } from "@/components/site/Blocks";
+import * as adminKit from "@/components/site/adminKit";
 import type { Translator } from "@/core/i18n/dictionary";
 import { panelAnchor } from "@/core/modules/entryPanels";
 import { loadEntryPanels } from "@/core/modules/entryPanelsLoad";
@@ -29,7 +30,7 @@ export async function EntryPanels({ entryId, locale, defaultLocale, view, viewer
                 {p.help && <p className="text-[13px] text-muted">{p.help}</p>}
                 {p.failed
                   ? <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{t("entries.panel.failed")}</p>
-                  : <Blocks blocks={p.blocks} locale={locale} adminEntry={{ instanceId: p.instanceId, panelId: p.panelId, entryId }} />}
+                  : <Blocks blocks={p.blocks} locale={locale} kit={adminKit} adminEntry={{ instanceId: p.instanceId, panelId: p.panelId, entryId }} />}
               </div>
             </details>
           </section>

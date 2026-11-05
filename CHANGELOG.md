@@ -7,6 +7,34 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.12 — 2026-11-05
+
+**En bref.** Le site est plus rapide : les réglages sont lus une seule fois au lieu de centaines, les pages publiques envoient moins de code et le site redémarre plus vite. Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Une règle de migration est posée pour les versions suivantes.
+
+### Mises à jour
+
+- **Les sites plus anciens se mettent à jour en deux étapes.** Un site plus ancien que la 0.6.10 passe d'abord par la 0.6.10, puis par la version choisie ; le site s'en charge tout seul, la page Mises à jour montre l'étape en cours. Un site déjà en 0.6.10 ou plus récent se met à jour directement.
+- **Le site démarre plus vite.** Les contrôles de conversion faits à chaque démarrage ne se refont que si quelque chose a changé (extension installée ou mise à jour, réglages, instances).
+- **(English) Older sites update in two steps.** A site older than 0.6.10 first goes through 0.6.10, then to the version you choose; the site does it by itself and the Updates page shows the current step. A site already on 0.6.10 or newer updates directly.
+- **(English) The site starts faster.** The conversion checks that ran on every start now run again only when something changed (module installed or updated, settings, instances).
+
+### Vitesse
+
+- **Le plan du site (sitemap) et le flux RSS se génèrent environ vingt fois plus vite.** Sur un site de démonstration avec 74 extensions : 680 ms et 607 lectures de la base pour le plan du site, 40 ms et 29 lectures maintenant. Les robots et les lecteurs de flux ne ralentissent plus le site.
+- **Le démarrage lit moins la base** (environ un quart de lectures en moins), et les réglages ne sont relus que lorsqu'ils changent.
+- **(English) The sitemap and the RSS feed are generated about twenty times faster.** On a demo site with 74 modules: 680 ms and 607 database reads for the sitemap, now 40 ms and 29 reads. Search engines and feed readers no longer slow the site down.
+- **(English) Start-up reads the database less** (about a quarter fewer reads), and settings are only read again when they change.
+- **Les pages du site envoient moins de code au navigateur.** Une visite télécharge environ 18 % de JavaScript en moins (148 Ko compressés au lieu de 181 Ko) : le code de l'administration n'est plus envoyé aux personnes qui visitent. L'apparence ne change pas, 374 captures avant et après sont identiques au pixel près.
+- **(English) Site pages send less code to the browser.** A visit downloads about 18% less JavaScript (148 KB compressed instead of 181 KB): the admin's code is no longer sent to visitors. Nothing looks different: 374 screenshots before and after are pixel-identical.
+
+### Pour les développeurs
+
+- **Migration policy** (`docs/MIGRATIONS.md`): conversions run once, as update steps; registry `src/core/updates/migrations-registry.json` ({id, introducedIn, removableAtFloor}); `npm run migrations:sunset [-- --floor X]` lists what a floor raise deletes (also a release check, `--check`); `tests/core/migration-registry.test.mjs` fails when an expired conversion is still present.
+- **Support floor raised to 0.6.10** (`upgrade.json`). Removed: the one-time overlay placement freeze (0.2.6, `placementFreeze.ts`) and the start-up menu freeze call (0.2.6). The menu freeze itself stays for new instances and restored old backups (registry `menu-freeze`).
+- **`runLegacySweep({ startup: true })`** skips the whole sweep when the last complete one ran on the same state (`core.legacySweepState`: core version, module versions/sources/commits, number of settings and instances). The admin "Run again" button and every other caller always sweep.
+- **Settings cache** (`settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a counter that the extended Prisma client bumps on every `Setting` write (also in transactions); 15 s safety age; `resetSettingsCache()` for tests. Before, `getSetting` outside a render re-read the table on each call.
+- **Public first-load JS 593 781 -> 497 064 bytes:** `Blocks` no longer imports the admin form kit; admin pages pass it as `kit` (`site/adminKit.ts`), public pages use `TableView` (`AdminTable` = `TableView` + row buttons). Guard: `tests/core/public-js-weight.test.mjs`; details and a proxy proposal: `docs/PERFORMANCE.md`.
+
 ## 0.6.11 — 2026-11-05
 
 **En bref.** Chaque bloc de code de vos pages et articles a maintenant un bouton pour le copier en un clic. Le crédit « Propulsé par Curiosa » du pied de page mène à la page du projet.
