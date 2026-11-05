@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.11 — 2026-11-05
+
+**En bref.** Chaque bloc de code de vos pages et articles a maintenant un bouton pour le copier en un clic. Le crédit « Propulsé par Curiosa » du pied de page mène à la page du projet.
+
+### Pages et pied de page
+
+- **Un bouton « Copier » sur chaque bloc de code.** Dans vos pages, articles et sections d'accueil, un bloc de code (par exemple un message à coller dans un assistant IA) se copie en un clic. Le bouton dit « Copié » pendant deux secondes ; si la copie est refusée, un message vous invite à sélectionner le texte.
+- **Le crédit « Propulsé par Curiosa » mène à la page du projet.** Le lien ouvre la page de Curiosa en français pour une personne qui visite en français, en anglais sinon.
+- **(English) A "Copy" button on every code block.** In your pages, posts and home sections, a code block (for example a message to paste into an AI assistant) copies in one click. The button says "Copied" for two seconds; if copying is refused, a message asks you to select the text.
+- **(English) The "Powered by Curiosa" credit leads to the project page.** The link opens Curiosa's page in French for a French-speaking visitor, in English otherwise.
+
+### Pour les développeurs
+
+- **Copy button on code blocks:** `Markdown.tsx` renders each fenced block with the client component `components/site/CodeBlock.tsx`; the button (a `copy-code` part) appears after hydration only. Labels `site.code.*` come from `codeCopyLabels(t)` through `CodeCopyProvider` (site and admin layouts; no provider, no button).
+- **Copy helper:** `copyText` in `src/core/copyText.ts` tries the Clipboard API, then a hidden textarea with `execCommand`, then returns `false`. No inline script. Skin bench fragments refreshed.
+- **Footer credit address:** `creditSiteUrl(locale)` in `src/core/credit.ts` is the only place of the address; `CuriosaMark` takes an optional `locale`. The admin footer keeps `CREDIT_URL` (the repository), and LICENSE section 4 still names it.
+
 ## 0.6.10 — 2026-11-04
 
 **En bref.** Les logos de Curiosa et tout dessin SVG accessible sont maintenant acceptés à l'envoi. Un assistant IA voit l'adresse de chaque page ou article et peut, si vous lui en donnez le droit, corriger la description d'une page publiée sans la retirer du site.
