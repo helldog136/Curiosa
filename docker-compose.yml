@@ -1,14 +1,72 @@
+# Everything you may want to change comes from the `.env` file next to this
+# one (copy `.env.example` to `.env`). Nothing site-specific is written here.
+#
+#   Local trial :  docker compose up -d --build
+#   Production  :  docker compose --profile https up -d --build
+#                  (automatic HTTPS; needs CURIOSA_DOMAIN and SITE_URL in .env)
+#
+# The app only speaks plain HTTP on one port (3000 inside the container) and
+# expects a reverse proxy in front of it for TLS and ports 80/443. The `https`
+# profile below adds that proxy (Caddy). Without the profile, the app is only
+# published on this machine (127.0.0.1), never directly on the Internet.
 services:
   site:
     build: .
     ports:
-      - "3000:3000"
+      - "${CURIOSA_BIND:-127.0.0.1}:${CURIOSA_PORT:-3000}:3000"
     environment:
-      SITE_URL: "http://localhost:3000"   # mettez l'URL publique réelle
-      # SETUP_TOKEN: "choisissez-un-jeton"  # recommandé si le site est exposé avant sa configuration
+      # Public address. The default is only good for a local trial.
+      SITE_URL: "${SITE_URL:-http://localhost:3000}"
+      SETUP_TOKEN: "${SETUP_TOKEN:-}"
+      AUTH_SECRET: "${AUTH_SECRET:-}"
+      LEGACY_HOSTS: "${LEGACY_HOSTS:-}"
+      # Number of reverse proxies in front of the site (the visitor address is
+      # read from X-Forwarded-For). 1 = the bundled Caddy or one proxy of yours.
+      CURIOSA_TRUSTED_PROXIES: "${CURIOSA_TRUSTED_PROXIES:-1}"
+      TZ: "${TZ:-UTC}"
+      # Fixed on purpose, not read from .env: the database and the data live in
+      # the volume below, whatever the .env copied from .env.example says.
+      DATA_DIR: /app/data
+      DATABASE_URL: file:/app/data/curiosa.db
     volumes:
-      - curiosa_data:/app/data            # base, envois, modules installés, secret de session
+      # database, uploads, installed modules, session secret. CURIOSA_DATA_DIR: empty = Docker
+      # volume "curiosa_data"; a full path (for example /volume1/docker/curiosa/data) = that folder.
+      - ${CURIOSA_DATA_DIR:-curiosa_data}:/app/data
+    healthcheck:
+      # Migrations run at each start, so allow a generous first start.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/health').then((r)=>process.exit(r.ok?0:1),()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+
+  # Optional HTTPS: `docker compose --profile https up -d`. Caddy gets and renews
+  # the certificate by itself. The domain's DNS must already point to this
+  # server, and ports 80 and 443 must be open.
+  caddy:
+    image: caddy:2
+    profiles: ["https"]
+    environment:
+      # Not required for the default (no profile) start: Compose reads every
+      # service even when its profile is off, so the check is done at start.
+      CURIOSA_DOMAIN: "${CURIOSA_DOMAIN:-}"
+    entrypoint:
+      - sh
+      - -c
+      - 'test -n "$$CURIOSA_DOMAIN" || { echo "Set CURIOSA_DOMAIN in .env (for example example.org)" >&2; exit 1; }; exec caddy reverse-proxy --from "$$CURIOSA_DOMAIN" --to site:3000'
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_data:/data                  # certificates: keep them across restarts
+      - caddy_config:/config
+    depends_on:
+      - site
     restart: unless-stopped
 
 volumes:
   curiosa_data:
+  caddy_data:
+  caddy_config:

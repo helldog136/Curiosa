@@ -67,7 +67,7 @@ LANGS="en fr"
 WIZARD_LANG=fr
 
 SITE="" DOMAIN="" SITE_USER="" PORT="" DIR="" TAG="" NO_DOMAIN=0
-YES=0 DRY=0 SKIP_DNS=0 SKIP_PROXY=0 UNINSTALL=0 PURGE=0 APPLY=0 CHANGE_DOMAIN=""
+YES=0 DRY=0 SKIP_DNS=0 SKIP_PROXY=0 UNINSTALL=0 PURGE=0 APPLY=0 CHANGE_DOMAIN="" CERTBOT=0 EMAIL="" CERT_DONE=0
 LANG_OPT="" LANG_CODE="" LANG_AMBIGUOUS=0
 CAT_CUR="" CAT_EN="" MSG="" RAW=""
 
@@ -251,6 +251,8 @@ parse_args() {
       --dry-run) DRY=1; shift ;;
       --skip-dns-check) SKIP_DNS=1; shift ;;
       --skip-proxy) SKIP_PROXY=1; shift ;;
+      --certbot) CERTBOT=1; shift ;;
+      --email) need_value "$@"; EMAIL="$2"; shift 2 ;;
       --uninstall) UNINSTALL=1; shift ;;
       --purge) PURGE=1; shift ;;
       --change-domain) need_value "$@"; CHANGE_DOMAIN="$2"; shift 2 ;;
@@ -673,6 +675,64 @@ phase_ask() {
   if [ "$NO_DOMAIN" -eq 1 ]; then SITE_URL="http://localhost:$PORT"; else SITE_URL="https://$DOMAIN"; fi
 }
 
+# ─── HTTPS certificate with certbot (nginx and Apache only; opt-in: --certbot, or a "yes" to the question at the end of the proxy step) ───────────────
+valid_email() { printf '%s' "$1" | grep -Eq '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$'; }
+certbot_kind() { case "$PROXY_PLAN" in nginx) echo nginx ;; apache2|httpd) echo apache ;; esac; }
+# plan_certbot: with --certbot, checks the e-mail and announces what will (or will not) happen. Runs before --dry-run stops, so the dry-run is accurate.
+plan_certbot() {
+  [ "$CERTBOT" -eq 1 ] || return 0
+  if [ "$NO_DOMAIN" -eq 1 ] || [ "$SKIP_PROXY" -eq 1 ]; then info p.certbot_none; return 0; fi
+  if [ -z "$(certbot_kind)" ]; then info p.certbot_caddy; return 0; fi
+  if [ "$DNS_OK" -eq 0 ]; then info p.certbot_dns "$DOMAIN"; return 0; fi
+  if [ -z "$EMAIL" ] && [ "$DRY" -eq 0 ]; then ask EMAIL cert.email_q ""; fi
+  [ -n "$EMAIL" ] || fail cert.email_missing
+  valid_email "$EMAIL" || fail cert.email_bad "$EMAIL"
+  info p.certbot "$DOMAIN" "$EMAIL"
+}
+# obtain_certificate: end of the proxy step. Never fatal: on any problem the site stays in HTTP and the usual hint stays.
+obtain_certificate() {
+  local kind; kind=$(certbot_kind)
+  [ -n "$kind" ] && [ -n "${CERT_HINT:-}" ] || return 0
+  [ "$NO_DOMAIN" -eq 0 ] || return 0
+  if [ "$DNS_OK" -eq 0 ]; then [ "$CERTBOT" -eq 0 ] || warn cert.skip_dns "$DOMAIN"; return 0; fi
+  if [ "$WEB_ACTIVE" -ne 1 ]; then [ "$CERTBOT" -eq 0 ] || warn cert.skip_stopped; return 0; fi
+  if [ "$CERTBOT" -eq 0 ]; then
+    # a plain "yes" typed in a terminal; --yes alone never accepts the Let's Encrypt terms
+    { [ "$YES" -eq 0 ] && interactive; } || return 0
+    local q ans; q=$(t cert.ask)
+    read -r -p "  $(t prompt.consent "$q") " ans || ans=""
+    is_yes "$ans" || return 0
+    ask EMAIL cert.email_q ""
+  fi
+  if ! valid_email "$EMAIL"; then warn cert.email_bad "$EMAIL"; return 0; fi
+  local hint="$CERT_HINT"
+  if have certbot && certbot certificates -d "$DOMAIN" 2>/dev/null | grep -q 'Certificate Name'; then
+    ok cert.exists "$DOMAIN"; return 0
+  fi
+  if ! have certbot; then
+    local pkgs="certbot python3-certbot-$kind"
+    info cert.pkgs "$pkgs"
+    apt_run update >>"${LOG:-/dev/null}" 2>&1 || true
+    # shellcheck disable=SC2086  # a list of package names
+    if ! apt_run install -y --no-install-recommends $pkgs >>"${LOG:-/dev/null}" 2>&1 || ! have certbot; then warn cert.apt_failed "$pkgs" "$hint"; return 0; fi
+  fi
+  info cert.run "$DOMAIN"
+  local out; out=$(mktemp)
+  # shellcheck disable=SC2086  # CURIOSA_CERTBOT_ARGS: extra options (for example --staging), split on purpose
+  if certbot "--$kind" -d "$DOMAIN" --non-interactive --agree-tos --no-eff-email -m "$EMAIL" --redirect ${CURIOSA_CERTBOT_ARGS:-} >"$out" 2>&1; then
+    cat -- "$out" >>"${LOG:-/dev/null}"; rm -f -- "$out"
+    CERT_DONE=1; CERT_HINT=""; ok cert.ok "$DOMAIN"; info cert.terms
+    return 0
+  fi
+  cat -- "$out" >>"${LOG:-/dev/null}"
+  local why
+  if grep -qiE 'rate limit|too many' "$out"; then why=$(t cert.why_limit)
+  elif grep -qiE 'timeout|connection refused|unauthorized|could not connect|no valid ip|nxdomain|dns problem' "$out"; then why=$(t cert.why_unreachable)
+  else why=$(t cert.why_other); fi
+  rm -f -- "$out"
+  warn cert.failed "$why" "$hint"
+}
+
 # ─── Phase C : version à installer + plan + accords ─────────────────────────────────────────────────────────────────
 phase_plan() {
   STEP=step.release
@@ -701,9 +761,10 @@ phase_plan() {
   info p.service "$SITE" "$PORT"
   PROXY_PLAN=none
   if [ "$SKIP_PROXY" -eq 1 ]; then info p.proxy_none "$PORT"
-  elif [ -n "$WEB" ]; then PROXY_PLAN="$WEB"; info p.proxy_add "$DOMAIN" "$WEB"
+  elif [ -n "$WEB" ]; then PROXY_PLAN="$WEB"; info p.proxy_add "$DOMAIN" "$WEB"; [ "$WEB" != nginx ] || info p.proxy_nginx
   else PROXY_PLAN=caddy-install; info p.proxy_caddy "$DOMAIN"; fi
   [ "$UFW_ACTIVE" -eq 1 ] && [ "$UFW_OPEN" -eq 0 ] && [ "$SKIP_PROXY" -eq 0 ] && info p.ufw
+  plan_certbot
   info p.start
 
   if [ "$DRY" -eq 1 ]; then
@@ -872,14 +933,48 @@ verify_local() {
 
 # ── proxy ──
 proxy_marker() { printf '# Géré par install-curiosa (scripts/install.sh), site : %s\n' "$SITE"; }
-nginx_conf() { proxy_marker; cat <<NGINX
+# nginx version as "major.minor.patch" (empty when it cannot be read). Used to decide what the generated site may contain.
+nginx_version() { nginx -v 2>&1 | sed -n 's|.*nginx/\([0-9][0-9]*\.[0-9][0-9]*\.[0-9][0-9]*\).*|\1|p' | head -n1; }
+# version_ge A B -> 0 when A >= B (both "x.y.z")
+version_ge() { [ "$(printf '%s\n%s\n' "$2" "$1" | sort -V | head -n1)" = "$2" ]; }
+# The generated site: compression, and a persistent connection to the site when nginx supports "keepalive_timeout" in an upstream (1.15.3+).
+# Neither "http2" (the file only listens on port 80: certbot adds the TLS listener) nor any cache is written here (docs/PERFORMANCE.md).
+# nginx_conf [legacy]: "legacy" prints the previous template (no extras), to recognize a site written by an older installer and leave it alone.
+nginx_conf() {
+  local mode="${1:-}" up="" target="127.0.0.1:$PORT" ver name; name="curiosa_${SITE//[^A-Za-z0-9_]/_}"
+  if [ "$mode" != legacy ]; then
+    ver=$(nginx_version)
+    if [ -n "$ver" ] && version_ge "$ver" 1.15.3; then
+      up="upstream $name {
+    server 127.0.0.1:$PORT;
+    keepalive 16;
+    keepalive_timeout 4s;
+}
+"
+      target="$name"
+    fi
+  fi
+  proxy_marker
+  printf '%s' "$up"
+  cat <<NGINX
 server {
     listen 80;
     listen [::]:80;
     server_name $DOMAIN;
     client_max_body_size 50m;
+NGINX
+  if [ "$mode" != legacy ]; then cat <<'NGINX'
+    gzip on;
+    gzip_vary on;
+    gzip_proxied any;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css text/plain text/xml text/javascript application/javascript application/json application/xml application/rss+xml image/svg+xml;
+NGINX
+  fi
+  cat <<NGINX
     location / {
-        proxy_pass http://127.0.0.1:$PORT;
+        proxy_pass http://$target;
         proxy_http_version 1.1;
         proxy_set_header Host \$host;
         proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
@@ -907,6 +1002,12 @@ configure_nginx() {
   if [ -f "$rc" ]; then
     grep -q '^# Géré par install-curiosa' "$rc" || { rm -f -- "$new"; manual_proxy_note x.conf_foreign "$conf"; return 0; }
     if cmp -s "$new" "$rc"; then rm -f -- "$new"; ok x.nginx_uptodate; return 0; fi
+    # certbot already edited this site (HTTPS listener, certificate paths): rewriting it would remove the certificate
+    if grep -q 'managed by Certbot' "$rc"; then rm -f -- "$new"; ok x.nginx_kept "$conf"; return 0; fi
+    # a site written by an earlier installer (previous template, nothing edited): left as it is; the lines to add by hand are in docs/PERFORMANCE.md
+    local legacy; legacy=$(mktemp); nginx_conf legacy >"$legacy"
+    if cmp -s "$legacy" "$rc"; then rm -f -- "$new" "$legacy"; ok x.nginx_kept "$conf"; return 0; fi
+    rm -f -- "$legacy"
     bak="$rc.avant-$(date +%Y%m%d-%H%M%S)"; cp -p -- "$rc" "$bak"; info x.backup "$bak"
   fi
   mkdir -p "$(dirname "$rc")"; mv -- "$new" "$rc"; chmod 644 "$rc"
@@ -928,6 +1029,7 @@ configure_apache() {
   local other; if other=$(domain_known_elsewhere "$(rp /etc/apache2)"); then manual_proxy_note x.apache_known "$DOMAIN" "$other" "$PORT"; return 0; fi
   local rc; rc=$(rp "/etc/apache2/sites-available/$SITE.conf")
   if [ -f "$rc" ] && ! grep -q '^# Géré par install-curiosa' "$rc"; then manual_proxy_note x.conf_foreign "$rc"; return 0; fi
+  if [ -f "$rc" ] && grep -q 'RewriteRule .*https://%{SERVER_NAME}' "$rc"; then ok x.nginx_kept "$rc"; return 0; fi   # certbot added its HTTPS redirect: keep it
   [ -f "$rc" ] && cp -p -- "$rc" "$rc.avant-$(date +%Y%m%d-%H%M%S)"
   { proxy_marker; cat <<APACHE
 <VirtualHost *:80>
@@ -991,6 +1093,7 @@ configure_proxy() {
     caddy-install) install_caddy; configure_caddy ;;
   esac
   if [ "$WANT_UFW" -eq 1 ]; then ufw allow 80/tcp >>"${LOG:-/dev/null}" 2>&1 && ufw allow 443/tcp >>"${LOG:-/dev/null}" 2>&1 && ok x.ufw_ok || warn x.ufw_failed; fi
+  obtain_certificate
 }
 
 verify_public() {
@@ -1036,6 +1139,7 @@ final_page() {
     bullet f.todo_test "$DOMAIN"
   fi
   if [ "$PUBLIC_OK" -eq 1 ] && [ -n "${CERT_HINT:-}" ]; then blank; info f.cert "$CERT_HINT"; fi
+  if [ "$CERT_DONE" -eq 1 ]; then blank; info f.cert_done "$DOMAIN"; info cert.terms; fi
   blank
   say f.useful "$SITE"
   say f.updates
@@ -1273,6 +1377,7 @@ p.install - installer le site dans {1}, écrire sa configuration (.env, avec un 
 p.service - créer le service « {1}.service » (démarre au boot, redémarre seul), à l'écoute en local sur le port {2}
 p.proxy_none - (pas de serveur web : le site ne sera joignable qu'en local, http://127.0.0.1:{1})
 p.proxy_add - AJOUTER {1} à {2} (sauvegarde de l'ancienne configuration, test avant rechargement ; vos autres sites ne sont pas touchés)
+p.proxy_nginx - nouveau site seulement : compression des pages et connexion gardée ouverte vers le site (un site nginx déjà installé n'est pas modifié)
 p.proxy_caddy - installer Caddy (dépôt officiel) : il obtient et renouvelle seul le certificat HTTPS de {1}
 p.ufw - ouvrir les ports 80 et 443 dans le pare-feu ufw
 p.start - démarrer le site et vérifier qu'il répond (/admin/setup)
@@ -1344,11 +1449,35 @@ w.local_ok Le site répond en local (HTTP 200 sur /admin/setup).
 x.nginx_known nginx gère déjà {1} dans {2} : je n'y touche pas. Pour y envoyer le trafic vers ce site, faites pointer son « proxy_pass » vers http://127.0.0.1:{3} (modèle : docs/INSTALL.md).
 x.conf_foreign {1} existe déjà et n'est pas à moi : je n'y touche pas.
 x.nginx_uptodate Configuration nginx déjà à jour.
+x.nginx_kept Site déjà présent dans {1} (écrit par une version précédente) : laissé tel quel. Pour ajouter la compression, voir docs/PERFORMANCE.md.
 x.backup Ancienne configuration sauvegardée : {1}
 x.nginx_refused nginx refuse la nouvelle configuration (nginx -t a échoué) : je l'ai retirée, nginx n'a pas été touché.
 x.nginx_refused.fix regardez le détail ci-dessus ; une configuration existante est probablement en cause. Relancez avec --skip-proxy pour ne pas toucher à nginx.
 x.nginx_added {1} ajouté à nginx (rechargé).
 x.nginx_stopped nginx est installé mais arrêté : démarrez-le (sudo systemctl start nginx) pour mettre le site en ligne.
+p.certbot - obtenir le certificat HTTPS de {1} avec certbot (Let's Encrypt), avis d'expiration à {2}. En utilisant --certbot, vous acceptez les conditions de Let's Encrypt.
+p.certbot_dns - certificat HTTPS non demandé : {1} ne pointe pas encore vers ce serveur (la commande à lancer plus tard sera indiquée à la fin)
+p.certbot_caddy - --certbot ne sert à rien ici : Caddy obtient seul le certificat HTTPS
+p.certbot_none - --certbot ignoré : sans domaine ou sans serveur web touché, il n'y a pas de certificat à demander
+cert.email_q Votre e-mail (pour les avis d'expiration du certificat)
+cert.email_missing --certbot demande une adresse e-mail pour les avis d'expiration du certificat.
+cert.email_missing.fix ajoutez --email, par exemple --email vous@exemple.org
+cert.email_bad L'adresse e-mail « {1} » n'est pas valide.
+cert.email_bad.fix écrivez-la sous la forme vous@exemple.org
+cert.ask Obtenir le certificat HTTPS maintenant ? Un e-mail sera demandé pour les avis d'expiration, et vous acceptez les conditions de Let's Encrypt
+cert.skip_dns Certificat HTTPS non demandé : {1} ne pointe pas encore vers ce serveur. Le site reste en HTTP.
+cert.skip_stopped Certificat HTTPS non demandé : le serveur web est arrêté. Le site reste en HTTP.
+cert.exists Un certificat existe déjà pour {1} : je n'en redemande pas.
+cert.pkgs Installation de certbot (paquets : {1})
+cert.apt_failed Certbot n'a pas pu être installé (paquets : {1}). Le site reste en HTTP. Pour continuer à la main : {2}
+cert.run Demande du certificat à Let's Encrypt pour {1}
+cert.ok Certificat HTTPS obtenu pour {1} : le site est en HTTPS et HTTP y redirige.
+cert.terms En demandant ce certificat, vous avez accepté les conditions de Let's Encrypt.
+cert.failed Certificat HTTPS non obtenu ({1}). Le site reste en HTTP, rien d'autre n'a changé. Pour réessayer : {2}
+cert.why_limit Let's Encrypt limite le nombre de demandes ; réessayez plus tard
+cert.why_unreachable Let's Encrypt n'a pas pu joindre le site sur le port 80 : vérifiez le DNS et le pare-feu
+cert.why_other raison dans le journal d'installation
+f.cert_done Certificat HTTPS obtenu avec certbot pour {1} ; certbot le renouvelle seul.
 x.apache_layout Apache est présent mais pas à la disposition Debian (sites-available) : je n'y touche pas. Ajoutez un hôte virtuel pour {1} qui renvoie vers http://127.0.0.1:{2} (ProxyPass / http://127.0.0.1:{2}/), en activant mod_proxy, mod_proxy_http et mod_headers.
 x.apache_known Apache gère déjà {1} dans {2} : je n'y touche pas (faites-le pointer vers http://127.0.0.1:{3}).
 x.a2enmod L'activation des modules Apache nécessaires n'a pas abouti.
@@ -1422,17 +1551,19 @@ help.16   --yes             répondre « oui » aux confirmations (installer Nod
 help.17   --dry-run         tout vérifier et annoncer ce qui serait fait, SANS rien modifier
 help.18   --skip-dns-check  ne pas s'arrêter si le DNS du domaine ne pointe pas (encore) vers ce serveur
 help.19   --skip-proxy      ne pas toucher au serveur web (HTTPS) : le site n'écoute qu'en local
-help.20   --uninstall       arrêter le site et défaire la configuration ajoutée (garde le dossier et les données)
-help.21   --purge           avec --uninstall : supprimer aussi le dossier et l'utilisateur (confirmation tapée, sauvegarde faite avant)
-help.22   --change-domain DOMAINE  changer le domaine d'un site déjà installé (avec --site) : par défaut un plan, rien n'est modifié
-help.23   --apply          avec --change-domain : faire le changement (sauvegardes, serveur web écrit par ce script, .env, redémarrage)
-help.24   --lang fr|en      langue des messages (sinon : variable CURIOSA_LANG, puis LC_ALL / LC_MESSAGES / LANG ; à défaut, anglais)
-help.25   --help
-help.26
-help.27 Le script est reprenable : relancé après un échec, il détecte ce qui est fait et continue.
-help.28 Codes de sortie : 0 terminé ; 1 arrêté sur une erreur (rien de cassé, voir le message) ; 2 option ou langue inconnue ;
-help.29 10 installé, mais l'adresse publique ne répond pas encore (DNS, pare-feu, certificat : voir le message final).
-help.30 Codes de sortie, options et fichiers écrits sont les mêmes dans toutes les langues.
+help.20   --certbot        nginx ou Apache : obtenir le certificat HTTPS avec certbot (vous acceptez les conditions de Let's Encrypt)
+help.21   --email ADRESSE   avec --certbot : e-mail pour les avis d'expiration du certificat
+help.22   --uninstall       arrêter le site et défaire la configuration ajoutée (garde le dossier et les données)
+help.23   --purge           avec --uninstall : supprimer aussi le dossier et l'utilisateur (confirmation tapée, sauvegarde faite avant)
+help.24   --change-domain DOMAINE  changer le domaine d'un site déjà installé (avec --site) : par défaut un plan, rien n'est modifié
+help.25   --apply          avec --change-domain : faire le changement (sauvegardes, serveur web écrit par ce script, .env, redémarrage)
+help.26   --lang fr|en      langue des messages (sinon : variable CURIOSA_LANG, puis LC_ALL / LC_MESSAGES / LANG ; à défaut, anglais)
+help.27   --help
+help.28
+help.29 Le script est reprenable : relancé après un échec, il détecte ce qui est fait et continue.
+help.30 Codes de sortie : 0 terminé ; 1 arrêté sur une erreur (rien de cassé, voir le message) ; 2 option ou langue inconnue ;
+help.31 10 installé, mais l'adresse publique ne répond pas encore (DNS, pare-feu, certificat : voir le message final).
+help.32 Codes de sortie, options et fichiers écrits sont les mêmes dans toutes les langues.
 step.change changement de domaine
 m.change_alone --change-domain ne s'utilise pas avec --uninstall.
 m.apply_alone --apply s'utilise avec --change-domain.
@@ -1667,6 +1798,7 @@ p.install - install the site in {1}, write its configuration (.env, with a rando
 p.service - create the service "{1}.service" (starts at boot, restarts by itself), listening locally on port {2}
 p.proxy_none - (no web server: the site will only be reachable locally, http://127.0.0.1:{1})
 p.proxy_add - ADD {1} to {2} (backup of the old configuration, test before reloading; your other sites are not touched)
+p.proxy_nginx - new site only: page compression and a kept-open connection to the site (a site already set up in nginx is not modified)
 p.proxy_caddy - install Caddy (official repository): it gets and renews the HTTPS certificate of {1} by itself
 p.ufw - open ports 80 and 443 in the ufw firewall
 p.start - start the site and check that it answers (/admin/setup)
@@ -1738,11 +1870,35 @@ w.local_ok The site answers locally (HTTP 200 on /admin/setup).
 x.nginx_known nginx already manages {1} in {2}: I do not touch it. To send the traffic to this site, make its "proxy_pass" point to http://127.0.0.1:{3} (template: docs/INSTALL.md).
 x.conf_foreign {1} already exists and is not mine: I do not touch it.
 x.nginx_uptodate nginx configuration already up to date.
+x.nginx_kept Site already present in {1} (written by an earlier version): left as it is. To add compression, see docs/PERFORMANCE.md.
 x.backup Old configuration saved: {1}
 x.nginx_refused nginx refuses the new configuration (nginx -t failed): I removed it, nginx was not touched.
 x.nginx_refused.fix look at the details above; an existing configuration is probably the cause. Run again with --skip-proxy to leave nginx alone.
 x.nginx_added {1} added to nginx (reloaded).
 x.nginx_stopped nginx is installed but stopped: start it (sudo systemctl start nginx) to put the site online.
+p.certbot - get the HTTPS certificate of {1} with certbot (Let's Encrypt), expiry notices to {2}. By using --certbot, you accept the Let's Encrypt terms.
+p.certbot_dns - HTTPS certificate not requested: {1} does not point to this server yet (the command to run later is shown at the end)
+p.certbot_caddy - --certbot is not needed here: Caddy gets the HTTPS certificate by itself
+p.certbot_none - --certbot ignored: without a domain or without touching a web server there is no certificate to request
+cert.email_q Your e-mail (for certificate expiry notices)
+cert.email_missing --certbot needs an e-mail address for certificate expiry notices.
+cert.email_missing.fix add --email, for example --email you@example.org
+cert.email_bad The e-mail address "{1}" is not valid.
+cert.email_bad.fix write it like you@example.org
+cert.ask Get the HTTPS certificate now? An e-mail will be asked for expiry notices, and you accept the Let's Encrypt terms
+cert.skip_dns HTTPS certificate not requested: {1} does not point to this server yet. The site stays in HTTP.
+cert.skip_stopped HTTPS certificate not requested: the web server is stopped. The site stays in HTTP.
+cert.exists A certificate already exists for {1}: I do not ask for another one.
+cert.pkgs Installing certbot (packages: {1})
+cert.apt_failed Certbot could not be installed (packages: {1}). The site stays in HTTP. To go on by hand: {2}
+cert.run Requesting the certificate from Let's Encrypt for {1}
+cert.ok HTTPS certificate obtained for {1}: the site is in HTTPS and HTTP redirects to it.
+cert.terms By requesting this certificate, you accepted the Let's Encrypt terms.
+cert.failed HTTPS certificate not obtained ({1}). The site stays in HTTP, nothing else changed. To try again: {2}
+cert.why_limit Let's Encrypt limits the number of requests; try again later
+cert.why_unreachable Let's Encrypt could not reach the site on port 80: check the DNS and the firewall
+cert.why_other reason in the installation log
+f.cert_done HTTPS certificate obtained with certbot for {1}; certbot renews it by itself.
 x.apache_layout Apache is present but not laid out the Debian way (sites-available): I do not touch it. Add a virtual host for {1} that forwards to http://127.0.0.1:{2} (ProxyPass / http://127.0.0.1:{2}/), enabling mod_proxy, mod_proxy_http and mod_headers.
 x.apache_known Apache already manages {1} in {2}: I do not touch it (make it point to http://127.0.0.1:{3}).
 x.a2enmod Enabling the required Apache modules did not succeed.
@@ -1816,17 +1972,19 @@ help.16   --yes             answer "yes" to confirmations (install Node.js, Cadd
 help.17   --dry-run         check everything and announce what would be done, WITHOUT changing anything
 help.18   --skip-dns-check  do not stop if the domain does not point (yet) to this server
 help.19   --skip-proxy      do not touch the web server (HTTPS): the site only listens locally
-help.20   --uninstall       stop the site and undo the added configuration (keeps the folder and the data)
-help.21   --purge           with --uninstall: also delete the folder and the user (typed confirmation, backup made first)
-help.22   --change-domain DOMAIN  change the domain of an already installed site (with --site): a plan by default, nothing is changed
-help.23   --apply          with --change-domain: do the change (backups, web server file written by this script, .env, restart)
-help.24   --lang fr|en      language of the messages (otherwise: CURIOSA_LANG variable, then LC_ALL / LC_MESSAGES / LANG; else English)
-help.25   --help
-help.26
-help.27 The script can be resumed: run again after a failure, it detects what is done and goes on.
-help.28 Exit codes: 0 done; 1 stopped on an error (nothing broken, see the message); 2 unknown option or language;
-help.29 10 installed, but the public address does not answer yet (DNS, firewall, certificate: see the last message).
-help.30 Exit codes, options and written files are the same in every language.
+help.20   --certbot        nginx or Apache: get the HTTPS certificate with certbot (you accept the Let's Encrypt terms)
+help.21   --email ADDRESS   with --certbot: e-mail for certificate expiry notices
+help.22   --uninstall       stop the site and undo the added configuration (keeps the folder and the data)
+help.23   --purge           with --uninstall: also delete the folder and the user (typed confirmation, backup made first)
+help.24   --change-domain DOMAIN  change the domain of an already installed site (with --site): a plan by default, nothing is changed
+help.25   --apply          with --change-domain: do the change (backups, web server file written by this script, .env, restart)
+help.26   --lang fr|en      language of the messages (otherwise: CURIOSA_LANG variable, then LC_ALL / LC_MESSAGES / LANG; else English)
+help.27   --help
+help.28
+help.29 The script can be resumed: run again after a failure, it detects what is done and goes on.
+help.30 Exit codes: 0 done; 1 stopped on an error (nothing broken, see the message); 2 unknown option or language;
+help.31 10 installed, but the public address does not answer yet (DNS, firewall, certificate: see the last message).
+help.32 Exit codes, options and written files are the same in every language.
 step.change changing the domain
 m.change_alone --change-domain is not used together with --uninstall.
 m.apply_alone --apply is used together with --change-domain.

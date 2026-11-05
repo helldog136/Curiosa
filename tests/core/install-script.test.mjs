@@ -27,7 +27,7 @@ const STUBS = {
   userdel: `#!/bin/sh\necho "$1" >> "$CURIOSA_ROOT/.deleted-users"\n`,
   chown: `#!/bin/sh\nexit 0\n`,
   getent: `#!/bin/sh\nif [ "$1" = passwd ]; then l=$(grep "^$2:" "$CURIOSA_ROOT/.users" 2>/dev/null | head -n1); [ -n "$l" ] || exit 2; echo "$2:x:999:999::$(echo "$l" | cut -d: -f2):/usr/sbin/nologin"; exit 0; fi\nexec /usr/bin/getent "$@"\n`,
-  nginx: `#!/bin/sh\nif [ "$1" = "-t" ]; then [ -n "$FAKE_NGINX_FAIL" ] && { echo "nginx: [emerg] configuration invalide (simulée)" >&2; exit 1; }; exit 0; fi\nexit 0\n`,
+  nginx: `#!/bin/sh\nif [ "$1" = "-v" ]; then echo "nginx version: nginx/\${FAKE_NGINX_VERSION-1.24.0}" >&2; exit 0; fi\nif [ "$1" = "-t" ]; then [ -n "$FAKE_NGINX_FAIL" ] && { echo "nginx: [emerg] configuration invalide (simulée)" >&2; exit 1; }; exit 0; fi\nexit 0\n`,
   systemctl: `#!/bin/sh
 state="$CURIOSA_ROOT/.systemctl"; mkdir -p "$state"
 echo "$@" >> "$state/calls"
@@ -266,11 +266,194 @@ test("installation avec domaine et nginx déjà là : on AJOUTE un site (ancienn
   assert.equal(r.code, 0, r.out);
   assert.equal(fs.readFileSync(path.join(av, "autre.conf"), "utf8"), "server { server_name autre.example.org; }\n", "l'existant n'est pas touché");
   const conf = fs.readFileSync(path.join(av, "monsite.conf"), "utf8");
-  assert.match(conf, /server_name monsite\.example\.org;/); assert.match(conf, new RegExp(`proxy_pass http://127\\.0\\.0\\.1:${port};`));
+  assert.match(conf, /server_name monsite\.example\.org;/); assert.match(conf, new RegExp(`server 127\\.0\\.0\\.1:${port};`)); assert.match(conf, /proxy_pass http:\/\/curiosa_monsite;/);
   assert.ok(fs.lstatSync(path.join(L.root, "etc/nginx/sites-enabled/monsite.conf")).isSymbolicLink());
   assert.match(fs.readFileSync(path.join(L.root, "var/www/monsite/.env"), "utf8"), /^SITE_URL="https:\/\/monsite\.example\.org"$/m);
   assert.match(fs.readFileSync(path.join(L.root, ".systemctl/calls"), "utf8"), /^reload nginx$/m);
   assert.match(r.out, /certbot/, "nginx : la commande du certificat est indiquée");
+});
+
+/** A lab with nginx already installed and one unrelated site; returns the helpers the nginx template tests share. */
+async function nginxLab(t) {
+  const L = await lab(t);
+  const av = path.join(L.root, "etc/nginx/sites-available"); fs.mkdirSync(av, { recursive: true }); fs.mkdirSync(path.join(L.root, "etc/nginx/sites-enabled"));
+  fs.writeFileSync(path.join(av, "autre.conf"), "server { server_name autre.example.org; }\n");
+  L.conf = path.join(av, "monsite.conf"); L.av = av; L.port = await freePort();
+  L.install = (extra = {}, args = []) => L.run(["--site", "monsite", "--domain", "monsite.example.org", "--yes", "--port", String(L.port), ...args], { FAKE_ACTIVE: "nginx", CURIOSA_VERIFY_URL: `http://127.0.0.1:${L.port}/admin/setup`, ...extra });
+  return L;
+}
+const count = (text, re) => (text.match(re) ?? []).length;
+
+test("nginx template (new site): compression, a kept-open connection to the site, no cache, no http2 (the file only listens on port 80)", async (t) => {
+  const L = await nginxLab(t);
+  const r = await L.install();
+  assert.equal(r.code, 0, r.out);
+  const conf = fs.readFileSync(L.conf, "utf8");
+  assert.match(conf, /^upstream curiosa_monsite \{\n    server 127\.0\.0\.1:\d+;\n    keepalive 16;\n    keepalive_timeout 4s;\n\}$/m);
+  assert.match(conf, /proxy_pass http:\/\/curiosa_monsite;/);
+  assert.match(conf, /proxy_http_version 1\.1;/); assert.match(conf, /proxy_set_header Connection "";/); assert.match(conf, /proxy_buffering off;/, "SSE keeps working: no buffering");
+  assert.match(conf, /^    gzip on;$/m); assert.match(conf, /^    gzip_vary on;$/m); assert.match(conf, /^    gzip_min_length 1024;$/m);
+  const types = /gzip_types ([^;]+);/.exec(conf)[1].split(/\s+/);
+  for (const ty of ["text/css", "application/javascript", "application/json", "image/svg+xml", "application/xml"]) assert.ok(types.includes(ty), ty);
+  assert.ok(!types.includes("text/html"), "text/html is always compressed by nginx; listing it only warns");
+  assert.ok(!/proxy_cache|http2|brotli/.test(conf), "no cache, no http2 (no TLS listener here), no brotli");
+});
+
+test("nginx template: an old nginx (before 1.15.3) or an unreadable version gets compression but no upstream block", async (t) => {
+  for (const version of ["1.14.2", ""]) {
+    const L = await nginxLab(t);
+    const r = await L.install({ FAKE_NGINX_VERSION: version });
+    assert.equal(r.code, 0, r.out);
+    const conf = fs.readFileSync(L.conf, "utf8");
+    assert.ok(!/upstream|keepalive/.test(conf), `version "${version}"`);
+    assert.match(conf, new RegExp(`proxy_pass http://127\\.0\\.0\\.1:${L.port};`)); assert.match(conf, /gzip on;/);
+  }
+  const L = await nginxLab(t);
+  assert.equal((await L.install({ FAKE_NGINX_VERSION: "1.15.3" })).code, 0);
+  assert.match(fs.readFileSync(L.conf, "utf8"), /keepalive_timeout 4s;/, "1.15.3 is the first version that accepts it in an upstream");
+});
+
+test("nginx template: running the installer again does not duplicate or rewrite anything", async (t) => {
+  const L = await nginxLab(t);
+  assert.equal((await L.install()).code, 0);
+  const first = fs.readFileSync(L.conf, "utf8");
+  const r = await L.install();
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /déjà à jour/);
+  const again = fs.readFileSync(L.conf, "utf8");
+  assert.equal(again, first);
+  assert.equal(count(again, /^\s*gzip on;/gm), 1); assert.equal(count(again, /^upstream /gm), 1); assert.equal(count(again, /keepalive 16;/g), 1);
+  assert.deepEqual(fs.readdirSync(L.av).filter((f) => f.includes(".avant-")), [], "no backup: nothing was rewritten");
+});
+
+test("nginx: a site written by an earlier installer (previous template) is left exactly as it is", async (t) => {
+  const L = await nginxLab(t);
+  const legacy = `# Géré par install-curiosa (scripts/install.sh), site : monsite
+server {
+    listen 80;
+    listen [::]:80;
+    server_name monsite.example.org;
+    client_max_body_size 50m;
+    location / {
+        proxy_pass http://127.0.0.1:${L.port};
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Connection "";
+        proxy_buffering off;
+    }
+}
+`;
+  fs.writeFileSync(L.conf, legacy);
+  const r = await L.install();
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /laissé tel quel/); assert.match(r.out, /docs\/PERFORMANCE\.md/);
+  assert.equal(fs.readFileSync(L.conf, "utf8"), legacy);
+  assert.deepEqual(fs.readdirSync(L.av).filter((f) => f.includes(".avant-")), []);
+});
+
+test("nginx: --dry-run announces the compression for a new nginx site and writes nothing", async (t) => {
+  const L = await nginxLab(t); const before = L.snapshot();
+  const r = await L.install({}, ["--dry-run"]);
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /nouveau site seulement : compression/);
+  assert.deepEqual(L.snapshot(), before); assert.ok(!fs.existsSync(L.conf));
+});
+
+/** certbot / apt-get stubs: record their calls; FAKE_CERT_EXISTS and FAKE_CERTBOT_FAIL drive the answers. With `missing`, certbot only appears once the apt-get stub "installs" it. */
+const CERTBOT_STUB = `#!/bin/sh
+echo "$@" >> "$CURIOSA_ROOT/.certbot-calls"
+if [ "$1" = "certificates" ]; then [ -n "$FAKE_CERT_EXISTS" ] && echo "  Certificate Name: monsite.example.org"; exit 0; fi
+if [ -n "$FAKE_CERTBOT_FAIL" ]; then echo "Challenge failed for domain: Timeout during connect (likely firewall problem)" >&2; exit 1; fi
+exit 0
+`;
+function certbotLab(L, { missing = false } = {}) {
+  const stub = path.join(L.base, "certbot-stub");
+  fs.writeFileSync(stub, CERTBOT_STUB, { mode: 0o755 });
+  if (missing) fs.writeFileSync(path.join(L.bin, "apt-get"), `#!/bin/sh\necho "$@" >> "$CURIOSA_ROOT/.apt-calls"\n[ -n "$FAKE_APT_FAIL" ] && exit 100\ncase "$*" in *certbot*) cp ${stub} ${L.bin}/certbot ;; esac\nexit 0\n`, { mode: 0o755 });
+  else fs.copyFileSync(stub, path.join(L.bin, "certbot")), fs.chmodSync(path.join(L.bin, "certbot"), 0o755);
+  L.certbotCalls = () => { try { return fs.readFileSync(path.join(L.root, ".certbot-calls"), "utf8").trim().split("\n"); } catch { return []; } };
+  L.cert = (extra = {}, args = []) => L.install(extra, ["--certbot", "--email", "camille@example.org", ...args]);
+  return L;
+}
+const obtainCalls = (L) => L.certbotCalls().filter((c) => !c.startsWith("certificates"));
+
+test("certbot (opt-in): --dry-run announces it with the Let's Encrypt terms and changes nothing", async (t) => {
+  const L = certbotLab(await nginxLab(t)); const before = L.snapshot();
+  const r = await L.cert({}, ["--dry-run"]);
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /certificat HTTPS de monsite\.example\.org avec certbot/); assert.match(r.out, /camille@example\.org/); assert.match(r.out, /conditions de Let's Encrypt/);
+  assert.deepEqual(L.snapshot(), before); assert.deepEqual(L.certbotCalls(), []);
+});
+
+test("certbot: nginx, DNS ready: -d only for this domain, terms accepted by the flag, extra options from CURIOSA_CERTBOT_ARGS, no hint left", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.cert({ CURIOSA_CERTBOT_ARGS: "--staging" });
+  assert.equal(r.code, 0, r.out);
+  assert.deepEqual(obtainCalls(L), ["--nginx -d monsite.example.org --non-interactive --agree-tos --no-eff-email -m camille@example.org --redirect --staging"]);
+  assert.match(r.out, /Certificat HTTPS obtenu pour monsite\.example\.org/); assert.match(r.out, /avez accepté les conditions de Let's Encrypt/);
+  assert.ok(!/sudo certbot --nginx/.test(r.out), "nothing left to do by hand");
+  assert.equal(fs.readFileSync(path.join(L.av, "autre.conf"), "utf8"), "server { server_name autre.example.org; }\n", "other sites untouched");
+});
+
+test("certbot: without the flag nothing is requested (even with --yes); the hint stays", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.install();
+  assert.equal(r.code, 0, r.out); assert.deepEqual(L.certbotCalls(), []); assert.match(r.out, /sudo certbot --nginx -d monsite\.example\.org/);
+});
+
+test("certbot: missing certbot is installed through apt (certbot + the nginx plugin), then used", async (t) => {
+  const L = certbotLab(await nginxLab(t), { missing: true });
+  const r = await L.cert();
+  assert.equal(r.code, 0, r.out);
+  assert.match(fs.readFileSync(path.join(L.root, ".apt-calls"), "utf8"), /install -y --no-install-recommends certbot python3-certbot-nginx/);
+  assert.equal(obtainCalls(L).length, 1);
+});
+
+test("certbot: apt cannot install it -> the site stays in HTTP, plain explanation and the hint", async (t) => {
+  const L = certbotLab(await nginxLab(t), { missing: true });
+  const r = await L.cert({ FAKE_APT_FAIL: "1" });
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /Certbot n'a pas pu être installé/); assert.ok(fs.existsSync(L.conf)); assert.deepEqual(L.certbotCalls(), []);
+});
+
+test("certbot: the DNS does not point here -> skipped with the explanation, no call, hint kept", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.cert({ CURIOSA_DOMAIN_IP: "198.51.100.9" }, ["--skip-dns-check"]);
+  assert.match(r.out, /ne pointe pas encore vers ce serveur/); assert.deepEqual(L.certbotCalls(), []); assert.ok(fs.existsSync(L.conf));
+});
+
+test("certbot: a certificate already exists for the domain -> not requested again", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.cert({ FAKE_CERT_EXISTS: "1" });
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /Un certificat existe déjà pour monsite\.example\.org/); assert.deepEqual(obtainCalls(L), []);
+});
+
+test("certbot: it fails -> the site stays online in HTTP, the reason in plain words, the hint to retry", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.cert({ FAKE_CERTBOT_FAIL: "1" });
+  assert.equal(r.code, 0, r.out); assert.match(r.out, /Certificat HTTPS non obtenu \(Let's Encrypt n'a pas pu joindre le site sur le port 80/);
+  assert.match(r.out, /sudo certbot --nginx -d monsite\.example\.org/); assert.ok(fs.existsSync(L.conf));
+  assert.match(fs.readFileSync(path.join(L.root, "var/log/curiosa-install-monsite.log"), "utf8").length ? "log" : "", /log/);
+});
+
+test("certbot: the e-mail is required and checked before anything is changed", async (t) => {
+  for (const args of [["--certbot"], ["--certbot", "--email", "pas-un-email"]]) {
+    const L = certbotLab(await nginxLab(t)); const before = L.snapshot();
+    const r = await L.install({}, args);
+    assert.equal(r.code, 1, r.out); assert.match(r.out, /adresse e-mail/); assert.deepEqual(L.snapshot(), before); assert.deepEqual(L.certbotCalls(), []);
+  }
+});
+
+test("certbot: an English run says the same things (terms, plain failure)", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  const r = await L.cert({ CURIOSA_LANG: "en", FAKE_CERTBOT_FAIL: "1" });
+  assert.match(r.out, /HTTPS certificate not obtained/); assert.match(r.out, /Let's Encrypt could not reach the site on port 80/);
+});
+
+test("nginx: a site that certbot already edited is kept on a second run (the certificate is never removed)", async (t) => {
+  const L = certbotLab(await nginxLab(t));
+  assert.equal((await L.install()).code, 0);
+  const edited = fs.readFileSync(L.conf, "utf8").replace("listen 80;", "listen 80;\n    listen 443 ssl; # managed by Certbot");
+  fs.writeFileSync(L.conf, edited);
+  const r = await L.install();
+  assert.equal(r.code, 0, r.out); assert.equal(fs.readFileSync(L.conf, "utf8"), edited);
 });
 
 test("nginx refuse la configuration : elle est retirée, l'existant intact, arrêt avec remède", async (t) => {
