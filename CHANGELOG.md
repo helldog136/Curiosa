@@ -7,9 +7,47 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.11 — 2026-11-05
 
-**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
+**En bref.** Chaque bloc de code de vos pages et articles a maintenant un bouton pour le copier en un clic. Le crédit « Propulsé par Curiosa » du pied de page mène à la page du projet.
+
+### Pages et pied de page
+
+- **Un bouton « Copier » sur chaque bloc de code.** Dans vos pages, articles et sections d'accueil, un bloc de code (par exemple un message à coller dans un assistant IA) se copie en un clic. Le bouton dit « Copié » pendant deux secondes ; si la copie est refusée, un message vous invite à sélectionner le texte.
+- **Le crédit « Propulsé par Curiosa » mène à la page du projet.** Le lien ouvre la page de Curiosa en français pour une personne qui visite en français, en anglais sinon.
+- **(English) A "Copy" button on every code block.** In your pages, posts and home sections, a code block (for example a message to paste into an AI assistant) copies in one click. The button says "Copied" for two seconds; if copying is refused, a message asks you to select the text.
+- **(English) The "Powered by Curiosa" credit leads to the project page.** The link opens Curiosa's page in French for a French-speaking visitor, in English otherwise.
+
+### Pour les développeurs
+
+- **Copy button on code blocks:** `Markdown.tsx` renders each fenced block with the client component `components/site/CodeBlock.tsx`; the button (a `copy-code` part) appears after hydration only. Labels `site.code.*` come from `codeCopyLabels(t)` through `CodeCopyProvider` (site and admin layouts; no provider, no button).
+- **Copy helper:** `copyText` in `src/core/copyText.ts` tries the Clipboard API, then a hidden textarea with `execCommand`, then returns `false`. No inline script. Skin bench fragments refreshed.
+- **Footer credit address:** `creditSiteUrl(locale)` in `src/core/credit.ts` is the only place of the address; `CuriosaMark` takes an optional `locale`. The admin footer keeps `CREDIT_URL` (the repository), and LICENSE section 4 still names it.
+
+## 0.6.10 — 2026-11-04
+
+**En bref.** Les logos de Curiosa et tout dessin SVG accessible sont maintenant acceptés à l'envoi. Un assistant IA voit l'adresse de chaque page ou article et peut, si vous lui en donnez le droit, corriger la description d'une page publiée sans la retirer du site.
+
+### Assistants IA
+
+- **Votre assistant peut corriger la description d'une page publiée.** Vous cochez ce droit à part, la page reste en ligne et l'ancien texte est gardé.
+- **Il connaît l'adresse de chaque page.** Quand il lit vos pages ou vos articles, il voit aussi leur adresse sur le site, dans chaque langue.
+- **(English) Your assistant can fix the description of a published page.** You tick a separate right, the page stays online and the old text is kept.
+- **(English) It knows the address of each page.** When it reads your pages or posts, it also sees their address on the site, in each language.
+
+### Images
+
+- **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
+- **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
+
+### Pour les développeurs
+
+- **Content tools:** `list_entries` and `get_entry` also return `path` and `paths` (`entryPath()`). New `<instance>__update_published_meta` (summary of a published entry; class "content"; journal `entry.meta.update`; restore point `mcp.undo.entryMeta`). See `docs/MAINTENANCE-IA.md`.
+- **`sanitizeSvg` (`src/core/svg.ts`) accepts safe accessibility features:** `role` (img, presentation, none, graphics-document), `aria-label`, `aria-labelledby`, `aria-hidden`, `focusable`, plain-text `<title>`/`<desc>` (capped, escaped). `docs/brand/*.svg` now upload; no rule relaxed. Its messages are English now.
+
+## 0.6.9 — 2026-11-04
+
+**En bref.** Un assistant IA à qui vous en donnez le droit peut maintenant mettre en place l'identité de votre site sans ouvrir l'administration : envoyer des images, régler le nom, l'accroche, la présentation, l'e-mail de contact et les logos. Il peut aussi arranger le menu et composer la page d'accueil, avec un bouton pour tout remettre comme avant. Les limites d'actions par heure sont aussi séparées, visibles et réglables.
 
 ### Assistants IA
 
@@ -24,19 +62,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Vous pouvez tout remettre comme avant.** Dans Navigation et dans Accueil, un bouton « Remettre l'ancien menu » (ou « l'ancienne page d'accueil ») apparaît après un changement de l'IA, tant que personne n'a modifié la page depuis.
 - **In English.** An AI you allow can now arrange your menu and compose your home page without opening the admin. You approve first or it acts at once, depending on your setting, and a button in Navigation and Home puts the previous version back.
 - **Une page entière sur l'accueil.** Vous pouvez choisir une page publiée et en montrer tout le contenu sur la page d'accueil, dans la langue de la personne qui visite. Une page retirée ne laisse rien à l'écran.
-- **Votre assistant peut corriger la description d'une page publiée.** Vous cochez ce droit à part, la page reste en ligne et l'ancien texte est gardé.
-- **Il connaît l'adresse de chaque page.** Quand il lit vos pages ou vos articles, il voit aussi leur adresse sur le site, dans chaque langue.
-- **(English) Your assistant can fix the description of a published page.** You tick a separate right, the page stays online and the old text is kept.
-- **(English) It knows the address of each page.** When it reads your pages or posts, it also sees their address on the site, in each language.
-- **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
-- **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
-
-### Pages et pied de page
-
-- **Un bouton « Copier » sur chaque bloc de code.** Dans vos pages, articles et sections d'accueil, un bloc de code (par exemple un message à coller dans un assistant IA) se copie en un clic. Le bouton dit « Copié » pendant deux secondes ; si la copie est refusée, un message vous invite à sélectionner le texte.
-- **Le crédit « Propulsé par Curiosa » mène à la page du projet.** Le lien ouvre la page de Curiosa en français pour une personne qui visite en français, en anglais sinon.
-- **(English) A "Copy" button on every code block.** In your pages, posts and home sections, a code block (for example a message to paste into an AI assistant) copies in one click. The button says "Copied" for two seconds; if copying is refused, a message asks you to select the text.
-- **(English) The "Powered by Curiosa" credit leads to the project page.** The link opens Curiosa's page in French for a French-speaking visitor, in English otherwise.
 
 ### Pour les développeurs
 
@@ -47,11 +72,6 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Restore point** in the core settings `mcp.undo.navigation` / `mcp.undo.home` (previous state, access name, time, fingerprint of the applied state), used by the new `AssistantUndoNotice` on the Navigation and Home admin pages. No migration.
 - **`Def.bare`** in `src/core/maintenance/tools.ts`: a maintenance tool that keeps its own name instead of the `maintenance_` prefix; not part of the old "Maintenance" token profile.
 - **Home section `entry`** (offered by every content instance with a page): renders one published entry through the `entryContent` block with the same Markdown renderer as the entry page; `home_sections_list` reports a broken one. The writers use the shared limiter: class "content" in `LEVEL3_CLASS`.
-- **Content tools:** `list_entries` and `get_entry` also return `path` and `paths` (`entryPath()`). New `<instance>__update_published_meta` (summary of a published entry; class "content"; journal `entry.meta.update`; restore point `mcp.undo.entryMeta`). See `docs/MAINTENANCE-IA.md`.
-- **`sanitizeSvg` (`src/core/svg.ts`) accepts safe accessibility features:** `role` (img, presentation, none, graphics-document), `aria-label`, `aria-labelledby`, `aria-hidden`, `focusable`, plain-text `<title>`/`<desc>` (capped, escaped). `docs/brand/*.svg` now upload; no rule relaxed. Its messages are English now.
-- **Copy button on code blocks:** `Markdown.tsx` renders each fenced block with the client component `components/site/CodeBlock.tsx`; the button (a `copy-code` part) appears after hydration only. Labels `site.code.*` come from `codeCopyLabels(t)` through `CodeCopyProvider` (site and admin layouts; no provider, no button).
-- **Copy helper:** `copyText` in `src/core/copyText.ts` tries the Clipboard API, then a hidden textarea with `execCommand`, then returns `false`. No inline script. Skin bench fragments refreshed.
-- **Footer credit address:** `creditSiteUrl(locale)` in `src/core/credit.ts` is the only place of the address; `CuriosaMark` takes an optional `locale`. The admin footer keeps `CREDIT_URL` (the repository), and LICENSE section 4 still names it.
 
 ## 0.6.8 — 2026-11-04
 
