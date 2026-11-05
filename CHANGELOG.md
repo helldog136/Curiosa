@@ -16,6 +16,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Vos données sont protégées au démarrage du conteneur.** Une copie de la base est faite avant chaque démarrage, et un conteneur trop ancien ou trop récent pour vos données refuse de démarrer en expliquant quoi faire.
 - **(English) Your data is protected when the container starts.** A copy of the database is made before every start, and a container too old or too new for your data refuses to start and explains what to do.
 
+- **Curiosa existe en image Docker prête à l'emploi, pour PC et NAS ARM.** Plus rien à compiler chez vous : l'image est celle de la release, testée avant d'être publiée. Elle ne tourne jamais en administrateur.
+- **(English) Curiosa now comes as a ready-made Docker image, for PCs and ARM NAS.** Nothing to build on your side: the image is the tested release. It never runs as an administrator.
+
 ### Assistants IA
 
 - **Les appels de maintenance par une IA n'échouent plus par dépassement de délai.** Mettre à jour tous les modules, réinstaller un module ou vérifier les mises à jour répond tout de suite « démarré » si c'est long, et l'IA suit l'avancement module par module. Votre accord reste demandé comme avant.
@@ -29,6 +32,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
 - **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
 - **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
 - **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.

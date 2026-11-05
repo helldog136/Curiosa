@@ -1,0 +1,3 @@
+export function defaultDocker(bin?: string): (args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>;
+export function defaultHttp(url: string): Promise<{ status: number; headers: Record<string, string> }>;
+export function smokeImage(o: { image: string; version: string; previous?: string; docker?: (args: string[]) => Promise<{ code: number; stdout: string; stderr: string }>; http?: (url: string) => Promise<{ status: number; headers: Record<string, string> }>; sleep?: (ms: number) => Promise<void>; healthSeconds?: number; log?: (s: string) => void; id?: string }): Promise<{ ok: boolean; results: { ok: boolean; what: string }[] }>;
