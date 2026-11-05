@@ -190,14 +190,15 @@ const isStableTagRef = (ref: string | null | undefined) => !!ref && /^v?\d+\.\d+
 /** Languages as the assistant reads them: status ("official" or "community"), coverage of the interface ("complete" or "partial: 82%") and of the installed modules. */
 export type LanguageLine = { code: string; name: string; status: string; enabled: boolean; interface: string; modules: string };
 
-export async function modules(opts: { updates?: UpdateReport } = {}): Promise<{ modules: ModuleLine[]; truncated: boolean; languages: LanguageLine[]; updatesCheckedAt: string | null; updatesStale?: true }> {
+export async function modules(opts: { updates?: Promise<UpdateReport> } = {}): Promise<{ modules: ModuleLine[]; truncated: boolean; languages: LanguageLine[]; updatesCheckedAt: string | null; updatesStale?: true }> {
   const rows = await listModuleRows();
   const instances = await listInstances();
-  const { report, stale } = opts.updates ?? (await updateReport(deps.checkTimeoutMs * 2));
+  // Started now and awaited where it is needed: the local scan of the modules goes on while the update check is answered (or times out).
+  const updating = opts.updates ?? updateReport(deps.checkTimeoutMs * 2);
   const lines: ModuleLine[] = await mapLimit(rows.slice(0, MAX_MODULES), 8, async (row) => {
     const mod = await loadModule(row).catch(() => null);
     const gaps = mod ? await requirementGaps(mod.manifest).catch(() => []) : [];
-    const outdated = report?.outdated.find((o) => o.id === row.id);
+    const outdated = (await updating).report?.outdated.find((o) => o.id === row.id);
     const mine = instances.filter((i) => i.moduleId === row.id);
     const lineInstances: ModuleLine["instances"] = [];
     for (const i of mine) { const s = await dataStatusOf(i.id); lineInstances.push({ key: i.key, ...(s ? { error: `${s.status}${s.error ? `: ${redactSecrets(s.error, 160)}` : ""}` } : {}) }); }
@@ -216,6 +217,7 @@ export async function modules(opts: { updates?: UpdateReport } = {}): Promise<{ 
   });
   const status = await i18nStatus().catch(() => null);
   const languages = (status?.languages ?? []).map((l): LanguageLine => ({ code: l.code, name: l.name, status: l.status, enabled: l.enabled, interface: l.interface.label, modules: languageLabel({ status: l.status, percent: l.modules.percent }).coverage }));
+  const { report, stale } = await updating;
   return { modules: lines, truncated: rows.length > MAX_MODULES, languages, updatesCheckedAt: report ? new Date(report.checkedAt).toISOString() : null, ...(stale ? { updatesStale: true as const } : {}) };
 }
 
@@ -236,8 +238,9 @@ export function moduleUpdateRefusal(o: { ref: string | null | undefined; source:
   return undefined;
 }
 
-export async function updates(opts: { updates?: UpdateReport; waitMs?: number } = {}): Promise<UpdatesView> {
+export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: number } = {}): Promise<UpdatesView> {
   const waitMs = opts.waitMs ?? deps.checkTimeoutMs * 2;
+  const updating = opts.updates ?? updateReport(waitMs);   // started now: the release list below and the check of the modules wait at the same time
   const current = readVersion(appDir());
   const info = getInstallInfo(appDir());
   let core: UpdatesView["core"] = { current, channel: await getUpdateChannel(), canUpdateFromAdmin: info.canUpdate, latestStable: null, available: false };
@@ -263,7 +266,7 @@ export async function updates(opts: { updates?: UpdateReport; waitMs?: number } 
   } catch { core.note = "the release list could not be reached"; }
 
   const rows = new Map((await listModuleRows()).map((r) => [r.id, r]));
-  const { report, stale } = opts.updates ?? (await updateReport(waitMs));
+  const { report, stale } = await updating;
   const blocked = new Map<string, BlockedUpdate>();
   for (const o of report?.outdated ?? []) { const b = await readBlockedUpdate(o.id); if (b) blocked.set(o.id, b); }
   return {
@@ -301,9 +304,9 @@ export async function diagnose() {
   const reportP = updateReport(budget);
   const [hr, mr, ur, cr] = await Promise.all([
     within(budget, () => health()),
-    // These two wait for the report (which has its own `budget`, started at the same time) and then assemble their answer: they get the budget twice.
-    within(budget * 2, async () => modules({ updates: await reportP })),
-    within(budget * 2, async () => updates({ updates: await reportP, waitMs: budget })),
+    // These two work while the report is being waited for (it has its own `budget`, started at the same time) and then assemble their answer: they get the budget twice.
+    within(budget * 2, () => modules({ updates: reportP })),
+    within(budget * 2, () => updates({ updates: reportP, waitMs: budget })),
     within(budget, () => contentSummary()),
   ]);
   const h = hr.ok ? hr.value : null, mods = mr.ok ? mr.value : null, up = ur.ok ? ur.value : null, content = cr.ok ? cr.value : null;
