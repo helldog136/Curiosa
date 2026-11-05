@@ -50,7 +50,7 @@ Voir [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md). Dans l'administration, **activez le
 ## Démarrage automatique
 
 L'unité systemd (écrite par le script, ou donnée dans le [README](../README.md#installation-manuelle-avancé)) (un exemple figure aussi dans [`deploy/curiosa.service`](../deploy/curiosa.service)). Avec pm2 : `pm2 start node_modules/next/dist/bin/next --name curiosa -- start -p 3000`
-(et `CURIOSA_SUPERVISED=1` dans son environnement). **Un seul gestionnaire par site : systemd OU pm2, jamais les deux** : ils se disputeraient le port et relanceraient chacun l'ancienne version. Évitez aussi `npx next start` dans l'unité (trois processus : `npm exec` → `sh` → `next-server`) ; `ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000` n'en fait qu'un. Docker sert à essayer chez soi, pas à publier un site (voir le [README](../README.md#avec-docker-pour-essayer-chez-soi-pas-pour-publier)).
+(et `CURIOSA_SUPERVISED=1` dans son environnement). **Un seul gestionnaire par site : systemd OU pm2, jamais les deux** : ils se disputeraient le port et relanceraient chacun l'ancienne version. Évitez aussi `npx next start` dans l'unité (trois processus : `npm exec` → `sh` → `next-server`) ; `ExecStart=/usr/bin/node node_modules/next/dist/bin/next start -p 3000` n'en fait qu'un. Docker a son propre guide, plus bas : [Docker](#docker).
 
 ## Mises à jour depuis l'admin
 
@@ -108,7 +108,7 @@ Comme il n'y a ni compilation ni réinstallation de dépendances, la mise à jou
 
 - L'installation doit venir d'une **archive de release** (présence de `release.json`) et son dossier appartenir à l'utilisateur qui fait tourner le site, sinon : « mise à jour non disponible ».
 - `tar` doit être disponible (présent partout sous Linux). La plateforme de l'archive doit être celle du serveur (`linux-x64`).
-- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : `docker compose build --pull && docker compose up -d`.
+- Avec **Docker**, on remplace l'image au lieu de mettre à jour en place (`CURIOSA_INSTALL=docker` est déjà réglé dans l'image) : voir [Docker](#docker).
 - **Mises à jour en plusieurs étapes.** Certaines versions ne s'installent directement qu'à partir d'une version assez récente (elles ont retiré le code qui convertissait les données d'avant). Chaque release publie pour cela un fichier `upgrade.json` (`{"minFrom":"0.2.0"}`) : le système de mise à jour le lit avant de télécharger quoi que ce soit, installe d'abord les versions intermédiaires nécessaires, redémarre le serveur, attend qu'il réponde (c'est ce premier démarrage qui convertit les données), puis installe la suivante. Sans redémarrage automatique (ni `CURIOSA_RESTART_COMMAND` ni `CURIOSA_SUPERVISED`), il s'arrête après chaque étape : redémarrez, puis cliquez de nouveau sur « Installer ». **Aujourd'hui** (`minFrom` = 0.6.10) : un site plus ancien que la 0.6.10 passe d'abord par la 0.6.10 (et par la 0.2.0, puis la 0.1.4, s'il est encore plus ancien), dont le premier démarrage fait les dernières conversions ; la page *Mises à jour* montre l'étape (« à suivre », « en cours », « installée »). Un site en 0.6.10 ou plus récent se met à jour directement. La règle (relever ce plancher à chaque release, supprimer les conversions échues) est dans [MIGRATIONS.md](MIGRATIONS.md). **Pour qui publie une release** : en supprimant du code de conversion temporaire (voir `tests/core/temporary-code.test.mjs`), remontez `minFrom` dans `upgrade.json` à la dernière version qui le contenait encore, et ajoutez une ligne `REMOVED` à ce test.
 - Pour suivre un autre dépôt de releases (un fork) : `CURIOSA_UPDATE_REPO=<propriétaire>/<dépôt>`.
 
@@ -172,6 +172,101 @@ si le dépôt est injoignable, le site tient avec la dernière liste reçue (gar
 | `CURIOSA_SKINS_REPO` | Dépôt git qui publie le catalogue des **skins** (`catalogue/index.json`) ; défaut : le dépôt officiel de skins. Voir [SKINS.md](SKINS.md) §21. |
 | `CURIOSA_SKINS_REF` | Branche ou étiquette à lire dans ce dépôt (défaut : la branche par défaut). |
 | `SKINS_INDEX_URL` | Index JSON `https://` **supplémentaire** de skins : il ne peut qu'ajouter des skins, jamais installés sans confirmation. |
+
+## Docker
+
+Docker runs Curiosa in a container, for a local trial or for a real site. The image is built on your machine from this repository (the first build downloads and compiles several GB; no ready-made image is published). Everything you may change is a variable in a `.env` file next to `docker-compose.yml`.
+
+### Local trial
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
+Open http://localhost:3000: the setup wizard starts. The default `SITE_URL` (`http://localhost:3000`) is only good for this trial.
+
+### Real site with automatic HTTPS
+
+1. Point your domain's DNS to the server and open ports 80 and 443.
+2. Copy `.env.example` to `.env` and set, in the Docker block and above it: `SITE_URL="https://example.org"` and `CURIOSA_DOMAIN="example.org"` (same domain). Also set `SETUP_TOKEN` to a secret of your choice: until the wizard is done, anyone reaching the site could claim it.
+3. Run `docker compose --profile https up -d --build`. A Caddy container gets and renews the certificate by itself (kept in the `caddy_data` volume) and forwards visitors to the site. `CURIOSA_TRUSTED_PROXIES` already defaults to 1, which is right for this proxy.
+4. Open `https://example.org/admin/setup` and give the `SETUP_TOKEN`. Once the site is set up, you can remove `SETUP_TOKEN` from `.env` and run `docker compose up -d` again.
+
+### Which proxy?
+
+| Your situation | What to run | Notes |
+|---|---|---|
+| Local trial, no proxy | `docker compose up -d --build` | Port 3000 on 127.0.0.1 only. |
+| Nothing on the server yet, you want HTTPS | `docker compose --profile https up -d --build` | Bundled Caddy, automatic certificate on 80/443. Needs `CURIOSA_DOMAIN`. |
+| You already run Traefik (v2 or v3) | `docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build` | Labels, no host port. Needs `CURIOSA_DOMAIN`; Compose 2.24 or newer. Never together with the Caddy profile (the override switches it off). |
+| nginx, Apache or Caddy installed on the host | `docker compose up -d --build` | Proxy to `http://127.0.0.1:3000` (or `CURIOSA_PORT`). Keep `CURIOSA_BIND` at its default. Send `X-Forwarded-For` and keep `CURIOSA_TRUSTED_PROXIES=1`. |
+
+Traefik override settings (all optional): `TRAEFIK_NETWORK` (the Docker network your Traefik shares with its services, default `traefik`; it must already exist), `TRAEFIK_ENTRYPOINT` (default `websecure`), `TRAEFIK_CERTRESOLVER` (default `letsencrypt`). To redirect http to https, set it once on your Traefik `web` entrypoint.
+
+**No Traefik yet, but you prefer it to Caddy?** A minimal one, in its own folder (`traefik/compose.yml`):
+
+```yaml
+services:
+  traefik:
+    image: traefik:v3.1
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      - --entrypoints.websecure.address=:443
+      - --certificatesresolvers.letsencrypt.acme.email=you@example.org
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web
+    ports: ["80:80", "443:443"]
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt:/letsencrypt
+    networks: [traefik]
+    restart: unless-stopped
+volumes:
+  letsencrypt:
+networks:
+  traefik:
+    name: traefik
+```
+
+Start it with `docker compose up -d` there; the named volume gets the right permissions for `acme.json` (with a folder on the host, run `chmod 600` on that file). Use your own e-mail address. The Docker socket is read-only but still powerful: keep this folder private.
+
+Any other reverse proxy: do not use the profile or the override; point it to `127.0.0.1:3000` (or `CURIOSA_PORT`) and keep `CURIOSA_BIND` at its default so the app is not reachable from outside.
+
+### Variables
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SITE_URL` | `http://localhost:3000` | Public address of the site. Set it for any real site. |
+| `CURIOSA_DOMAIN` | none | Domain of the site. Required with `--profile https` and with the Traefik override. |
+| `CURIOSA_DATA_DIR` | Docker volume | Full path of a host folder for the data instead of the volume (easier to back up). |
+| `CURIOSA_PORT` | `3000` | Port published on the host. |
+| `CURIOSA_BIND` | `127.0.0.1` | Host address the port is published on. `0.0.0.0` exposes the app directly, without HTTPS: for a quick public test only. Docker bypasses most host firewalls for published ports. |
+| `SETUP_TOKEN` | none | Secret asked by the setup wizard. |
+| `AUTH_SECRET` | generated | Session signing secret; by default generated once and kept in the volume. |
+| `LEGACY_HOSTS` | none | Old domains redirected to `SITE_URL` (see [MIGRER-DOMAINE.md](MIGRER-DOMAINE.md)). |
+| `CURIOSA_TRUSTED_PROXIES` | `1` | Number of reverse proxies in front of the site. |
+| `TZ` | `UTC` | Time zone of the container. |
+
+`DATABASE_URL` and `DATA_DIR` from `.env.example` are **not** used by Docker: the compose file points them into the `curiosa_data` volume, so a copied `.env` cannot break the setup. A variable already set in your shell wins over `.env`.
+
+### Data, backups and updates
+
+- Data (SQLite database, uploads, installed modules, session secret) lives in the `curiosa_data` volume, or in the folder set by `CURIOSA_DATA_DIR`. Back it up with the admin's backup page (see [BACKUP.md](BACKUP.md)), or copy the volume (`docker run --rm -v <project>_curiosa_data:/data -v "$PWD":/backup alpine tar czf /backup/curiosa-data.tgz -C /data .`; `docker volume ls` shows the exact name).
+- Updating from the admin is **not supported** in Docker (the image sets `CURIOSA_INSTALL=docker`; the container is replaced, not changed in place). To update: `git pull`, then `docker compose build --pull && docker compose up -d` (add `--profile https` if you use it). The volume is kept and migrations run at start.
+- Modules installed from the admin live in the volume and survive an image replacement.
+
+### On a NAS
+
+Synology (Container Manager) and similar: see the step-by-step recipe [DOCKER-NAS.md](DOCKER-NAS.md). It uses a host folder for the data (`CURIOSA_DATA_DIR`) and the NAS's own reverse proxy.
+
+### Why not ports 80 and 443 by default?
+
+The app speaks plain HTTP on a single port (3000) and expects a reverse proxy to handle TLS and ports 80/443; the compose file never published them. Publishing 80/443 straight from the app would serve a site with no HTTPS, and would clash with a web server already on the machine. So the default stays local, and the `https` profile adds the proxy for you when you want it.
 
 ## Sauvegarder
 

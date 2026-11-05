@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Installation
+
+- **Docker : un vrai site en ligne avec HTTPS automatique.** Une seule ligne ajoute le certificat et les ports 80 et 443, un fichier prêt à l'emploi sert aux sites qui ont déjà Traefik, et l'adresse du site se règle dans le fichier de réglages .env au lieu d'être écrite dans le fichier de démarrage.
+- **(English) Docker: a real site with automatic HTTPS.** One command adds the certificate and ports 80 and 443, a ready-made file serves sites that already run Traefik, and the site address is set in the .env settings file instead of being written in the start-up file.
+
+### Pour les développeurs
+
+- **`docker-compose.yml` is driven by `.env`:** `SITE_URL` (default `http://localhost:3000`, trial only), `SETUP_TOKEN`, `AUTH_SECRET`, `LEGACY_HOSTS`, `CURIOSA_TRUSTED_PROXIES`, `TZ`, `CURIOSA_PORT`, `CURIOSA_BIND` (default `127.0.0.1`), `CURIOSA_DATA_DIR` (host folder instead of the volume; `docs/DOCKER-NAS.md`). `DATABASE_URL` and `DATA_DIR` stay fixed in the volume (no `env_file`).
+- **Profile `https`:** Caddy on 80, 443 and 443/udp; `CURIOSA_DOMAIN` is checked at start, not with `:?` (Compose reads every service). `docker-compose.traefik.yml`: override for an existing Traefik (labels, external network, no host port, Caddy switched off). Healthcheck on `/api/health`. Guard: `tests/core/docker-compose.test.mjs`.
+
 ## 0.6.12 — 2026-11-05
 
 **En bref.** Le site est plus rapide : les réglages sont lus une seule fois au lieu de centaines, les pages publiques envoient moins de code et le site redémarre plus vite. Les sites plus anciens que la 0.6.10 se mettent à jour en deux étapes, que le site enchaîne tout seul. Une règle de migration est posée pour les versions suivantes.
