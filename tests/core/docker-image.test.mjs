@@ -143,3 +143,18 @@ test("release-pack: the archive of this architecture carries upgrade.json and it
     assert.ok(JSON.parse(fs.readFileSync(path.join(root, "release.json"), "utf8")).paths.includes("upgrade.json"));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
+
+test("workflow: every archive is packed and smoke-tested (smoke-release.mjs) in `build`, and `publish` needs ALL build legs — nothing is released from an untested archive", () => {
+  const b = J.build;
+  assert.match(b, /node scripts\/release-pack\.mjs "\$VERSION" dist/);
+  assert.match(b, /node scripts\/smoke-release\.mjs dist\/\*\.tar\.gz/);
+  assert.ok(b.indexOf("release-pack.mjs") < b.indexOf("smoke-release.mjs") && b.indexOf("smoke-release.mjs") < b.indexOf("upload-artifact"), "pack, then smoke, then the artifact is kept");
+  assert.ok(!/smoke-release[\s\S]{0,200}continue-on-error/.test(b) && !/continue-on-error/.test(b), "no step of `build` may fail without failing the job");
+  assert.match(J.publish, /needs: \[plan, build\]/, "publish waits for every matrix leg (x64 and arm64)");
+  assert.match(b, /matrix: \$\{\{ fromJSON\(needs\.plan\.outputs\.matrix\) \}\}/);
+  assert.ok(!/fail-fast: false/.test(b), "one failing leg stops the others");
+  // The matrix always has the x64 leg with the full CI (audit, tsc, tests, build) as before.
+  assert.match(J.plan, /"arch\\":\\"x64\\",\\"docker_arch\\":\\"amd64\\",\\"runner\\":\\"ubuntu-latest\\",\\"full\\":true/);
+  // What the 0.6.8 packaging bug needed: the archive must contain next.config.mjs, checked by smoke-release on the real archive.
+  assert.match(read("scripts/smoke-release.mjs"), /next\.config\.mjs.*!fs\.existsSync\(path\.join\(app, "next\.config\.ts"\)\)/);
+});
