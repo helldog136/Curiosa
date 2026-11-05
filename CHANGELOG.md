@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version
+## Prochaine version (non publiée)
 
 ### Docker
 
@@ -19,10 +19,28 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Curiosa existe en image Docker prête à l'emploi, pour PC et NAS ARM.** Plus rien à compiler chez vous : l'image est celle de la release, testée avant d'être publiée. Elle ne tourne jamais en administrateur.
 - **(English) Curiosa now comes as a ready-made Docker image, for PCs and ARM NAS.** Nothing to build on your side: the image is the tested release. It never runs as an administrator.
 
+### Assistants IA
+
+- **Les appels de maintenance par une IA n'échouent plus par dépassement de délai.** Mettre à jour tous les modules, réinstaller un module ou vérifier les mises à jour répond tout de suite « démarré » si c'est long, et l'IA suit l'avancement module par module. Votre accord reste demandé comme avant.
+- **Le diagnostic répond en quelques secondes, même juste après un redémarrage.** Ce qui ne répond pas à temps est indiqué comme « inconnu » au lieu de tout bloquer, et la dernière vérification des mises à jour est gardée.
+- **Quand une autre opération est en cours, le message dit laquelle, depuis quand et par quel accès.**
+- **Une mise à jour interrompue par un redémarrage est signalée comme telle**, et un dossier de module laissé à moitié remplacé est remis en ordre au démarrage.
+- **(English) AI maintenance calls no longer time out.** Updating all modules, reinstalling a module or checking for updates answers "started" at once when it is long, and the AI follows the progress module by module. Your approval is still asked as before.
+- **(English) The diagnosis answers in a few seconds, even right after a restart.** What does not answer in time is shown as "unknown" instead of blocking everything, and the last update check is kept.
+- **(English) When another operation is running, the message says which one, since when and by which access.**
+- **(English) An update cut short by a restart is reported as such**, and a module folder left half replaced is put right at startup.
+
 ### Pour les développeurs
 
 - **Docker image and release workflow.** `Dockerfile` only unpacks the release archive (tested); archives for x64 and arm64 with `upgrade.json`; images pushed to GHCR after the release (tags `X.Y.Z`, `X.Y`, `latest` for stable); dry run with `workflow_dispatch`. Old source build: `Dockerfile.source`.
 - **Shared update code.** `scripts/shared-lib.mjs`, `scripts/install-kind.mjs` (the one `installKind()`) and `scripts/update-plan.mjs --json`; the in-place updater calls the same functions. `maintenance_core_update` returns the plan on Docker. Design: `docs/ideas/update-paths.md`.
+- **Long actions in the background** (`maintenance/background.ts`): `modules_update_all`, `module_update`, `module_reinstall`, `check_updates`, approved `module_install` / `skin_install` answer `{status: "started", requestId}` after `deps.quickWaitMs` (8 s, 20 s at most).
+- **Follow-up**: `maintenance_request_status` returns `progress` (per module) and `result.details`. Direct runs are `run_…` records (setting `maintenance.runs`); a `running` record that no work of the process stands behind is closed as failed after 2 minutes.
+- **Lock**: the busy message names the action, the access, the request and the time; a lock older than 30 minutes is ignored.
+- **Diagnosis**: parallel checks with `deps.checkTimeoutMs` (5 s), `unknown`, `notes`, `summary.complete`. The module report is saved in the setting `updates.modulesReport` and served `stale` while a new check runs.
+- **Root cause of the 60 s**: a module living in a folder of a multi-module repository downloaded the whole repository (26 MB) once per module. `withSharedSources` shares one download per pass and `remoteCommitOf` (one `ls-remote`) skips it when nothing was released: 71 modules, 48.6 s down to 1.4 s.
+- **MCP layer**: `listTools({ name })` skips the module providers for a `maintenance_*` call; `warmup.ts` warms the caches after the start when the site has an AI access; `recoverInterruptedSwaps` restores or removes `<id>.previous-<pid>` and `.incoming-*` folders left by a dead process.
+- Tests: `tests/services/mcp-maintenance-background.test.mjs`, `tests/modules-mgmt/shared-sources.test.mjs`. Docs: `docs/MAINTENANCE-IA.md` (English addendum).
 
 ## 0.6.13 — 2026-11-05
 

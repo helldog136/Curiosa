@@ -10,7 +10,7 @@
  * d'outils, on l'ajoute ici — jamais dans le service.
  */
 import { contentToolProvider } from "@/core/content/mcp";
-import { maintenanceToolProvider } from "@/core/maintenance/tools";
+import { MAINTENANCE_TOOLS, maintenanceToolProvider } from "@/core/maintenance/tools";
 import { rawgToolProvider } from "@/core/rawgMcp";
 import { redirectsToolProvider } from "@/core/redirectMcp";
 import { journalToolProvider } from "@/core/journalMcp";
@@ -57,6 +57,11 @@ const siteToolProvider: McpToolProvider = {
 /** Les fournisseurs d'outils MCP de ce site, dans l'ordre. */
 export const mcpProviders: McpToolProvider[] = [siteToolProvider, maintenanceToolProvider, redirectsToolProvider, journalToolProvider, setupToolProvider, rawgToolProvider, moduleActionProvider, contentToolProvider];
 
+/** The providers whose tools come from the installed modules (computing them loads every module). */
+const MODULE_PROVIDERS = new Set<McpToolProvider>([moduleActionProvider, contentToolProvider]);
+/** Names of the tools that belong to the core and do not depend on the modules: `maintenance_*` (a fixed list) and the other fixed core tools. */
+const CORE_TOOL_NAMES = new Set<string>(MAINTENANCE_TOOLS.map((t) => t.name));
+
 /**
  * Catalogue complet pour l'admin : tous les outils, y compris ceux d'une instance qui s'est retirée du MCP
  * (signalés), pour que l'administrateur voie et règle chaque action de chaque module.
@@ -66,13 +71,15 @@ export async function listMcpToolCatalogue(): Promise<(McpTool & { instanceOpted
   return Promise.all(all.map(async (tool) => ({ ...tool, instanceOptedOut: !!tool.instanceId && (await getSetting<boolean>(mcpInstanceKey(tool.instanceId))) === false })));
 }
 
-/** Tous les outils MCP disponibles, en respectant le retrait d'une instance (« Proposer ses actions à l'API MCP »). */
-export async function listMcpTools(): Promise<McpTool[]> {
-  const all = (await Promise.all(mcpProviders.map((p) => p.list()))).flat();
-  const out: McpTool[] = [];
-  for (const tool of all) {
-    if (tool.instanceId && (await getSetting<boolean>(mcpInstanceKey(tool.instanceId))) === false) continue;
-    out.push(tool);
-  }
-  return out;
+/**
+ * Tous les outils MCP disponibles, en respectant le retrait d'une instance (« Proposer ses actions à l'API MCP »).
+ * `hint.name`: the tool about to be called. The tools of the core (maintenance, site, redirects…) are known without loading any module, so when the name is one of them
+ * the module providers are not asked: a maintenance call right after a restart no longer loads the 70 modules of the site just to find its own tool.
+ */
+export async function listMcpTools(hint?: { name?: string }): Promise<McpTool[]> {
+  const providers = hint?.name && CORE_TOOL_NAMES.has(hint.name) ? mcpProviders.filter((p) => !MODULE_PROVIDERS.has(p)) : mcpProviders;
+  const all = (await Promise.all(providers.map((p) => p.list()))).flat();
+  // The "withdrawn from MCP" settings are read at the same time, not one after the other.
+  const hidden = await Promise.all(all.map(async (tool) => !!tool.instanceId && (await getSetting<boolean>(mcpInstanceKey(tool.instanceId))) === false));
+  return all.filter((_, i) => !hidden[i]);
 }
