@@ -31,7 +31,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les logos de Curiosa sont acceptés par le site.** Un logo qui porte un texte pour les lecteurs d'écran (un nom et un titre cachés dans le dessin) n'est plus refusé, que vous l'envoyiez vous-même ou que votre assistant le fasse. Les dessins qui contiennent des scripts, des liens extérieurs ou du texte affiché restent refusés.
 - **(English) Curiosa's own logos are accepted by the site.** A logo that carries a text for screen readers (a name and a hidden title inside the drawing) is no longer refused, whether you send it yourself or your assistant does. Drawings with scripts, outside links or visible text are still refused.
 
+### Vitesse
+
+- **Le plan du site (sitemap) et le flux RSS se génèrent environ vingt fois plus vite.** Sur un site de démonstration avec 74 extensions : 680 ms et 607 lectures de la base pour le plan du site, 40 ms et 29 lectures maintenant. Les robots et les lecteurs de flux ne ralentissent plus le site.
+- **Le démarrage lit moins la base** (environ un quart de lectures en moins), et les réglages ne sont relus que lorsqu'ils changent.
+- **(English) The sitemap and the RSS feed are generated about twenty times faster.** On a demo site with 74 modules: 680 ms and 607 database reads for the sitemap, now 40 ms and 29 reads. Search engines and feed readers no longer slow the site down.
+- **(English) Start-up reads the database less** (about a quarter fewer reads), and settings are only read again when they change.
+
 ### Pour les développeurs
+- **Settings cache** (`src/core/settings.ts`, `settingsGeneration.ts`, `db.ts`): raw `Setting` rows cached per process, invalidated by a generation counter that the extended Prisma client bumps on every write to `Setting` (also in transactions); 15 s safety age; `resetSettingsCache()` for tests and tools. Previously `getSetting` outside a page render (sitemap, feeds, routes, MCP, start-up) reloaded the whole table on every call. `prisma` is still typed `PrismaClient`.
 
 - **New core tools:** `media_upload`, `media_list`, `media_set_alt`, `site_settings_get`, `site_settings_set` (`src/core/siteMcp.ts`, `mediaMcp.ts`, `maintenance/siteSettings.ts`), with `aim.tool.*` rights, profiles (read / assistant) and the "Site identity" section of the rights page. `site_settings_set` is the level 3 action `site_settings_set` (`Plan.site`).
 - **`media_upload` reuses the admin's pipeline** (`sniffImage`, `saveUpload`, `saveSvgUpload`, `MAX_INPUT_PIXELS`); the MCP body limit is 4.3 MB for a single `media_upload` call only (1 MB otherwise). Alternative texts are the settings `media.alt.<file>` (no migration); journal lines `media.upload`, `media.alt`.
