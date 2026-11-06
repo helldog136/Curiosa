@@ -33,6 +33,7 @@ beforeEach(async () => {
   M.resetMaintenanceState();
   fs.rmSync(UPLOADS_DIR, { recursive: true, force: true });
   process.env.CURIOSA_TEST_IMPORT_LOCAL = "1";
+  process.env.NODE_ENV = "test";
   hits = [];
   handler = (req, res) => { res.writeHead(200, { "content-type": "image/png" }); res.end(png(16, 12)); };
   server = http.createServer((req, res) => { hits.push({ host: req.headers.host, url: req.url, headers: req.headers }); handler(req, res); });
@@ -43,7 +44,7 @@ beforeEach(async () => {
   F.importDeps.timeoutMs = 10_000;
   await sources(`allowed.example:${port}/screens/`);
 });
-afterEach(async () => { F.resetImportDeps(); delete process.env.CURIOSA_TEST_IMPORT_LOCAL; server.closeAllConnections(); await new Promise((r) => server.close(r)); });
+afterEach(async () => { F.resetImportDeps(); delete process.env.CURIOSA_TEST_IMPORT_LOCAL; delete process.env.NODE_ENV; server.closeAllConnections(); await new Promise((r) => server.close(r)); });
 after(() => db.close());
 
 /** Replaces the owner's list (the test plays the owner; no MCP tool can do this). */
@@ -76,11 +77,11 @@ const used = async (id) => (await SL.remainingSlots(id)).content.used;
 
 // ── Rights ────────────────────────────────────────────────────────────────────────────────────
 
-test("right: a separate tool right, off by default, assistant preset, never for a read-only access; media_upload does not give it", async () => {
+test("right: a separate tool right, off by default, full preset only (not the assistant one), never for a read-only access; media_upload does not give it", async () => {
   const tools = Object.fromEntries((await listMcpTools()).map((t) => [t.name, t]));
   const t = tools.media_import;
   assert.deepEqual([t.readOnly, t.default, t.destructive], [false, false, false]);
-  assert.equal(P.placementOf(t), "assistant");
+  assert.equal(P.placementOf(t), "full");
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.ok(!(await listed(plain)).includes("media_import"));
   const onlyUpload = await access(["media_upload"]);
@@ -98,7 +99,7 @@ test("right: a separate tool right, off by default, assistant preset, never for 
 test("right: the plain-words line exists in English and French; the profile placement lists it", async () => {
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8")); const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
   assert.ok(en["aim.tool.media_import"] && fr["aim.tool.media_import"]);
-  assert.ok(P.PROFILE_TOOLS.assistant.includes("media_import") && !P.PROFILE_TOOLS.read.includes("media_import"));
+  assert.ok(P.PROFILE_TOOLS.full.includes("media_import") && !P.PROFILE_TOOLS.assistant.includes("media_import") && !P.PROFILE_TOOLS.read.includes("media_import"));
 });
 
 test("no tool of the catalogue can write the list: nothing named like it, and only the admin actions import the writers", async () => {
@@ -274,11 +275,13 @@ test("https only: with the test switch off, a plain http address is refused befo
   const r = await imp(token, u("allowed.example", GOOD));
   assert.match(r.error, /must start with https:\/\//);
   assert.deepEqual([hits.length, resolveCalls.length, await used(id)], [0, 0, 0]);
-  // The switch is ignored in production.
+  // The switch is honoured only when NODE_ENV is exactly "test": production, development and unset all refuse.
   process.env.CURIOSA_TEST_IMPORT_LOCAL = "1";
-  const before = process.env.NODE_ENV;
-  process.env.NODE_ENV = "production";
-  try { assert.match((await imp(token, u("allowed.example", GOOD))).error, /must start with https:\/\//); } finally { if (before === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = before; }
+  for (const env of ["production", "development", undefined]) {
+    if (env === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = env;
+    assert.match((await imp(token, u("allowed.example", GOOD))).error, /must start with https:\/\//, String(env));
+  }
+  process.env.NODE_ENV = "test";
   assert.equal(hits.length, 0);
 });
 
@@ -453,22 +456,165 @@ test("content is decided from the BYTES: html named .png, a lying image type, a 
   assert.match(value.address, /\.png$/);
 });
 
-test("metadata: EXIF/GPS and comments are removed from a JPEG and text chunks from a PNG, pixels untouched; media_upload keeps them", async () => {
+// ── Metadata: an allow-list, orientation kept, unreadable refused ────────────────────────────────
+
+const sharp = (await import("sharp")).default;
+const { stripMetadata, UnreadableImage } = await import("@/core/stripMetadata");
+const seg = (m, body) => { const l = Buffer.alloc(4); l[0] = 0xff; l[1] = m; l.writeUInt16BE(body.length + 2, 2); return Buffer.concat([l, body]); };
+/** An EXIF block (big endian) with Orientation and a GPS block that holds a recognisable text. */
+const exif = (orientation, marker = "GPS-48.85,2.35") => {
+  const head = Buffer.from("Exif\0\0MM\0*\0\0\0\x08", "latin1");
+  const ifd0 = Buffer.concat([Buffer.from([0, 2]), Buffer.from([0x01, 0x12, 0, 3, 0, 0, 0, 1, 0, orientation, 0, 0]), Buffer.from([0x88, 0x25, 0, 4, 0, 0, 0, 1, 0, 0, 0, 38]), Buffer.alloc(4)]);
+  const gps = Buffer.concat([Buffer.from([0, 1, 0, 1, 0, 2, 0, 0, 0, 2, 0x4e, 0, 0, 0]), Buffer.alloc(4), Buffer.from(marker)]);
+  return Buffer.concat([head, ifd0, gps]);
+};
+const makeJpeg = (opts = {}) => sharp({ create: { width: 20, height: 10, channels: 3, background: "#c87832" } }).jpeg(opts).toBuffer();
+const withAfterSoi = (jpeg, extra) => Buffer.concat([jpeg.subarray(0, 2), extra, jpeg.subarray(2)]);
+
+test("metadata: a JPEG loses its GPS but keeps its Orientation (34 bytes) and still renders upright; media_upload keeps everything", async () => {
   const { token } = await access();
-  const seg = (m, body) => { const l = Buffer.alloc(4); l[0] = 0xff; l[1] = m; l.writeUInt16BE(body.length + 2, 2); return Buffer.concat([l, body]); };
-  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), seg(0xe0, Buffer.from("JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")), seg(0xe1, Buffer.from("Exif\x00\x00GPS-48.85,2.35")), seg(0xfe, Buffer.from("secret comment")), Buffer.from([0xff, 0xda, 0, 2, 1, 2, 3, 0xff, 0xd9])]);
-  const { stripMetadata } = await import("@/core/stripMetadata");
-  const clean = stripMetadata(jpeg);
-  assert.ok(!clean.includes("GPS-48") && !clean.includes("secret comment") && clean.includes("JFIF") && clean.subarray(clean.length - 9).equals(jpeg.subarray(jpeg.length - 9)));
-  const base = png(8, 8);
-  const text = Buffer.concat([base.subarray(0, 33), (() => { const t = Buffer.from("tEXtAuthor\x00Camille"); const h = Buffer.alloc(4); h.writeUInt32BE(t.length - 4); return Buffer.concat([h, t, Buffer.alloc(4)]); })(), base.subarray(33)]);
-  assert.ok(text.includes("Camille"));
-  assert.ok(stripMetadata(text).equals(base), "png back to the original bytes");
-  assert.ok(stripMetadata(Buffer.from("not an image")).equals(Buffer.from("not an image")));
-  handler = (req, res) => { res.writeHead(200); res.end(text); };
-  const { value } = await imp(token, u("allowed.example", "/screens/meta.png"));
-  assert.ok(!fs.readFileSync(path.join(UPLOADS_DIR, value.id)).includes("Camille"));
+  const base = await makeJpeg();
+  const dirty = withAfterSoi(base, seg(0xe1, exif(6)));
+  assert.ok(dirty.includes("GPS-48.85"));
+  assert.equal((await sharp(dirty).metadata()).orientation, 6);
+  const clean = stripMetadata(dirty);
+  assert.ok(!clean.includes("GPS-48.85") && clean.indexOf("Exif") === clean.lastIndexOf("Exif"), "no GPS, one tiny EXIF block");
+  const meta = await sharp(clean).metadata();
+  assert.equal(meta.orientation, 6, "orientation kept");
+  assert.ok(meta.exif.length <= 40, `only the orientation is left (${meta.exif.length} bytes)`);
+  const upright = (await sharp(clean).rotate().toBuffer({ resolveWithObject: true })).info;
+  assert.deepEqual([upright.width, upright.height], [10, 20], "turned upright like the original");
+  // Through the tool: the stored file is the clean one.
+  handler = (req, res) => { res.writeHead(200); res.end(dirty); };
+  const { value } = await imp(token, u("allowed.example", "/screens/portrait.jpg"));
+  const stored = fs.readFileSync(path.join(UPLOADS_DIR, value.id));
+  assert.ok(!stored.includes("GPS-48.85") && (await sharp(stored).metadata()).orientation === 6);
+  // media_upload does not strip (said in the docs).
+  const up = await call(token, "media_upload", { dataBase64: dirty.toString("base64"), alt: "Portrait" });
+  assert.ok(fs.readFileSync(path.join(UPLOADS_DIR, up.value.id)).includes("GPS-48.85"));
+  // Orientation 1, no EXIF, little endian are handled too.
+  assert.ok(stripMetadata(withAfterSoi(base, seg(0xe1, exif(1)))).equals(stripMetadata(base)));
+  assert.ok(stripMetadata(base).equals(base) || stripMetadata(base).length <= base.length);
 });
+
+test("metadata: data after the end of image, APP1 between progressive scans, vendor blocks and comments are all dropped", async () => {
+  const base = await makeJpeg();
+  const gps = seg(0xe1, exif(1, "GPS-AFTER-EOI".padEnd(1024, "x")));
+  const trailing = Buffer.concat([base, Buffer.from([0xff, 0xd8]), gps, Buffer.from([0xff, 0xd9])]);
+  assert.ok(trailing.includes("GPS-AFTER-EOI"));
+  const cleaned = stripMetadata(trailing);
+  assert.ok(!cleaned.includes("GPS-AFTER-EOI"));
+  assert.deepEqual([...cleaned.subarray(-2)], [0xff, 0xd9]);
+  assert.ok(cleaned.equals(stripMetadata(base)), "exactly what the clean file gives");
+  const prog = await makeJpeg({ progressive: true });
+  const second = prog.indexOf(Buffer.from([0xff, 0xda]), prog.indexOf(Buffer.from([0xff, 0xda])) + 2);
+  assert.ok(second > 0, "a progressive file has several scans");
+  const dirty = Buffer.concat([prog.subarray(0, second), seg(0xe1, exif(1, "GPS-IN-PROGRESSIVE")), seg(0xfe, Buffer.from("secret comment")), seg(0xe3, Buffer.from("vendor note")), seg(0xec, Buffer.from("ducky note")), prog.subarray(second)]);
+  const out = stripMetadata(dirty);
+  for (const text of ["GPS-IN-PROGRESSIVE", "secret comment", "vendor note", "ducky note"]) assert.ok(!out.includes(text), text);
+  assert.equal((await sharp(out).metadata()).format, "jpeg");
+  await sharp(out).toBuffer(); // still decodes: every scan is there
+  // A colour profile (APP2 ICC_PROFILE) is kept; another APP2 is not.
+  const icc = seg(0xe2, Buffer.concat([Buffer.from("ICC_PROFILE\0"), Buffer.alloc(10, 1)]));
+  assert.ok(stripMetadata(withAfterSoi(base, icc)).includes("ICC_PROFILE"));
+  assert.ok(!stripMetadata(withAfterSoi(base, seg(0xe2, Buffer.from("MPF\0vendor")))).includes("vendor"));
+  // Thousands of APP1 blocks: dropped, in linear time.
+  const many = withAfterSoi(base, Buffer.concat(Array.from({ length: 5000 }, () => seg(0xe1, Buffer.from("Exif\0\0GPS-LOOP".padEnd(60, "y"))))));
+  const t0 = Date.now();
+  const flat = stripMetadata(many);
+  assert.ok(Date.now() - t0 < 1000 && !flat.includes("GPS-LOOP") && flat.equals(stripMetadata(base)));
+});
+
+test("metadata: a JPEG or PNG whose structure cannot be read is REFUSED, never stored as received", async () => {
+  const { token } = await access();
+  const base = await makeJpeg();
+  const broken = {
+    truncated: base.subarray(0, base.length - 30),
+    "no end of image": base.subarray(0, base.length - 2),
+    "segment past the end": Buffer.concat([base.subarray(0, 2), Buffer.from([0xff, 0xe1, 0xff, 0xff]), Buffer.from("GPS-LEFT-IN")]),
+    "garbage between segments": Buffer.concat([base.subarray(0, 2), Buffer.from([0x00, 0x01, 0x02]), base.subarray(2)]),
+    "no scan": Buffer.concat([base.subarray(0, 2), Buffer.from([0xff, 0xd9])]),
+  };
+  for (const [what, bytes] of Object.entries(broken)) assert.throws(() => stripMetadata(bytes), UnreadableImage, what);
+  const pngBytes = png(8, 8);
+  assert.throws(() => stripMetadata(pngBytes.subarray(0, pngBytes.length - 5)), UnreadableImage, "truncated png");
+  assert.throws(() => stripMetadata(pngBytes.subarray(0, 33)), UnreadableImage, "png without data");
+  handler = (req, res) => { res.writeHead(200); res.end(broken.truncated); };
+  const r = await imp(token, u("allowed.example", "/screens/cut.jpg"));
+  assert.match(r.error, /cannot be read safely.*Nothing was stored/);
+  assert.equal(files().length, 0);
+  assert.equal((await audits("media.import")).length, 0);
+  // Not a jpeg or png at all: handed on unchanged to the usual checks (which refuse it).
+  assert.equal(stripMetadata(Buffer.from("plain")).toString(), "plain");
+});
+
+test("metadata: a PNG keeps what it needs; text chunks, EXIF, time, unknown chunks and anything after IEND are dropped", () => {
+  const base = png(8, 8);
+  const chunk = (type, data) => { const h = Buffer.alloc(4); h.writeUInt32BE(data.length); return Buffer.concat([h, Buffer.from(type, "latin1"), data, Buffer.alloc(4)]); };
+  const extras = Buffer.concat([chunk("tEXt", Buffer.from("Author\0Camille")), chunk("eXIf", Buffer.from("GPS-IN-PNG")), chunk("tIME", Buffer.alloc(7)), chunk("zzZz", Buffer.from("odd")), chunk("gAMA", Buffer.alloc(4))]);
+  const dirty = Buffer.concat([base.subarray(0, 33), extras, base.subarray(33), chunk("tEXt", Buffer.from("after-iend"))]);
+  const out = stripMetadata(dirty);
+  for (const text of ["Camille", "GPS-IN-PNG", "after-iend", "zzZz", "tIME"]) assert.ok(!out.includes(text), text);
+  assert.ok(out.includes("gAMA") && out.includes("IDAT"));
+  assert.equal(stripMetadata(base).length, base.length);
+});
+
+// ── Review fixes: addresses, time and batch ─────────────────────────────────────────────────────
+
+test("addresses: every spelling of an internal IPv6 address is refused (compressed, expanded, mapped, compatible, translated, NAT64, documentation)", async () => {
+  const { addressIsPrivate } = await import("@/core/url");
+  const privates = ["0:0:0:0:0:ffff:7f00:1", "0:0:0:0:0:ffff:127.0.0.1", "::ffff:0:7f00:1", "::7f00:1", "::127.0.0.1", "0000:0000:0000:0000:0000:0000:0000:0001", "::ffff:A00:1", "::ffff:a9fe:a9fe",
+    "64:ff9b::7f00:1", "64:ff9b::10.0.0.1", "3fff::1", "3fff:fff::1", "2001:db8::1", "2001:0:4136:e378:8000:63bf:3fff:fdd2", "fe80::1%eth0", "FD00::1", "ff02::1", "::", "::1", "[::1]", "::ffff:0:a00:1", "0::ffff:7f00:1"];
+  for (const ip of privates) assert.ok(addressIsPrivate(ip), ip);
+  const publics = ["2606:4700:4700::1111", "2001:4860:4860::8888", "::ffff:5db8:d822", "64:ff9b::5db8:d822", "3fff:1000::1", "93.184.216.34", "8.8.8.8"];
+  for (const ip of publics) assert.ok(!addressIsPrivate(ip), ip);
+  for (const ip of ["10.1.1.1", "127.0.0.1", "169.254.169.254", "100.64.0.1", "192.168.0.1", "::ffff:127.0.0.1", "fc00::1", "not an ip", ""]) assert.ok(addressIsPrivate(ip), ip);
+});
+
+test("time: a name server that never answers is given up on at the same deadline", async () => {
+  const { token } = await access();
+  F.importDeps.timeoutMs = 300;
+  F.importDeps.resolve = () => new Promise(() => {});
+  const t0 = Date.now();
+  assert.match((await imp(token, u("allowed.example", GOOD))).error, /did not answer within/);
+  assert.ok(Date.now() - t0 < 3000);
+  assert.equal(hits.length, 0);
+});
+
+test("batch: a limit of time for the whole call; the remaining images are reported as not attempted; a surprise on one image does not lose the others", async () => {
+  const { token } = await access();
+  handler = (req, res) => setTimeout(() => { res.writeHead(200); res.end(png(10, 10)); }, 250);
+  F.importDeps.batchMs = 100;
+  const { value } = await call(token, "media_import", { urls: [0, 1, 2].map((i) => ({ url: u("allowed.example", `/screens/t${i}.png`), alt: `Image ${i}` })) });
+  assert.deepEqual(value.results.map((r) => r.ok), [true, false, false]);
+  assert.match(value.results[1].error, /^Not attempted: the 0 second limit|^Not attempted/);
+  assert.equal(hits.length, 1);
+  assert.equal(files().length, 1, "the first image is stored and reported");
+  F.resetImportDeps(); F.importDeps.resolve = async (host) => { resolveCalls.push(host); if (host === "other.example") throw new Error("boom /etc/secret-path"); return { ok: true, addresses: ["127.0.0.1"] }; };
+  handler = (req, res) => { res.writeHead(200); res.end(png(10, 10)); };
+  await sources(`allowed.example:${port}/screens/`, `other.example:${port}/`);
+  const mixed = (await call(token, "media_import", { urls: [{ url: u("allowed.example", "/screens/a.png"), alt: "A" }, { url: u("other.example", "/b.png"), alt: "B" }, { url: u("allowed.example", "/screens/c.png"), alt: "C" }] })).value;
+  assert.deepEqual(mixed.results.map((r) => r.ok), [true, false, true]);
+  assert.match(mixed.results[1].error, /unexpected/);
+  assert.ok(!JSON.stringify(mixed).includes("secret-path"));
+  assert.equal(mixed.imported, 2);
+});
+
+test("messages never echo the text that was sent: no query, no raw text", async () => {
+  const { token } = await access();
+  const r = await imp(token, "this is not an address?token=SECRET-TEXT");
+  assert.ok(r.error && !r.error.includes("SECRET-TEXT") && !r.error.includes("this is not"));
+  const { value } = await call(token, "media_import", { urls: [{ url: "also bad?key=SECRET-TEXT", alt: "x" }] });
+  assert.ok(!JSON.stringify(value).includes("SECRET-TEXT"));
+  assert.equal(value.results[0].url, "(not a web address)");
+});
+
+test("the downloader never uses the default agent (an environment proxy would bypass the pinned lookup): agent: false stays", () => {
+  const src = fs.readFileSync("src/core/trustedImageFetch.ts", "utf8");
+  assert.match(src, /agent: false/);
+  assert.match(src, /lookup: pinnedLookup/);
+});
+
 
 test("svg: only through the logo pipeline: a script is refused; a clean drawing is stored re-written, never as received", async () => {
   const { token } = await access();

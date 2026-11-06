@@ -26,14 +26,15 @@ export const IMPORT_USER_AGENT = "Curiosa-ImageImport/1 (+https://github.com/hel
 const ADMIN_PLACE = "Admin > AI assistants > Trusted image sources";
 
 /** Replaceable in tests only (a fake name server, a short deadline). */
-export const importDeps: { resolve: Resolver; timeoutMs: number } = { resolve: resolveHost, timeoutMs: IMPORT_TIMEOUT_MS };
-export function resetImportDeps(): void { importDeps.resolve = resolveHost; importDeps.timeoutMs = IMPORT_TIMEOUT_MS; }
+export const IMPORT_BATCH_MS = 60_000;
+export const importDeps: { resolve: Resolver; timeoutMs: number; batchMs: number } = { resolve: resolveHost, timeoutMs: IMPORT_TIMEOUT_MS, batchMs: IMPORT_BATCH_MS };
+export function resetImportDeps(): void { importDeps.resolve = resolveHost; importDeps.timeoutMs = IMPORT_TIMEOUT_MS; importDeps.batchMs = IMPORT_BATCH_MS; }
 
 /**
  * TESTS ONLY: lets the tests talk to a server of their own on 127.0.0.1 over plain http. It opens nothing else: only the address 127.0.0.1 is exempt from the
- * public-address rule, and it is ignored when NODE_ENV is "production".
+ * public-address rule, and it is ignored unless NODE_ENV is exactly "test".
  */
-const testLocal = (): boolean => process.env.CURIOSA_TEST_IMPORT_LOCAL === "1" && process.env.NODE_ENV !== "production";
+const testLocal = (): boolean => process.env.CURIOSA_TEST_IMPORT_LOCAL === "1" && process.env.NODE_ENV === "test";
 
 /** Host and path without the query, for messages and the journal (a query can hold a secret). */
 export const shown = (url: URL): string => `${url.hostname}${url.port ? `:${url.port}` : ""}${url.pathname}`.replace(/[\u0000-\u001f\u007f]/g, "").slice(0, 200);
@@ -42,7 +43,7 @@ export const shown = (url: URL): string => `${url.hostname}${url.port ? `:${url.
 export function checkTrustedUrl(raw: string, sources: readonly TrustedSource[], hop = 0): { url: URL; source: TrustedSource } {
   const what = hop > 0 ? "The redirection target" : "This address";
   let url: URL;
-  try { url = new URL(String(raw)); } catch { throw new McpToolError(`"${String(raw).slice(0, 80)}" is not a web address. Write it in full, for example https://images.example.org/screens/home.png.`); }
+  try { url = new URL(String(raw)); } catch { throw new McpToolError("This is not a web address. Write it in full, for example https://images.example.org/screens/home.png."); }
   if (url.protocol !== "https:" && !(testLocal() && url.protocol === "http:")) throw new McpToolError(`${what} must start with https:// (other kinds of address are never fetched).`);
   if (url.username || url.password) throw new McpToolError(`${what} contains a user name or a password (the part before @). This is refused: write the plain address.`);
   if (url.hostname.startsWith("[") || isIP(url.hostname) !== 0) throw new McpToolError(`${what} uses a number instead of a site name. Only site names from the trusted list are fetched.`);
@@ -52,8 +53,12 @@ export function checkTrustedUrl(raw: string, sources: readonly TrustedSource[], 
 }
 
 /** The name is resolved once; every address must be public. Returns the verified addresses. */
-async function verifiedAddresses(url: URL): Promise<string[]> {
-  const found = await importDeps.resolve(url.hostname);
+async function verifiedAddresses(url: URL, signal: AbortSignal): Promise<string[]> {
+  // The lookup is bound to the same deadline as the rest: when it expires the import stops waiting for the name server.
+  let onAbort: (() => void) | undefined;
+  const expired = new Promise<never>((_, reject) => { onAbort = () => reject(new McpToolError(`The site did not answer within ${Math.round(importDeps.timeoutMs / 1000)} seconds. Try again later.`)); if (signal.aborted) onAbort(); else signal.addEventListener("abort", onAbort, { once: true }); });
+  let found: Awaited<ReturnType<Resolver>>;
+  try { found = await Promise.race([importDeps.resolve(url.hostname), expired]); } finally { if (onAbort) signal.removeEventListener("abort", onAbort); }
   if (!found.ok) throw new McpToolError(found.reason === "notfound" ? `The site name ${url.hostname} cannot be found. Check the address.` : `The site name ${url.hostname} did not answer in time. Try again later.`);
   const exempt = (a: string) => testLocal() && a === "127.0.0.1";
   if (found.addresses.some((a) => addressIsPrivate(a) && !exempt(a))) throw new McpToolError(`${url.hostname} points to a private or internal network address. This is refused for safety: nothing was downloaded.`);
@@ -121,7 +126,7 @@ export async function fetchTrustedImage(raw: string, sources: readonly TrustedSo
       const key = `${url.protocol}//${url.host}${url.pathname}${url.search}`;
       if (seen.has(key)) throw new McpToolError("The address redirects in a circle. Use the final address of the image.");
       seen.add(key);
-      const addresses = await verifiedAddresses(url);
+      const addresses = await verifiedAddresses(url, control.signal);
       if (control.signal.aborted) throw new McpToolError(`The site did not answer within ${Math.round(importDeps.timeoutMs / 1000)} seconds. Try again later.`);
       const hop = await fetchOnce(url, addresses, control.signal);
       if ("body" in hop) return { bytes: hop.body, from: url, requested: first };

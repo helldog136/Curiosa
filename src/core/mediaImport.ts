@@ -3,8 +3,8 @@ import { cleanAlt, DAILY_BYTES, DAILY_FILES, MAX_ALT, saveAlt, storeCheckedImage
 import { takeSlot } from "@/core/maintenance/slots";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
-import { stripMetadata } from "@/core/stripMetadata";
-import { checkTrustedUrl, fetchTrustedImage, shown } from "@/core/trustedImageFetch";
+import { stripMetadata, UnreadableImage } from "@/core/stripMetadata";
+import { checkTrustedUrl, fetchTrustedImage, importDeps, shown } from "@/core/trustedImageFetch";
 import { listTrustedSources } from "@/core/trustedImageSources";
 
 /**
@@ -12,7 +12,7 @@ import { listTrustedSources } from "@/core/trustedImageSources";
  * Admin > AI assistants (the list starts empty = the tool answers "off"; no MCP tool can write the list). The download rules are in
  * trustedImageFetch.ts; what happens to the bytes is exactly what `media_upload` does (storeCheckedImage): type from the content, pixel limit,
  * svg only through the logo pipeline, random stored name, alternative text required.
- * Unlike media_upload, EXIF/GPS/XMP/IPTC and comments are removed first from JPEG and the text chunks from PNG (stripMetadata.ts, lossless); WebP and GIF are kept as received. Own right (`aim.tool.media_import`), never granted by default.
+ * Unlike media_upload, EXIF/GPS/XMP/IPTC and comments are removed first from JPEG and the text chunks from PNG (stripMetadata.ts, lossless); WebP and GIF are kept as received. Own right (`aim.tool.media_import`): off by default, and NOT part of the assistant preset, only of the full one.
  *
  * One slot of the "content" counter per image actually fetched, and the daily quota of the site (shared with media_upload). A list of up to 10
  * images goes in one call; each one is handled in turn and reports for itself, so one failure does not lose the others.
@@ -46,7 +46,12 @@ async function importOne(item: Item, actor: Actor, sources: Awaited<ReturnType<t
   if (day.files >= DAILY_FILES || day.bytes >= DAILY_BYTES) throw new Stop(`The daily image quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
   const got = await fetchTrustedImage(item.url, sources);
   if (day.bytes + got.bytes.length > DAILY_BYTES) throw new Stop(`The daily image quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
-  const { address, name, kind, size, stored } = await storeCheckedImage(stripMetadata(got.bytes), "import");
+  let clean: Buffer;
+  try { clean = stripMetadata(got.bytes); } catch (error) {
+    if (error instanceof UnreadableImage) throw new McpToolError("The structure of this image cannot be read safely, so its metadata (location, camera) cannot be removed. Nothing was stored. Use another file or another export of it.");
+    throw error;
+  }
+  const { address, name, kind, size, stored } = await storeCheckedImage(clean, "import");
   await saveAlt(name, alt);
   const origin = shown(got.requested);
   const via = shown(got.from) !== origin ? ` via ${shown(got.from)}` : "";
@@ -54,10 +59,12 @@ async function importOne(item: Item, actor: Actor, sources: Awaited<ReturnType<t
   return { address, id: name, type: TYPE_OF[kind]!, bytes: stored, ...(size.width ? { width: size.width, height: size.height } : {}), alt, from: origin };
 }
 
-/** Never put a query in an answer: it can hold a secret. */
+/** Never put a query (or any raw text) in an answer: it can hold a secret. */
 function safeLabel(raw: string): string {
-  try { const u = new URL(raw); return shown(u); } catch { return String(raw).slice(0, 80).replace(/[?#].*$/, ""); }
+  try { return shown(new URL(raw)); } catch { return "(not a web address)"; }
 }
+
+const UNEXPECTED = "Something unexpected stopped this image. Check media_list in case it was stored, then try again.";
 
 export async function mediaImport(rawArgs: Record<string, unknown>, actor: Actor): Promise<unknown> {
   const args = validateArgs(MEDIA_IMPORT_INPUT, rawArgs);
@@ -72,16 +79,19 @@ export async function mediaImport(rawArgs: Record<string, unknown>, actor: Actor
   const sources = await listTrustedSources();
   if (sources.length === 0) throw new McpToolError("Importing images from an address is off: the owner has not set up any trusted image source. The owner can add one in Admin > AI assistants > Trusted image sources. Until then, send the image itself with media_upload.");
 
-  const results: ({ ok: true; url: string } & Imported | { ok: false; url: string; error: string })[] = [];
+  type Result = ({ ok: true; url: string } & Imported) | { ok: false; url: string; error: string };
+  const results: Result[] = [];
+  const deadline = Date.now() + importDeps.batchMs;
   let stopped: string | null = null;
   for (const item of items) {
     const url = safeLabel(item.url);
-    if (stopped) { results.push({ ok: false, url, error: `Not tried: ${stopped}` }); continue; }
+    if (!stopped && Date.now() > deadline) stopped = `Not attempted: the ${Math.round(importDeps.batchMs / 1000)} second limit for one call was reached. Send the rest in another call.`;
+    if (stopped) { results.push({ ok: false, url, error: stopped.startsWith("Not attempted") ? stopped : `Not tried: ${stopped}` }); continue; }
     try { results.push({ ok: true, url, ...(await importOne(item, actor, sources)) }); }
     catch (error) {
-      if (!(error instanceof McpToolError)) throw error;
+      // A plain refusal says why; anything else is reported for this image only, and the images already stored stay reported.
       if (error instanceof Stop) stopped = error.message;
-      results.push({ ok: false, url, error: error.message });
+      results.push({ ok: false, url, error: error instanceof McpToolError ? error.message : UNEXPECTED });
     }
   }
   const imported = results.filter((r) => r.ok).length;

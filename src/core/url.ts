@@ -76,6 +76,17 @@ const v4 = (s: string): number[] | null => {
   return n.every((x, i) => /^\d{1,3}$/.test(p[i]!) && x >= 0 && x <= 255) ? n : null;
 };
 
+/** The eight 16-bit groups of a canonical IPv6 text (as `URL` writes it: lower case, one `::` at most, no dotted tail), or null. */
+function expandV6(text: string): number[] | null {
+  const parts = text.split("::");
+  if (parts.length > 2) return null;
+  const toGroups = (t: string) => (t === "" ? [] : t.split(":").map((g) => (/^[0-9a-f]{1,4}$/.test(g) ? parseInt(g, 16) : NaN)));
+  const left = toGroups(parts[0]!); const right = parts.length === 2 ? toGroups(parts[1]!) : [];
+  const fill = parts.length === 2 ? 8 - left.length - right.length : 0;
+  const all = [...left, ...Array(Math.max(fill, 0)).fill(0), ...right];
+  return all.length === 8 && all.every((g) => Number.isInteger(g)) ? all : null;
+}
+
 /** Une adresse numérique (celle que renvoie la résolution du nom) est-elle privée, locale, partagée ou réservée ? Dans le doute : oui. */
 export function addressIsPrivate(ip: string): boolean {
   const s = String(ip ?? "").toLowerCase().trim();
@@ -85,13 +96,20 @@ export function addressIsPrivate(ip: string): boolean {
     return a === 0 || a === 10 || a === 127 || a >= 224 || (a === 100 && b >= 64 && b <= 127) || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31)
       || (a === 192 && b === 0 && c === 0) || (a === 192 && b === 0 && c === 2) || (a === 192 && b === 168) || (a === 198 && (b === 18 || b === 19)) || (a === 198 && b === 51 && c === 100) || (a === 203 && b === 0 && c === 113);
   }
-  if (!s.includes(":")) return true; // ni v4 ni v6 : on ne sait pas, on refuse
-  const mapped = /^(?:::ffff:|::)(\d+\.\d+\.\d+\.\d+)$/.exec(s);
-  if (mapped) return addressIsPrivate(mapped[1]!);
-  const hexMapped = /^(?:::ffff:|64:ff9b::)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/.exec(s);
-  if (hexMapped) { const hi = parseInt(hexMapped[1]!, 16), lo = parseInt(hexMapped[2]!, 16); return addressIsPrivate(`${hi >> 8}.${hi & 255}.${lo >> 8}.${lo & 255}`); }
-  if (s === "::" || s === "::1") return true;
-  const first = parseInt(s.split(":")[0] || "0", 16);
-  if (!Number.isFinite(first)) return true;
-  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xffc0) === 0xfec0 || (first & 0xff00) === 0xff00 || (first === 0x2001 && /^2001:(0?db8|0{1,4}:)/.test(s)) || first === 0x2002 || first === 0x64;
+  if (!s.includes(":")) return true; // neither v4 nor v6: we do not know, we refuse
+  // IPv6: one canonical form first (every spelling of the same address becomes the same eight groups), then the analysis.
+  let canonical: string;
+  try { canonical = new URL(`http://[${s}]/`).hostname.slice(1, -1); } catch { return true; }
+  const groups = expandV6(canonical);
+  if (!groups) return true;
+  const embedded = () => addressIsPrivate(`${groups[6]! >> 8}.${groups[6]! & 255}.${groups[7]! >> 8}.${groups[7]! & 255}`);
+  const head = (n: number) => groups.slice(0, n).every((g) => g === 0);
+  if (head(5) && groups[5] === 0xffff) return embedded();            // ::ffff:a.b.c.d (IPv4-mapped)
+  if (head(6)) return embedded();                                    // ::a.b.c.d (IPv4-compatible), :: and ::1
+  if (head(4) && groups[4] === 0xffff && groups[5] === 0) return embedded(); // ::ffff:0:a.b.c.d (IPv4-translated)
+  if (groups[0] === 0x64 && groups[1] === 0xff9b && groups.slice(2, 6).every((g) => g === 0)) return embedded(); // 64:ff9b::/96 (NAT64)
+  const first = groups[0]!;
+  return (first & 0xfe00) === 0xfc00 || (first & 0xffc0) === 0xfe80 || (first & 0xffc0) === 0xfec0 || (first & 0xff00) === 0xff00
+    || (first === 0x2001 && (groups[1] === 0xdb8 || groups[1] === 0)) || first === 0x2002 || first === 0x64
+    || (first === 0x3fff && groups[1]! <= 0x0fff); // 3fff::/20 (documentation)
 }

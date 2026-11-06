@@ -17,8 +17,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Vous choisissez d'où un assistant peut récupérer des images.** La carte « Sources d'images de confiance » (Assistants IA, Réglages) est vide au départ. Vous y ajoutez un site en un champ, ou en un clic la suggestion du projet, et seule la personne qui gère le site peut la modifier.
 - **(English) You choose where an assistant may fetch images from.** The "Trusted image sources" card (AI assistants, Settings) is empty at first. You add a site with one field, or the project's suggestion with one click, and only the person who manages the site can change it.
-- **Importer des images est un droit à part.** Il n'est jamais accordé d'office et ne vient pas avec l'envoi d'images. Un assistant peut en importer jusqu'à dix par appel, chacune avec son texte descriptif, avec les mêmes contrôles qu'un envoi.
-- **(English) Importing images is a separate right.** It is never given by default and does not come with sending images. An assistant can import up to ten per call, each with its description, with the same checks as a normal upload.
+- **Importer des images est un droit à part.** Il n'est jamais accordé d'office, ne vient pas avec l'envoi d'images et ne fait partie que du profil complet. Un assistant peut en importer jusqu'à dix par appel, chacune avec son texte descriptif, avec les mêmes contrôles qu'un envoi.
+- **(English) Importing images is a separate right.** It is never given by default, does not come with sending images and is only part of the full profile. An assistant can import up to ten per call, each with its description, with the same checks as a normal upload.
 
 ### Pour les développeurs
 
