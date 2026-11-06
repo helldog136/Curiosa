@@ -7,11 +7,11 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.17 — 2026-11-06
 
-**En bref.** Un assistant IA peut maintenant importer des images depuis des sites que vous avez choisis, au lieu de les recevoir une par une. Tant que vous n'avez rien ajouté à la liste, il ne peut rien télécharger.
+**En bref.** Un assistant IA peut maintenant importer des images depuis des adresses web que vous avez approuvées, dans Administration > Assistants IA > Sources d'images de confiance. Cette liste est vide au départ et aucun assistant ne peut y ajouter quoi que ce soit. Ce droit est séparé des autres, désactivé par défaut et réservé au profil complet. Les images importées ainsi perdent leurs données de lieu et d'appareil photo.
 
-**In short.** An AI assistant can now import images from websites you have chosen, instead of receiving them one by one. As long as you have added nothing to the list, it cannot download anything.
+**In short.** An AI assistant can now import images from web addresses that you have approved, in Administration > AI assistants > Trusted image sources. This list is empty by default and no assistant can add anything to it. This right is separate from the others, off by default and only part of the full profile. Images imported this way lose their location and camera data.
 
 ### Assistants IA
 
