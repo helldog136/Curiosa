@@ -84,23 +84,22 @@ export function EntrySearch({ labels, action, initialQuery, server, serverTotal,
 
   return (
     <div className="space-y-4" data-entry-search-root="">
-      <div role="search" data-skin-part="search" data-variant="list" className="space-y-2">
+      {/* Même structure que le champ de recherche du site (SearchForm) : un `search` qui ne contient que le libellé, le champ et le bouton, pour que les skins l'habillent pareil. */}
+      <div role="search" data-skin-part="search" data-variant="list" className="flex w-full max-w-xl items-stretch gap-2">
         <label htmlFor="entry-search-input" className="sr-only">{labels.label}</label>
-        <div className="relative max-w-xl">
-          <input
-            ref={input} id="entry-search-input" type="search" value={query} onChange={(e) => change(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Escape" && query) { e.preventDefault(); clear(); } }}
-            placeholder={labels.placeholder} autoComplete="off" spellCheck={false} enterKeyHint="search" maxLength={80} data-skin-part="input" aria-busy={busy || undefined}
-            className={`min-h-target w-full min-w-0 rounded-button border-token border-line bg-surface px-3 text-base text-fg placeholder:text-muted ${query ? "pr-28" : ""}`}
-          />
-          {query && (
-            <button type="button" onClick={clear} data-skin-part="button" className="absolute right-1 top-1/2 inline-flex min-h-9 -translate-y-1/2 items-center rounded-button px-3 text-sm text-muted transition-colors hover:text-accent">
-              {labels.clear}
-            </button>
-          )}
-        </div>
-        <p role="status" aria-live="polite" className="min-h-5 text-sm text-muted">{status}</p>
+        <input
+          ref={input} id="entry-search-input" type="search" value={query} onChange={(e) => change(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Escape" && query) { e.preventDefault(); clear(); } }}
+          placeholder={labels.placeholder} autoComplete="off" spellCheck={false} enterKeyHint="search" maxLength={80} data-skin-part="input" aria-busy={busy || undefined}
+          className="min-h-target min-w-0 flex-1 rounded-button border-token border-line bg-surface px-3 text-base text-fg placeholder:text-muted [&::-webkit-search-cancel-button]:appearance-none"
+        />
+        {query && (
+          <button type="button" onClick={clear} data-skin-part="button" className="inline-flex min-h-target shrink-0 items-center justify-center rounded-button border-token border-line bg-surface px-4 text-sm font-medium transition-colors hover:border-accent hover:text-accent">
+            {labels.clear}
+          </button>
+        )}
       </div>
+      <p role="status" aria-live="polite" className="-mt-2 min-h-5 text-sm text-muted">{status}</p>
       <div ref={list}>{children}</div>
       {none && (
         <div data-skin-part="notice" data-tone="info" role="status" className="space-y-2 rounded-card border-token border-line bg-surface p-4 text-sm" data-testid="entry-search-none">

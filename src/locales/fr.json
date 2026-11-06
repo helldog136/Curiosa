@@ -1175,7 +1175,7 @@
   "instances.sort": "Ordre d'affichage",
   "instances.sortHelp": "Par défaut, le plus récent d'abord. Une entrée « mise en avant » passe toujours devant.",
   "instances.search": "Afficher un champ de recherche",
-  "instances.searchHelp": "Les visiteurs filtrent la liste en tapant.",
+  "instances.searchHelp": "Le public filtre la liste en tapant.",
   "sort.newest": "Du plus récent au plus ancien",
   "sort.oldest": "Du plus ancien au plus récent",
   "sort.title": "Par titre (A → Z)",

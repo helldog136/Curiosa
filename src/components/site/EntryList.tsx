@@ -75,14 +75,14 @@ export function EntryList({ entries, collection, locale, defaultLocale, measure,
               key={e.id}
               lang={e.locale}
               data-card="" data-skin-part="card" data-kind="row" {...hay(e)}
-              className={`relative flex min-h-[6.25rem] items-center gap-4 rounded-card border-token border-line bg-surface px-[calc(var(--sk-card-pad,calc(var(--spacing)*4))*1.25)] py-[var(--sk-card-pad,calc(var(--spacing)*4))] transition-colors hover:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${e.expired ? "opacity-60" : ""}`}
+              className={`relative flex min-h-[6.25rem] w-full min-w-0 items-center gap-4 rounded-card border-token border-line bg-surface px-[calc(var(--sk-card-pad,calc(var(--spacing)*4))*1.25)] py-[var(--sk-card-pad,calc(var(--spacing)*4))] transition-colors hover:border-accent focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-accent ${e.expired ? "opacity-60" : ""}`}
             >
               <div data-skin-part="card-body" className="flex min-w-0 flex-1 flex-col gap-1">
                 <h3 data-skin-part="heading" data-level="3" className="min-w-0 text-base font-semibold leading-6">
                   <a
                     href={href} data-skin-part="link" title={e.title}
                     {...(external ? { target: "_blank", rel: "noopener noreferrer" } : {})}
-                    className="block truncate after:absolute after:inset-0 after:content-[''] hover:text-accent focus-visible:outline-none"
+                    className="block truncate after:absolute after:inset-0 after:content-[''] hover:text-accent focus-visible:text-accent focus-visible:underline"
                   >
                     {e.title}
                   </a>

@@ -122,7 +122,7 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       title: pageNo > 1 ? makeTranslator(locale)("site.pagination.metaTitle", { title: name, n: pageNo }) : name,
       description: pickDescription(instance, locale, site.defaultLocale), image: share,
       canonical: q ? alt.canonical : here(pageNo), languages: pageNo === 1 ? alt.languages : undefined, locale,
-      pagination: q ? undefined : { previous: pageNo > 1 ? here(pageNo - 1) : undefined, next: pageNo < data.pages ? here(pageNo + 1) : undefined },
+      pagination: { previous: !q && pageNo > 1 ? here(pageNo - 1) : undefined, next: !q && pageNo < data.pages ? here(pageNo + 1) : undefined },
       // Une page de résultats de recherche n'est pas une page à indexer : son adresse canonique est la liste elle-même.
       ...(q ? { noindex: true } : {}),
     });
