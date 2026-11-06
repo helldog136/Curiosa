@@ -456,12 +456,12 @@ test("content is decided from the BYTES: html named .png, a lying image type, a 
 test("metadata: EXIF/GPS and comments are removed from a JPEG and text chunks from a PNG, pixels untouched; media_upload keeps them", async () => {
   const { token } = await access();
   const seg = (m, body) => { const l = Buffer.alloc(4); l[0] = 0xff; l[1] = m; l.writeUInt16BE(body.length + 2, 2); return Buffer.concat([l, body]); };
-  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), seg(0xe0, Buffer.from("JFIF\0\1\1\0\0\1\0\1\0\0")), seg(0xe1, Buffer.from("Exif\0\0GPS-48.85,2.35")), seg(0xfe, Buffer.from("secret comment")), Buffer.from([0xff, 0xda, 0, 2, 1, 2, 3, 0xff, 0xd9])]);
+  const jpeg = Buffer.concat([Buffer.from([0xff, 0xd8]), seg(0xe0, Buffer.from("JFIF\x00\x01\x01\x00\x00\x01\x00\x01\x00\x00")), seg(0xe1, Buffer.from("Exif\x00\x00GPS-48.85,2.35")), seg(0xfe, Buffer.from("secret comment")), Buffer.from([0xff, 0xda, 0, 2, 1, 2, 3, 0xff, 0xd9])]);
   const { stripMetadata } = await import("@/core/stripMetadata");
   const clean = stripMetadata(jpeg);
   assert.ok(!clean.includes("GPS-48") && !clean.includes("secret comment") && clean.includes("JFIF") && clean.subarray(clean.length - 9).equals(jpeg.subarray(jpeg.length - 9)));
   const base = png(8, 8);
-  const text = Buffer.concat([base.subarray(0, 33), (() => { const t = Buffer.from("tEXtAuthor\0Camille"); const h = Buffer.alloc(4); h.writeUInt32BE(t.length - 4); return Buffer.concat([h, t, Buffer.alloc(4)]); })(), base.subarray(33)]);
+  const text = Buffer.concat([base.subarray(0, 33), (() => { const t = Buffer.from("tEXtAuthor\x00Camille"); const h = Buffer.alloc(4); h.writeUInt32BE(t.length - 4); return Buffer.concat([h, t, Buffer.alloc(4)]); })(), base.subarray(33)]);
   assert.ok(text.includes("Camille"));
   assert.ok(stripMetadata(text).equals(base), "png back to the original bytes");
   assert.ok(stripMetadata(Buffer.from("not an image")).equals(Buffer.from("not an image")));
