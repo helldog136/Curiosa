@@ -17,7 +17,7 @@ export const AUDIT_ACTIONS = [
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mcp.maintenance.module_install", "mcp.maintenance.module_configure", "mcp.maintenance.module_configure_advanced",
   "skin.install", "skin.update", "skin.remove", "skin.refused", "skin.activate", "skin.reset", "skin.undo", "skin.options", "appearance.update", "appearance.font.add", "appearance.font.remove",
-  "content.check", "media.upload", "media.alt", "mcp.limits.reset", "mcp.limits.set",
+  "content.check", "media.upload", "media.import", "media.alt", "mcp.trusted.add", "mcp.trusted.remove", "mcp.limits.reset", "mcp.limits.set",
   "mail.sent", "file.claim", "file.remove", "file.erase",
   "setting.fromText", "overlay.create", "overlay.update", "overlay.rename", "overlay.duplicate", "overlay.delete", "overlay.activate", "overlay.deactivate", "overlay.secret", "overlay.test.start", "overlay.test.extend", "overlay.test.stop",
 ] as const;

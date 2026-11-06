@@ -803,7 +803,13 @@ export type ModuleTask = {
 /** Sous-ensemble de JSON Schema accepté pour décrire les arguments d'une action MCP. */
 export type JsonSchemaLite = {
   type: "object";
-  properties?: Record<string, { type: "string" | "number" | "integer" | "boolean" | "array"; description?: string; enum?: string[]; maxLength?: number; minimum?: number; maximum?: number; items?: { type: "string" } }>;
+  properties?: Record<string, {
+    type: "string" | "number" | "integer" | "boolean" | "array"; description?: string; enum?: string[]; maxLength?: number; minimum?: number; maximum?: number;
+    /** Array of short strings, or (core tools) of flat objects whose properties are strings: `{ type: "object", properties: { url: { type: "string" } }, required: ["url"] }`. */
+    items?: { type: "string" } | { type: "object"; properties: Record<string, { type: "string"; description?: string; maxLength?: number }>; required?: string[] };
+    /** Array only: most elements (default 100). */
+    maxItems?: number;
+  }>;
   required?: string[];
 };
 

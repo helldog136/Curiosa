@@ -9,4 +9,4 @@ export const PROFILE_LINES: Record<AccessProfile, readonly string[]> = {
 export const profileLines = (p: AccessProfile): readonly string[] => PROFILE_LINES[p];
 
 /** Core tools that set the identity of the site up (images, name, logos): shown as their own section in plain words, each with its `aim.tool.<name>` sentence. */
-export const SETUP_TOOLS: readonly string[] = ["media_list", "media_upload", "media_set_alt", "site_settings_get", "site_settings_set"];
+export const SETUP_TOOLS: readonly string[] = ["media_list", "media_upload", "media_import", "media_set_alt", "site_settings_get", "site_settings_set"];

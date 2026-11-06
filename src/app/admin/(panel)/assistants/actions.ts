@@ -12,6 +12,8 @@ import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
+import { addTrustedSource, MAX_SOURCES, parseSource, PRESET_SOURCE, removeTrustedSource, sourceLabel } from "@/core/trustedImageSources";
+import type { ActionState } from "@/components/admin/ActionForm";
 
 /** Résultat de la création d'un jeton : le seul moment où le texte en clair (et l'adresse secrète) existe. Jamais relu depuis la base. */
 export type CreateTokenState = { error?: string; created?: { name: string; token: string; byUrl: boolean } } | null;
@@ -123,3 +125,33 @@ export async function resetGrantsAction(tokenId: string, instanceKey: string | n
   revalidatePath(TEAM_HREF);
 }
 
+
+/**
+ * Trusted image sources (docs/MAINTENANCE-IA.md): the only places an assistant may make the site import an image from (`media_import`).
+ * The list is written HERE, by the owner or the technical coordination: no MCP tool changes it. Every addition and removal goes to the journal.
+ */
+export async function addTrustedSourceAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx({ right: "core:mcp.tokens" });
+  const parsed = parseSource(String(formData.get("source") ?? ""));
+  if (!parsed.ok) return { errors: { source: t(`trusted.err.${parsed.problem}`, { max: MAX_SOURCES }) } };
+  const added = await addTrustedSource(parsed.source);
+  if (!added.ok) return { errors: { source: t(`trusted.err.${added.problem}`, { max: MAX_SOURCES }) } };
+  await audit(user.email, "mcp.trusted.add", sourceLabel(parsed.source));
+  revalidatePath(ASSISTANTS_HREF);
+  return { ok: t("trusted.added") };
+}
+
+/** One click: the suggested source (the project's public images). Already there: nothing changes. */
+export async function addPresetSourceAction(): Promise<void> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const added = await addTrustedSource(PRESET_SOURCE);
+  if (added.ok) await audit(user.email, "mcp.trusted.add", sourceLabel(PRESET_SOURCE));
+  revalidatePath(ASSISTANTS_HREF);
+}
+
+export async function removeTrustedSourceAction(label: string): Promise<void> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const removed = await removeTrustedSource(String(label));
+  if (removed) await audit(user.email, "mcp.trusted.remove", sourceLabel(removed));
+  revalidatePath(ASSISTANTS_HREF);
+}

@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Un assistant IA peut maintenant importer des images depuis des sites que vous avez choisis, au lieu de les recevoir une par une. Tant que vous n'avez rien ajouté à la liste, il ne peut rien télécharger.
+
+**In short.** An AI assistant can now import images from websites you have chosen, instead of receiving them one by one. As long as you have added nothing to the list, it cannot download anything.
+
+### Assistants IA
+
+- **Vous choisissez d'où un assistant peut récupérer des images.** La carte « Sources d'images de confiance » (Assistants IA, Réglages) est vide au départ. Vous y ajoutez un site en un champ, ou en un clic la suggestion du projet, et seule la personne qui gère le site peut la modifier.
+- **(English) You choose where an assistant may fetch images from.** The "Trusted image sources" card (AI assistants, Settings) is empty at first. You add a site with one field, or the project's suggestion with one click, and only the person who manages the site can change it.
+- **Importer des images est un droit à part.** Il n'est jamais accordé d'office, ne vient pas avec l'envoi d'images et ne fait partie que du profil complet. Un assistant peut en importer jusqu'à dix par appel, chacune avec son texte descriptif, avec les mêmes contrôles qu'un envoi.
+- **(English) Importing images is a separate right.** It is never given by default, does not come with sending images and is only part of the full profile. An assistant can import up to ten per call, each with its description, with the same checks as a normal upload.
+
+### Pour les développeurs
+
+- **`media_import`** (`mediaImport.ts`, `trustedImageFetch.ts`, `trustedImageSources.ts`). The owner's list (setting `mcp.trustedImageSources`, empty = off, written by no MCP tool) allows https, exact host, public addresses, pinned connection, 2 redirects, 10 s, 3 MB; then the `media_upload` pipeline. Threat table: `docs/MAINTENANCE-IA.md`.
+- **Schema helper.** `JsonSchemaLite` arrays accept object `items` and `maxItems`; errors read `name[index]`. Tests use `CURIOSA_TEST_IMPORT_LOCAL=1` (ignored in production).
+
 ## 0.6.16 — 2026-11-06
 
 **En bref.** Installer Curiosa avec Docker devient simple : un script guidé pose au plus trois questions, choisit le mode de HTTPS (Traefik, le serveur web de votre machine ou Caddy intégré), écrit le fichier de réglages et démarre le site. Le fichier compose télécharge maintenant l'image toute prête au lieu de la fabriquer. Le guide pour NAS est à jour.

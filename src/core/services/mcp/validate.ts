@@ -36,7 +36,18 @@ export function validateArgs(schema: JsonSchemaLite | undefined, args: unknown):
         if (typeof v !== "boolean") throw fail("a boolean");
         break;
       case "array":
-        if (!Array.isArray(v) || v.length > 100 || !v.every((x) => typeof x === "string" && x.length <= 200)) throw fail("an array of short strings");
+        if (def.items?.type === "object") {
+          const max = def.maxItems ?? 100;
+          if (!Array.isArray(v)) throw fail("a list of objects");
+          if (v.length > max) throw fail(`a list of at most ${max} items (got ${v.length}); send the rest in another call`);
+          const itemSchema: JsonSchemaLite = { type: "object", properties: def.items.properties, required: def.items.required };
+          out[key] = v.map((x, i) => {
+            if (!x || typeof x !== "object" || Array.isArray(x)) throw new McpToolError(`argument "${key}[${i}]" must be an object`);
+            try { return validateArgs(itemSchema, x); } catch (error) { throw error instanceof McpToolError ? new McpToolError(`${key}[${i}]: ${error.message}`) : error; }
+          });
+          continue;
+        }
+        if (!Array.isArray(v) || v.length > (def.maxItems ?? 100) || !v.every((x) => typeof x === "string" && x.length <= 200)) throw fail("an array of short strings");
         break;
     }
     out[key] = v;

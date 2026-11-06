@@ -15,7 +15,8 @@ import { takeSlot } from "@/core/maintenance/slots";
 /**
  * MEDIA FOR AN AI: `media_upload`, `media_list` (read) and `media_set_alt`. No deletion tool.
  *
- * The bytes come ONLY in the call (base64): the server never fetches an address, so there is nothing to point at an internal server or a third party.
+ * The bytes come ONLY in the call (base64): this tool never fetches an address, so there is nothing to point at an internal server or a third party.
+ * The one exception is `media_import` (mediaImport.ts): a separate right, and only from the sources the OWNER put on the "trusted image sources" list, which starts empty.
  * The checks are the ones of the admin's own upload route, reused, never a second validator:
  *   - the type is read from the BYTES (`sniffImage`: png, jpeg, webp, gif); the declared name or type is ignored. A video is refused here even though the admin accepts it;
  *   - a svg goes through the logo pipeline (`saveSvgUpload`): it is re-written from the elements it recognises, scripts, styles, images and outside links are refused, and what is
@@ -35,7 +36,7 @@ export const DAILY_BYTES = 60 * 1024 * 1024;
 
 const IMAGE_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|svg)$/;
 const ALT_KEY = (name: string) => `media.alt.${name}`;
-const TYPE_OF: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", gif: "image/gif", svg: "image/svg+xml" };
+export const TYPE_OF: Record<string, string> = { png: "image/png", jpg: "image/jpeg", webp: "image/webp", gif: "image/gif", svg: "image/svg+xml" };
 
 export const MEDIA_UPLOAD_INPUT: JsonSchemaLite = {
   type: "object",
@@ -57,7 +58,7 @@ export const MEDIA_ALT_INPUT: JsonSchemaLite = {
 };
 
 /** The alternative text: one line, no control characters, 1 to 125 characters. */
-function cleanAlt(v: unknown): string {
+export function cleanAlt(v: unknown): string {
   const alt = typeof v === "string" ? v.replace(/\s+/g, " ").trim() : "";
   if (!alt) throw new McpToolError('Give the "alt" text: a short sentence that describes the image, for example "Blue logo of Etoile Nord".');
   if (/[\u0000-\u001f\u007f]/.test(alt)) throw new McpToolError('"alt" must be plain text without control characters.');
@@ -80,17 +81,45 @@ function decode(raw: string): Buffer {
 }
 
 /** The size in pixels, read from the header (no decoding). Refuses what is too big; a file the engine cannot read is refused too. */
-async function checkPixels(buf: Buffer): Promise<{ width: number; height: number } | null> {
+export async function checkPixels(buf: Buffer): Promise<{ width: number; height: number } | null> {
   const size = await readImageSize(buf);
   if (size === "unreadable") throw new McpToolError("This file looks like an image but cannot be read. Export it again as png, jpeg or webp and send it again.");
   if (size === "toolarge") throw new McpToolError(`The image has too many pixels (more than ${MAX_INPUT_PIXELS / 1_000_000} million). Reduce it to ${Math.floor(Math.sqrt(MAX_INPUT_PIXELS))} pixels on a side at most.`);
   return size;
 }
 
-/** What the assistants uploaded in the last 24 hours, counted from the journal (nothing else to keep, nothing to clean). */
-async function usedToday(): Promise<{ files: number; bytes: number }> {
-  const rows = await prisma.auditLog.findMany({ where: { action: "media.upload", actorKind: "assistant", createdAt: { gt: new Date(Date.now() - 86_400_000) } }, select: { target: true }, take: DAILY_FILES * 4 });
+/** What the assistants uploaded or imported in the last 24 hours, counted from the journal (nothing else to keep, nothing to clean). */
+export async function usedToday(): Promise<{ files: number; bytes: number }> {
+  const rows = await prisma.auditLog.findMany({ where: { action: { in: ["media.upload", "media.import"] }, actorKind: "assistant", createdAt: { gt: new Date(Date.now() - 86_400_000) } }, select: { target: true }, take: DAILY_FILES * 4 });
   return { files: rows.length, bytes: rows.reduce((n, r) => n + Number(/ (\d+) bytes/.exec(r.target)?.[1] ?? 0), 0) };
+}
+
+/** What `media_upload` and `media_import` share: the bytes are checked (type from the content, pixels, svg through the logo pipeline) and stored under a random name. */
+export async function storeCheckedImage(buf: Buffer, via: "upload" | "import"): Promise<{ address: string; name: string; kind: string; size: { width: number; height: number }; stored: number }> {
+  const again = via === "upload" ? "send it again" : "use another image";
+  let address: string;
+  let kind: string;
+  let size = { width: 0, height: 0 };
+  if (looksLikeSvg(buf)) {
+    // The logo pipeline: re-written, never stored as received.
+    const r = await saveSvgUpload(buf);
+    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: only simple shapes, gradients and filters are accepted; scripts, styles, texts other than a plain <title>/<desc>, embedded images and outside links are not. ${via === "upload" ? "Send a simpler svg or a png" : "Use a simpler svg or a png"}. Detail from the site: ${r.detail}` : `This is not a usable image. ${via === "upload" ? "Send" : "Use"} png, jpeg, webp or gif.`);
+    address = r.url; kind = "svg";
+  } else {
+    const type = sniffImage(buf);
+    if (!type) throw new McpToolError(`This is not a png, jpeg, webp or gif image (the file content was checked, not its name or the type announced). Convert it to one of these formats and ${again}.`);
+    size = (await checkPixels(buf)) ?? size;
+    const saved = await saveUpload(buf);
+    if (!saved) throw new McpToolError("The image was refused. Check that it is a png, jpeg, webp or gif of 3 MB at most.");
+    address = saved; kind = type;
+  }
+  const name = uploadNameOf(address)!;
+  const stored = kind === "svg" ? (await fs.stat(path.join(UPLOADS_DIR, name))).size : buf.length;
+  return { address, name, kind, size, stored };
+}
+
+export async function saveAlt(name: string, alt: string): Promise<void> {
+  await prisma.setting.upsert({ where: { key_locale: { key: ALT_KEY(name), locale: "" } }, create: { key: ALT_KEY(name), locale: "", value: JSON.stringify(alt) }, update: { value: JSON.stringify(alt) } });
 }
 
 export async function mediaUpload(rawArgs: Record<string, unknown>, actor: { name: string; tokenId?: string }): Promise<unknown> {
@@ -101,25 +130,8 @@ export async function mediaUpload(rawArgs: Record<string, unknown>, actor: { nam
   const day = await usedToday();
   if (day.files >= DAILY_FILES || day.bytes + buf.length > DAILY_BYTES) throw new McpToolError(`The daily upload quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
 
-  let address: string;
-  let kind: string;
-  let size = { width: 0, height: 0 };
-  if (looksLikeSvg(buf)) {
-    // The logo pipeline: re-written, never stored as received.
-    const r = await saveSvgUpload(buf);
-    if ("error" in r) throw new McpToolError(r.error === "svg" ? `This svg was refused: only simple shapes, gradients and filters are accepted; scripts, styles, texts other than a plain <title>/<desc>, embedded images and outside links are not. Send a simpler svg or a png. Detail from the site: ${r.detail}` : "This is not a usable image. Send png, jpeg, webp or gif.");
-    address = r.url; kind = "svg";
-  } else {
-    const type = sniffImage(buf);
-    if (!type) throw new McpToolError("This is not a png, jpeg, webp or gif image (the file content was checked, not its name). Convert it to one of these formats and send it again.");
-    size = (await checkPixels(buf)) ?? size;
-    const saved = await saveUpload(buf);
-    if (!saved) throw new McpToolError("The image was refused. Check that it is a png, jpeg, webp or gif of 3 MB at most.");
-    address = saved; kind = type;
-  }
-  const name = uploadNameOf(address)!;
-  await prisma.setting.upsert({ where: { key_locale: { key: ALT_KEY(name), locale: "" } }, create: { key: ALT_KEY(name), locale: "", value: JSON.stringify(alt) }, update: { value: JSON.stringify(alt) } });
-  const stored = kind === "svg" ? (await fs.stat(path.join(UPLOADS_DIR, name))).size : buf.length;
+  const { address, kind, size, name, stored } = await storeCheckedImage(buf, "upload");
+  await saveAlt(name, alt);
   // Who, what, when, the file name and its size. Never the bytes.
   await audit(`mcp:${actor.name}`, "media.upload", `${name} ${stored} bytes${label(args.name) ? ` (sent as "${label(args.name)}")` : ""}`);
   return { address, id: name, type: TYPE_OF[kind], bytes: stored, ...(size.width ? { width: size.width, height: size.height } : {}), alt, usage: "Use this address in a Markdown image ![alt](address), in site_settings_set (logos), or in an image setting of a module (maintenance_module_configure)." };
