@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.6.18 — 2026-11-06
 
 **En bref.** Sur le site, l'affichage « liste » des articles et des autres entrées devient une suite de cartes pleine largeur, plus lisibles et entièrement cliquables. Un champ « Rechercher » peut s'afficher au-dessus de la liste et la filtre pendant la frappe. Il est activé par défaut en affichage liste, et se règle pour chaque liste. Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.
 
