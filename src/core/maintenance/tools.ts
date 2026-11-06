@@ -97,7 +97,7 @@ const DEFS: Def[] = [
     input: NONE, run: (_args, actor) => myAccess(actor),
   },
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress. Start here.", input: NONE, run: () => status() },
-  { name: "health", level: 1, title: "Site health", description: "Disk space, database state, date of the last backup (and whether it is recent), recent errors (limited and with secrets masked).", input: NONE, run: () => health() },
+  { name: "health", level: 1, title: "Site health", description: "Disk space and what the site itself takes by category (sizes only, no paths), database state, date of the last backup (and whether it is recent), recent errors (limited and with secrets masked).", input: NONE, run: () => health() },
   { name: "modules", level: 1, title: "Installed modules", description: "Installed modules: version, source, instances in error, missing dependencies, update available, missing English or French texts (translations). Also the languages of the site: official or community, complete or partial.", input: NONE, run: () => modules() },
   { name: "updates", level: 1, title: "Available updates", description: "Updates of the core (STABLE releases only) and of modules: target version, patch/minor/major level, short release notes, and whether a module needs a newer core.", input: NONE, run: () => updates() },
   { name: "diagnose", level: 1, title: "Guided diagnosis", description: "One report that gathers health, modules, backup and updates: what is wrong, the probable cause, the proposed action and the tool that does it. Call it after status and health.", input: NONE, run: () => diagnose() },

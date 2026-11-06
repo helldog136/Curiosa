@@ -7,6 +7,7 @@ import { ImageCropper } from "./ImageCropper";
 import { ui } from "./ui";
 import { Spinner } from "./ActionKit";
 import { useProgressText } from "./ProgressLabels";
+import { StorageLine } from "./StorageLine";
 
 const CROPPABLE = /^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
 
@@ -58,6 +59,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
           <input type="file" disabled={busy} accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         </label>
       </div>
+      <StorageLine />
       {croppable && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <button type="button" className={ui.btn} onClick={() => setEditing(true)}>✂ {c("button")}</button>
