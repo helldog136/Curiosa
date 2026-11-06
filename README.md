@@ -215,15 +215,15 @@ Le détail (variables d'environnement, canal des *release candidates*, publicati
 
 ### With Docker
 
-Docker works for a local trial and, with the optional `https` profile, for a real site with automatic HTTPS. The image is **built on your machine** (slow the first time: several GB to download and compile), no ready-made image is published, and updates replace the image instead of running from the admin. Full guide: [docs/INSTALL.md](docs/INSTALL.md#docker).
+A ready-made image is published at every release on the GitHub Container Registry (`ghcr.io/helldog136/curiosa`, for Intel/AMD and ARM): **nothing is built on your machine**. It is the release archive unpacked and tested, and it never runs as root. Updates replace the image (`docker compose pull && docker compose up -d`); the admin's *Updates* page tells you when and what to run. Guided install: `scripts/install-docker.sh` (see [docs/INSTALL.md](docs/INSTALL.md#docker)). Full guide: [docs/INSTALL.md](docs/INSTALL.md#docker); NAS: [docs/DOCKER-NAS.md](docs/DOCKER-NAS.md).
 
 ```bash
 cp .env.example .env                     # then set SITE_URL (and CURIOSA_DOMAIN for HTTPS)
-docker compose up -d --build             # local trial: http://localhost:3000
-docker compose --profile https up -d --build   # production: automatic HTTPS on 80/443
+docker compose up -d                     # local trial: http://localhost:3000
+docker compose --profile https up -d     # production: automatic HTTPS on 80/443
 ```
 
-The app listens on port 3000 in plain HTTP, on this machine only by default; the `https` profile adds a Caddy proxy that serves 80 and 443. Data (SQLite database, uploads, installed modules) lives in the `curiosa_data` volume. Exposed to the Internet before being set up? Set `SETUP_TOKEN` in `.env`: the setup wizard will ask for it.
+The app listens on port 3000 in plain HTTP, on this machine only by default; the `https` profile adds a Caddy proxy that serves 80 and 443. Data (SQLite database, uploads, installed modules) lives in the `curiosa_data` volume. Exposed to the Internet before being set up? Set `SETUP_TOKEN` in `.env`. Pin a version with `CURIOSA_VERSION` (`0.6.15` exact, `0.6` series).
 
 ### Développer
 

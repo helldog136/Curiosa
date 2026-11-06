@@ -7,6 +7,21 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.6.16 — 2026-11-06
+
+**En bref.** Installer Curiosa avec Docker devient simple : un script guidé pose au plus trois questions, choisit le mode de HTTPS (Traefik, le serveur web de votre machine ou Caddy intégré), écrit le fichier de réglages et démarre le site. Le fichier compose télécharge maintenant l'image toute prête au lieu de la fabriquer. Le guide pour NAS est à jour.
+
+**In short.** Installing Curiosa with Docker is now simple: a guided script asks at most three questions, picks the HTTPS mode (Traefik, your machine's own web server or the built-in Caddy), writes the settings file and starts the site. The compose file now downloads the ready-made image instead of building it. The NAS guide is up to date.
+
+### Docker
+
+- **Docker : plus rien à compiler, installation guidée.** Le fichier compose récupère l'image publiée au lieu de la fabriquer, et un script guidé pose au plus trois questions (domaine, e-mail, code d'installation), choisit le HTTPS et démarre le site. Le guide NAS est à jour (ARM, PUID/PGID).
+- **(English) Docker: nothing to build, guided install.** The compose file pulls the published image instead of building it, and a guided script asks at most three questions (domain, e-mail, setup code), picks the HTTPS mode and starts the site. The NAS guide is updated (ARM, PUID/PGID).
+
+### Pour les développeurs
+
+- **Docker compose and script.** `docker-compose.yml` uses `image: ghcr.io/helldog136/curiosa:${CURIOSA_VERSION:-latest}`; the source build moved to `docker-compose.build.yml`; `scripts/install-docker.sh` (EN/FR, `--dry-run`, idempotent).
+
 ## 0.6.15 — 2026-11-05
 
 **En bref.** L'image Docker démarre maintenant correctement sous un utilisateur ordinaire, sans droits d'administrateur, et elle est publiée à chaque version (PC, et ARM quand elle est disponible). Il est aussi possible de reconstruire les images d'une version déjà publiée.

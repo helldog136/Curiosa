@@ -1,0 +1,9 @@
+# DEVELOPMENT alternative: build the image from this source tree instead of pulling the published one.
+# Slow (it compiles the site) and not what the published image is: use it only to try a change to the code.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  site:
+    build:
+      context: .
+      dockerfile: Dockerfile.source
