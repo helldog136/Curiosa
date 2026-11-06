@@ -28,7 +28,7 @@ export function healthPoints(user: AdminUser, facts: HealthFacts, t: Translator)
   const technical = can(user, "core:backup") || can(user, "core:updates");
   if (g && technical) {
     if (!g.databaseOk) out.push({ id: "database", severity: "problem", label: t("dash.health.database"), href: can(user, "core:backup") ? "/admin/backup" : null });
-    if (g.disk === "critical" || g.disk === "low") out.push({ id: "disk", severity: "problem", label: t(g.disk === "critical" ? "dash.health.diskCritical" : "dash.health.diskLow"), href: null });
+    if (g.disk === "critical" || g.disk === "low") out.push({ id: "disk", severity: "problem", label: t(g.disk === "critical" ? "dash.health.diskCritical" : "dash.health.diskLow"), href: "/admin#storage" });
     if (g.updateFailed) out.push({ id: "update", severity: "problem", label: t("dash.health.update"), href: can(user, "core:updates") ? "/admin/updates" : null });
     if (!g.backup.recent && can(user, "core:backup")) out.push({ id: "backup", severity: "advice", label: t(g.backup.at ? "dash.health.backupOld" : "dash.health.backupNever"), href: "/admin/backup" });
   }

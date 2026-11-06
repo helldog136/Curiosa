@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.
+
+**In short.** A "Storage" card on the administration home shows how much room your site takes and how much is left on the server. A small reminder of the free room also appears beside the image upload buttons.
+
+### Administration
+
+- **Vous voyez la place prise et la place libre.** La carte « Stockage » donne une barre et l'état en toutes lettres, avec le détail replié. « Actualiser » refait la mesure.
+- **(English) You see the room used and the room left.** The "Storage" card gives a bar and the state in words, with folded details. "Refresh" measures again.
+- **Vous êtes prévenu avant d'envoyer de grosses photos.** À côté des boutons d'envoi d'images, une ligne discrète indique la place libre. Quand elle devient faible, elle le dit avant l'envoi.
+- **(English) You are warned before sending large photos.** Beside the image upload buttons, a quiet line shows the free room. When it gets low, it says so before the upload.
+
+### Pour les développeurs
+
+- **`core/storage/`**. One source for the dashboard card, the upload hint (`GET /api/admin/storage`) and `maintenance_health` (new `storage` field). Thresholds are constants in `level.ts`; docs in `docs/STORAGE.md`.
+- **Dashboard.** New block `storage` (administration and coordination); the "disk" health point links to it.
+
 ## 0.6.17 — 2026-11-06
 
 **En bref.** Un assistant IA peut maintenant importer des images depuis des adresses web que vous avez approuvées, dans Administration > Assistants IA > Sources d'images de confiance. Cette liste est vide au départ et aucun assistant ne peut y ajouter quoi que ce soit. Ce droit est séparé des autres, désactivé par défaut et réservé au profil complet. Les images importées ainsi perdent leurs données de lieu et d'appareil photo.
