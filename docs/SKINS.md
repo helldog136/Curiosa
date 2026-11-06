@@ -764,7 +764,9 @@ Contraintes de rendu du cœur, pour que ces régions soient pilotables : (1) les
 | `news-dot` | pastille « nouveau » du menu | `data-testid="news-dot"` |
 | `field`, `input`, `textarea`, `label`, `field-error` | formulaires (`ModuleForm`) ; pas de pièce `select` : le site public n'a aucun menu déroulant de formulaire | |
 | `card-body` | la zone de texte d'une carte à image (`EntryList`), à l'intérieur de `card` : son remplissage vient du jeton `--sk-card-pad` (§25.2) | |
-| `list`, `list-item` | `EntryList` en liste, `links` | |
+| `list`, `list-item` | `EntryList` en liste (`data-kind="list"`), `links` | |
+| `card` `data-kind="row"` | (après la 0.6.17) la ligne de l'affichage en liste d'`EntryList` : une carte pleine largeur (`card`, avec `card-body`, `heading` niveau 3, `link` et `lead`), toute la ligne cliquable (le lien du titre s'étend sur la carte), titre et résumé coupés par « … ». Un skin la stylise comme `card` ; `[data-skin-part="card"][data-kind="row"]` vise seulement ces lignes | `data-card` |
+| `search` `data-variant="list"` | (après la 0.6.17) le champ « Rechercher » au-dessus d'une liste publique (réglage de l'instance) : `role="search"` avec un `label` masqué, un `input` (pièce `input`), un bouton « Effacer la recherche » (pièce `button`), l'annonce du nombre de résultats (`role="status"`) et, sans résultat, un `notice` (`data-tone="info"`) avec un bouton. Même pièce que la recherche du site (`tool`, `page`), nouvelle variante | |
 | `table`, `table-head`, `table-row`, `table-cell` | bloc `table`, tables Markdown | |
 | `heading` (`data-level="1…6"`), `eyebrow`, `lead` | titres de page, petite ligne, chapeau | `data-marker` |
 | `prose` | texte Markdown (`Markdown.tsx`) | |

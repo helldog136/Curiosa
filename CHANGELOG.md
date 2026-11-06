@@ -9,12 +9,23 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.
+**En bref.** Sur le site, l'affichage « liste » des articles et des autres entrées devient une suite de cartes pleine largeur, plus lisibles et entièrement cliquables. Un champ « Rechercher » peut s'afficher au-dessus de la liste et la filtre pendant la frappe. Il est activé par défaut en affichage liste, et se règle pour chaque liste. Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.
 
-**In short.** A "Storage" card on the administration home shows how much room your site takes and how much is left on the server. A small reminder of the free room also appears beside the image upload buttons.
+**In short.** On the site, the "list" display of articles and other entries becomes a series of full-width cards, easier to read and fully clickable. A "Search" field can appear above the list and filters it as you type. It is on by default in list display, and set for each list. A "Storage" card on the administration home shows how much room your site takes and how much is left on the server. A small reminder of the free room also appears beside the image upload buttons.
+
+### Site public
+
+- **La liste devient une suite de cartes.** Chaque ligne a le même cadre que les cartes : titre, résumé coupé par « … » s'il est long, même hauteur partout, et toute la ligne mène à l'article. Elle reprend les couleurs et les formes de votre skin, en clair comme en sombre, sur téléphone comme sur ordinateur.
+- **(English) The list becomes a series of cards.** Each row has the same frame as the cards: title, summary cut with "…" when long, the same height everywhere, and the whole row opens the article. It follows the colors and shapes of your skin, light or dark, on a phone or a computer.
+- **Un champ « Rechercher » au-dessus de la liste.** Il filtre pendant la frappe, sans bouton ni rechargement, sans tenir compte des majuscules ni des accents. Sans résultat, il propose « Effacer la recherche ».
+- **(English) A "Search" field above the list.** It filters as you type, with no button or reload, ignoring capitals and accents. With no match, it offers "Clear the search".
+- **La recherche couvre tout ce qui est affiché.** Titre, résumé et mots-clés ; si la liste a plusieurs pages, toutes les pages. Un lecteur d'écran entend le nombre de résultats.
+- **(English) The search covers everything shown.** Title, summary and keywords; if the list has several pages, all of them. A screen reader announces the number of results.
 
 ### Administration
 
+- **Un réglage « Afficher un champ de recherche » pour chaque liste.** Il est dans l'onglet Général de la page de la liste, activé d'office en affichage liste. Vous pouvez aussi l'activer pour les autres affichages.
+- **(English) A "Show a search field" setting for each list.** It is in the General tab of the list page, on by default in list display. You can also turn it on for the other displays.
 - **Vous voyez la place prise et la place libre.** La carte « Stockage » donne une barre et l'état en toutes lettres, avec le détail replié. « Actualiser » refait la mesure.
 - **(English) You see the room used and the room left.** The "Storage" card gives a bar and the state in words, with folded details. "Refresh" measures again.
 - **Vous êtes prévenu avant d'envoyer de grosses photos.** À côté des boutons d'envoi d'images, une ligne discrète indique la place libre. Quand elle devient faible, elle le dit avant l'envoi.
@@ -22,6 +33,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **`content.search`** (manifest, optional boolean): default of the per-instance setting `instance.<id>.__search` (`core/content/search.ts`); without it, on for `display: "list"` only. See `docs/MODULES.md`. No migration, no new permission.
+- **`listEntriesPage({ query })`**: filters on the server (title, summary, tags, code; same rule as `adminkit/search.ts`) over at most `TITLE_SORT_MAX` entries, then pages as usual; `EntriesPage.candidates` is the size before the filter. `?q=` pages are `noindex`.
+- **`EntrySearch`** (client): instant filtering through `data-entry-search`, plus a debounced `router.replace` for lists of several pages. Skin parts, no new one: `card` with `data-kind="row"` and `search` with `data-variant="list"` (`docs/SKINS.md`).
 - **`core/storage/`**. One source for the dashboard card, the upload hint (`GET /api/admin/storage`) and `maintenance_health` (new `storage` field). Thresholds are constants in `level.ts`; docs in `docs/STORAGE.md`.
 - **Dashboard.** New block `storage` (administration and coordination); the "disk" health point links to it.
 
