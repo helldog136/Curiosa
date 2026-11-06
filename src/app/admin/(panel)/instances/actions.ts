@@ -31,6 +31,7 @@ import { redirectShortUrl } from "@/core/redirects";
 import { isMeasureEnabled } from "@/core/redirectMeasure";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { isSort, sortSettingKey } from "@/core/content/sort";
+import { searchSettingKey } from "@/core/content/search";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { planTabs, settingTab } from "@/core/modules/tabs";
@@ -86,6 +87,8 @@ export async function saveInstance(_prev: ActionState, formData: FormData): Prom
 
   // Ordre d'affichage des entrées : proposé dans les deux modes pour les modules à contenu.
   if (mod.manifest.content && isSort(formData.get("sort"))) await setSetting(sortSettingKey(id), String(formData.get("sort")));
+  // Champ « Rechercher » de la liste publique : la case est envoyée avec son champ caché `search_was` (une case décochée n'envoie rien).
+  if (mod.manifest.content && formData.get("search_was") !== null) await setSetting(searchSettingKey(id), formData.get("search") === "on");
 
   if (adv && hasPage(mod.manifest)) {
     const basePath = String(formData.get("basePath") ?? "").trim().toLowerCase();

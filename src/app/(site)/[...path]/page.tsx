@@ -17,13 +17,15 @@ import { getVisitorLocale } from "@/core/i18n/request";
 import { resolveRedirect } from "@/core/redirects";
 import { isPrefetchRequest } from "@/core/redirectStats";
 import { filterEntryBody, runPage, runSlot } from "@/core/modules/runtime";
-import { getSiteConfig } from "@/core/settings";
+import { getSetting, getSiteConfig } from "@/core/settings";
+import { entrySearchText, effectiveSearch, parseListQuery, searchSettingKey } from "@/core/content/search";
 import { prisma } from "@/core/db";
 import { isSafeExternalUrl } from "@/core/url";
 import { Blocks } from "@/components/site/Blocks";
 import { CopyCode } from "@/components/site/CopyCode";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { EntryList } from "@/components/site/EntryList";
+import { EntrySearch } from "@/components/site/EntrySearch";
 import { Pagination } from "@/components/site/Pagination";
 import { CoverImage } from "@/components/site/CoverImage";
 import { Markdown } from "@/components/site/Markdown";
@@ -36,7 +38,9 @@ type Props = { params: Promise<{ path: string[] }>; searchParams: Promise<{ [key
 /** Une liste de liens (pastilles) tient 50 par page ; les autres listes, 12. */
 const perPageFor = (instance: Pick<InstanceView, "display">) => (instance.display === "links" ? MAX_PER_PAGE : PER_PAGE);
 /** Une page de la liste, lue une seule fois par requête (la métadonnée et la page la demandent toutes les deux). */
-const loadListPage = cache(async (instance: InstanceView, locale: string, page: number) => listEntriesPage({ instance, locale, page, perPage: perPageFor(instance) }));
+const loadListPage = cache(async (instance: InstanceView, locale: string, page: number, query = "") => listEntriesPage({ instance, locale, page, perPage: perPageFor(instance), query }));
+/** Le champ « Rechercher » de la liste est-il affiché ? (réglage de l'instance, sinon `content.search` du module, sinon : oui en affichage « list »). */
+const listHasSearch = async (instance: InstanceView, manifestDefault?: boolean) => effectiveSearch(await getSetting(searchSettingKey(instance.id)), instance.display, manifestDefault);
 
 type Resolved =
   | { kind: "list"; active: ActiveInstance }
@@ -107,7 +111,8 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
     const alt = all("/" + path.join("/"));
     const param = parsePageParam((await searchParams).page);
     const pageNo = param.kind === "page" ? param.page : 1;
-    const data = await loadListPage(instance, locale, pageNo);
+    const q = (await listHasSearch(instance, resolved.active.mod.manifest.content?.search)) ? parseListQuery((await searchParams).q) : "";
+    const data = await loadListPage(instance, locale, pageNo, q);
     if (pageNo > data.pages) return {};
     const name = pickName(instance, locale, site.defaultLocale);
     // Chaque page a sa propre adresse canonique, son titre, ses liens précédent / suivant ; les langues alternatives (hreflang) ne sont déclarées que sur la première page.
@@ -116,8 +121,10 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
       siteName: config.name,
       title: pageNo > 1 ? makeTranslator(locale)("site.pagination.metaTitle", { title: name, n: pageNo }) : name,
       description: pickDescription(instance, locale, site.defaultLocale), image: share,
-      canonical: here(pageNo), languages: pageNo === 1 ? alt.languages : undefined, locale,
-      pagination: { previous: pageNo > 1 ? here(pageNo - 1) : undefined, next: pageNo < data.pages ? here(pageNo + 1) : undefined },
+      canonical: q ? alt.canonical : here(pageNo), languages: pageNo === 1 ? alt.languages : undefined, locale,
+      pagination: { previous: !q && pageNo > 1 ? here(pageNo - 1) : undefined, next: !q && pageNo < data.pages ? here(pageNo + 1) : undefined },
+      // Une page de résultats de recherche n'est pas une page à indexer : son adresse canonique est la liste elle-même.
+      ...(q ? { noindex: true } : {}),
     });
   }
   if (resolved.kind === "module") {
@@ -200,9 +207,12 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
       const param = parsePageParam((await searchParams).page);
       if (param.kind === "invalid") redirect(listPath);
       const pageNo = param.kind === "page" ? param.page : 1;
-      const data = await loadListPage(instance, locale, pageNo);
+      const searchOn = await listHasSearch(instance, resolved.active.mod.manifest.content?.search);
+      const q = searchOn ? parseListQuery((await searchParams).q) : "";
+      const data = await loadListPage(instance, locale, pageNo, q);
       if (pageNo > data.pages) notFound();
       const entries = data.items;
+      const listNode = <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} measure={await loadMeasureMap()} searchable={searchOn} />;
       const description = pickDescription(instance, locale, config.defaultLocale);
       const page = { key: instance.key, basePath: instance.basePath };
       const [top, bottom] = await Promise.all([runSlot("page.top", locale, { page }), runSlot("page.bottom", locale, { page })]);
@@ -214,8 +224,15 @@ export default async function CatchAllPage({ params, searchParams }: Props) {
             {description && <p data-skin-part="lead" className="text-muted">{description}</p>}
           </header>
           <Blocks blocks={top} locale={locale} />
-          <EntryList entries={entries} collection={instance} locale={locale} defaultLocale={config.defaultLocale} measure={await loadMeasureMap()} />
-          <Pagination page={pageNo} pages={data.pages} base={listPath} t={t} />
+          {searchOn ? (
+            <EntrySearch
+              action={listPath} initialQuery={q} server={data.candidates > data.perPage} serverTotal={data.total} hays={entries.map(entrySearchText)}
+              labels={{ label: t("site.list.search.label"), placeholder: t("site.list.search.placeholder"), clear: t("site.search.clear"), count: t("site.list.search.count", { n: "{n}" }), countOne: t("site.list.search.count.one", { n: "{n}" }), none: t("site.list.search.none"), tips: t("site.search.tips"), busy: t("site.list.search.busy") }}
+            >
+              {entries.length > 0 || !q ? listNode : null}
+            </EntrySearch>
+          ) : listNode}
+          <Pagination page={pageNo} pages={data.pages} base={q ? `${listPath}?q=${encodeURIComponent(q)}` : listPath} t={t} />
           <Blocks blocks={bottom} locale={locale} />
         </div>
       );

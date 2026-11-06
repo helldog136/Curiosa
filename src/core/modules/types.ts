@@ -127,6 +127,8 @@ export type ContentConfig = {
   basePath?: string;
   /** Suggère que la page de l'instance figure au menu du site. C'est une SUGGESTION (le cœur ne l'ajoute jamais d'office) : voir `suggestInMenu`. */
   showInNav?: boolean;
+  /** (cœur après 0.6.17) Champ « Rechercher » au-dessus de la liste publique : valeur par défaut des instances qui n'ont pas fait leur choix. Absent : activé pour l'affichage `list`, désactivé pour les autres. */
+  search?: boolean;
   /** (cœur après 0.6.2) Modèles d'entrée : « Partir d'un modèle » dans la liste, pages d'exemple de l'assistant. Toujours créés en brouillon. Voir `entryTemplate` (manifest.ts). */
   templates?: EntryTemplateDecl[];
 };

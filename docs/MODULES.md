@@ -704,7 +704,7 @@ See [TRANSLATING.md](TRANSLATING.md) to add a language.
   "display": "cards",                  // cards | list | links | codes
   "clickAction": "detail",             // detail | external
   "features": ["cover", "summary", "body"],   // cover icon summary body url code expiresAt featured tags
-  "basePath": "blog", "showInNav": true,
+  "basePath": "blog", "showInNav": true, "search": true,
   "allowGoLinks": false, "fallbackToDefault": true,
   "fieldSchema": [{ "key": "price", "label": "Price", "type": "number" }],
   "templates": [{ "id": "about-us", "name": { "fr": "Qui sommes-nous", "en": "Who we are" }, "title": { "fr": "Qui sommes-nous", "en": "Who we are" }, "body": { "fr": "…", "en": "…" } }]
@@ -721,7 +721,7 @@ See [TRANSLATING.md](TRANSLATING.md) to add a language.
 | `fallbackToDefault` | Retomber sur la langue par défaut quand une entrée n'est pas traduite. |
 | `basePath` | Chemin public proposé à la création d'une instance. |
 | `showInNav` | **Suggère** que la page de l'instance soit au menu du site (même effet que `suggestInMenu`, qui l'emporte s'il est déclaré). Depuis cette version le cœur n'ajoute plus rien au menu sans la décision de la personne. |
-
+| `search` | (cœur après 0.6.17) Booléen facultatif : **valeur par défaut** du réglage « Afficher un champ de recherche » des instances qui n'ont pas fait leur choix. Absent : activé pour `display: "list"`, désactivé pour les autres affichages. La personne qui gère le site le change ensuite pour chaque instance (page de l'instance, onglet Général). Le champ filtre la liste publique **en direct** (sans majuscules ni accents, dans le titre, le résumé, les mots-clés et le code) ; sur une liste de plusieurs pages, le serveur filtre toute la liste (`?q=`, 250 ms après la dernière frappe) et redécoupe les pages. Un cœur ancien ignore la clé : aucun `minCore` n'est exigé pour l'ignorer, mais déclarez `"minCore": "0.6.18"` si le module compte dessus. |
 | `templates` | (cœur après 0.6.2) **Modèles d'entrée**, 8 au plus : `{ id, name, description?, title, summary?, body? }` (textes en français ET en anglais ; `name` 60 caractères, `description` 120, `title` 120, `summary` 300, `body` 6 000). Le cœur ajoute « Partir d'un modèle » à la liste des entrées (en-tête et état vide) : un modèle crée **toujours un brouillon** prérempli, dans la langue par défaut du site, que la personne modifie ensuite. Les profils de départ de l'assistant d'installation peuvent proposer ces modèles comme pages d'exemple (voir « Profils de départ »). Un cœur ancien ignore la clé : le bouton n'apparaît pas, rien d'autre ne change, aucun `minCore` n'est à déclarer. Mettez un texte d'exemple reconnaissable en tête du corps (« Texte d'exemple : modifiez-le avant de publier. »), jamais de texte juridique, de nom réel ni d'adresse réelle. |
 
 Avec `content`, le cœur fournit gratuitement l'éditeur d'entrées (multilingue, brouillons, dates, image), les pages publiques (liste +

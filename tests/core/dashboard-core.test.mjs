@@ -258,7 +258,7 @@ test("santé : une pastille, « tout va bien » ou des points, chacun avec son �
   assert.deepEqual(ownerHealth.points.map((p) => p.id), ["database", "disk", "update", "backup", "instances", "content"]);
   assert.equal(ownerHealth.problems, 4);
   assert.equal(ownerHealth.points.find((p) => p.id === "instances").href, "/admin/extensions");
-  assert.equal(ownerHealth.points.find((p) => p.id === "disk").href, null, "aucun écran pour un disque plein : la personne sait qu'il faut prévenir");
+  assert.equal(ownerHealth.points.find((p) => p.id === "disk").href, "/admin#storage", "le disque plein mène à la carte Stockage, qui dit quoi faire");
   // Une rédaction ne voit pas la santé technique.
   assert.deepEqual(H.healthPoints(editor, bad, t), []);
   // L'administration voit les extensions mises de côté et le contrôle du contenu, pas la sauvegarde ni les mises à jour.
@@ -383,8 +383,8 @@ test("blocs : le journal (ce qui s'est passé) est le dernier bloc, dans tous le
 test("blocs : chaque palier voit les siens, le mode simple en a moins", () => {
   const plan = (u, advanced) => L.dashboardPlan(u, advanced);
   assert.deepEqual(plan(editor, false).blocks, ["todo", "drafts", "create", "visits", "modules", "numbers", "activity"]);
-  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "modules", "numbers", "activity"]);
-  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "visits", "modules", "numbers", "activity"]);
+  assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "modules", "numbers", "storage", "activity"]);
+  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "visits", "modules", "numbers", "storage", "activity"]);
   assert.deepEqual(plan(owner, true).blocks, plan(admin, false).blocks);
   assert.deepEqual(plan(none, true).blocks, ["todo", "drafts", "create", "modules", "numbers", "activity"]);
   assert.deepEqual([plan(admin, false).cards, plan(admin, true).cards], [2, 4]);

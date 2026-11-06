@@ -3,6 +3,7 @@ import { prisma } from "@/core/db";
 import { getInstanceByKey, listInstances, type InstanceView } from "@/core/instances";
 import { getSetting, getSiteConfig } from "@/core/settings";
 import { effectiveSort, orderBy, sortByTitle, sortSettingKey } from "./sort";
+import { entryMatches, LIST_QUERY_MAX } from "./search";
 
 export type EntryView = {
   id: string;
@@ -160,6 +161,8 @@ export type EntriesPage = {
   perPage: number;
   /** Vrai si le tri par titre demandé a été remplacé par « plus récent d'abord » (trop d'entrées pour un tri en mémoire). */
   titleSortCapped: boolean;
+  /** Nombre d'entrées de la liste avant la recherche (`query`) : sans recherche, égal à `total`. Dit si la liste entière tient sur une page. */
+  candidates: number;
 };
 
 /**
@@ -199,10 +202,12 @@ export async function listEntriesPage(opts: {
   locale: string;
   page: number;
   perPage?: number;
+  /** Recherche (titre, résumé, mots-clés, code) : la liste est filtrée PAR LE SERVEUR avant d'être découpée en pages. Voir `searchEntriesPage`. */
+  query?: string;
 }): Promise<EntriesPage> {
   const perPage = Math.min(MAX_PER_PAGE, Math.max(1, Math.trunc(opts.perPage ?? PER_PAGE) || PER_PAGE));
   const page = Number.isFinite(opts.page) && opts.page >= 1 ? Math.trunc(opts.page) : 1;
-  const empty: EntriesPage = { items: [], page, pages: 1, total: 0, perPage, titleSortCapped: false };
+  const empty: EntriesPage = { items: [], page, pages: 1, total: 0, perPage, titleSortCapped: false, candidates: 0 };
   const instance = typeof opts.instance === "string" ? await getInstanceByKey(opts.instance) : opts.instance;
   if (!instance) return empty;
   const { defaultLocale } = await getSiteConfig();
@@ -210,11 +215,14 @@ export async function listEntriesPage(opts: {
   const base: Prisma.EntryWhereInput = { instanceId: instance.id, ...publishedWhere(), ...languageWhere(instance, opts.locale) };
   let titleSortCapped = false;
 
+  const query = (opts.query ?? "").trim().slice(0, LIST_QUERY_MAX);
+  if (query) return searchEntriesPage({ instance, locale: opts.locale, defaultLocale, sort, base, query, page, perPage });
+
   if (sort === "title") {
     if ((await prisma.entry.count({ where: base })) <= TITLE_SORT_MAX) {
       const all = await listEntries({ instance, locale: opts.locale });
       const start = (page - 1) * perPage;
-      return { items: all.slice(start, start + perPage), page, pages: Math.max(1, Math.ceil(all.length / perPage)), total: all.length, perPage, titleSortCapped };
+      return { items: all.slice(start, start + perPage), page, pages: Math.max(1, Math.ceil(all.length / perPage)), total: all.length, perPage, titleSortCapped, candidates: all.length };
     }
     sort = "newest";
     titleSortCapped = true;
@@ -226,7 +234,7 @@ export async function listEntriesPage(opts: {
   const [fresh, stale] = [await prisma.entry.count({ where: freshAll }), await prisma.entry.count({ where: staleAll })];
   const total = fresh + stale;
   const pages = Math.max(1, Math.ceil(total / perPage));
-  if (page > pages) return { items: [], page, pages, total, perPage, titleSortCapped };
+  if (page > pages) return { items: [], page, pages, total, perPage, titleSortCapped, candidates: total };
 
   const order = [...orderBy(sort), { id: "desc" as const }];
   const start = (page - 1) * perPage;
@@ -240,7 +248,28 @@ export async function listEntriesPage(opts: {
     const picked = pickTranslation(row, instance, opts.locale, defaultLocale);
     if (picked) items.push(toView(row, instance, picked));
   }
-  return { items, page, pages, total, perPage, titleSortCapped };
+  return { items, page, pages, total, perPage, titleSortCapped, candidates: total };
+}
+
+/**
+ * Une page de la liste FILTRÉE par une recherche. Le texte cherché (titre, résumé, mots-clés, code ; sans majuscules ni accents) n'est pas dans la base sous
+ * cette forme : on lit au plus `TITLE_SORT_MAX` entrées (dans l'ordre choisi), on garde celles qui répondent, puis on découpe en pages comme d'habitude
+ * (les expirées à la fin, le tri par titre fait en mémoire). Jamais de lecture sans borne.
+ */
+async function searchEntriesPage(o: { instance: InstanceView; locale: string; defaultLocale: string; sort: Parameters<typeof orderBy>[0]; base: Prisma.EntryWhereInput; query: string; page: number; perPage: number }): Promise<EntriesPage> {
+  const { instance, locale, defaultLocale, query, page, perPage } = o;
+  const rows = await prisma.entry.findMany({ where: o.base, include: { translations: true }, orderBy: [...orderBy(o.sort), { id: "desc" as const }], take: TITLE_SORT_MAX });
+  const views: EntryView[] = [];
+  for (const row of rows) {
+    const picked = pickTranslation(row, instance, locale, defaultLocale);
+    if (picked) views.push(toView(row, instance, picked));
+  }
+  const hits = views.filter((v) => entryMatches(v, query));
+  const ordered = o.sort === "title" ? sortByTitle(hits, locale) : hits;
+  ordered.sort((a, b) => Number(a.expired) - Number(b.expired));
+  const pages = Math.max(1, Math.ceil(ordered.length / perPage));
+  const start = (page - 1) * perPage;
+  return { items: page > pages ? [] : ordered.slice(start, start + perPage), page, pages, total: ordered.length, perPage, titleSortCapped: false, candidates: views.length };
 }
 
 /**

@@ -20,6 +20,9 @@ import { deps } from "./deps";
 import { within } from "./within";
 import { contentSummary } from "./content/service";
 import { publicRepo, redactSecrets, tailLines } from "./redact";
+import { diskSpace } from "@/core/storage/disk";
+import { storageInfo } from "@/core/storage/service";
+import { storageForTool } from "@/core/storage/tool";
 
 /**
  * LECTURES de la maintenance (niveau 1) : ce qu'une IA peut savoir de l'état du site. Rien ici ne modifie quoi que ce soit.
@@ -87,14 +90,6 @@ async function checkDatabase(): Promise<DbCheck> {
   }
 }
 
-function diskSpace(): { freeBytes: number; totalBytes: number; freePercent: number; level: "ok" | "low" | "critical" } | null {
-  const d = deps.disk();
-  if (!d) return null;
-  const free = d.freeBytes, total = d.totalBytes;
-  const freePercent = total ? Math.round((free / total) * 1000) / 10 : 0;
-  return { freeBytes: free, totalBytes: total, freePercent, level: free < 300 * MB || (freePercent < 2 && free < 2048 * MB) ? "critical" : free < 1536 * MB || (freePercent < 8 && free < 10240 * MB) ? "low" : "ok" };
-}
-
 /** Dernière sauvegarde connue : un téléchargement de l'admin (`backup.create`) ou une copie faite par la maintenance. */
 export async function lastBackup(): Promise<{ at: string | null; recent: boolean; by: "owner" | "ai" | null }> {
   const row = await prisma.auditLog.findFirst({
@@ -126,9 +121,11 @@ async function instancesInError(): Promise<SetAside[]> {
 
 export async function health() {
   const setAside = instancesInError();
-  const [database, backup, errors, instances] = await Promise.all([checkDatabase(), lastBackup(), setAside.then((i) => recentErrors(i)), setAside]);
+  const [database, backup, errors, instances, storage] = await Promise.all([checkDatabase(), lastBackup(), setAside.then((i) => recentErrors(i)), setAside, storageInfo({ waitMs: 1500 }).catch(() => null)]);
   return {
     disk: diskSpace() ?? { unknown: true },
+    /** What the site itself takes, by category (same numbers as the admin dashboard card); no file paths. */
+    storage: storage ? storageForTool(storage) : null,
     database,
     lastBackup: backup,
     instancesSetAside: instances.length,

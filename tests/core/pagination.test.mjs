@@ -89,7 +89,8 @@ test("non-régression : sous 12 entrées, la page 1 est exactement la liste d'av
   const nav = fs.readFileSync("src/components/site/Pagination.tsx", "utf8");
   assert.match(nav, /if \(pages <= 1\) return null/, "une seule page : rien à l'écran");
   const list = fs.readFileSync("src/app/(site)/[...path]/page.tsx", "utf8");
-  assert.match(list, /<EntryList entries=\{entries\} collection=\{instance\} locale=\{locale\} defaultLocale=\{config\.defaultLocale\} measure=\{await loadMeasureMap\(\)\} \/>\s*<Pagination /, "la liste est rendue comme avant, la navigation vient après");
+  assert.match(list, /const listNode = <EntryList entries=\{entries\} collection=\{instance\} locale=\{locale\} defaultLocale=\{config\.defaultLocale\} measure=\{await loadMeasureMap\(\)\} searchable=\{searchOn\} \/>;/, "la liste est rendue comme avant");
+  assert.match(list, /\) : listNode\}\s*<Pagination /, "sans champ de recherche, la liste est rendue seule, la navigation vient après");
 });
 
 test("tri par titre : paginé en mémoire ; au-delà de 5 000 entrées, repli sur « plus récent » et signalé", async () => {

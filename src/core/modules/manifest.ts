@@ -183,6 +183,7 @@ const content = z.object({
   fallbackToDefault: z.boolean().optional(),
   basePath: z.string().regex(/^[a-z0-9-]*$/).optional(),
   showInNav: z.boolean().optional(),
+  search: z.boolean().optional(),
   templates: z.array(entryTemplate).max(8).optional(),
 });
 
