@@ -1,9 +1,18 @@
 # Everything you may want to change comes from the `.env` file next to this
 # one (copy `.env.example` to `.env`). Nothing site-specific is written here.
 #
-#   Local trial :  docker compose up -d --build
-#   Production  :  docker compose --profile https up -d --build
+# The image is NOT built here: it is pulled from the GitHub Container Registry
+# (linux/amd64 and linux/arm64, the release archive unpacked, tested before it is
+# published). Guided install: scripts/install-docker.sh.
+#
+#   Local trial :  docker compose up -d
+#   Production  :  docker compose --profile https up -d
 #                  (automatic HTTPS; needs CURIOSA_DOMAIN and SITE_URL in .env)
+#   Update      :  docker compose pull && docker compose up -d
+#   Pin a version: CURIOSA_VERSION=0.6.15 in .env (exact), or 0.6 (the series:
+#                  the only tag an automatic updater such as Watchtower may follow).
+#   Development :  docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+#                  (builds from this source tree instead of pulling the image)
 #
 # The app only speaks plain HTTP on one port (3000 inside the container) and
 # expects a reverse proxy in front of it for TLS and ports 80/443. The `https`
@@ -11,10 +20,7 @@
 # published on this machine (127.0.0.1), never directly on the Internet.
 services:
   site:
-    # The image built from this source tree (a development alternative: it does not use the published release archive).
-    build:
-      context: .
-      dockerfile: Dockerfile.source
+    image: ghcr.io/helldog136/curiosa:${CURIOSA_VERSION:-latest}
     ports:
       - "${CURIOSA_BIND:-127.0.0.1}:${CURIOSA_PORT:-3000}:3000"
     environment:
@@ -27,6 +33,10 @@ services:
       # read from X-Forwarded-For). 1 = the bundled Caddy or one proxy of yours.
       CURIOSA_TRUSTED_PROXIES: "${CURIOSA_TRUSTED_PROXIES:-1}"
       TZ: "${TZ:-UTC}"
+      # The site never runs as root: the image gives the data folder to this user and group, then drops to them
+      # (on a NAS, the owner of the shared folder: 1026 and 100 on Synology). Or use `user:` and a folder it can write.
+      PUID: "${PUID:-1000}"
+      PGID: "${PGID:-1000}"
       # Fixed on purpose, not read from .env: the database and the data live in
       # the volume below, whatever the .env copied from .env.example says.
       DATA_DIR: /app/data
@@ -43,6 +53,8 @@ services:
       retries: 3
       start_period: 90s
     restart: unless-stopped
+    # A clean shutdown: the site finishes its work before the container is stopped.
+    stop_grace_period: 30s
 
   # Optional HTTPS: `docker compose --profile https up -d`. Caddy gets and renews
   # the certificate by itself. The domain's DNS must already point to this
@@ -54,10 +66,18 @@ services:
       # Not required for the default (no profile) start: Compose reads every
       # service even when its profile is off, so the check is done at start.
       CURIOSA_DOMAIN: "${CURIOSA_DOMAIN:-}"
+      # Optional: e-mail for the certificate (expiry notices). Empty = none given.
+      CURIOSA_ACME_EMAIL: "${CURIOSA_ACME_EMAIL:-}"
     entrypoint:
       - sh
       - -c
-      - 'test -n "$$CURIOSA_DOMAIN" || { echo "Set CURIOSA_DOMAIN in .env (for example example.org)" >&2; exit 1; }; exec caddy reverse-proxy --from "$$CURIOSA_DOMAIN" --to site:3000'
+      - |
+        test -n "$$CURIOSA_DOMAIN" || { echo "Set CURIOSA_DOMAIN in .env (for example example.org)" >&2; exit 1; }
+        if [ -n "$$CURIOSA_ACME_EMAIL" ]; then
+          printf '{\n\temail %s\n}\n%s {\n\treverse_proxy site:3000\n}\n' "$$CURIOSA_ACME_EMAIL" "$$CURIOSA_DOMAIN" > /tmp/Caddyfile
+          exec caddy run --config /tmp/Caddyfile --adapter caddyfile
+        fi
+        exec caddy reverse-proxy --from "$$CURIOSA_DOMAIN" --to site:3000
     ports:
       - "80:80"
       - "443:443"

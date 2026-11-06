@@ -1,7 +1,7 @@
 # Override for an EXISTING Traefik (v2 or v3) that already runs on this server.
 # Needs Docker Compose 2.24 or newer (for !reset / !override).
 #
-#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d --build
+#   docker compose -f docker-compose.yml -f docker-compose.traefik.yml up -d
 #
 # Traefik terminates TLS and talks to the site over a shared Docker network, so
 # no port is published on the host. Do not combine with the bundled Caddy:
