@@ -7,5 +7,5 @@ export function formatBytes(bytes: number, locale: string): string {
   while (value >= 1024 && step < STEPS.length - 1) { value /= 1024; step++; }
   // Bytes and KB are whole numbers; from MB up, one decimal below 10 and none above.
   const digits = step <= 1 ? 0 : value < 10 ? 1 : 0;
-  return new Intl.NumberFormat(locale, { style: "unit", unit: STEPS[step], unitDisplay: "short", maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(value);
+  return new Intl.NumberFormat(locale, { style: "unit", unit: STEPS[step], unitDisplay: step === 0 ? "narrow" : "short", maximumFractionDigits: digits, minimumFractionDigits: 0 }).format(value);
 }

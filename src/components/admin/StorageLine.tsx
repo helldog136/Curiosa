@@ -24,7 +24,6 @@ export function StorageLine() {
     <p data-testid="storage-line" className="mt-1 text-xs text-muted" role={low ? "status" : undefined}>
       {low && <span aria-hidden="true">{hint.icon} </span>}
       {low ? <span className="font-medium text-fg">{hint.warning}</span> : <span>{hint.line}</span>}
-      {low && <span> · {hint.line}</span>}
       {hint.href && <> · <a href={hint.href} className="underline hover:text-accent">{hint.details}</a></>}
     </p>
   );
