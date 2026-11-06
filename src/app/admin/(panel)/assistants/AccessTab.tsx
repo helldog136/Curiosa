@@ -9,10 +9,11 @@ import { Callout, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { setMcpEnabled } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { TrustedSources } from "./TrustedSources";
 
 /**
- * Onglet « Réglages » : ce qui est commun à tous les assistants IA (les mettre tous en pause, détails techniques en mode avancé).
- * Les assistants eux-mêmes — liste, ajout, retrait, droits — sont dans l'Équipe, avec les personnes.
+ * "Settings" tab: what is common to all AI assistants (pause them all, the trusted image sources, technical details in advanced mode).
+ * The assistants themselves (list, add, remove, rights) live in the Team page, with the people.
  */
 export async function AccessTab({ t, advanced }: { t: Translator; advanced: boolean }) {
   const enabled = await isMcpEnabled();
@@ -42,6 +43,8 @@ export async function AccessTab({ t, advanced }: { t: Translator; advanced: bool
         </div>
       </Panel>
 
+      <TrustedSources t={t} />
+
       {advanced && (
         <Panel title={t("assistants.tech.title")} help={t("assistants.tech.help")} testid="assistants-tech">
           <p className="text-sm">{t("mcp.endpoint")} : <code className="select-all break-all rounded bg-line px-1.5 py-0.5 font-mono text-[13px]">{siteUrl}/api/mcp</code></p>
@@ -63,7 +66,7 @@ export async function AccessTab({ t, advanced }: { t: Translator; advanced: bool
   );
 }
 
-/** La liste des actions que les modules proposent aux assistants (mode avancé). */
+/** The list of actions the modules offer to assistants (advanced mode). */
 async function ToolsList({ t }: { t: Translator }) {
   const tools = await listMcpTools();
   return (

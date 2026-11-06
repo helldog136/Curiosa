@@ -68,7 +68,7 @@ test("tools: flags, rights and profiles (read: media_list, site_settings_get; as
   assert.equal(tools.site_settings_set.request, true, "a request that follows the approval setting");
   assert.ok(!Object.keys(tools).some((n) => /media_(delete|remove)/.test(n)), "no deletion tool");
   const placement = Object.fromEntries(Object.keys(tools).filter((n) => /^(media|site_settings)_/.test(n)).map((n) => [n, P.placementOf(tools[n])]));
-  assert.deepEqual(placement, { media_list: "read", media_upload: "assistant", media_set_alt: "assistant", site_settings_get: "read", site_settings_set: "assistant" });
+  assert.deepEqual(placement, { media_list: "read", media_upload: "assistant", media_import: "assistant", media_set_alt: "assistant", site_settings_get: "read", site_settings_set: "assistant" });
   const plain = await T.createToken("Brouillons", "write", "o");
   assert.deepEqual((await listed(plain)).filter((n) => /^(media|site_settings)_/.test(n)), [], "nothing without the right");
   const cat = await listMcpToolCatalogue();

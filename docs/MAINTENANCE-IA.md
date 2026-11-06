@@ -38,6 +38,7 @@ Une IA ne peut agir sur votre site que par un **jeton** : c'est son mot de passe
 - Lire ou télécharger le contenu d'une sauvegarde, lire un fichier du serveur, lancer une commande.
 - **Restaurer une sauvegarde** : cela remplace tout le site et demande le mot de passe de la sauvegarde, qui ne doit jamais passer par une IA. Cela se fait dans **Admin › Sauvegarde**.
 - Installer une **version d'essai** de Curiosa (« candidate », en `-rc`) ou un instantané de développement, ni revenir à une version plus ancienne. Même si votre site est réglé sur le canal des versions d'essai, une IA ne s'en sert jamais : c'est à vous de le faire à la main si vous le souhaitez.
+- Download an image from an address the owner has not put on the trusted image sources list (`media_import`, a separate right, off while the list is empty), or change that list.
 - Exceed the hourly limits of the access (12 risky and 120 everyday actions by default, see "Hourly limits" below), or run two maintenance operations at the same time.
 
 ### Valider une demande
@@ -276,7 +277,7 @@ Goal: an AI with the right to do it sets up the identity of a whole site without
 
 | Rule | What happens |
 |---|---|
-| Bytes only in the call | `media_upload { dataBase64, alt, name? }`. The server never fetches an address (no `url` argument, no third-party request, nothing to point at an internal server). The call body may reach 4.3 MB for this one call only (3 MB of image in base64); every other call, and any batch, stays at 1 MB. |
+| Bytes only in the call | `media_upload { dataBase64, alt, name? }`. This tool never fetches an address (no `url` argument, no third-party request, nothing to point at an internal server). The only exception is the separate tool `media_import` below, which only downloads from sources the owner wrote on a list. The call body may reach 4.3 MB for this one call only (3 MB of image in base64); every other call, and any batch, stays at 1 MB. |
 | Type read from the bytes | `sniffImage` of the admin's own upload route (png, jpeg, webp, gif). The file name and the declared type are ignored. A video is refused even though the admin accepts it. |
 | SVG | Only through the logo pipeline (`saveSvgUpload` in `logoUpload.ts`, which uses `sanitizeSvg` in `svg.ts`, the same sanitiser as the admin logo upload): the drawing is re-written from the recognised elements, scripts, styles, texts, images, `foreignObject`, event attributes, outside links and entities are refused, 300 KB at most, and what is stored is the cleaned copy. The safe accessibility features are accepted, so the project's own brand files (`docs/brand/*.svg`) upload fine: `role` (only `img`, `presentation`, `none`, `graphics-document`), `aria-label` (120 characters at most), `aria-labelledby`, `aria-hidden`, `focusable`, and `<title>` (200 characters) / `<desc>` (500) holding plain text only (no markup, no entity, written back escaped). The alternative text of the media is still the one given at upload; it is not read from the drawing. |
 | Size and pixels | 3 MB at most; 40 million pixels at most (`MAX_INPUT_PIXELS` of `imageDerive.ts`, read from the header with `sharp`, no decoding). A file the engine cannot read is refused. |
@@ -286,6 +287,39 @@ Goal: an AI with the right to do it sets up the identity of a whole site without
 | `media_list` | 50 per page, newest first: id, address, type, alt, bytes, date, `usedBy` (best effort: logos, settings, text of the content). Read only. There is no deletion tool. |
 | Limits | The everyday counter of the access (see below) plus a daily quota for the whole site: 100 images or 60 MB per 24 hours, counted from the journal. |
 | Journal | `media.upload` (file name, size in bytes, the label sent) and `media.alt` (old and new text), actor `mcp:<access name>`, kind `assistant`. Never the bytes. |
+
+### Importing images from trusted sources: `media_import`
+
+Why: a showcase of many modules needs about 150 screenshots of 40 to 100 KB each. Passing each one as base64 inside a call costs about a million output tokens and invites transcription errors. `media_import` lets the assistant name the address instead, but only on a short list that the OWNER writes. Code: `src/core/mediaImport.ts` (the tool), `src/core/trustedImageFetch.ts` (the only code that downloads, used by nothing else), `src/core/trustedImageSources.ts` (the list), `src/app/admin/(panel)/assistants/TrustedSources.tsx` and `actions.ts` (the admin card).
+
+**The owner's list.** Admin > AI assistants > Settings > "Trusted image sources". It starts EMPTY, which means the tool answers "off" and nothing is ever downloaded. An entry is a host (exact, lower case, no wildcard, never an IP number), an optional port (443 when absent) and a path prefix (`/` = the whole host). One field adds a source (`raw.githubusercontent.com/etoile_nord/images/`); a one-click suggestion adds `raw.githubusercontent.com/helldog136/` (read-only public content of the project). Removing an entry takes effect at once (the list is read from the database on every call). At most 30 entries. Additions and removals are journalled (`mcp.trusted.add`, `mcp.trusted.remove`). **No MCP tool reads the list for writing or writes it**: the writers are only reachable from the admin actions, which require the right `core:mcp.tokens`; a test walks the sources and the tool catalogue to keep it that way.
+
+**The tool.** `media_import { url, alt }` for one image, or `media_import { urls: [{ url, alt }] }` for up to 10 (imported one after the other; each has its own result; a failure does not stop the others; when the hourly counter or the daily quota runs out the rest is reported as "Not tried"). The alternative text is required (125 characters at most), exactly like `media_upload`. A separate right (`default: false`, assistant and full presets, like `media_upload`; having `media_upload` does not give it). Once the bytes are in, the pipeline is the one of `media_upload` (`storeCheckedImage`): type read from the BYTES, 40 million pixels at most, svg only through the logo pipeline, random stored name, 3 MB. EXIF data is not rewritten, like `media_upload`. Rate: one slot of the `content` counter per image actually fetched (a refusal decided from the address and the list alone costs nothing), and the daily quota of the site (100 images or 60 MB, imports and uploads together). Journal: `media.import` = the stored file name, its size, and `host/path` of the address (never the query, which can hold a secret), plus the final address when a redirection was followed; never the bytes.
+
+**Threat model.**
+
+| Threat | Mitigation | Test (`tests/services/mcp-media-import.test.mjs`) |
+|---|---|---|
+| An assistant widens its own reach (adds a source) | The list is written only by admin actions behind `core:mcp.tokens`; no tool names or touches it; empty by default | "no tool of the catalogue can write the list" |
+| A feature nobody asked for is on | Separate right, off by default; empty list = "off" before any slot or connection | "right: a separate tool right…", "empty list…" |
+| Host tricks: `https://allowed.example@evil.example/`, `allowed.example.evil.example`, `evil-allowed.example`, trailing dot, capitals | Exact host text compared after the address parser; a user name or password is refused outright | "address rules…" |
+| Port tricks | The port must be the one of the entry (443 when the entry has none) | "address rules…" |
+| Path tricks: `/../`, `%2e%2e`, `%2f`, `%5c`, sibling folder `/screens2/`, other case | The parser resolves dot segments first, then the prefix is matched by whole segments, case sensitive; encoded slashes and backslashes are refused | "address rules…", "redirects…" |
+| Server-side request forgery: an IP number, `localhost`, internal names | IP numbers (any spelling, IPv6) are refused; entries cannot be IP numbers or internal names either | "address rules…", "list management…" |
+| The name resolves to an internal address (private, loopback, link-local, shared 100.64/10, metadata 169.254.169.254, IPv6 ULA / link-local / mapped / NAT64 / documentation) | The name is resolved once; if ANY address is not public the import is refused (`addressIsPrivate`, shared with the content check) | "private, loopback, link-local…" |
+| DNS rebinding (a public answer, then an internal one) | One lookup per hop; the connection uses a pinned lookup that only returns the verified addresses | "rebinding…" |
+| Redirect to an outside or internal place | At most 2 redirects; each hop is checked again: https, no credentials, no IP number, on the list, public address; loops are refused | "redirects…" |
+| Plain http, other schemes | https only (`ftp`, `file`, `data`, `javascript` refused, also in a redirect). The only exception is the test switch `CURIOSA_TEST_IMPORT_LOCAL=1`, which opens `http://127.0.0.1` for the tests and is ignored when `NODE_ENV` is `production` | "https only…", "no exemption outside the tests…" |
+| A huge or endless answer | The announced size over 3 MB is refused before reading; the stream is read in pieces and the connection is cut at 3 MB; a compressed answer is refused (nothing to inflate) | "size…" |
+| A slow server holds the call | One 10 second deadline for the name, the connection, the redirections and the body (slow drip included) | "time…" |
+| An image that is not one (html named `.png`, a program, a video, a lying `Content-Type`) | The type comes from the bytes (`sniffImage`), never from the name or the announced type; pixel limit; random stored name | "content is decided from the BYTES…" |
+| A hostile svg | Only through the logo pipeline (re-written from recognised elements) | "svg…" |
+| Leaking something to the third party | No cookie, credential or caller header; a fixed `User-Agent`; `Accept-Encoding: identity`; nothing but the address is sent | "import: an image of a trusted source…" |
+| A secret in a query string ends up in the journal or the answer | Only `host/path` is journalled and returned | "journal…", "batch…" |
+| Flooding | One `content` slot per fetched image, 10 images per call, the daily quota shared with `media_upload` | "limits…", "batch…" |
+| Another use of the downloader | `trustedImageFetch.ts` is imported only by `mediaImport.ts` | "the fetch helper is used by media_import and by nothing else" |
+
+The test switch is the only environment variable involved and it is not a setting (the architecture test lists it as internal).
 
 ### Site settings: `site_settings_get`, `site_settings_set`
 
@@ -302,12 +336,12 @@ One small shared API, in memory, rolling hour, per access and per class:
 | Class | Default | Covers |
 |---|---|---|
 | `risky` | 12 per hour | install, update, uninstall, core update, skin install / activate / remove, adding an instance, reinstall, restart |
-| `content` | 120 per hour | publish / unpublish, `media_upload`, `media_set_alt`, `site_settings_set`, module settings, fonts and colours, content check, backups, check for updates, and the writers of the menu and the home page |
+| `content` | 120 per hour | publish / unpublish, `media_upload`, `media_import` (one slot per image fetched), `media_set_alt`, `site_settings_set`, module settings, fonts and colours, content check, backups, check for updates, and the writers of the menu and the home page |
 
 - API: `takeSlot(tokenId, class)` (async, throws a plain message), `remainingSlots(tokenId)` (per class: limit, used, remaining, `nextSlotInMinutes`), `resetSlots(tokenId)`, plus `getLimits` / `setLimits` (bounded: risky 1 to 60, content 10 to 1000). A new writer calls `takeSlot(actor.tokenId, "content")` once, after validating its arguments; a new level 3 action must be added to `LEVEL3_CLASS` in `actions.ts` (the compiler asks for it).
 - The message: "Limit reached: 12 risky actions per hour for this access. Next slot in 14 min, or the owner can reset it in Admin > AI assistants."
 - `maintenance_my_access` reports `hourlyLimits` for both classes. The access page (Admin > AI assistants > the access) shows the same figures, a "Reset the limits" button (one click and a confirmation line, journalled as `mcp.limits.reset`) and, in advanced mode, the two limits (`mcp.limits.set`).
-- Rights: `aim.tool.media_list`, `media_upload`, `media_set_alt`, `site_settings_get`, `site_settings_set` (EN and FR). Profiles: read = `media_list`, `site_settings_get`; assistant = `media_upload`, `media_set_alt`, `site_settings_set`; full = everything.
+- Rights: `aim.tool.media_list`, `media_upload`, `media_import`, `media_set_alt`, `site_settings_get`, `site_settings_set` (EN and FR). Profiles: read = `media_list`, `site_settings_get`; assistant = `media_upload`, `media_import`, `media_set_alt`, `site_settings_set`; full = everything.
 
 ## Addendum: long actions, the diagnosis and the lock (English)
 
