@@ -9,7 +9,7 @@ import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsL
 import { ModulePill } from "@/components/admin/ModulePill";
 import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
 import { dashboardPlan } from "@/core/dashboard/layout";
-import { ActivityBlock, CardsBlock, CreateBlock, HealthPill, SetupBlock, Slot, TodoBlock, VisitsBlock, type BlockCtx } from "@/components/admin/dashboard/Blocks";
+import { ActivityBlock, CardsBlock, CreateBlock, HealthPill, SetupBlock, Slot, StorageBlock, TodoBlock, VisitsBlock, type BlockCtx } from "@/components/admin/dashboard/Blocks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
@@ -106,6 +106,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     visits: <Slot key="visits" label={t("dash.loading")} height="h-56"><VisitsBlock c={c} /></Slot>,
     modules: <Slot key="modules" label={t("dash.loading")} height="h-24"><CardsBlock c={c} max={plan.cards} /></Slot>,
     numbers: numbersBlock,
+    storage: <Slot key="storage" label={t("dash.loading")} height="h-40"><StorageBlock c={c} /></Slot>,
   };
   return (
     <div className="space-y-6">

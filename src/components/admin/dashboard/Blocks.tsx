@@ -13,7 +13,13 @@ import { recentActivity } from "@/core/dashboard/activity";
 import { loadSetup } from "@/core/dashboard/setup";
 import { loadHealth } from "@/core/dashboard/health";
 import { topLinks, topPagesTitled, visitsOverview, type Comparison } from "@/core/dashboard/visits";
-import { hideSetup } from "@/app/admin/(panel)/dashboardActions";
+import { hideSetup, refreshStorage } from "@/app/admin/(panel)/dashboardActions";
+import { canSeeStorage } from "@/core/storage/access";
+import { storageInfo } from "@/core/storage/service";
+import { presentStorage } from "@/core/storage/present";
+import { PendingButton } from "@/components/admin/PendingButton";
+import { Callout } from "@/components/admin/Page";
+import { MoreOptions } from "@/components/admin/MoreOptions";
 
 /**
  * Les blocs du tableau de bord : des composants serveur, chacun dans son `Suspense`. Un bloc lent (une extension qui tarde, une lecture de base) ne retient ni la page ni les autres blocs ;
@@ -88,6 +94,56 @@ export async function HealthPill({ c }: { c: BlockCtx }) {
         ))}
       </ul>
     </details>
+  );
+}
+
+// ── Stockage ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** Place prise par le site et place libre sur le serveur. La mesure est mise en mémoire et bornée ; si elle tarde, la carte le dit au lieu de retenir la page. */
+export async function StorageBlock({ c }: { c: BlockCtx }) {
+  if (!canSeeStorage(c.user)) return null;
+  const { t, locale } = c;
+  const info = await storageInfo({ waitMs: 2500 }).catch(() => null);
+  if (!info) return null;
+  const v = presentStorage(info, t, locale);
+  const measured = info.measuredAt ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(info.measuredAt)) : null;
+  return (
+    <section id="storage" aria-labelledby="dash-storage" data-testid="dash-storage" className={`${ui.card} scroll-mt-20 space-y-3`}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="dash-storage" className="text-lg font-semibold">{t("storage.title")}</h2>
+          <p className="mt-1 text-sm text-muted">{t("storage.intro")}</p>
+        </div>
+        <form action={refreshStorage}><PendingButton pendingLabel={t("storage.measuring")} testid="storage-refresh">{t("storage.refresh")}</PendingButton></form>
+      </div>
+      {v.level === "unknown" ? (
+        <p className="text-sm text-muted" data-testid="storage-unknown">{t("storage.unknown")}</p>
+      ) : (
+        <>
+          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v.usedShare)} aria-label={t("storage.barLabel", { used: String(Math.round(v.usedShare)) })} className="flex h-3 overflow-hidden rounded-full bg-line">
+            <div className="h-full bg-accent" style={{ width: `${v.siteShare}%` }} />
+            <div className="h-full bg-muted/50" style={{ width: `${v.otherShare}%` }} />
+          </div>
+          <p className="text-sm" data-testid="storage-sentence">
+            <span aria-hidden="true">{v.icon} </span><span className="font-medium">{v.stateText}</span>
+            {v.sentence && <span className="text-muted"> · {v.sentence}</span>}
+          </p>
+          {v.pending && <p className="text-sm text-muted" role="status" data-testid="storage-pending">{t("storage.pending")}</p>}
+          {v.warning && <Callout tone={v.level === "critical" ? "danger" : "warn"} role="status" testid="storage-warning">{v.warning}</Callout>}
+          <MoreOptions title={t("storage.details")} summary={v.categories ? undefined : t("storage.pendingShort")} defaultOpen={v.level !== "ok"}>
+            {v.categories ? (
+              <>
+                <ul className="divide-y divide-line text-sm" data-testid="storage-categories">
+                  {v.categories.map((cat) => <li key={cat.id} className="flex items-center justify-between gap-3 py-2"><span>{cat.label}</span><span className="text-muted">{cat.text}</span></li>)}
+                </ul>
+                {v.partial && <p className="text-sm text-muted">{t("storage.partial")}</p>}
+                <p className="text-xs text-muted">{t("storage.disk", { free: v.freeText ?? "", total: v.totalText ?? "" })}{measured ? ` · ${t("storage.measuredAt", { when: measured })}` : ""}</p>
+              </>
+            ) : <p className="text-sm text-muted">{t("storage.pending")}</p>}
+          </MoreOptions>
+        </>
+      )}
+    </section>
   );
 }
 
