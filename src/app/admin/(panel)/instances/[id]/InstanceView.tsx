@@ -18,6 +18,7 @@ import { localized } from "@/core/modules/types";
 import { buildTheme } from "@/core/color";
 import { getSetting, getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import { effectiveSort, SORTS, sortSettingKey } from "@/core/content/sort";
+import { effectiveSearch, searchSettingKey } from "@/core/content/search";
 import { mcpInstanceKey } from "@/core/modules/mcpProvider";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { pageIsOn, pageSettingStorageKey } from "@/core/modules/publicPage";
@@ -104,6 +105,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
 
   const mcpOn = (await getSetting<boolean>(mcpInstanceKey(instance.id))) !== false;
   const sort = effectiveSort(await getSetting(sortSettingKey(instance.id)), instance.display);
+  const searchOn = effectiveSearch(await getSetting(searchSettingKey(instance.id)), instance.display, mod.manifest.content?.search);
   const dataStatus = await dataStatusOf(instance.id);
   const taskRows = await Promise.all(Object.entries(mod.def.tasks ?? {}).map(async ([name, task]) => ({ name, every: task.everyMinutes, state: await taskStateOf(instance.id, name) })));
   const visibleSettings = mod.manifest.settings.filter((f) => advanced || !f.advanced);
@@ -250,6 +252,12 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
           {content && (
             <Select name="sort" label={t("instances.sort")} help={t("instances.sortHelp")} defaultValue={sort}
               options={SORTS.map((s) => ({ value: s, label: t(`sort.${s}`) }))} />
+          )}
+          {content && (
+            <div className="min-[1100px]:col-span-2">
+              <input type="hidden" name="search_was" value={searchOn ? "1" : "0"} />
+              <Checkbox name="search" label={t("instances.search")} help={t("instances.searchHelp")} defaultChecked={searchOn} />
+            </div>
           )}
           {advanced && (mod.manifest.mcp?.length || content) && (
             <div className="min-[1100px]:col-span-2"><Checkbox name="mcp" label={t("instances.mcp")} help={t("instances.mcpHelp")} defaultChecked={mcpOn} /></div>
