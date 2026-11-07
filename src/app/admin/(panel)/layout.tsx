@@ -63,7 +63,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const setupList = nav.flatMap((m) => { const s = statuses?.get(m.id); return s?.state === "setup" && s.missing.length > 0 ? [`${m.name} (${s.missing.map(shortLabel).join(", ")})`] : []; });
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
-  const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
+  const shown = new Set([...menu.content, ...menu.community, ...menu.tools, ...menu.connections]);
+  const unpinnedPages = nav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
   const adminEntries = administrationEntries({ role: user.level, advanced });
@@ -86,31 +87,25 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
           <div className="mt-4"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
-          {menu.content.length > 0 && (
-            <div>
-              <p className={group}>{t("nav.myContent")}</p>
-              {menu.content.map(entryLink)}
+          {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => items.length > 0 && (
+            <div key={id} data-testid={`nav-section-${id}`}>
+              <p className={group}>{t(`nav.${id}`)}</p>
+              {items.map(entryLink)}
+            </div>
+          ))}
+          {menu.connections.length > 0 && (
+            <div className="mt-6" data-testid="nav-section-connections">
+              <NavGroup id="connections" title={t("nav.connections")} targets={menu.connections.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
+                {menu.connections.map(entryLink)}
+              </NavGroup>
             </div>
           )}
 
-          {menu.community.items.length > 0 && (
-            <div>
-              <p className={group}>{t("nav.myCommunity")}</p>
-              {menu.community.collapsible
-                ? menu.community.groups.map((g) => (
-                    <NavGroup key={g.id} id={g.id} title={t(`navgroup.${g.id}`)} targets={g.items.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState[g.id]} openByDefault={false} badge={g.items.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
-                      {g.items.map(entryLink)}
-                    </NavGroup>
-                  ))
-                : menu.community.items.map(entryLink)}
-            </div>
-          )}
-
-          <p className={group}>{t("nav.mySite")}</p>
+          <p className={group}>{t("nav.site")}</p>
           {canManage && <NavLink href={HOME_HREF} also={[NAVIGATION_HREF, NAVIGATION_HEADER_HREF, SOCIAL_HREF]}>{t("nav.homeMenu")}</NavLink>}
           {canManage && <NavLink href={APPEARANCE_HREF}>{t("nav.appearance")}</NavLink>}
           {canManage && <NavLink href={SETTINGS_HREF}>{t("nav.settings")}</NavLink>}
-          {editor && <NavLink href={REDIRECTS_HREF}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
+          {editor && <NavLink href={REDIRECTS_HREF}>{t("nav.redirects")}</NavLink>}
 
           {adminEntries.length > 0 && (
             <>

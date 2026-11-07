@@ -30,6 +30,8 @@ export type PlacementManifest = {
   sections?: readonly unknown[];
   /** (0.2.14) Rangement DÉCLARÉ par le module (`family` du manifeste) : il prime sur la déduction ci-dessous. Absent ou inapplicable : la règle habituelle, inchangée. */
   family?: string;
+  /** (0.6.19) Where the module sits in the sidebar: `content`, `community`, `tools` or `connections`. Optional; it wins over `family` and over the type rule, and changes nothing else (not the pinning default). */
+  menuGroup?: string;
 };
 
 /**
@@ -97,51 +99,58 @@ export const unpinnedPlacementFor = (m: PlacementManifest): Placement => (isOver
 
 // ─── Rubriques et groupes du menu ───────────────────────────────────────────
 
-/** Rubriques du menu où se rangent les instances épinglées : « Mon contenu » (on y écrit) et « Ma communauté » (relations, pages interactives). */
-export const MENU_SECTIONS = ["content", "community"] as const;
+/**
+ * Sidebar sections that receive pinned module instances, in display order: Content (what you write and publish), Community (the people who follow you),
+ * Tools (your own tools, including the OBS helpers) and Connections (connectors, bots and technical links; collapsed by default).
+ * The titles are headings, not entries; "Site", "Administration" and "Account" belong to the core.
+ */
+export const MENU_SECTIONS = ["content", "community", "tools", "connections"] as const;
 export type MenuSectionId = (typeof MENU_SECTIONS)[number];
 
-/**
- * Rubrique par défaut d'un module, déduite de son manifeste (aucun champ en plus à renseigner) : un module à contenu (blog, pages, sponsoring…)
- * ou de catégorie « content » → « Mon contenu » ; tout le reste (outils de relation, pages animées, widgets) → « Ma communauté ».
- */
-export function defaultSection(m: Pick<PlacementManifest, "type" | "content" | "family" | "permissions">): MenuSectionId {
-  const declared = declaredFamily(m);
-  if (declared === "content" || declared === "community") return declared;   // (0.2.14) déclaré par le module ; « connections » et « overlays » : la règle habituelle
-  return m.content || m.type === "content" ? "content" : "community";
+/** The manifest value `menuGroup`, when it is one of the four sections (the manifest schema already refuses anything else at install time). */
+export function declaredMenuGroup(m: Pick<PlacementManifest, "menuGroup">): MenuSectionId | null {
+  return (MENU_SECTIONS as readonly string[]).includes(String(m.menuGroup)) ? (m.menuGroup as MenuSectionId) : null;
 }
 
-/** Groupes pliables de « Ma communauté », dans l'ordre d'affichage. « other » reçoit les catégories inconnues ou absentes (modules tiers). */
-export const MENU_GROUPS = ["utility", "widget", "other"] as const;
-export type MenuGroupId = (typeof MENU_GROUPS)[number];
-
-/** Groupe d'une catégorie de module : outils (contacts, partenariats) → « utility » ; pages animées (planning, formulaire) → « widget » ; le reste → « other ». */
-export function menuGroupOf(type: string): MenuGroupId {
-  return type === "utility" ? "utility" : type === "widget" ? "widget" : "other";
+/**
+ * Default sidebar section of a module, resolved in this order (manifest alone, nothing to ask the module):
+ * 1. `menuGroup` declared by the module;
+ * 2. the older `family` key: content and community as such, connections as Connections, overlays as Tools;
+ * 3. the type: `social` and `integration` are Connections; a simple overlay is Tools; a module with `content` (or type `content`) is Content;
+ * 4. everything else is Community.
+ * An older core ignores `menuGroup` and keeps rule 2 to 4 (its sidebar only has Content and Community).
+ */
+export function defaultSection(m: Pick<PlacementManifest, "type" | "content" | "family" | "permissions" | "menuGroup" | "page" | "sections">): MenuSectionId {
+  const group = declaredMenuGroup(m);
+  if (group) return group;
+  const declared = declaredFamily(m);
+  if (declared === "content" || declared === "community" || declared === "connections") return declared;
+  if (declared === "overlays") return "tools";
+  if (m.type === "social" || m.type === "integration") return "connections";
+  if (isOverlayManifest(m)) return "tools";
+  return m.content || m.type === "content" ? "content" : "community";
 }
 
 export type MenuEntry = { id: string; type: string; section: MenuSectionId; placement: Placement; error: boolean; badge: number; content: boolean };
 export type MenuLayout<T extends MenuEntry> = {
-  /** Instances épinglées de la rubrique « Mon contenu ». */
+  /** Pinned instances of each section, in the order they came. An empty section is not shown. */
   content: T[];
-  /** Instances épinglées de « Ma communauté » : en liste simple, ou en groupes pliables quand elles sont nombreuses (`collapsible`). Les groupes vides n'existent pas. */
-  community: { items: T[]; groups: { id: MenuGroupId; items: T[] }[]; collapsible: boolean };
-  /** Pastilles des instances qui ne sont PAS épinglées : elles remontent sur l'entrée Extensions. */
+  community: T[];
+  tools: T[];
+  connections: T[];
+  /** Badges of the instances that are NOT pinned: they rise to the Extensions entry. */
   unpinnedBadge: number;
 };
 
 /**
- * Répartit les instances : seules les épinglées qui tournent (sans erreur de données) figurent dans le menu, chacune dans sa rubrique.
- * Les autres ne vivent que dans Extensions, et leurs pastilles s'additionnent dans `unpinnedBadge` pour ne rien cacher.
- * Dès qu'il y a plus de OPEN_BY_DEFAULT_MAX entrées dans « Ma communauté », elles passent en groupes pliables.
+ * Splits the instances: only pinned ones that run (no data error) are in the sidebar, each in its section.
+ * The others live in Extensions only, and their badges add up in `unpinnedBadge` so nothing is hidden.
  */
 export function buildMenuLayout<T extends MenuEntry>(items: readonly T[]): MenuLayout<T> {
   const pinned = items.filter((i) => !i.error && isPinned(i.placement));
-  const content = pinned.filter((i) => i.section === "content");
-  const rest = pinned.filter((i) => i.section === "community");
-  const groups = MENU_GROUPS.map((id) => ({ id, items: rest.filter((i) => menuGroupOf(i.type) === id) })).filter((g) => g.items.length > 0);
+  const of = (id: MenuSectionId) => pinned.filter((i) => i.section === id);
   const unpinnedBadge = items.reduce((n, i) => n + (!isPinned(i.placement) && !i.error ? i.badge : 0), 0);
-  return { content, community: { items: groups.flatMap((g) => g.items), groups, collapsible: rest.length > OPEN_BY_DEFAULT_MAX }, unpinnedBadge };
+  return { content: of("content"), community: of("community"), tools: of("tools"), connections: of("connections"), unpinnedBadge };
 }
 
 /** Pastille de l'entrée Extensions : mises à jour de modules + modules à régler (à configurer ou en erreur) + pastilles des modules non épinglés. */
@@ -154,9 +163,6 @@ export function extensionsBadge(i: { modulesBehind: number; toSetUp: number; unp
 
 /** Cookie du navigateur : lu côté serveur pour que le menu s'affiche tout de suite dans le bon état (aucun clignotement). */
 export const NAV_STATE_COOKIE = "curiosa_nav_groups";
-
-/** Jusqu'à ce nombre d'entrées dans « Ma communauté », elles restent en liste simple ; au-delà, elles passent en groupes pliables, repliés par défaut (sauf celui de la page ouverte). */
-export const OPEN_BY_DEFAULT_MAX = 6;
 
 export type NavState = Record<string, boolean>;
 
@@ -173,8 +179,6 @@ export function parseNavState(raw: string | null | undefined): NavState {
 export function serializeNavState(state: NavState): string {
   return Object.entries(state).filter(([id]) => /^[a-z][a-z0-9_-]{0,30}$/.test(id)).map(([id, open]) => `${id}:${open ? 1 : 0}`).join(",");
 }
-
-export const groupOpenByDefault = (pinnedCount: number): boolean => pinnedCount <= OPEN_BY_DEFAULT_MAX;
 
 /** Un groupe est ouvert si la page courante s'y trouve ; sinon selon le dernier choix mémorisé, sinon selon le défaut. */
 export function isGroupOpen(id: string, state: NavState, openByDefault: boolean, hasCurrent: boolean): boolean {
