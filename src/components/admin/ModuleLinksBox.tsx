@@ -6,6 +6,7 @@ import { ui } from "./ui";
 import { cleanupAutoModuleAction, keepAutoModuleAction, repairModuleAction } from "@/app/admin/(panel)/modules/actions";
 import { RemoveChoices } from "./RemoveSection";
 import { PendingButton } from "./PendingButton";
+import { moduleHref } from "@/core/adminLinks";
 
 /**
  * Sur la page d'un module : « A besoin de » (et qui le fournit), « Utilisé par », « Installé automatiquement pour », ce qui manque (avec le bouton
@@ -62,7 +63,7 @@ export function ModuleLinksBox({ id, name, view, t, names, advanced, isOwner }: 
               <ul className="mt-2 space-y-1.5 text-sm" data-testid="module-used-by">
                 {view.usedBy.map((u) => (
                   <li key={u.id} className="flex flex-wrap items-center gap-x-2">
-                    <a href={`/admin/modules/${encodeURIComponent(u.id)}`} className="font-medium hover:text-accent">{u.name}</a>
+                    <a href={moduleHref(u.id)} className="font-medium hover:text-accent">{u.name}</a>
                     <span className="text-muted">· {u.services.join(", ")}</span>
                   </li>
                 ))}

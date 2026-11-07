@@ -1,3 +1,4 @@
+import { SETTINGS_LANGUAGES_HREF, SETTINGS_PRIVACY_HREF, SETTINGS_SITE_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 /**
  * VISIBILITÉ DANS LES RÉPONSES DES IA — la liste de contrôles de la page d'admin « Visibilité dans les réponses des IA ».
  * Pure : l'état du site et les « sondes » (qui appellent robots.txt, le plan du site et llms.txt EN INTERNE, sans réseau) sont fournis.
@@ -29,8 +30,8 @@ export type VisibilityState = {
 /** Résultat des appels internes : `null` = n'a pas répondu correctement. */
 export type VisibilityProbes = { robots: boolean; sitemapUrls: number | null; llms: { bytes: number } | null };
 
-const SETTINGS_PRIVACY = "/admin/settings#privacy";
-const SETTINGS_SITE = "/admin/settings#site";
+const SETTINGS_PRIVACY = SETTINGS_PRIVACY_HREF;
+const SETTINGS_SITE = SETTINGS_SITE_HREF;
 
 export function computeChecks(s: VisibilityState, p: VisibilityProbes): VisibilityCheck[] {
   const ok = (v: boolean): CheckStatus => (v ? "ok" : "todo");
@@ -42,8 +43,8 @@ export function computeChecks(s: VisibilityState, p: VisibilityProbes): Visibili
     { id: "description", status: ok(s.hasTagline), fix: SETTINGS_SITE },
     { id: "name", status: ok(s.hasName), fix: SETTINGS_SITE },
     { id: "logo", status: ok(s.hasLogo), fix: SETTINGS_SITE },
-    { id: "social", status: ok(s.socialCount > 0), fix: "/admin/social", vars: { n: s.socialCount } },
-    { id: "languages", status: "info", fix: "/admin/settings#languages", vars: { main: s.mainLocale, others: s.otherLocales.join(", "), count: s.otherLocales.length } },
+    { id: "social", status: ok(s.socialCount > 0), fix: SOCIAL_HREF, vars: { n: s.socialCount } },
+    { id: "languages", status: "info", fix: SETTINGS_LANGUAGES_HREF, vars: { main: s.mainLocale, others: s.otherLocales.join(", "), count: s.otherLocales.length } },
     { id: "structured", status: "ok", fix: SETTINGS_SITE, vars: { kind: s.entity, n: s.socialCount } },
     { id: "rss", status: ok(s.feedItems > 0), vars: { n: s.feedItems } },
     { id: "training", status: "info", fix: SETTINGS_PRIVACY, vars: { blocked: s.blockTraining ? 1 : 0 } },

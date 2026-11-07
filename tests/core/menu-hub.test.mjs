@@ -240,7 +240,7 @@ test("Extensions > Installées : une carte par module avec ses instances (nom, �
   assert.match(page, /parseFamily\(query\.family\)/);
   const card = read("src/components/admin/ExtensionCard.tsx");
   assert.match(card, /<InstanceState t=\{t\} state=\{m\.attention\}/, "pastille seulement pour « à configurer » ou « erreur »");
-  assert.match(card, /const settingsHref = single \? `\/admin\/instances\/\$\{single\.id\}` : `\/admin\/modules\//, "une seule action visible : Réglages");
+  assert.match(card, /const settingsHref = single \? instanceHref\(single\.id\) : moduleHref\(/, "une seule action visible : Réglages");
   assert.match(card, /<Link href=\{settingsHref\} scroll=\{false\}/, "navigation douce : les réglages s'ouvrent en fenêtre");
   assert.ok(!/toggle(Instance|Module)|turnOn|turnOff|modules\.off|opacity-60/.test(card), "plus d'interrupteur, de pastille « éteint » ni de carte grisée");
   assert.match(card, /const single = m\.instances\.length === 1/, "une seule instance : jamais montrée à part");
@@ -310,7 +310,7 @@ test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet
   const updates = read(`${PANEL}/extensions/updates/page.tsx`);
   assert.match(updates, /!can\(user, "core:modules\.install"\)\) redirect\(EXTENSIONS_HREF\)/);
   assert.match(updates, /<ModulesUpdatesSection/);
-  assert.match(updates, /href="\/admin\/updates"/, "les mises à jour du cœur gardent leur page");
+  assert.match(updates, /href=\{UPDATES_HREF\}/, "les mises à jour du cœur gardent leur page");
   assert.match(read(`${PANEL}/extensions/page.tsx`), /current="installed"/);
   const section = read("src/components/admin/ModulesUpdatesSection.tsx");
   assert.match(section, /updates\.modules\.all/, "« Tout mettre à jour »");
@@ -323,7 +323,7 @@ test("Extensions : trois onglets (Installées, Ajouter, Mises à jour), l'onglet
 });
 
 test("anciennes adresses : Modules, Catalogue, Intégrations et Overlays redirigent vers Extensions ; les fiches de module et d'instance existent toujours", () => {
-  for (const f of ["modules/page.tsx", "catalogue/page.tsx", "catalogue/details/page.tsx", "integrations/page.tsx", "overlays/page.tsx"]) assert.match(read(`${PANEL}/${f}`), /redirectLegacy\("\/admin\//, f);
+  for (const f of ["modules/page.tsx", "catalogue/page.tsx", "catalogue/details/page.tsx", "integrations/page.tsx", "overlays/page.tsx"]) assert.match(read(`${PANEL}/${f}`), /redirectLegacy\((?:MODULES_HREF|\w+_LEGACY_HREF|`\$\{CATALOGUE_LEGACY_HREF\}\/details`)/, f);
   for (const f of ["modules/[id]/page.tsx", "instances/[id]/page.tsx", "updates/page.tsx", "extensions/page.tsx", "extensions/add/page.tsx", "extensions/add/details/page.tsx", "extensions/add/@modal/(.)details/page.tsx", "extensions/updates/page.tsx"]) assert.ok(fs.existsSync(`${PANEL}/${f}`), f);
   assert.match(read(`${PANEL}/extensions/add/page.tsx`), /current="add"/);
   const L = X;
@@ -356,9 +356,9 @@ test("entrée de menu « Extensions » : active sur ses trois onglets, le catalo
   assert.ok(!here("/admin/entries", "?c=blog"));
   assert.ok(!here("/admin/updates"), "la page Mises à jour du site garde sa propre entrée");
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\["\/admin\/modules", \.\.\.unpinnedPages\]\}/);
+  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\[MODULES_HREF, \.\.\.unpinnedPages\]\}/);
   assert.ok(!/prominent/.test(layout) && !/prominent/.test(read("src/components/admin/NavLink.tsx")), "plus d'entrée en surbrillance");
-  assert.ok(!layout.includes("nav.integrations") && !layout.includes("nav.overlays") && !layout.includes("/admin/integrations") && !layout.includes("/admin/overlays"), "Intégrations et Overlays ont disparu du menu");
+  assert.ok(!layout.includes("nav.integrations") && !layout.includes("nav.overlays") && !layout.includes("INTEGRATIONS_LEGACY_HREF") && !layout.includes("OVERLAYS_LEGACY_HREF"), "Intégrations et Overlays ont disparu du menu");
   assert.match(layout, /extensionsBadge\(\{ modulesBehind, toSetUp, unpinnedBadge: menu\.unpinnedBadge \}\)/, "les pastilles remontent sur Extensions");
   assert.match(layout, /badge=\{extensions\.count\}/);
 });
@@ -371,9 +371,9 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   const links = layout.slice(layout.indexOf("const adminLinks"), layout.indexOf("const group ="));
   const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.health", "nav.backup", "nav.updates", "nav.upkeep", "nav.audit"].map((k) => links.indexOf(`"${k}"`));
   assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit");
-  assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("/admin/mcp") && !layout.includes("/admin/maintenance-ia"), "les deux anciennes entrées ont disparu");
+  assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("MCP_LEGACY_HREF") && !layout.includes("MAINTENANCE_IA_LEGACY_HREF"), "les deux anciennes entrées ont disparu");
   const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
-  for (const href of ["/admin/home", "/admin/navigation", "/admin/settings", "/admin/social", "/admin/ai-visibility", "/admin/redirects"]) assert.ok(site.includes(`href="${href}"`), href);
+  for (const href of ["HOME_HREF", "NAVIGATION_HREF", "SETTINGS_HREF", "SOCIAL_HREF", "AI_VISIBILITY_HREF", "REDIRECTS_HREF"]) assert.ok(site.includes(`href={${href}}`), href);
 });
 
 test("menu : « Apparence » et « Réglages du site » sont deux mots différents, sans doublon de libellé, en français comme en anglais (R12)", () => {

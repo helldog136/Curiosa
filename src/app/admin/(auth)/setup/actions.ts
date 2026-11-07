@@ -1,4 +1,5 @@
 "use server";
+import { SETUP_ASSISTANT_HREF } from "@/core/adminLinks";
 
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -18,7 +19,7 @@ import { slugify } from "@/core/slug";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /** The optional last step ("Connect your AI assistant"); skipping it leads to the dashboard. */
-const SETUP_NEXT = "/admin/setup/assistant";
+const SETUP_NEXT = SETUP_ASSISTANT_HREF;
 
 function localizedText(v: string | Record<string, string> | undefined, locale: string): string {
   if (!v) return "";

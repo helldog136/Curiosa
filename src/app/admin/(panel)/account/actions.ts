@@ -1,4 +1,5 @@
 "use server";
+import { ACCOUNT_HREF, ADMIN_HREF, LOGIN_HREF } from "@/core/adminLinks";
 
 import bcrypt from "bcryptjs";
 import { revalidatePath } from "next/cache";
@@ -23,7 +24,7 @@ export async function updateProfile(_prev: ActionState, formData: FormData): Pro
   const locale = String(formData.get("locale") ?? "");
   if (!name || (locale && !isKnownLocale(locale))) return { error: t("error.generic") };
   await prisma.user.update({ where: { id: user.id }, data: { name, locale: locale || null } });
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   return { ok: t("action.saved") };
 }
 
@@ -38,7 +39,7 @@ export async function changePassword(_prev: ActionState, formData: FormData): Pr
   await audit(user.email, "user.password");
   // Un nouveau mot de passe coupe toutes les sessions ouvertes (la vôtre aussi : on se reconnecte avec le nouveau).
   await revokeSessions(user.id);
-  await signOut({ redirectTo: "/admin/login?changed=1" });
+  await signOut({ redirectTo: `${LOGIN_HREF}?changed=1` });
   return { ok: t("action.saved") };
 }
 
@@ -47,7 +48,7 @@ export async function signOutEverywhere(): Promise<void> {
   const { user } = await adminCtx("member");
   await revokeSessions(user.id);
   await audit(user.email, "user.sessions.revoke");
-  await signOut({ redirectTo: "/admin/login" });
+  await signOut({ redirectTo: LOGIN_HREF });
 }
 
 /* ───────────── Double vérification ───────────── */
@@ -68,7 +69,7 @@ export async function confirmTwoFactor(code: string): Promise<TwoFactorResult> {
   const r = await confirmEnroll(user.id, String(code ?? ""));
   if (!r.ok) return { error: t("account.twofa.wrongCode") };
   await audit(user.email, "user.2fa.enable");
-  revalidatePath("/admin/account");
+  revalidatePath(ACCOUNT_HREF);
   return { codes: r.recoveryCodes, remaining: r.recoveryCodes.length };
 }
 
@@ -82,7 +83,7 @@ export async function disableMyTwoFactor(password: string, code: string): Promis
   if (!(await verifySecondFactor(user.id, String(code ?? ""))).ok) return { error: t("account.twofa.wrongCode") };
   await disableTwoFactor(user.id);
   await audit(user.email, "user.2fa.disable");
-  await signOut({ redirectTo: "/admin/login" });
+  await signOut({ redirectTo: LOGIN_HREF });
   return {};
 }
 
@@ -114,14 +115,14 @@ export async function finishPasskeyRegistration(challengeId: string, response: R
   const done = await finishRegistration(user.id, String(challengeId ?? ""), response as never, String(name ?? ""), await currentRelying());
   if (!done.ok) return { error: t("account.passkeys.failed") };
   await audit(user.email, "user.passkey.add");
-  revalidatePath("/admin/account");
+  revalidatePath(ACCOUNT_HREF);
   return { ok: true };
 }
 
 export async function renameMyPasskey(id: string, name: string): Promise<PasskeyResult> {
   const { user, t } = await adminCtx("member", { allowUnenrolled: true });
   if (!(await renamePasskey(user.id, String(id ?? ""), String(name ?? "")))) return { error: t("error.generic") };
-  revalidatePath("/admin/account");
+  revalidatePath(ACCOUNT_HREF);
   return { ok: true };
 }
 
@@ -133,6 +134,6 @@ export async function removeMyPasskey(id: string, password: string): Promise<Pas
   if (enforced && !user.totp && (await countPasskeys(user.id)) <= 1) return { error: t("account.twofa.required") };
   if (!(await deletePasskey(user.id, String(id ?? "")))) return { error: t("error.generic") };
   await audit(user.email, "user.passkey.remove");
-  revalidatePath("/admin/account");
+  revalidatePath(ACCOUNT_HREF);
   return { ok: true };
 }

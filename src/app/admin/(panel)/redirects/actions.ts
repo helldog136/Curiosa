@@ -1,4 +1,5 @@
 "use server";
+import { REDIRECTS_HREF, redirectHref, redirectsHref } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -39,9 +40,9 @@ export async function createRedirect(_prev: ActionState, formData: FormData): Pr
   }, { siteName: config.name });
   if (!result.ok) return { errors: { [FIELD[result.fail.field]]: t(result.fail.key) } };
   await audit(user.email, "redirect.create", result.redirect.path);
-  revalidatePath("/admin/redirects");
+  revalidatePath(REDIRECTS_HREF);
   // Elle arrive tout de suite sur la fiche : QR code, « Copier », « Tester le lien ».
-  redirect(`/admin/redirects/${result.redirect.id}?created=1`);
+  redirect(redirectHref(result.redirect.id, { created: "1" }));
 }
 
 /** Formulaire de la fiche : destination, lien suivant une entrée (avancé), permanent (avancé), date de fin et message. Le nom court ne change jamais (il est dans le QR code imprimé). */
@@ -59,8 +60,8 @@ export async function updateRedirect(id: string, _prev: ActionState, formData: F
   });
   if (!result.ok) return { errors: { [FIELD[result.fail.field]]: t(result.fail.key) } };
   await audit(user.email, "redirect.update", row.path);
-  revalidatePath("/admin/redirects");
-  revalidatePath(`/admin/redirects/${id}`);
+  revalidatePath(REDIRECTS_HREF);
+  revalidatePath(redirectHref(id));
   return { ok: t("redirects.saved") };
 }
 
@@ -71,8 +72,8 @@ export async function toggleRedirect(id: string): Promise<void> {
   await prisma.redirect.update({ where: { id }, data: { active: !r.active } });
   invalidateRedirectGate();
   await audit(user.email, "redirect.toggle", r.path);
-  revalidatePath("/admin/redirects");
-  revalidatePath(`/admin/redirects/${id}`);
+  revalidatePath(REDIRECTS_HREF);
+  revalidatePath(redirectHref(id));
 }
 
 /**
@@ -88,8 +89,8 @@ export async function setRedirectActive(id: string, active: boolean): Promise<{ 
     await prisma.redirect.update({ where: { id }, data: { active } });
     invalidateRedirectGate();
     await audit(user.email, "redirect.toggle", r.path);
-    revalidatePath("/admin/redirects");
-    revalidatePath(`/admin/redirects/${id}`);
+    revalidatePath(REDIRECTS_HREF);
+    revalidatePath(redirectHref(id));
   }
   return { ok: t(active ? "redirects.switch.on" : "redirects.switch.off") };
 }
@@ -102,8 +103,8 @@ export async function reactivateRedirect(id: string): Promise<void> {
   await prisma.redirect.update({ where: { id }, data: { expiresAt: null, active: true } });
   invalidateRedirectGate();
   await audit(user.email, "redirect.reactivate", r.path);
-  revalidatePath("/admin/redirects");
-  revalidatePath(`/admin/redirects/${id}`);
+  revalidatePath(REDIRECTS_HREF);
+  revalidatePath(redirectHref(id));
 }
 
 export async function deleteRedirect(id: string): Promise<void> {
@@ -111,8 +112,8 @@ export async function deleteRedirect(id: string): Promise<void> {
   const path = await deleteRedirectRecord(id);
   if (path === null) return;
   await audit(user.email, "redirect.delete", path);
-  revalidatePath("/admin/redirects");
-  redirect("/admin/redirects?deleted=1");
+  revalidatePath(REDIRECTS_HREF);
+  redirect(redirectsHref({ deleted: "1" }));
 }
 
 /** Nom court proposé pour une adresse collée (appelé par le formulaire dès que l'adresse est saisie) ; vide si l'adresse n'est pas comprise. */

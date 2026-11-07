@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF, LOGIN_HREF } from "@/core/adminLinks";
 
 import { AuthError } from "next-auth";
 import { redirect } from "next/navigation";
@@ -15,18 +16,18 @@ import type { ActionState } from "@/components/admin/ActionForm";
 export async function choosePassword(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("member", { allowForced: true, allowUnenrolled: true });
   // Déjà fait (autre onglet, lien direct) : rien à choisir, on va au tableau de bord.
-  if (!user.mustChangePassword) redirect("/admin");
+  if (!user.mustChangePassword) redirect(ADMIN_HREF);
   const r = await chooseOwnPassword(user.id, String(formData.get("next") ?? ""), String(formData.get("confirm") ?? ""));
   if (!r.ok) {
-    if (r.reason === "notRequired") redirect("/admin");
+    if (r.reason === "notRequired") redirect(ADMIN_HREF);
     // Sous le champ concerné (le premier champ en erreur reçoit le focus) : jamais un bandeau qui laisse chercher.
     return r.reason === "weak" ? { errors: { next: t("choosePassword.weak") } } : r.reason === "mismatch" ? { errors: { confirm: t("choosePassword.mismatch") } } : { errors: { next: t("choosePassword.same") } };
   }
   // Les AUTRES sessions sont coupées (numéro de session augmenté) ; celle-ci est remplacée par une session neuve au bon numéro, sans redemander quoi que ce soit.
   try {
-    await signIn("credentials", { ticket: signToken("ticket", user.id), redirectTo: "/admin" });
+    await signIn("credentials", { ticket: signToken("ticket", user.id), redirectTo: ADMIN_HREF });
   } catch (error) {
-    if (error instanceof AuthError) redirect("/admin/login?changed=1");
+    if (error instanceof AuthError) redirect(`${LOGIN_HREF}?changed=1`);
     throw error; // la redirection de signIn est une exception à laisser passer
   }
   return null;
@@ -34,5 +35,5 @@ export async function choosePassword(_prev: ActionState, formData: FormData): Pr
 
 /** Se déconnecter reste toujours possible, même avec un mot de passe temporaire à remplacer (aucun droit particulier nécessaire pour fermer sa propre session). */
 export async function signOutForced(): Promise<void> {
-  await signOut({ redirectTo: "/admin/login" });
+  await signOut({ redirectTo: LOGIN_HREF });
 }

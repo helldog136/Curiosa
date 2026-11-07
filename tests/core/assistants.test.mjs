@@ -57,8 +57,8 @@ test("anciennes pages : trois petites pages de redirection, sans route attrape-t
 });
 
 test("liens internes : plus aucune adresse d'avant dans le code (hors correspondance et pages de redirection)", () => {
-  const allowed = new Set(["src/core/services/mcp/assistantsLinks.ts", `${PANEL}/mcp/page.tsx`, `${PANEL}/mcp/[id]/page.tsx`, `${PANEL}/maintenance-ia/page.tsx`]);
-  const offenders = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !allowed.has(f) && /\/admin\/(mcp|maintenance-ia)\b/.test(read(f)));
+  const allowed = new Set(["src/core/adminLinks.ts", "src/core/services/mcp/assistantsLinks.ts", `${PANEL}/mcp/page.tsx`, `${PANEL}/mcp/[id]/page.tsx`, `${PANEL}/maintenance-ia/page.tsx`]);
+  const offenders = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !allowed.has(f) && /["'`]\/admin\/(mcp|maintenance-ia)\b/.test(read(f)));
   assert.deepEqual(offenders, []);
   // L'API des clients déjà connectés ne bouge pas.
   assert.ok(fs.existsSync("src/app/api/mcp/route.ts") && fs.existsSync("src/app/api/mcp/[token]/route.ts"));

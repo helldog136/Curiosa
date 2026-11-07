@@ -16,6 +16,7 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { Callout, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { savePageAction, testAction } from "../actions";
+import { OVERLAY_PAGES_HREF, overlayPagePreviewHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -60,7 +61,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
     <div className="space-y-6">
       <div className="max-w-4xl space-y-6">
       <PageHeader title={page.name} intro={t("ovp.editIntro")}>
-        <Link href="/admin/overlay-pages" className={ui.btn}>{t("ovp.back")}</Link>
+        <Link href={OVERLAY_PAGES_HREF} className={ui.btn}>{t("ovp.back")}</Link>
       </PageHeader>
 
       <section aria-label={t("ovp.test")} className={`rounded-2xl border p-4 ${testing ? "border-amber-500/50 bg-amber-500/10" : "border-line bg-surface"}`} data-testid="test-mode">
@@ -91,7 +92,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
           available={available}
           resolutions={RESOLUTIONS.map(([w, h]) => [w, h])}
           limits={{ elements: MAX_ELEMENTS_PER_PAGE, fold: OPTIONS_FOLDED_AFTER, minSide: MIN_SIDE, maxSide: MAX_SIDE }}
-          previewSrc={`/admin/overlay-pages/${page.id}/preview`}
+          previewSrc={overlayPagePreviewHref(page.id)}
           strings={strings}
         />
       </ActionForm>

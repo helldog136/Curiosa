@@ -1,3 +1,4 @@
+import { ASSISTANTS_HREF } from "@/core/adminLinks";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -14,17 +15,18 @@ import { ui } from "@/components/admin/ui";
 import type { Translator } from "@/core/i18n/dictionary";
 import type { Checklist } from "@/core/domainChecklist";
 import type { MigrationCommands } from "@/core/domainCommands";
+import { OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_ADDRESS_AFTER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
-const HERE = "/admin/settings/address";
+const HERE = SETTINGS_ADDRESS_HREF;
 
 export default async function AddressPage({ searchParams }: { searchParams: Search }) {
   const { t, locale, config, advanced } = await adminCtx("admin");
   // Réglage AVANCÉ : en mode simple la page n'existe pas (retour sans erreur vers les réglages du site).
-  if (!advanced) redirect("/admin/settings");
+  if (!advanced) redirect(SETTINGS_HREF);
   const sp = await searchParams;
   const toRaw = first(sp.to);
   const asked = toRaw !== undefined;
@@ -121,7 +123,7 @@ function Step2({ t, checklist: c, oldHost, newHost, same, next, back }: { t: Tra
         </Row>
         <Row t={t} todo={c.shortLinks.total > 0} title={t("domain.check.shortLinks", { n: c.shortLinks.total })} testid="check-shortlinks">
           <p className={small}>{c.shortLinks.total > 0 ? t("domain.check.shortLinksHelp") : t("domain.check.shortLinksNone")}</p>
-          {c.shortLinks.total > 0 && <Link href="/admin/redirects" className="text-sm font-medium text-accent hover:underline">{t("domain.check.shortLinksOpen")} →</Link>}
+          {c.shortLinks.total > 0 && <Link href={REDIRECTS_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.check.shortLinksOpen")} →</Link>}
         </Row>
         {c.returns.length === 0 && <Row t={t} todo={false} title={t("domain.check.returnsNone")} testid="check-returns" />}
         {c.returns.map((r, i) => (
@@ -140,11 +142,11 @@ function Step2({ t, checklist: c, oldHost, newHost, same, next, back }: { t: Tra
         ))}
         <Row t={t} todo={c.assistants.active > 0} title={t("domain.check.assistants", { n: c.assistants.byAddress })} testid="check-assistants">
           <p className={small}>{c.assistants.active > 0 ? t("domain.check.assistantsHelp", { active: c.assistants.active, old: oldHost }) : t("domain.check.assistantsNone")}</p>
-          {c.assistants.active > 0 && <Link href="/admin/assistants" className="text-sm font-medium text-accent hover:underline">{t("domain.check.assistantsOpen")} →</Link>}
+          {c.assistants.active > 0 && <Link href={ASSISTANTS_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.check.assistantsOpen")} →</Link>}
         </Row>
         <Row t={t} todo={c.overlays.pages + c.overlays.sources > 0} title={t("domain.check.overlays", { n: c.overlays.pages + c.overlays.sources })} testid="check-overlays">
           <p className={small}>{c.overlays.pages + c.overlays.sources > 0 ? t("domain.check.overlaysHelp") : t("domain.check.overlaysNone")}</p>
-          {c.overlays.pages > 0 && <Link href="/admin/overlay-pages" className="text-sm font-medium text-accent hover:underline">{t("domain.check.overlaysOpen")} →</Link>}
+          {c.overlays.pages > 0 && <Link href={OVERLAY_PAGES_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.check.overlaysOpen")} →</Link>}
         </Row>
         <Row t={t} todo title={t("domain.check.sessions")} testid="check-sessions"><p className={small}>{t("domain.check.sessionsHelp")}</p></Row>
         <Row t={t} todo title={t("domain.check.search")} testid="check-search"><p className={small}>{t("domain.check.searchHelp")}</p></Row>
@@ -229,7 +231,7 @@ function Step3({ t, oldHost, newHost, newUrl, applied, legacyList, back }: { t: 
         </li>
       </ol>
       <div className="flex flex-wrap items-center gap-3">
-        <Link href="/admin/settings/address/after" className={ui.btnPrimary} data-testid="domain-after">{t("domain.step3.next")}</Link>
+        <Link href={SETTINGS_ADDRESS_AFTER_HREF} className={ui.btnPrimary} data-testid="domain-after">{t("domain.step3.next")}</Link>
         <Link href={back} className="text-sm underline hover:text-accent">{t("domain.step3.back")}</Link>
       </div>
     </div>

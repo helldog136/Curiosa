@@ -1,4 +1,5 @@
 "use server";
+import { OVERLAY_PAGES_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -17,7 +18,7 @@ import type { ActionState } from "@/components/admin/ActionForm";
  * en base par `adminCtx` (jamais lue du formulaire) ; (3) tout ce qui vient du formulaire est revalidé côté serveur ; (4) chaque changement est noté au journal d'audit,
  * sans jamais écrire une adresse secrète.
  */
-const LIST = "/admin/overlay-pages";
+const LIST = OVERLAY_PAGES_HREF;
 const text = (v: unknown, max = 200) => String(v ?? "").slice(0, max);
 const back = (code: string): never => redirect(`${LIST}?e=${code}`);
 const done = (code: string): never => redirect(`${LIST}?ok=${code}`);

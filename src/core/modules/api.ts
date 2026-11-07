@@ -24,6 +24,7 @@ import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
 import { eventsOf } from "@/core/journal/events";
 import { writeModuleLog, type JournalActor } from "@/core/journal/write";
 import type { ModuleApi } from "./types";
+import { instanceHref } from "@/core/adminLinks";
 
 /**
  * `ctx.api` : tout ce que le cœur met à disposition d'un module. Un module n'importe jamais rien du
@@ -187,7 +188,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
         const config = await getSiteConfig();
         return (await listInstances())
           .filter((i) => !module || i.moduleId === module)
-          .map((i) => ({ id: i.id, key: i.key, module: i.moduleId, basePath: i.basePath, name: pickName(i, loc ?? config.defaultLocale, config.defaultLocale), adminPath: `/admin/instances/${i.id}` }));
+          .map((i) => ({ id: i.id, key: i.key, module: i.moduleId, basePath: i.basePath, name: pickName(i, loc ?? config.defaultLocale, config.defaultLocale), adminPath: instanceHref(i.id) }));
       },
     },
     entries: {

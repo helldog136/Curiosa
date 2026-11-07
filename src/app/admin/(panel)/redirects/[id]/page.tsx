@@ -21,6 +21,7 @@ import { Badge } from "@/components/admin/Badge";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { deleteRedirect, reactivateRedirect, setRedirectActive, updateRedirect } from "../actions";
+import { REDIRECTS_HREF, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function RedirectPage({ params, searchParams }: { params: P
   return (
     <div className="space-y-8">
       <div className="space-y-2">
-        <Link href="/admin/redirects" className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent hover:underline">← {t("redirects.backToList")}</Link>
+        <Link href={REDIRECTS_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent hover:underline">← {t("redirects.backToList")}</Link>
         <h1 className={`${ui.pageTitle} font-mono [overflow-wrap:anywhere]`}>/{r.path}</h1>
         <p className="flex flex-wrap items-center gap-2">
           {/* L'état se lit et se change au même endroit : l'interrupteur (R17). « Terminé » reste une étiquette, car il ne dépend pas de l'interrupteur. */}
@@ -69,7 +70,7 @@ export default async function RedirectPage({ params, searchParams }: { params: P
       {owner && (
         <div role="status" data-testid="managed-notice" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-sky-500/40 bg-sky-500/10 p-4">
           <p className="max-w-prose text-[15px]">{t("redirects.managed.notice", { name: ownerName })}</p>
-          <Link href={`/admin/instances/${owner.id}`} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.open", { name: ownerName })}</Link>
+          <Link href={instanceHref(owner.id)} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.open", { name: ownerName })}</Link>
         </div>
       )}
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site: new URL(address).host })}</p>}

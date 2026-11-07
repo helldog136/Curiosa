@@ -45,6 +45,8 @@ instance configurée (nommée par la personne qui gère le site) ; chaque instan
 sections « Site » (accueil, navigation, réglages, redirections) et « Modules » (liste, catalogue,
 installation depuis git) complètent l'ensemble. Aucun module n'a son propre back-office.
 
+**Adresses de l'admin.** Toute adresse d'une page d'administration est écrite dans `src/core/adminLinks.ts` (constantes et fonctions : `entriesHref`, `instanceHref`, `moduleHref`…), jamais en littéral ailleurs ; `tests/core/admin-links.test.mjs` le vérifie. Quand une page se déplace, son ancienne adresse reste et redirige vers la nouvelle place (paramètres conservés).
+
 ## Admin simple et avancée
 
 Chaque personne choisit sa version de l'admin (`User.advanced`, bascule dans la barre latérale ; défaut :

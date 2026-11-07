@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF, entriesHref, entryHref } from "@/core/adminLinks";
 
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
@@ -109,7 +110,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   });
 
   await audit(user.email, id ? "entry.update" : "entry.create", `${collection.key}/${slug}`);
-  if (!id) redirect(`/admin/entries/${entryId}?locale=${locale}&created=1`);
+  if (!id) redirect(entryHref(entryId, { locale, created: "1" }));
   return { ok: t("action.saved") };
 }
 
@@ -119,7 +120,7 @@ export async function deleteTranslation(entryId: string, locale: string): Promis
   if (count < 2) return; // on ne laisse jamais une entrée sans texte
   await prisma.entryTranslation.deleteMany({ where: { entryId, locale } });
   await audit(user.email, "entry.deleteTranslation", `${entryId}/${locale}`);
-  redirect(`/admin/entries/${entryId}`);
+  redirect(entryHref(entryId));
 }
 
 export async function deleteEntry(entryId: string): Promise<void> {
@@ -129,7 +130,7 @@ export async function deleteEntry(entryId: string): Promise<void> {
   if (entry.status === "published" && !can(user, "core:entries.publish")) return; // retirer un contenu publié = droit de publier
   await prisma.entry.delete({ where: { id: entryId } });
   await audit(user.email, "entry.delete", entryId);
-  redirect(`/admin/entries?c=${entry.instance.key}`);
+  redirect(entriesHref(entry.instance.key));
 }
 
 /**
@@ -139,15 +140,15 @@ export async function deleteEntry(entryId: string): Promise<void> {
 export async function createFromTemplate(formData: FormData): Promise<void> {
   const { user, config } = await adminCtx("editor");
   const collection = await getInstanceByKey(String(formData.get("instanceKey") ?? ""));
-  if (!collection) redirect("/admin");
+  if (!collection) redirect(ADMIN_HREF);
   const templates = (await getActiveInstances()).find((a) => a.instance.id === collection.id)?.mod.manifest.content?.templates ?? [];
   const tpl = templates.find((x) => x.id === String(formData.get("template") ?? ""));
-  if (!tpl) redirect(`/admin/entries?c=${collection.key}`);
+  if (!tpl) redirect(entriesHref(collection.key));
   const locale = config.defaultLocale;
   const entry = await createEntry(prisma, {
     instanceId: collection.id, locale, status: "draft", authorId: user.id,
     title: pickLocalized(tpl.title, locale), summary: pickLocalized(tpl.summary, locale), body: pickLocalized(tpl.body, locale),
   });
   await audit(user.email, "entry.create", `${collection.key}/template:${tpl.id}`);
-  redirect(`/admin/entries/${entry.id}?locale=${locale}&created=template`);
+  redirect(entryHref(entry.id, { locale, created: "template" }));
 }

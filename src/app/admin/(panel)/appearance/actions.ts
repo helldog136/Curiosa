@@ -1,4 +1,5 @@
 "use server";
+import { APPEARANCE_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -20,7 +21,7 @@ import { UPLOAD_LIMITS } from "@/core/fonts/types";
  * lire un dépôt : « owner » (comme les modules : cela récupère des fichiers d'un dépôt git).
  */
 
-const done = () => { revalidatePath("/", "layout"); revalidatePath("/admin/appearance"); };
+const done = () => { revalidatePath("/", "layout"); revalidatePath(APPEARANCE_HREF); };
 
 /** Une phrase simple pour un refus du service des skins : le motif, puis (au plus trois) problèmes précis avec comment les corriger. */
 export async function failureText(r: { error: string; issues?: SkinIssue[]; needsCore?: string; detail?: string }, t: Translator, locale: string): Promise<string> {

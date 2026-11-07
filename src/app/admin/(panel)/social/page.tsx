@@ -18,6 +18,7 @@ import { SocialPaste, type SocialPasteLabels } from "@/components/admin/SocialPa
 import { socialSourcesOf } from "@/core/socialRecognize";
 import { resolveIcon } from "@/core/icons";
 import { addNetwork, moveSocial } from "./actions";
+import { instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -153,7 +154,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
                         </div>
                       </td>
                       <td role="cell" className="whitespace-nowrap px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2">
-                        <a href={`/admin/instances/${r.id}`} className={`${ui.btn} min-h-11`}>{t("social.edit")}</a>
+                        <a href={instanceHref(r.id)} className={`${ui.btn} min-h-11`}>{t("social.edit")}</a>
                       </td>
                     </tr>
                   ))}

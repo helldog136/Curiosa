@@ -2,6 +2,7 @@ import { prisma } from "../db";
 import { sessionIsCurrent } from "./sessions";
 import { getSetting } from "../settings";
 import { levelOfRow, parseStoredRights, RANK as LEVEL_RANK, rightsCatalogue, systemRights, type Level, type ModuleRightsSource, type RightInfo } from "./rights";
+import { ACCOUNT_ENROLL_HREF, CHOOSE_PASSWORD_HREF, DENIED_HREF, LOGIN_HREF, NO_ACCESS_HREF } from "@/core/adminLinks";
 
 export type { Level } from "./rights";
 /**
@@ -128,9 +129,9 @@ export type Need = Role | "member" | { right: string };
 
 export type Gate = "ok" | "login" | "password" | "denied" | "enroll";
 /** Où renvoyer chaque refus. */
-export const GATE_PATH: Record<Exclude<Gate, "ok">, string> = { login: "/admin/login", password: "/admin/choose-password", denied: "/admin?denied=1", enroll: "/admin/account?need2fa=1" };
+export const GATE_PATH: Record<Exclude<Gate, "ok">, string> = { login: LOGIN_HREF, password: CHOOSE_PASSWORD_HREF, denied: DENIED_HREF, enroll: ACCOUNT_ENROLL_HREF };
 /** Une personne connectée sans AUCUN accès (aucun rôle utile) : renvoyée ici, hors du menu d'admin (sinon « /admin?denied=1 » la renverrait en boucle). */
-export const NO_ACCESS_PATH = "/admin/no-access";
+export const NO_ACCESS_PATH = NO_ACCESS_HREF;
 
 function satisfies(user: AdminUser, need: Need): boolean {
   if (need === "member") return isMember(user);

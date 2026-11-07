@@ -6,6 +6,7 @@ import { decodeMissing, describeMissingList } from "@/core/modules/dependencyMes
 import { localized } from "@/core/modules/types";
 import { Callout } from "./Page";
 import { ServiceRouter } from "./ServiceRouter";
+import { moduleHref } from "@/core/adminLinks";
 
 export type NoticeQuery = { error?: string; detail?: string; missing?: string; notice?: string; /** Nom de l'extension concernée par l'avis (retirée, retrouvée…). */ name?: string };
 
@@ -24,7 +25,7 @@ export async function ExtensionsNotices({ t, locale, defaultLocale, isOwner, que
         <Callout tone="info" role="status">
           <p className="font-medium" data-testid="cleanup-banner">🧹 {t("deps.cleanup.bannerTitle")}</p>
           <ul className="mt-2 space-y-1 text-sm">
-            {cleanup.map((c) => <li key={c.id}><a href={`/admin/modules/${encodeURIComponent(c.id)}`} className="font-medium text-accent hover:underline">{names.module(c.id)}</a>{c.for.length > 0 && <span className="text-muted"> — {t("deps.auto.for", { names: c.for.map(names.module).join(", ") })}</span>}{c.hasData && <span className="text-amber-700"> {t("deps.cleanup.data")}</span>}</li>)}
+            {cleanup.map((c) => <li key={c.id}><a href={moduleHref(c.id)} className="font-medium text-accent hover:underline">{names.module(c.id)}</a>{c.for.length > 0 && <span className="text-muted"> — {t("deps.auto.for", { names: c.for.map(names.module).join(", ") })}</span>}{c.hasData && <span className="text-amber-700"> {t("deps.cleanup.data")}</span>}</li>)}
           </ul>
         </Callout>
       )}

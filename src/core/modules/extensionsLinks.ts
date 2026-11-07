@@ -1,9 +1,9 @@
 // Adresses de la page Extensions et correspondance avec les anciennes adresses (Modules, Catalogue, Intégrations, Overlays). Logique pure, testée telle quelle.
 import type { ExtensionFamily } from "./extensionFamilies";
 
-export const EXTENSIONS_HREF = "/admin/extensions";
-export const EXTENSIONS_ADD_HREF = "/admin/extensions/add";
-export const EXTENSIONS_UPDATES_HREF = "/admin/extensions/updates";
+import { CATALOGUE_LEGACY_HREF, EXTENSIONS_ADD_DETAILS_HREF, EXTENSIONS_ADD_HREF, EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF, INTEGRATIONS_LEGACY_HREF, MODULES_HREF, OVERLAYS_LEGACY_HREF, moduleHref } from "../adminLinks";
+
+export { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF };
 
 /** Les extensions installées, limitées à une famille. */
 export const extensionsFamilyHref = (family: ExtensionFamily): string => `${EXTENSIONS_HREF}?family=${family}`;
@@ -26,20 +26,20 @@ function withQuery(path: string, query: RawQuery, drop: readonly string[] = []):
  */
 export function legacyExtensionsTarget(pathname: string, query: RawQuery = {}): string | null {
   switch (pathname.replace(/\/+$/, "")) {
-    case "/admin/modules": {
+    case MODULES_HREF: {
       // Ancien retour d'une recherche de mise à jour : le message s'affiche sur la page du module concerné.
       const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
       const checked = one(query.module);
-      if (checked && one(query.update)) return withQuery(`/admin/modules/${encodeURIComponent(checked)}`, query, ["tab"]);
+      if (checked && one(query.update)) return withQuery(moduleHref(checked), query, ["tab"]);
       return query.tab === "updates" ? withQuery(EXTENSIONS_UPDATES_HREF, query, ["tab"]) : withQuery(EXTENSIONS_HREF, query, ["tab"]);
     }
-    case "/admin/catalogue":
+    case CATALOGUE_LEGACY_HREF:
       return withQuery(EXTENSIONS_ADD_HREF, query);
-    case "/admin/catalogue/details":
-      return withQuery(`${EXTENSIONS_ADD_HREF}/details`, query);
-    case "/admin/integrations":
+    case `${CATALOGUE_LEGACY_HREF}/details`:
+      return withQuery(EXTENSIONS_ADD_DETAILS_HREF, query);
+    case INTEGRATIONS_LEGACY_HREF:
       return extensionsFamilyHref("connections");
-    case "/admin/overlays":
+    case OVERLAYS_LEGACY_HREF:
       return extensionsFamilyHref("overlays");
     default:
       return null;

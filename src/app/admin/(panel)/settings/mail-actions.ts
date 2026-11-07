@@ -1,4 +1,5 @@
 "use server";
+import { SETTINGS_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -23,7 +24,7 @@ export async function saveMail(_prev: ActionState, formData: FormData): Promise<
     from,
   });
   await audit(user.email, "settings.mail");
-  revalidatePath("/admin/settings");
+  revalidatePath(SETTINGS_HREF);
   return { ok: t("action.saved") };
 }
 

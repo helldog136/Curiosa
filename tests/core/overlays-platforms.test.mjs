@@ -79,7 +79,7 @@ test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les 
 });
 
 test("anciennes adresses d'Overlays : /admin/overlays redirige vers la famille Overlays d'Extensions ; la route publique /overlays/<clé> est intacte", () => {
-  assert.match(read(`${PANEL}/overlays/page.tsx`), /redirectLegacy\("\/admin\/overlays"/);
+  assert.match(read(`${PANEL}/overlays/page.tsx`), /redirectLegacy\(OVERLAYS_LEGACY_HREF/);
   assert.ok(fs.existsSync("src/app/overlays/[key]/page.tsx"));
 });
 

@@ -26,6 +26,7 @@ import { fontModel } from "./fontModel";
 import { PreviewButton, type PreviewPage } from "./PreviewDialog";
 import { appearanceLabels } from "./labels";
 import { resetSkinAction, saveAppearance, saveOptionsAction, undoSkinAction } from "./actions";
+import { SETTINGS_HREF } from "@/core/adminLinks";
 
 /** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
 const BG_EXAMPLE = JSON.stringify([
@@ -323,7 +324,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
           </section>
         )}
 
-        <p className={ui.help}><Link href="/admin/settings" className="text-accent hover:underline">{t("appearance.toSettings")}</Link></p>
+        <p className={ui.help}><Link href={SETTINGS_HREF} className="text-accent hover:underline">{t("appearance.toSettings")}</Link></p>
       </div>
     </AppearanceLabelsProvider>
   );

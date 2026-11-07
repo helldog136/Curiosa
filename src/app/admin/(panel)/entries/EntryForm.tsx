@@ -9,6 +9,7 @@ import { EntryPreviewBox } from "@/components/admin/EntryPreviewBox";
 import { MarkdownField } from "@/components/admin/MarkdownField";
 import { ui } from "@/components/admin/ui";
 import { saveEntry } from "./actions";
+import { entryHref, entryNewHref } from "@/core/adminLinks";
 
 export type EntryFormData = {
   id?: string;
@@ -53,7 +54,7 @@ export function EntryForm({ t, collection, locales, locale, data, advanced, refO
     (has("summary") && current?.summary) || (has("icon") && data.icon) || (has("expiresAt") && !has("code") && data.expiresAt) ||
     (advanced && (data.tags || data.featured || data.publishedAt)),
   );
-  const base = data.id ? `/admin/entries/${data.id}` : `/admin/entries/new?c=${collection.key}`;
+  const base = data.id ? entryHref(data.id) : entryNewHref(collection.key);
 
   return (
     <div className="space-y-6">

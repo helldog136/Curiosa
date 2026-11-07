@@ -141,12 +141,12 @@ test("droits : la page et CHAQUE action sont réservées aux administrateurs ; l
   assert.ok(read("src/core/operations/tracker.ts").includes('"content-check": ["links"]'), "étape annoncée au suivi d'opérations");
   for (const d of [fr, en]) assert.ok(d["progress.step.links"]);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /health: <NavLink key="health" href="\/admin\/maintenance\/content">/);
+  assert.match(layout, /health: <NavLink key="health" href=\{HEALTH_HREF\}>/);
 });
 
 test("tableau de bord : une ligne sobre (ton « info »), seulement pour les administrateurs, jamais d'alarme", () => {
   const health = read("src/core/dashboard/health.ts");
   assert.match(health, /hasRole\(user, "admin"\)/);
   assert.match(health, /id: "content", severity: "advice"/, "un conseil, jamais une alarme");
-  assert.match(health, /\/admin\/maintenance\/content/);
+  assert.match(health, /HEALTH_HREF/);
 });

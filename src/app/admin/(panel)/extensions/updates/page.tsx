@@ -4,6 +4,7 @@ import { can } from "@/core/auth/access";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
 import { ModulesUpdatesSection, loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { UPDATES_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -16,7 +17,7 @@ export default async function ExtensionsUpdatesPage() {
     <div className="space-y-8">
       <ExtensionsHeader t={t} advanced={advanced} isOwner intro={t("hub.tab.updates.title")} current="updates" />
       <ModulesUpdatesSection t={t} data={data} when={data.report.checkedAt ? new Date(data.report.checkedAt).toLocaleString(locale) : "—"} />
-      <p className="text-sm text-muted">{t("hub.coreLink")} <a href="/admin/updates" className="text-accent hover:underline">{t("hub.coreLinkLabel")} ›</a></p>
+      <p className="text-sm text-muted">{t("hub.coreLink")} <a href={UPDATES_HREF} className="text-accent hover:underline">{t("hub.coreLinkLabel")} ›</a></p>
     </div>
   );
 }

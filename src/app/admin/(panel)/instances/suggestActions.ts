@@ -1,4 +1,5 @@
 "use server";
+import { instanceHref } from "@/core/adminLinks";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -8,7 +9,7 @@ import { dismissSuggestion, installSuggested as installSuggestedCore, resetSugge
 
 // Bloc « suggestInstall » (voir core/modules/suggestInstall.ts) : trois gestes, tous réservés au propriétaire, tous sur un clic.
 
-const back = (instanceId: string, query: string) => `/admin/instances/${encodeURIComponent(instanceId)}?${query}`;
+const back = (instanceId: string, query: string) => instanceHref(instanceId, query);
 
 /**
  * « Installer » : `confirmExtra` (case cochée) n'est lu que pour un module de l'index supplémentaire. Sans redirection : le bouton montre l'avancement
@@ -32,7 +33,7 @@ export async function installSuggestedAction(instanceId: string, service: string
 export async function dismissSuggestionAction(instanceId: string, service: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:modules.install" });
   await dismissSuggestion(user, instanceId, service);
-  revalidatePath(`/admin/instances/${instanceId}`);
+  revalidatePath(instanceHref(instanceId));
   redirect(back(instanceId, "suggest=dismissed"));
 }
 
@@ -40,6 +41,6 @@ export async function dismissSuggestionAction(instanceId: string, service: strin
 export async function resetSuggestionsAction(instanceId: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:modules.install" });
   await resetSuggestions(user, instanceId);
-  revalidatePath(`/admin/instances/${instanceId}`);
+  revalidatePath(instanceHref(instanceId));
   redirect(back(instanceId, "suggest=shown"));
 }

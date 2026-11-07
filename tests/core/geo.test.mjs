@@ -343,7 +343,7 @@ test("visibilité : la page appelle les vraies fonctions de robots.txt, du plan 
   }
   assert.match(fr["ai.intro"], /Rien ne garantit d'être cité/);
   assert.ok(!/\d+\s*\/\s*100|score/i.test(fr["ai.summary.todo"] + fr["ai.summary.done"] + fr["ai.intro"]), "pas de score chiffré");
-  assert.match(read("src/app/admin/(panel)/layout.tsx"), /\/admin\/ai-visibility/);
+  assert.match(read("src/app/admin/(panel)/layout.tsx"), /AI_VISIBILITY_HREF/);
 });
 
 test("textes pour Emma : l'explication des deux familles est affichée dans les réglages, sans promesse", () => {

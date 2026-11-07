@@ -29,6 +29,7 @@ import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { setAdminMode, setAdminTheme } from "./mode/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { ACCOUNT_HREF, ADMIN_HREF, AI_VISIBILITY_HREF, APPEARANCE_HREF, AUDIT_HREF, BACKUP_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MODE_HREF, MODULES_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, UPDATES_HREF, UPKEEP_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -51,8 +52,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
-  const entryHref = (m: (typeof nav)[number]) => (m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`);
-  const entryAlso = (m: (typeof nav)[number]) => (m.content ? [`/admin/instances/${m.id}`] : []);
+  const entryHref = (m: (typeof nav)[number]) => (m.content ? entriesHref(m.key) : instanceHref(m.id));
+  const entryAlso = (m: (typeof nav)[number]) => (m.content ? [instanceHref(m.id)] : []);
   const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
@@ -62,22 +63,22 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const setupList = nav.flatMap((m) => { const s = statuses?.get(m.id); return s?.state === "setup" && s.missing.length > 0 ? [`${m.name} (${s.missing.map(shortLabel).join(", ")})`] : []; });
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
-  const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])]);
+  const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
   const adminEntries = administrationEntries({ role: user.level, advanced });
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
-    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
-    overlays: <NavLink key="overlays" href="/admin/overlay-pages">{t("nav.overlayPages")}</NavLink>,
+    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
+    overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{t("nav.overlayPages")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
-    users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
-    health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
-    backup: <NavLink key="backup" href="/admin/backup">{t("nav.backup")}</NavLink>,
-    updates: <NavLink key="updates" href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
+    users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
+    health: <NavLink key="health" href={HEALTH_HREF}>{t("nav.health")}</NavLink>,
+    backup: <NavLink key="backup" href={BACKUP_HREF}>{t("nav.backup")}</NavLink>,
+    updates: <NavLink key="updates" href={UPDATES_HREF} badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
     upkeep: upkeep?.state === "todo"
-      ? <NavLink key="upkeep" href="/admin/maintenance/legacy" badge={upkeep.todo} badgeLabel={t("nav.upkeep.todo")}>{t("nav.upkeep")}</NavLink>
-      : <NavLink key="upkeep" href="/admin/maintenance/legacy" status={upkeep ? (upkeep.state === "kept" ? { label: t("nav.upkeep.kept"), tone: "info", hint: t("nav.upkeep.keptHint") } : { label: t("nav.upkeep.clean"), tone: "ok" }) : undefined}>{t("nav.upkeep")}</NavLink>,
-    audit: <NavLink key="audit" href="/admin/audit">{t("nav.audit")}</NavLink>,
+      ? <NavLink key="upkeep" href={UPKEEP_HREF} badge={upkeep.todo} badgeLabel={t("nav.upkeep.todo")}>{t("nav.upkeep")}</NavLink>
+      : <NavLink key="upkeep" href={UPKEEP_HREF} status={upkeep ? (upkeep.state === "kept" ? { label: t("nav.upkeep.kept"), tone: "info", hint: t("nav.upkeep.keptHint") } : { label: t("nav.upkeep.clean"), tone: "ok" }) : undefined}>{t("nav.upkeep")}</NavLink>,
+    audit: <NavLink key="audit" href={AUDIT_HREF}>{t("nav.audit")}</NavLink>,
   };
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
@@ -85,9 +86,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
-      <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
+      <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
-          <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
+          <div className="mt-4"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
           {menu.content.length > 0 && (
             <div>
               <p className={group}>{t("nav.myContent")}</p>
@@ -109,13 +110,13 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           )}
 
           <p className={group}>{t("nav.mySite")}</p>
-          {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
-          {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
-          {canManage && <NavLink href="/admin/appearance">{t("nav.appearance")}</NavLink>}
-          {canManage && <NavLink href="/admin/settings">{t("nav.settings")}</NavLink>}
-          {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
-          {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
-          {editor && <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
+          {canManage && <NavLink href={HOME_HREF}>{t("nav.home")}</NavLink>}
+          {canManage && <NavLink href={NAVIGATION_HREF}>{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
+          {canManage && <NavLink href={APPEARANCE_HREF}>{t("nav.appearance")}</NavLink>}
+          {canManage && <NavLink href={SETTINGS_HREF}>{t("nav.settings")}</NavLink>}
+          {canManage && <NavLink href={SOCIAL_HREF}>{t("nav.social")}</NavLink>}
+          {canManage && <NavLink href={AI_VISIBILITY_HREF}>{t("nav.aiVisibility")}</NavLink>}
+          {editor && <NavLink href={REDIRECTS_HREF}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
 
           {adminEntries.length > 0 && (
             <>
@@ -125,11 +126,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           )}
 
           <p className={group}>{t("nav.account")}</p>
-          <NavLink href="/admin/account">{t("nav.myAccount")}</NavLink>
+          <NavLink href={ACCOUNT_HREF}>{t("nav.myAccount")}</NavLink>
           <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
         <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
-          <p className="mb-1 text-xs text-muted"><a href="/admin/mode" className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
+          <p className="mb-1 text-xs text-muted"><a href={MODE_HREF} className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
           <PendingButton title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</PendingButton>
         </form>
         <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
@@ -146,7 +147,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         <form
           action={async () => {
             "use server";
-            await signOut({ redirectTo: "/admin/login" });
+            await signOut({ redirectTo: LOGIN_HREF });
           }}
           className="mt-6 px-3"
         >

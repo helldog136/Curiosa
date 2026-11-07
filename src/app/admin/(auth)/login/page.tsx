@@ -3,12 +3,13 @@ import { getAdminTranslator } from "@/core/i18n/request";
 import { currentUser } from "@/core/permissions";
 import { countUsers } from "@/core/content/service";
 import { LoginForm } from "@/components/admin/LoginForm";
+import { ADMIN_HREF, SETUP_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ changed?: string }> }) {
-  if ((await countUsers()) === 0) redirect("/admin/setup");
-  if (await currentUser({ allowForced: true })) redirect("/admin"); // connecté, même avec un mot de passe temporaire à remplacer : /admin sait où l'envoyer
+  if ((await countUsers()) === 0) redirect(SETUP_HREF);
+  if (await currentUser({ allowForced: true })) redirect(ADMIN_HREF); // connecté, même avec un mot de passe temporaire à remplacer : /admin sait où l'envoyer
   const { t } = await getAdminTranslator();
   const { changed } = await searchParams;
   return (

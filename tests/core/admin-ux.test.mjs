@@ -137,7 +137,7 @@ test("mode simple / avancé : une page explique la différence et ne change que 
   const page = read(`${PANEL}/mode/page.tsx`);
   assert.match(page, /setAdminMode\.bind\(null, isAdvanced\)/);
   assert.ok(fs.existsSync(`${PANEL}/mode/actions.ts`));
-  assert.match(read(`${PANEL}/layout.tsx`), /href="\/admin\/mode"/, "le libellé du mode dans le menu mène à cette page");
+  assert.match(read(`${PANEL}/layout.tsx`), /href=\{MODE_HREF\}/, "le libellé du mode dans le menu mène à cette page");
 });
 
 test("tableau de bord : « à traiter » passe avant le reste ; les chiffres du mode avancé ont un titre", () => {

@@ -150,7 +150,7 @@ test("aperçu en direct : réservé au palier « admin » (403 sinon), jamais d'
 test("menu d'administration : « Overlays » pour l'administration, la coordination technique et la personne propriétaire, en mode simple comme avancé", () => {
   for (const role of ["admin", "coordinator", "owner"]) for (const advanced of [true, false]) assert.ok(administrationEntries({ role, advanced }).includes("overlays"), `${role} ${advanced}`);
   for (const role of ["editor", "none"]) assert.ok(!administrationEntries({ role, advanced: true }).includes("overlays"), role);
-  assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /overlays: <NavLink key="overlays" href="\/admin\/overlay-pages">/);
+  assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /overlays: <NavLink key="overlays" href=\{OVERLAY_PAGES_HREF\}>/);
 });
 
 test("un rôle personnalisé ne donne pas accès aux overlays, même avec tous les droits délégables", async () => {

@@ -12,6 +12,7 @@ import { entryState, type EntryState } from "@/core/content/state";
 import { entryStateCounts } from "@/core/content/dashboardCounts";
 import { ui } from "@/components/admin/ui";
 import { Pagination } from "@/components/site/Pagination";
+import { ENTRIES_HREF, entriesHref, entryHref, entryNewHref, entryTemplatesHref, instanceHref } from "@/core/adminLinks";
 
 const CHIP: Record<EntryState, string> = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk };
 
@@ -29,16 +30,16 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   const { sort } = list;
   const counts = await entryStateCounts(collection.id);
   const chips = (["all", "published", "draft", "scheduled", "expired"] as const).filter((st) => st === "all" || st === "published" || st === "draft" || counts[st] > 0 || st === state);
-  const chipHref = (st: string) => `/admin/entries?${new URLSearchParams({ c: collection.key, ...(q ? { q } : {}), ...(st !== "all" ? { state: st } : {}) }).toString()}`;
+  const chipHref = (st: string) => entriesHref(collection.key, { ...(q ? { q } : {}), ...(st !== "all" ? { state: st } : {}) });
   const entries = list.rows.map((e) => ({ e, main: e.translations.find((tr) => tr.locale === config.defaultLocale) ?? e.translations[0] }));
   const filtered = q !== "" || state !== "all";
-  const base = `/admin/entries?${new URLSearchParams({ c: collection.key, ...(q ? { q } : {}), ...(state !== "all" ? { state } : {}) }).toString()}`;
+  const base = entriesHref(collection.key, { ...(q ? { q } : {}), ...(state !== "all" ? { state } : {}) });
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  const newHref = `/admin/entries/new?c=${collection.key}`;
+  const newHref = entryNewHref(collection.key);
   const canConfigure = hasRole(user, "admin");
   const active = (await getActiveInstances()).find((a) => a.instance.id === collection.id);
   // Modèles déclarés par le module (`content.templates`) : un lien « Partir d'un modèle », jamais une obligation.
-  const templatesHref = (active?.mod.manifest.content?.templates ?? []).length ? `/admin/entries/templates?c=${collection.key}` : null;
+  const templatesHref = (active?.mod.manifest.content?.templates ?? []).length ? entryTemplatesHref(collection.key) : null;
   const name = (await getInstanceLabeler(locale, config.defaultLocale)).label(collection);
 
   return (
@@ -60,7 +61,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
           <div className="flex flex-wrap items-center justify-between gap-3">
             <p className="text-sm text-muted">
               {list.pages > 1 ? t("entries.rangeCount", { from: (list.page - 1) * list.perPage + 1, to: (list.page - 1) * list.perPage + entries.length, n: list.total }) : t("entries.count", { n: list.total })} · {t("entries.orderedBy", { sort: t(`sort.${sort}`) })}
-              {canConfigure && <> · <a href={`/admin/instances/${collection.id}`} className="underline hover:text-accent">{t("entries.changeOrder")}</a></>}
+              {canConfigure && <> · <a href={instanceHref(collection.id)} className="underline hover:text-accent">{t("entries.changeOrder")}</a></>}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               {templatesHref && <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a>}
@@ -74,7 +75,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                 className={`${ui.btn} ${state === st ? "!border-accent !bg-accent/10 font-semibold" : ""}`}>{t(`entries.chip.${st}`)} <span className="text-muted">{counts[st]}</span></a>
             ))}
           </nav>
-          <form method="get" action="/admin/entries" role="search" className="flex flex-wrap items-end gap-3" data-testid="entries-filter">
+          <form method="get" action={ENTRIES_HREF} role="search" className="flex flex-wrap items-end gap-3" data-testid="entries-filter">
             <input type="hidden" name="c" value={collection.key} />
             <div className="min-w-0 flex-1 basis-56">
               <label htmlFor="entries-q" className={ui.label}>{t("entries.searchLabel")}</label>
@@ -82,7 +83,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             </div>
             {state !== "all" && <input type="hidden" name="state" value={state} />}
             <button type="submit" className={ui.btn}>{t("entries.filter")}</button>
-            {filtered && <a href={`/admin/entries?c=${collection.key}`} className="self-center text-sm underline hover:text-accent">{t("entries.clearFilter")}</a>}
+            {filtered && <a href={entriesHref(collection.key)} className="self-center text-sm underline hover:text-accent">{t("entries.clearFilter")}</a>}
           </form>
           {entries.length === 0 && <p className="text-sm text-muted" role="status">{t("entries.noMatch")}</p>}
           {entries.length > 0 && <ul className={`${ui.card} divide-y divide-line !p-0`}>
@@ -96,7 +97,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               return (
                 <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 sm:px-6">
                   <div className="min-w-0 flex-1 basis-56">
-                    <a href={`/admin/entries/${e.id}`} className="font-medium hover:text-accent">
+                    <a href={entryHref(e.id)} className="font-medium hover:text-accent">
                       {e.featured && <span title={t("field.featured")} aria-label={t("field.featured")}>★ </span>}{main?.title ?? "—"}
                     </a>
                     <p className="mt-0.5 text-xs text-muted">{t("entries.updatedOn", { date: fmt.format(e.updatedAt) })}</p>
@@ -108,11 +109,11 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                   {config.locales.length > 1 && (
                     <div className="flex gap-1">
                       {e.translations.map((tr) => (
-                        <a key={tr.locale} href={`/admin/entries/${e.id}?locale=${tr.locale}`} title={localeName(tr.locale)} className="rounded bg-bg px-1.5 py-0.5 text-xs uppercase hover:text-accent">{tr.locale}</a>
+                        <a key={tr.locale} href={entryHref(e.id, { locale: tr.locale })} title={localeName(tr.locale)} className="rounded bg-bg px-1.5 py-0.5 text-xs uppercase hover:text-accent">{tr.locale}</a>
                       ))}
                     </div>
                   )}
-                  <a href={`/admin/entries/${e.id}`} className={ui.btn}>{t("entries.edit")}</a>
+                  <a href={entryHref(e.id)} className={ui.btn}>{t("entries.edit")}</a>
                 </li>
               );
             })}
