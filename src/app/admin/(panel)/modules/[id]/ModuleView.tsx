@@ -27,6 +27,7 @@ import { AddsList, TechnicalDetails, galleryLabels } from "@/components/admin/Fi
 import { PreviewGallery, type GalleryItem } from "@/components/admin/PreviewGallery";
 import { techSummary, whatItAdds } from "@/core/modules/ficheView";
 import { previewUrl, readInstalledPreviews } from "@/core/modules/previewServe";
+import { instanceHref } from "@/core/adminLinks";
 
 export type ModuleQuery = { update?: string; error?: string; detail?: string; missing?: string; op?: string; module?: string; to?: string; level?: string };
 
@@ -114,7 +115,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
             <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
               {mine.map((i) => (
                 <li key={i.id} className="flex items-center justify-between gap-3 px-4 py-3 text-sm">
-                  <Link href={`/admin/instances/${i.id}`} className="inline-flex min-h-11 min-w-0 flex-1 items-center break-words font-medium hover:text-accent">{labeler.label(i)}</Link>
+                  <Link href={instanceHref(i.id)} className="inline-flex min-h-11 min-w-0 flex-1 items-center break-words font-medium hover:text-accent">{labeler.label(i)}</Link>
                   {advanced && <span className="text-xs text-muted"><span className="font-mono">{i.key}{i.basePath !== null ? ` · /${i.basePath}` : ""}</span></span>}
                 </li>
               ))}

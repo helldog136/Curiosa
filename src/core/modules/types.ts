@@ -230,6 +230,8 @@ export type ModuleManifest = {
   sitemapFromPage?: boolean;
   /** (0.2.14) Rangement dans l'administration, déclaré par le module : prime sur la déduction du cœur (voir menuPlacement.ts). Absent = la règle habituelle. */
   family?: "content" | "community" | "connections" | "overlays";
+  /** (core 0.7.0) Sidebar section; see manifest.ts. */
+  menuGroup?: "content" | "community" | "tools" | "connections";
   /**
    * (cœur après 0.6.1) Adresses de retour (OAuth…) enregistrées chez un service tiers : `{ path: "/m/{instance}/oauth/callback", label, where? }`. La page « Adresse du site » de l'administration
    * les met dans la liste de contrôle d'un changement de domaine, avec l'ancienne et la nouvelle adresse à copier. Un cœur plus ancien ignore la clé. Voir modules/addressDecl.ts.

@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { EXTENSIONS_ADD_DETAILS_HREF, withQuery } from "@/core/adminLinks";
 import { can as canDo } from "@/core/auth/access";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
@@ -89,7 +90,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   ) : e.needsNewerCore ? (
                     <span className="text-sm text-muted">{t("modules.core.badge", { version: e.needsNewerCore, current: getCoreVersion() })}</span>
                   ) : (
-                    <CatalogueDetailsLink href={`/admin/extensions/add/details?id=${encodeURIComponent(e.id)}`} query={`id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary} pendingLabel={t("progress.opening")}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</CatalogueDetailsLink>
+                    <CatalogueDetailsLink href={withQuery(EXTENSIONS_ADD_DETAILS_HREF, { id: e.id })} query={`id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary} pendingLabel={t("progress.opening")}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</CatalogueDetailsLink>
                   )}
                 </div>
               </li>
@@ -107,7 +108,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
             {keptGroups.map((g) => {
               const entry = entries.find((e) => e.id === g.moduleId);
               const name = entry ? L(entry.name) : g.moduleName;
-              const href = entry && entry.compatible && !entry.needsNewerCore ? `/admin/extensions/add/details?id=${encodeURIComponent(g.moduleId)}` : g.repoUrl && advanced ? `/admin/extensions/add/details?repo=${encodeURIComponent(`${g.repoUrl}${g.ref || g.subdir ? `#${g.ref ?? ""}${g.subdir ? `:${g.subdir}` : ""}` : ""}`)}` : null;
+              const href = entry && entry.compatible && !entry.needsNewerCore ? withQuery(EXTENSIONS_ADD_DETAILS_HREF, { id: g.moduleId }) : g.repoUrl && advanced ? withQuery(EXTENSIONS_ADD_DETAILS_HREF, { repo: `${g.repoUrl}${g.ref || g.subdir ? `#${g.ref ?? ""}${g.subdir ? `:${g.subdir}` : ""}` : ""}` }) : null;
               return (
                 <li key={g.moduleId} className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 text-sm" data-testid={`kept-group-${g.moduleId}`}>
                   <span className="min-w-0 flex-1 basis-56">
@@ -153,7 +154,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                         <span className="min-w-0 flex-1 basis-40"><span className="block break-words font-medium">{m.icon ?? "🧩"} {L(m.name)} <span className="text-xs font-normal text-muted">v{m.version}</span></span><span className="line-clamp-2 text-xs text-muted">{L(m.description)}</span></span>
                         {installed.has(m.id) ? <a href={EXTENSIONS_HREF} className="shrink-0 text-sm text-accent hover:underline">{t("catalogue.installed")}</a>
                           : !m.compatible ? <span className="shrink-0 text-sm text-muted">{t("catalogue.incompatible")}</span>
-                          : <a href={`/admin/extensions/add/details?repo=${encodeURIComponent(sourceAddress(s, m))}`} className={`${ui.btn} shrink-0`}>{t("catalogue.details")}</a>}
+                          : <a href={withQuery(EXTENSIONS_ADD_DETAILS_HREF, { repo: sourceAddress(s, m) })} className={`${ui.btn} shrink-0`}>{t("catalogue.details")}</a>}
                       </li>
                     ))}
                   </ul>
@@ -172,7 +173,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         <details className={`${ui.card} space-y-4`}>
           <summary className="cursor-pointer text-lg font-semibold">{t("catalogue.custom")}</summary>
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t("catalogue.customWarning")}</p>
-          <form action="/admin/extensions/add/details" method="get" className="space-y-3">
+          <form action={EXTENSIONS_ADD_DETAILS_HREF} method="get" className="space-y-3">
             <TextField name="repo" type="url" label={t("modules.repoUrl")} placeholder="https://github.com/owner/curiosa-module-example" required help={t("modules.repoHelp")} />
             <button className={ui.btnPrimary}>{t("catalogue.preview")}</button>
           </form>

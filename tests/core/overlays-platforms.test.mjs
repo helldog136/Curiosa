@@ -52,7 +52,7 @@ test("menu : un overlay n'est dans le menu que s'il est épinglé ; sinon sa pas
   const it = (id, over = {}) => ({ id, type: "overlay", section: "community", placement: "overlays", error: false, badge: 0, content: false, ...over });
   const layout = P.buildMenuLayout([it("a", { badge: 2 }), it("c", { error: true }), it("d", { placement: "menu", type: "utility" }), it("e", { placement: "integrations", badge: 1 })]);
   assert.equal(layout.unpinnedBadge, 3, "2 + 1 : pas celle en erreur");
-  assert.deepEqual(layout.community.groups.flatMap((g) => g.items.map((i) => i.id)), ["d"], "un overlay non épinglé n'est pas dans le menu de travail");
+  assert.deepEqual(layout.community.map((i) => i.id), ["d"], "un overlay non épinglé n'est pas dans le menu de travail");
   assert.equal(Object.hasOwn(layout, "overlays") || Object.hasOwn(layout, "integrations"), false, "plus d'entrées « Intégrations » ni « Overlays »");
 });
 
@@ -79,7 +79,7 @@ test("Extensions : l'adresse OBS d'un overlay (avec « Copier »), l'état, les 
 });
 
 test("anciennes adresses d'Overlays : /admin/overlays redirige vers la famille Overlays d'Extensions ; la route publique /overlays/<clé> est intacte", () => {
-  assert.match(read(`${PANEL}/overlays/page.tsx`), /redirectLegacy\("\/admin\/overlays"/);
+  assert.match(read(`${PANEL}/overlays/page.tsx`), /redirectLegacy\(OVERLAYS_LEGACY_HREF/);
   assert.ok(fs.existsSync("src/app/overlays/[key]/page.tsx"));
 });
 
@@ -156,7 +156,7 @@ test("compatibilité : un module sans le champ marche comme avant ; les cœurs p
 test("i18n : toutes les clés d'Extensions, du menu et du rangement existent en français et en anglais, avant les clés de thème", () => {
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
-  const keys = new Set(["placement.parkOverlays", "placement.unpin", "nav.extensions", "nav.myCommunity"]);
+  const keys = new Set(["placement.parkOverlays", "placement.unpin", "nav.extensions", "nav.community"]);
   for (const f of [`${PANEL}/extensions/page.tsx`, "src/components/admin/ExtensionCard.tsx", `${PANEL}/layout.tsx`, `${PANEL}/instances/[id]/page.tsx`]) for (const m of read(f).matchAll(/\bt\(\s*(?:"|\w+ \? t\(")([a-zA-Z][\w.]*)"/g)) keys.add(m[1]);
   for (const m of read(`${PANEL}/instances/[id]/page.tsx`).matchAll(/"(placement\.\w+)"/g)) keys.add(m[1]);
   assert.ok([...keys].filter((k) => k.startsWith("overlays.")).length >= 3);

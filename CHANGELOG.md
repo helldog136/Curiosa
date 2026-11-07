@@ -7,6 +7,54 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.7.0 — 2026-11-07
+
+**En bref.** Le mode simple ou avancé et le thème de l'administration se règlent dans « Mon compte ». Le menu d'administration range les extensions en Contenu, Communauté, Outils et Connexions, et « Redirections » devient « Liens courts ». « Page d'accueil », « Menu du site » et « Réseaux sociaux » deviennent une seule entrée « Accueil et menu » avec des onglets. Cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
+
+**In short.** Simple or advanced mode and the admin theme are set in "My account". The admin menu arranges extensions in Content, Community, Tools and Connections, and "Redirects" becomes "Short links". "Home page", "Site menu" and "Social networks" become one "Home and menu" entry with tabs. Five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. "Site settings" becomes "Settings" and gathers AI visibility and, in advanced mode, the web address. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
+
+### Administration
+
+- **Le mode simple ou avancé et le thème se règlent dans « Mon compte ».** Ils quittent le bas du menu, qui garde le signalement d'un problème et la déconnexion. Le choix s'applique tout de suite et ne concerne que vous.
+- **(English) Simple or advanced mode and the theme are set in "My account".** They leave the bottom of the menu, which keeps the bug report and sign out. The choice applies at once and only to you.
+
+- **Le menu a quatre rubriques : Contenu, Communauté, Outils, Connexions.** Vos outils personnels ne sont plus mêlés à votre communauté, et les connecteurs (bots, domotique…) ont leur groupe « Connexions », replié. Un seul lien par extension ; vos épinglages ne changent pas.
+- **(English) The menu has four sections: Content, Community, Tools, Connections.** Your own tools are no longer mixed with your community, and connectors (bots, home automation…) get a collapsed "Connections" group. One link per extension; your pins do not change.
+- **« Redirections » devient « Liens courts ».** Un seul nom dans les deux modes, dans le menu et sur la page, à la même adresse. Dans Extensions, « Overlays » devient « Outils pour OBS ».
+- **(English) "Redirects" becomes "Short links".** One name in both modes, in the menu and on the page, at the same address. In Extensions, "Overlays" becomes "OBS helpers".
+
+- **Une seule entrée « Accueil et menu » dans le menu.** Elle réunit la page d'accueil, le menu du site, le lien et le bouton d'en-tête et les boutons de réseaux (ex-« Réseaux sociaux »), en onglets. Chaque page garde son adresse : vos favoris fonctionnent comme avant.
+- **(English) One "Home and menu" entry in the menu.** It gathers the home page, the site menu, the header link and button and the network buttons (ex-"Social networks"), as tabs. Every page keeps its address: your bookmarks work as before.
+- **Un seul nom pour le menu du site.** Le mot « Navigation » n'apparaît plus en mode avancé : la page s'appelle toujours « Menu du site ».
+- **(English) One name for the site menu.** The word "Navigation" no longer shows in advanced mode: the page is always called "Site menu".
+
+- **L'onglet « Jaquettes de jeux » des réglages du site n'existe plus.** Il ne contenait qu'un rappel : votre clé et vos corrections se règlent dans le module, comme avant. Un ancien favori ouvre simplement le premier onglet.
+- **(English) The "Game covers" tab of the site settings is gone.** It only held a reminder: your key and your corrections are set in the module, as before. An old bookmark simply opens the first tab.
+
+- **Une seule entrée « Entretien » dans le menu.** Elle réunit le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et, en mode avancé, le journal d'activité, en onglets en haut de chaque page. Chaque page garde son adresse : vos favoris et vos liens fonctionnent comme avant.
+- **(English) One "Maintenance" entry in the menu.** It gathers the health check, backup, updates, leftovers from older versions and, in advanced mode, the activity log, as tabs at the top of each page. Every page keeps its address: your bookmarks and links work as before.
+- **Des noms plus clairs.** « Journal d'audit » devient « Journal d'activité », « Santé de mon site » devient « Contrôle du site », « Overlays » devient « Pages d'overlay », et « Users » devient « Team » en anglais (« Équipe » en français, inchangé).
+- **(English) Clearer names.** "Audit log" becomes "Activity log", "Site health" becomes "Health check", "Overlays" becomes "Overlay pages", and "Users" becomes "Team".
+
+- **Un seul endroit pour les réglages.** La visibilité dans les IA devient un onglet des Réglages, et les anciens liens y mènent. En mode avancé, un onglet « Adresse web » mène aux étapes pour la changer.
+- **(English) One place for the settings.** AI visibility becomes a tab of Settings, and old links lead there. In advanced mode, a "Web address" tab leads to the steps to change it.
+- **Moins de rappels.** Les deux phrases de la page Réglages qui renvoyaient vers Apparence et vers l'adresse du site doublaient le menu : elles sont retirées.
+- **(English) Fewer reminders.** The two sentences at the top of Settings that pointed to Appearance and to the site address repeated the menu: they are gone.
+- **Les très anciens sites se mettent à jour en deux étapes.** Un site en version 0.6.10 à 0.6.17 passe d'abord par la 0.6.18, puis par la nouvelle version ; le site propose les étapes lui-même. Un site en 0.6.18 ou plus récent n'est pas concerné.
+- **(English) Older sites update in two steps.** A site on 0.6.10 to 0.6.17 first updates to 0.6.18, then to the new version, and the site offers the steps itself. A site on 0.6.18 or newer is not affected.
+### Pour les développeurs
+
+- **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
+- **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
+- **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+- **Support floor raised to 0.6.18** (`upgrade.json`, `docs/MIGRATIONS.md`). Removed the RAWG handover (`rawgHandover.ts`, `rawgNote.ts`, hooks); `rawg.*` settings are left untouched; `ctx.api.rawg`, the `rawg-covers` redirect and the MCP short names stay. `menu-freeze` is kept: it also reads backups made before the stored menu.
+- **Settings tabs.** `AiVisibilityPanel` (was `/admin/ai-visibility`) is the `ai` tab, and that address redirects to `/admin/settings#ai`. New advanced `address` tab. `Tabs` now wraps on phones. See `docs/ADMIN-NAVIGATION.md`.
+- **Maintenance tabs.** `adminMenu.ts` now has `maintenanceTabs()` and one `maintenance` entry instead of five; `LinkTabs` and `MaintenanceHeader` render the bar; `PageHeader` takes `level={2}`. See `docs/ADMIN-NAVIGATION.md`. No route changed.
+- **Preferences.** `AdminPreferences` (My account) holds the mode and theme buttons that were in the sidebar footer; `setAdminMode`, `setAdminTheme` and the `/admin/mode` page are unchanged. See `docs/ADMIN-NAVIGATION.md`.
+- **Sidebar sections.** `MENU_SECTIONS` is `content | community | tools | connections`; `defaultSection` reads the new optional manifest key `menuGroup` (no `minCore`), then `family`, then the type. The Community sub-groups (`MENU_GROUPS`, `menuGroupOf`) and the `nav.my*`, `navgroup.*` strings are gone. `extensionFamily` reads `menuGroup` first and has a `tools` family. See `docs/MODULES.md`.
+- **Home and menu tabs.** `HomeMenuHeader` (link tabs) over `/admin/home`, `/admin/navigation`, the new `/admin/navigation/header` (`#header` is mapped to it with `LegacyHash`) and `/admin/social`; `HOME_MENU_TAB_HREFS` in `adminLinks.ts`. Removed three unused `adminLinks.ts` constants and the `nav.social`, `nav.navigation*` strings. See `docs/ADMIN-NAVIGATION.md`.
+- **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.
+
 ## 0.6.18 — 2026-11-06
 
 **En bref.** Sur le site, l'affichage « liste » des articles et des autres entrées devient une suite de cartes pleine largeur, plus lisibles et entièrement cliquables. Un champ « Rechercher » peut s'afficher au-dessus de la liste et la filtre pendant la frappe. Il est activé par défaut en affichage liste, et se règle pour chaque liste. Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.

@@ -28,6 +28,7 @@ import { remainingSlots } from "@/core/maintenance/slots";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { NumberField } from "@/components/admin/NumberField";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { MODE_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -169,7 +170,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      {!advanced && groups.size > 1 && <Callout tone="info" testid="assistants-more-advanced">{t("assistants.detail.moreInAdvanced")} <a href="/admin/mode" className="underline">{t("assistants.detail.modeLink")}</a></Callout>}
+      {!advanced && groups.size > 1 && <Callout tone="info" testid="assistants-more-advanced">{t("assistants.detail.moreInAdvanced")} <a href={MODE_HREF} className="underline">{t("assistants.detail.modeLink")}</a></Callout>}
 
       {!revoked && advanced && (
         <form action={resetGrantsAction.bind(null, id, null, "defaults")} className="border-t border-line pt-4">

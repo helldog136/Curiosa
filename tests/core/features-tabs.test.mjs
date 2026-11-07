@@ -9,17 +9,17 @@ test("fonctionnalités : « installé » et « ajouter » sont deux onglets d'un
   assert.match(tabs, /installed: EXTENSIONS_HREF/);
   assert.match(tabs, /add: EXTENSIONS_ADD_HREF/);
   assert.match(tabs, /updates: EXTENSIONS_UPDATES_HREF/, "troisième onglet : les mises à jour des modules");
-  const links = read("src/core/modules/extensionsLinks.ts");
+  const links = read("src/core/adminLinks.ts");
   assert.match(links, /EXTENSIONS_HREF = "\/admin\/extensions"/);
-  assert.match(links, /EXTENSIONS_ADD_HREF = "\/admin\/extensions\/add"/);
-  assert.match(links, /EXTENSIONS_UPDATES_HREF = "\/admin\/extensions\/updates"/);
+  assert.match(links, /EXTENSIONS_ADD_HREF = `\$\{EXTENSIONS_HREF\}\/add`/);
+  assert.match(links, /EXTENSIONS_UPDATES_HREF = `\$\{EXTENSIONS_HREF\}\/updates`/);
   assert.match(tabs, /aria-current=\{current === id \? "page" : undefined\}/);
   assert.match(read("src/app/admin/(panel)/extensions/page.tsx"), /<ExtensionsHeader[^>]*current="installed"/);
   assert.match(read("src/app/admin/(panel)/extensions/updates/page.tsx"), /<ExtensionsHeader[^>]*current="updates"/);
   assert.match(read("src/app/admin/(panel)/extensions/add/page.tsx"), /<ExtensionsHeader[^>]*current="add"/);
   assert.match(read("src/components/admin/ExtensionsHeader.tsx"), /<FeatureTabs current=\{current\}/);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\["\/admin\/modules"/, "le lien reste surligné dans les trois onglets (préfixe /admin/extensions)");
+  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\[MODULES_HREF/, "le lien reste surligné dans les trois onglets (préfixe /admin/extensions)");
   assert.ok(!layout.includes('href="/admin/catalogue"'), "plus d'entrée de menu séparée pour le catalogue");
   assert.match(read("src/components/admin/navCurrent.ts"), /\[href, \.\.\.\(opts\.also \?\? \[\]\)\]/, "`also` reste pris en compte");
   assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also \}\)/);
@@ -38,13 +38,13 @@ test("réglages : la case « compter les visites » (et le blocage des robots d'
 
 test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue a une recherche, ses fiches s'ouvrent en fenêtre avec un bouton d'installation animé", () => {
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.ok(layout.includes("extensions: <NavLink") && layout.indexOf("adminEntries.map") > layout.indexOf("nav.mySite"), "Extensions est dans Administration, après le contenu et le site");
+  assert.ok(layout.includes("extensions: <NavLink") && layout.indexOf("adminEntries.map") > layout.indexOf("nav.site"), "Extensions est dans Administration, après le contenu et le site");
   assert.equal((layout.match(/href=\{EXTENSIONS_HREF\}/g) ?? []).length, 1, "une seule entrée");
   assert.ok(!/prominent/.test(read("src/components/admin/NavLink.tsx")), "aucune entrée en surbrillance permanente");
   const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
   assert.match(page, /<CatalogueSearch/);
   assert.match(page, /data-catalogue-item data-search=/);
-  assert.match(page, /<(?:Link|CatalogueDetailsLink) href=\{`\/admin\/extensions\/add\/details\?id=/, "navigation douce : la fiche s'ouvre par-dessus");
+  assert.match(page, /<(?:Link|CatalogueDetailsLink) href=\{withQuery\(EXTENSIONS_ADD_DETAILS_HREF, \{ id: /, "navigation douce : la fiche s'ouvre par-dessus");
   assert.match(read("src/components/admin/CatalogueSearch.tsx"), /foldText/, "sans accents ni majuscules (filtre partagé avec la page Modules)");
   assert.match(read("src/core/modules/installedList.ts"), /normalize\("NFD"\)/, "sans accents ni majuscules");
   // fiche en fenêtre : route interceptée + emplacement parallèle ; ouverte seule, la même fiche s'affiche en page entière

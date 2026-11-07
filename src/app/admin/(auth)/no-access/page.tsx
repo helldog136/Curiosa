@@ -3,6 +3,7 @@ import { signOut } from "@/auth";
 import { currentUser, isMember } from "@/core/permissions";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { ADMIN_HREF, LOGIN_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +13,8 @@ export const dynamic = "force-dynamic";
  */
 export default async function NoAccessPage() {
   const user = await currentUser({ allowForced: true });
-  if (!user) redirect("/admin/login");
-  if (isMember(user)) redirect("/admin");
+  if (!user) redirect(LOGIN_HREF);
+  if (isMember(user)) redirect(ADMIN_HREF);
   const { t } = await getAdminTranslator(user.locale);
   return (
     <main className="mx-auto mt-12 max-w-sm space-y-6 px-4 pb-12 sm:mt-24" data-testid="no-access">
@@ -24,7 +25,7 @@ export default async function NoAccessPage() {
       <form
         action={async () => {
           "use server";
-          await signOut({ redirectTo: "/admin/login" });
+          await signOut({ redirectTo: LOGIN_HREF });
         }}
         className="border-t border-line pt-4"
       >

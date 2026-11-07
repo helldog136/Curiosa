@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -18,7 +19,7 @@ export async function approveRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const result = await approveRequest(String(id), { email: user.email, owner: can(user, "core:mcp.tokens") });
   revalidatePath(ASSISTANTS_HREF);
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   if (!result.ok && (result.reason === "busy" || result.reason === "expired" || result.reason === "not-pending" || result.reason === "unknown" || result.reason === "forbidden")) redirect(assistantsTabHref("requests", { notice: result.reason }));
 }
 
@@ -26,7 +27,7 @@ export async function denyRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const result = await denyRequestBy(String(id), { email: user.email, owner: can(user, "core:mcp.tokens") });
   revalidatePath(ASSISTANTS_HREF);
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   if (!result.ok && result.reason) redirect(assistantsTabHref("requests", { notice: result.reason }));
 }
 

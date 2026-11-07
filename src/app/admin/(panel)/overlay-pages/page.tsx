@@ -11,6 +11,7 @@ import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page"
 import { TextField, Select } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { createPageAction, deletePageAction, duplicatePageAction, renamePageAction, resetSecretAction, toggleActiveAction } from "./actions";
+import { overlayPageHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +55,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
               <li key={p.id} className={`${ui.card} space-y-4`} data-testid="overlay-page">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <h2 className="text-lg font-semibold [overflow-wrap:anywhere]"><Link href={`/admin/overlay-pages/${p.id}`} className="hover:text-accent hover:underline">{p.name}</Link></h2>
+                    <h2 className="text-lg font-semibold [overflow-wrap:anywhere]"><Link href={overlayPageHref(p.id)} className="hover:text-accent hover:underline">{p.name}</Link></h2>
                     <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
                       <span>{p.width}×{p.height}</span><span aria-hidden>·</span>
                       <span>{t("ovp.elementCount", { n: p.elements.length })}</span>
@@ -62,7 +63,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
                       {testing && <span className={ui.chipWarn}>{t("ovp.testChip")}</span>}
                     </p>
                   </div>
-                  <Link href={`/admin/overlay-pages/${p.id}`} className={ui.btnPrimary}>{t("ovp.edit")}</Link>
+                  <Link href={overlayPageHref(p.id)} className={ui.btnPrimary}>{t("ovp.edit")}</Link>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
                   {address ? <CopyAddress text={address} label={t("ovp.copy")} copied={t("ovp.copied")} manual={t("ovp.copyManual")} /> : <span className="text-sm text-amber-700">{t("ovp.addressLost")}</span>}

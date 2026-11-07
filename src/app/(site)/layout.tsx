@@ -26,6 +26,7 @@ import { Header } from "@/components/site/Header";
 import { VisitBeacon } from "@/components/site/VisitBeacon";
 import { CodeCopyProvider } from "@/components/site/CodeBlock";
 import { codeCopyLabels } from "@/components/site/codeCopyLabels";
+import { SETUP_HREF } from "@/core/adminLinks";
 import "../globals.css";
 
 /** Chemin demandé SANS préfixe de langue (posé par proxy.ts) ; « / » à défaut. */
@@ -62,7 +63,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function SiteLayout({ children }: { children: React.ReactNode }) {
   // Pas encore configuré : on envoie vers l'onboarding plutôt que d'afficher un site vide.
-  if ((await prisma.user.count()) === 0) redirect("/admin/setup");
+  if ((await prisma.user.count()) === 0) redirect(SETUP_HREF);
 
   const config = await getSiteConfig();
   const urlLocale = (await headers()).get(LOCALE_HEADER);

@@ -1,4 +1,5 @@
 "use server";
+import { SOCIAL_HREF, withQuery } from "@/core/adminLinks";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -47,7 +48,7 @@ export async function addNetwork(moduleId: string): Promise<void> {
   const { user, config } = await adminCtx({ right: "core:modules.install" });
   if (!(await getModule(moduleId))) {
     const installed = await installFromCatalogue(moduleId);
-    if (!installed.ok) redirect(`/admin/social?error=${encodeURIComponent(installed.error)}`);
+    if (!installed.ok) redirect(withQuery(SOCIAL_HREF, { error: installed.error }));
     await audit(user.email, "module.install", moduleId);
   }
   const mod = await getModule(moduleId);
@@ -128,5 +129,5 @@ export async function moveSocial(instanceKey: string, direction: "up" | "down"):
   await setSetting(SOCIAL_ORDER_KEY, moved);
   await audit(user.email, "social.move", instanceKey);
   revalidatePath("/", "layout");
-  redirect("/admin/social");
+  redirect(SOCIAL_HREF);
 }

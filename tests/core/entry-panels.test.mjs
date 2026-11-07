@@ -63,7 +63,7 @@ test("l'action serveur d'une section : rôle éditeur comme l'éditeur d'entrée
   assert.doesNotMatch(src, /adminCtx\("admin"\)/);
   assert.match(src, /resolvePanelAction\(instanceId, panelId, entryId\)/, "la section est retrouvée et validée côté serveur");
   assert.doesNotMatch(src.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, ""), /\bredirect\s*\(/, "aucune redirection : la page ne bouge pas");
-  assert.match(src, /revalidatePath\(`\/admin\/entries\/\$\{entryId\}`\)/);
+  assert.match(src, /revalidatePath\(entryHref\(entryId\)\)/);
   assert.match(read("src/app/admin/(panel)/entries/[id]/page.tsx"), /adminCtx\("editor"\)/, "la page reste ouverte aux éditeurs");
   const load = read("src/core/modules/entryPanelsLoad.ts");
   assert.match(load, /prisma\.entry\.findUnique/, "l'entrée vient de la base, pas du navigateur");
@@ -97,7 +97,7 @@ test("l'éditeur d'entrée place les sections HORS du formulaire de l'entrée (u
 test("instances.list expose l'identifiant et le lien d'administration d'une instance", () => {
   const api = read("src/core/modules/api.ts");
   assert.match(api, /id: i\.id, key: i\.key/);
-  assert.match(api, /adminPath: `\/admin\/instances\/\$\{i\.id\}`/);
+  assert.match(api, /adminPath: instanceHref\(i\.id\)/);
 });
 
 // ── Conformité : un module qui fournit une section ──────────────────────────────────────────────────────────────────

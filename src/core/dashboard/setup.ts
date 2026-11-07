@@ -11,6 +11,7 @@ import { hasRole, type AdminUser } from "../auth/access";
 import { listLogos } from "../logos";
 import { getSetting, setSetting, deleteSetting, getSiteConfig } from "../settings";
 import { audit } from "../permissions";
+import { APPEARANCE_HREF, EXTENSIONS_HREF, SETTINGS_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 
 export const SETUP_HIDDEN_KEY = "dashboard.setup.hidden";
 /** Le nom que porte un site qu'on n'a pas encore nommé. */
@@ -46,7 +47,7 @@ export type SetupState = {
 };
 
 export type SetupLinks = { settings: string; appearance: string; social: string; newPage: string };
-export const DEFAULT_SETUP_LINKS: SetupLinks = { settings: "/admin/settings", appearance: "/admin/appearance", social: "/admin/social", newPage: "/admin/extensions" };
+export const DEFAULT_SETUP_LINKS: SetupLinks = { settings: SETTINGS_HREF, appearance: APPEARANCE_HREF, social: SOCIAL_HREF, newPage: EXTENSIONS_HREF };
 
 /** Pur : l'état de la liste à partir des faits. */
 export function evaluateSetup(facts: SetupFacts, hidden: boolean, links: SetupLinks = DEFAULT_SETUP_LINKS): SetupState {

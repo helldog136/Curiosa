@@ -44,7 +44,7 @@ test("les textes cités par la page, l'action et le bouton existent partout", ()
   for (const s of ["important", "advised", "info"]) { keys.add(`content.sev.${s}`); keys.add(`content.sev.${s}.help`); }
   assert.ok(keys.size > 25, [...keys].join());
   for (const k of keys) { assert.ok(fr[k], `fr ${k}`); assert.ok(en[k], `en ${k}`); }
-  for (const k of ["nav.health", "dashboard.contentLook", "dashboard.contentOpen", "audit.action.content.check", "aim.action.content_check_run", "aim.tool.content_check", "aim.tool.content_check_run", "progress.step.links"]) {
+  for (const k of ["maint.tab.health", "dashboard.contentLook", "dashboard.contentOpen", "audit.action.content.check", "aim.action.content_check_run", "aim.tool.content_check", "aim.tool.content_check_run", "progress.step.links"]) {
     assert.ok(fr[k] && en[k], k);
   }
 });
@@ -141,12 +141,12 @@ test("droits : la page et CHAQUE action sont réservées aux administrateurs ; l
   assert.ok(read("src/core/operations/tracker.ts").includes('"content-check": ["links"]'), "étape annoncée au suivi d'opérations");
   for (const d of [fr, en]) assert.ok(d["progress.step.links"]);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /health: <NavLink key="health" href="\/admin\/maintenance\/content">/);
+  assert.match(layout, /key="maintenance" href=\{maintenanceTabList\.length > 0 \? MAINTENANCE_TAB_HREFS\[maintenanceTabList\[0\]!\] : HEALTH_HREF\}/);
 });
 
 test("tableau de bord : une ligne sobre (ton « info »), seulement pour les administrateurs, jamais d'alarme", () => {
   const health = read("src/core/dashboard/health.ts");
   assert.match(health, /hasRole\(user, "admin"\)/);
   assert.match(health, /id: "content", severity: "advice"/, "un conseil, jamais une alarme");
-  assert.match(health, /\/admin\/maintenance\/content/);
+  assert.match(health, /HEALTH_HREF/);
 });

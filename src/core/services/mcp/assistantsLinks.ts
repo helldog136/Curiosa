@@ -2,7 +2,9 @@
  * Adresses de la section « Assistants IA » de l'admin, et correspondance avec les anciennes pages (API & MCP, Maintenance par IA).
  * Logique pure (aucune dépendance) : toutes les pages, actions, e-mails et redirections passent par ici, aucune adresse n'est écrite ailleurs.
  */
-export const ASSISTANTS_HREF = "/admin/assistants";
+import { ASSISTANTS_HREF, MAINTENANCE_IA_LEGACY_HREF, MCP_LEGACY_HREF, USERS_HREF } from "../../adminLinks";
+
+export { ASSISTANTS_HREF };
 
 /** Les trois vues de la page, dans l'ordre d'affichage. */
 export const ASSISTANT_TABS = ["access", "requests", "history"] as const;
@@ -29,7 +31,7 @@ export function accessHref(id: string): string {
 }
 
 /** La page Équipe : les assistants IA y sont listés avec les personnes (tableau unique). */
-export const TEAM_HREF = "/admin/users";
+export const TEAM_HREF = USERS_HREF;
 /** Ancre du formulaire d'ajout d'un assistant, sur la page Équipe. */
 export const ADD_ASSISTANT_ANCHOR = "add-assistant";
 
@@ -52,10 +54,10 @@ export const REQUEST_NOTICES = ["busy", "expired", "not-pending", "unknown", "fo
  */
 export function legacyAssistantsTarget(pathname: string, query: RawQuery = {}): string | null {
   const path = pathname.replace(/\/+$/, "");
-  if (path === "/admin/mcp") return first(query.profile) === "maintenance" ? newAccessHref(true) : ASSISTANTS_HREF;
-  const one = /^\/admin\/mcp\/([^/]+)$/.exec(path);
+  if (path === MCP_LEGACY_HREF) return first(query.profile) === "maintenance" ? newAccessHref(true) : ASSISTANTS_HREF;
+  const one = new RegExp(`^${MCP_LEGACY_HREF}/([^/]+)$`).exec(path);
   if (one) return `${ASSISTANTS_HREF}/${one[1]}`;
-  if (path === "/admin/maintenance-ia") {
+  if (path === MAINTENANCE_IA_LEGACY_HREF) {
     const notice = REQUEST_NOTICES.find((n) => n === first(query.notice));
     return assistantsTabHref("requests", notice ? { notice } : {});
   }

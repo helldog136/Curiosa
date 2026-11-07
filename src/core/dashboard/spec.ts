@@ -13,6 +13,7 @@ import { pickText } from "../i18n/audit.mjs";
 import { z } from "zod";
 import { cleanText } from "../journal/events";
 import { RIGHT_ID_RE, HISTORY, OPEN } from "../auth/rights";
+import { instanceHref } from "@/core/adminLinks";
 
 /** Toutes les bornes en un seul endroit. Aucune n'est réglable par un module. */
 export const DASHBOARD_LIMITS = {
@@ -94,7 +95,7 @@ export function hrefIssue(value: string): string | null {
 export function resolveHref(value: unknown, instance: { id: string; key: string }): string | null {
   if (typeof value !== "string" || hrefIssue(value)) return null;
   const filled = value.replaceAll("{id}", encodeURIComponent(instance.id)).replaceAll("{key}", encodeURIComponent(instance.key));
-  if (filled.startsWith("?")) return `/admin/instances/${encodeURIComponent(instance.id)}${filled === "?" ? "" : filled}`;
+  if (filled.startsWith("?")) return instanceHref(instance.id, filled);
   return filled;
 }
 

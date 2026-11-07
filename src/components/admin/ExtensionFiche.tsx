@@ -6,6 +6,7 @@ import { ui } from "./ui";
 import { AddsList, InstallBar, InstallBlockedButton, ReadmeFold, TechnicalDetails } from "./FicheParts";
 import { PreviewGallery, type GalleryItem, type GalleryLabels } from "./PreviewGallery";
 import { RetryButton } from "./RetryButton";
+import { UPDATES_HREF } from "@/core/adminLinks";
 
 /** Seule, la fiche garde son lien de retour ; dans la fenêtre, c'est la fenêtre qui se ferme. */
 export function FicheFrame({ embedded, back, children }: { embedded: boolean; back: string; children: React.ReactNode }) {
@@ -164,7 +165,7 @@ export function ExtensionFiche(p: FicheProps) {
             if (bar.kind === "ready") return <>{p.version ? t("fiche.bar.readyVersion", { version: p.version }) : t("fiche.bar.ready")}</>;
             if (bar.reason === "read") return t("fiche.bar.blockedRead");
             if (bar.reason === "incompatible") return t("catalogue.incompatible");
-            if (bar.reason === "core") return <>{t("modules.core.badge", { version: p.needsNewerCore ?? "", current: p.currentCore })} <a href="/admin/updates" className="whitespace-nowrap font-medium text-accent underline">{t("fiche.bar.updateCore")}</a></>;
+            if (bar.reason === "core") return <>{t("modules.core.badge", { version: p.needsNewerCore ?? "", current: p.currentCore })} <a href={UPDATES_HREF} className="whitespace-nowrap font-medium text-accent underline">{t("fiche.bar.updateCore")}</a></>;
             return <>{t("fiche.bar.blockedDeps")} {p.firstProblem} <a href="#details-techniques" className="whitespace-nowrap font-medium text-accent underline">{t("fiche.bar.seeDetails")}</a></>;
           })()}>
           {bar.kind === "installed" && p.manageHref && <a href={p.manageHref} className="inline-flex min-h-12 min-w-48 items-center justify-center rounded-full bg-accent px-8 py-3 text-base font-semibold text-accent-fg shadow-lg">{t("fiche.bar.manage")}</a>}

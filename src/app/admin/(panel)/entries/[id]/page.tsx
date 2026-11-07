@@ -12,6 +12,7 @@ import { ui } from "@/components/admin/ui";
 import { EntryForm } from "../EntryForm";
 import { EntryPanels } from "@/components/admin/EntryPanels";
 import { deleteEntry, deleteTranslation } from "../actions";
+import { entriesHref, entryHref } from "@/core/adminLinks";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 const CHIP = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk } as const;
@@ -27,7 +28,7 @@ export default async function EditEntryPage({ params, searchParams }: {
   const collection = await getInstanceById(entry.instanceId);
   if (!collection) notFound();
   // Le menu repère le contenu ouvert par `?c=` : on l'ajoute si l'adresse n'en porte pas (ou un autre).
-  if (c !== collection.key) redirect(`/admin/entries/${id}?${new URLSearchParams({ c: collection.key, ...(requested ? { locale: requested } : {}), ...(created ? { created } : {}) })}`);
+  if (c !== collection.key) redirect(entryHref(id, { c: collection.key, ...(requested ? { locale: requested } : {}), ...(created ? { created } : {}) }));
 
   const locale =
     requested && config.locales.includes(requested)
@@ -46,7 +47,7 @@ export default async function EditEntryPage({ params, searchParams }: {
   return (
     <div className="space-y-6">
       <div>
-        <a href={`/admin/entries?c=${collection.key}`} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold">{title ?? t("entries.new")}</h1>
           <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>

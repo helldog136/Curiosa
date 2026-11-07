@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -10,12 +11,12 @@ import { ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 export async function setAdminMode(advanced: boolean): Promise<void> {
   const { user } = await adminCtx("member");
   await prisma.user.update({ where: { id: user.id }, data: { advanced } });
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
 }
 
 /** Thème de l'admin : auto (suit le système), clair ou sombre. Mémorisé dans un cookie, un an. */
 export async function setAdminTheme(theme: string): Promise<void> {
   await adminCtx("member");
   (await cookies()).set(ADMIN_THEME_COOKIE, parseAdminTheme(theme), { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
 }

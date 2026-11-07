@@ -5,6 +5,7 @@ import { audit, auditDenied, currentUser } from "@/core/permissions";
 import { buildContext, forViewer } from "./context";
 import { getActiveInstances } from "./registry";
 import type { TransferDeps } from "./adminTransferHandlers";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 /** Les vraies dépendances des routes `/api/admin/modules/…` (session, registre des modules, journal d'audit). */
 export const realTransferDeps: TransferDeps = {
@@ -23,5 +24,5 @@ export const realTransferDeps: TransferDeps = {
   async t(user) {
     try { return user ? (await getAdminTranslator(user.locale)).t : (await getAdminTranslator(null)).t; } catch { return makeTranslator("en"); }
   },
-  refresh: () => { try { revalidatePath("/admin", "layout"); } catch { /* hors requête : rien à rafraîchir */ } },
+  refresh: () => { try { revalidatePath(ADMIN_HREF, "layout"); } catch { /* hors requête : rien à rafraîchir */ } },
 };

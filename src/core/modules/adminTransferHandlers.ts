@@ -18,6 +18,7 @@ import {
 } from "./adminTransfer";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
 import type { AdminActionResult, ModuleContext, ModuleDefinition } from "./types";
+import { ADMIN_HREF, instanceHref, isAdminPath } from "@/core/adminLinks";
 
 export type ResolvedInstance = { key: string; moduleId: string; def: ModuleDefinition; ctx(user: AdminUser): Promise<ModuleContext> };
 
@@ -44,7 +45,7 @@ function fail(request: Request, status: number, message: string, backLabel: stri
   const headers: Record<string, string> = { ...NO_STORE, ...extra };
   if ((request.headers.get("accept") ?? "").includes("text/html")) {
     const html = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(message.slice(0, 60))}</title></head>` +
-      `<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem 1rem;padding:0 1rem"><p role="alert">${escapeHtml(message)}</p><p><a href="/admin">${escapeHtml(backLabel)}</a></p></body></html>`;
+      `<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:3rem 1rem;padding:0 1rem"><p role="alert">${escapeHtml(message)}</p><p><a href="${ADMIN_HREF}">${escapeHtml(backLabel)}</a></p></body></html>`;
     return new Response(html, { status, headers: { ...headers, "content-type": "text/html; charset=utf-8" } });
   }
   return Response.json({ ok: false, error: message }, { status, headers });
@@ -148,8 +149,8 @@ const MAX_FILES = 2;
 /** Un lien de retour d'une action : seulement dans l'admin (même règle que les actions serveur). */
 function safeRedirect(instanceId: string, redirect: string | undefined): string | undefined {
   if (!redirect) return undefined;
-  const to = redirect.startsWith("?") ? `/admin/instances/${instanceId}${redirect === "?" ? "" : redirect}` : redirect;
-  return to.startsWith("/admin/") && !to.startsWith("//") ? to : undefined;
+  const to = redirect.startsWith("?") ? instanceHref(instanceId, redirect) : redirect;
+  return isAdminPath(to) ? to : undefined;
 }
 
 export async function actionHandler(request: Request, p: { instance: string; action: string }, deps: TransferDeps): Promise<Response> {

@@ -17,6 +17,7 @@ import { EXTENSIONS_UPDATES_HREF } from "../modules/extensionsLinks";
 import { assistantsTabHref } from "../services/mcp/assistantsLinks";
 import { getUpdateCheck } from "../updates/service";
 import { DASHBOARD_LIMITS } from "./spec";
+import { APPEARANCE_HREF, BACKUP_HREF, DRAFTS_HREF, UPDATES_HREF, entriesHref, entryHref, instanceHref } from "@/core/adminLinks";
 
 export const TODO_LIMITS = { draftRows: 5, readMs: DASHBOARD_LIMITS.timeoutMs } as const;
 
@@ -76,7 +77,7 @@ export async function draftsToFinish(env: Pick<TodoEnv, "nav" | "locale" | "defa
     const it = byId.get(e.instanceId);
     if (!it) return [];
     const title = (e.translations.find((x) => x.locale === env.locale) ?? e.translations.find((x) => x.locale === env.defaultLocale) ?? e.translations[0])?.title?.trim();
-    return [{ title: title || "…", detail: it.name, href: `/admin/entries/${e.id}`, instanceKey: it.key }];
+    return [{ title: title || "…", detail: it.name, href: entryHref(e.id), instanceKey: it.key }];
   });
   return { total, rows, byKey };
 }
@@ -106,20 +107,20 @@ export async function loadCoreTodo(env: TodoEnv): Promise<TodoItem[]> {
   const out: TodoItem[] = [];
 
   if (ai && ai.pending > 0) out.push({ id: "ai", kind: "ai", icon: "🤖", label: t("dash.todo.ai", { n: ai.pending }), count: ai.pending, href: assistantsTabHref("requests") });
-  for (const s of env.toSetUp ?? []) out.push({ id: `setup-${s.id}`, kind: "setup", icon: s.icon, label: t("dash.todo.setup", { name: s.name }), detail: s.summary, href: `/admin/instances/${s.id}` });
+  for (const s of env.toSetUp ?? []) out.push({ id: `setup-${s.id}`, kind: "setup", icon: s.icon, label: t("dash.todo.setup", { name: s.name }), detail: s.summary, href: instanceHref(s.id) });
   if (drafts && drafts.total > 0) {
     out.push({
       id: "drafts", kind: "drafts", icon: "📝", label: t("dash.todo.drafts", { n: drafts.total }), count: drafts.total, rows: drafts.rows.map((r) => ({ title: r.title, ...(r.detail ? { detail: r.detail } : {}), href: r.href })),
       // La page qui rassemble les brouillons de toutes les extensions.
-      href: "/admin/drafts",
+      href: DRAFTS_HREF,
     });
   }
-  if (backup && !backup.backup.recent) out.push({ id: "backup", kind: "backup", icon: "💾", label: t(backup.backup.at ? "dash.todo.backupOld" : "dash.todo.backupNever"), href: "/admin/backup" });
-  if (core?.available && core.latest) out.push({ id: "update-core", kind: "update-core", icon: "⬆️", label: t("dash.todo.updateCore", { version: core.latest.replace(/^v/, "") }), href: "/admin/updates" });
+  if (backup && !backup.backup.recent) out.push({ id: "backup", kind: "backup", icon: "💾", label: t(backup.backup.at ? "dash.todo.backupOld" : "dash.todo.backupNever"), href: BACKUP_HREF });
+  if (core?.available && core.latest) out.push({ id: "update-core", kind: "update-core", icon: "⬆️", label: t("dash.todo.updateCore", { version: core.latest.replace(/^v/, "") }), href: UPDATES_HREF });
   const behind = modules?.outdated.length ?? 0;
   if (behind > 0) out.push({ id: "update-modules", kind: "update-modules", icon: "🧩", label: t("dash.todo.updateModules", { n: behind }), count: behind, href: EXTENSIONS_UPDATES_HREF });
-  if (skins > 0) out.push({ id: "update-skins", kind: "update-skins", icon: "🎨", label: t("dash.todo.updateSkins", { n: skins }), count: skins, href: "/admin/appearance" });
-  for (const i of env.nav) if (i.badge > 0 && !i.error) out.push({ id: `badge-${i.id}`, kind: "badge", icon: i.icon, label: t("dash.todo.badge", { n: i.badge, name: i.name }), count: i.badge, href: i.content ? `/admin/entries?c=${encodeURIComponent(i.key)}` : `/admin/instances/${i.id}` });
+  if (skins > 0) out.push({ id: "update-skins", kind: "update-skins", icon: "🎨", label: t("dash.todo.updateSkins", { n: skins }), count: skins, href: APPEARANCE_HREF });
+  for (const i of env.nav) if (i.badge > 0 && !i.error) out.push({ id: `badge-${i.id}`, kind: "badge", icon: i.icon, label: t("dash.todo.badge", { n: i.badge, name: i.name }), count: i.badge, href: i.content ? entriesHref(i.key) : instanceHref(i.id) });
   return out;
 }
 

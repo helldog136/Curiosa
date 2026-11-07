@@ -1,4 +1,5 @@
 "use server";
+import { REDIRECTS_HREF, instanceHref } from "@/core/adminLinks";
 
 import { retryInstanceMigration } from "@/core/modules/dataMigrations";
 import { isHexColor, themeRef } from "@/core/color";
@@ -288,7 +289,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const aliasMade = alias && [...managed.created, ...managed.updated].includes(alias.path) ? alias : null;
   await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
-  revalidatePath("/admin/redirects");
+  revalidatePath(REDIRECTS_HREF);
   const saved = socialButton ? t("social.saved", { button: socialButton }) : t("action.saved");
   return { ok: aliasMade ? `${saved} ${t((await isMeasureEnabled()) ? "shortlink.ready" : "shortlink.readyHint", { address: redirectShortUrl(aliasMade.path) })}` : saved };
 }
@@ -298,7 +299,7 @@ export async function retryMigrationAction(id: string): Promise<void> {
   await adminCtx("admin");
   await retryInstanceMigration(id);
   revalidatePath("/", "layout");
-  redirect(`/admin/instances/${id}`);
+  redirect(instanceHref(id));
 }
 
 /** Retire une instance : « Retirer et garder mes données » (rangées, retrouvables) ou « Retirer et tout effacer » (irréversible). */

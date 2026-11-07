@@ -8,14 +8,15 @@ A data conversion ("if the old format, convert it") **runs once, during the upda
 `upgrade.json` (published with every release) declares `minFrom`: the **support floor**, the oldest version that can be updated to this release directly.
 A site older than the floor is not broken: the supervised update (`scripts/update-lib.mjs`, `planUpdate` / `runUpdateChain`) chains it through the declared
 bridge releases, restarts the server after each step and waits for it (the first start of a bridge is what converts the data), then installs the next one.
-The chain is read from the `upgrade.json` of each published release, at most six steps. Example with the floor at 0.6.10:
+The chain is read from the `upgrade.json` of each published release, at most six steps. Example with the floor at 0.6.18:
 
 | Site on | Steps to the next release |
 |---|---|
-| 0.6.10 or newer | 1 (direct) |
-| 0.2.0 to 0.6.9 | 2 (0.6.10, then the release) |
-| 0.1.4 to 0.1.x | 3 (0.2.0, 0.6.10, then the release) |
-| 0.1.1 (oldest published release) | 4 (0.1.4, 0.2.0, 0.6.10, then the release) |
+| 0.6.18 or newer | 1 (direct) |
+| 0.6.10 to 0.6.17 | 2 (0.6.18, then the release) |
+| 0.2.0 to 0.6.9 | 3 (0.6.10, 0.6.18, then the release) |
+| 0.1.4 to 0.1.x | 4 (0.2.0, 0.6.10, 0.6.18, then the release) |
+| 0.1.1 (oldest published release) | 5 (0.1.4, 0.2.0, 0.6.10, 0.6.18, then the release) |
 
 `tests/modules-mgmt/legacy-removal.test.mjs` simulates these paths. The Updates page shows the steps ("to follow", "in progress", "installed") and the chain note.
 The CHANGELOG of a release that raises the floor says so in plain words: **"Older sites update in two steps."**
@@ -36,8 +37,8 @@ The CHANGELOG of a release that raises the floor says so in plain words: **"Olde
 | id | Introduced in | Removable once the floor reaches | State |
 |---|---|---|---|
 | `startup-sweep` | 0.2.0 | permanent (module `dataVersion` contract) | runs once per state (`core.legacySweepState`), no longer on every start |
-| `menu-freeze` | 0.2.6 | 0.7.0 | the start-up call is gone; the freeze remains for new instances and restored old backups |
-| `rawg-handover` | 0.3.0 | 0.7.0 | present |
+| `menu-freeze` | 0.2.6 | not removable by a floor raise (reader of old backups, rule 5) | the start-up call is gone; the freeze and the fallback remain for new instances and for restored backups made before the stored menu; removable after a backup-format decision, like `legacy-off` |
+| `rawg-handover` | 0.3.0 | removed with the floor 0.6.18 | deleted (start-up hook, hook after install/update/restore, relay wait; `ctx.api.rawg` relay, the old-address redirect and the MCP short names stay) |
 | `legacy-off` | 0.1.20 | 0.10.0 | present (restoring backups from before 0.1.20) |
 | `placement-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |
 | `startup-menu-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |

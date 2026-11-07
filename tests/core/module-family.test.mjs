@@ -22,7 +22,8 @@ function legacy() {
     if (type === "content") return "menu";
     return (m.mcp?.length ?? 0) > 0 || (m.offers?.length ?? 0) > 0 || (m.requires?.length ?? 0) > 0 ? "menu" : "integrations";
   };
-  const section = (m) => (m.content || m.type === "content" ? "content" : "community");
+  // The sidebar section moved on in 0.7.0 (Tools and Connections exist now): the old Content/Community rule, plus social/integration -> connections and a simple overlay -> tools.
+  const section = (m) => (isOverlay(m) && m.type !== "social" && m.type !== "integration" ? "tools" : m.type === "social" || m.type === "integration" ? "connections" : m.content || m.type === "content" ? "content" : "community");
   const family = (m) => {
     if (isOverlay(m)) return "overlays";
     if (m.type === "social" || m.type === "integration" || platformOf(m)) return "connections";
@@ -88,7 +89,7 @@ test("family déclarée : elle prime sur la déduction (rangement, rubrique, fam
   const conn = { type: "widget", mcp: [{}], family: "connections" };
   assert.equal(F.extensionFamily(conn), "connections");
   assert.equal(P.defaultPlacement(conn), "integrations");
-  assert.equal(P.defaultSection(conn), "community", "la rubrique du menu n'a que « contenu » et « communauté » : règle habituelle");
+  assert.equal(P.defaultSection(conn), "connections", "since 0.7.0 the sidebar has a Connections section");
   // « community » sur un module à contenu.
   const comm = { content: { display: "list", clickAction: "page" }, family: "community" };
   assert.equal(F.extensionFamily(comm), "community");
@@ -119,4 +120,45 @@ test("manifeste : « family » est validée ; absente, le manifeste est inchang�
   const plain = parseManifest(base);
   assert.equal(plain.ok, true);
   assert.equal(plain.manifest.family, undefined);
+});
+
+// ─── menuGroup (core 0.7.0) ─────────────────────────────────────────────────────────────────────────────────────
+
+test("menuGroup: the four values, validated; absent, the manifest is unchanged; an older core ignores the key", () => {
+  const base = { apiVersion: 2, id: "demo-x", name: "X", version: "1.0.0", main: "index.mjs" };
+  for (const g of ["content", "community", "tools", "connections"]) assert.equal(parseManifest({ ...base, menuGroup: g }).ok, true, g);
+  for (const g of ["overlays", "menu", "Tools", "", 3, null, ["tools"]]) assert.equal(parseManifest({ ...base, menuGroup: g }).ok, false, JSON.stringify(g));
+  const plain = parseManifest(base);
+  assert.equal(plain.ok, true);
+  assert.equal(plain.manifest.menuGroup, undefined);
+  // An older core has no `menuGroup` in its schema and tolerates unknown keys: the manifest still loads. Same tolerance as the comment at manifest.ts, checked on the current schema with an unknown sibling key.
+  assert.equal(parseManifest({ ...base, menuGroup: "tools", someFutureKey: 1 }).ok, true);
+});
+
+test("menuGroup: it wins over family and over the type rule, for the sidebar section and the Extensions family; it never changes the pinning default", () => {
+  const rule = { type: "utility", mcp: [{}] };
+  for (const g of ["content", "community", "tools", "connections"]) {
+    const m = { ...rule, menuGroup: g };
+    assert.equal(P.defaultSection(m), g, g);
+    assert.equal(F.extensionFamily(m), g, g);
+    assert.equal(P.defaultPlacement(m), P.defaultPlacement(rule), `${g}: pinning default unchanged`);
+  }
+  assert.equal(P.defaultSection({ type: "integration", menuGroup: "community" }), "community", "a supporters-like module: integration type, audience page");
+  assert.equal(P.defaultSection({ type: "overlay", menuGroup: "content" }), "content");
+  assert.equal(P.defaultSection({ family: "content", menuGroup: "tools" }), "tools", "menuGroup before family");
+  assert.equal(P.defaultSection({ type: "widget", menuGroup: "bogus" }), "community", "an unknown value (newer module) is ignored here");
+  assert.equal(P.declaredMenuGroup({ menuGroup: "tools" }), "tools");
+  assert.equal(P.declaredMenuGroup({}), null);
+});
+
+test("menuGroup: the whole catalogue gets a section (declared or by type) and the type rule alone sends every social, integration and overlay module to the right place", { skip }, () => {
+  const dirs = fs.readdirSync(path.join(root, "modules")).filter((d) => fs.existsSync(path.join(root, "modules", d, "module.json")));
+  for (const d of dirs) {
+    const parsed = parseManifest(JSON.parse(fs.readFileSync(path.join(root, "modules", d, "module.json"), "utf8")));
+    if (!parsed.ok) continue;
+    const m = parsed.manifest;
+    assert.ok(P.MENU_SECTIONS.includes(P.defaultSection(m)), d);
+    if (!m.menuGroup && !m.family && (m.type === "social" || m.type === "integration")) assert.equal(P.defaultSection(m), "connections", d);
+    if (!m.menuGroup && !m.family && m.type === "overlay") assert.equal(P.defaultSection(m), "tools", d);
+  }
 });

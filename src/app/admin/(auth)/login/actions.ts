@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 import { AuthError } from "next-auth";
 import { headers } from "next/headers";
@@ -28,7 +29,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
   // Dernière étape, commune : tout est vérifié, la session est créée au moyen d'un billet signé de 60 secondes.
   const open = async (userId: string): Promise<LoginState> => {
     try {
-      await signIn("credentials", { ticket: signToken("ticket", userId), redirectTo: "/admin" });
+      await signIn("credentials", { ticket: signToken("ticket", userId), redirectTo: ADMIN_HREF });
     } catch (error) {
       if (error instanceof AuthError) return { error: t("login.invalid") };
       throw error; // la redirection de signIn est une exception à laisser passer
@@ -94,7 +95,7 @@ export async function passkeyLoginFinish(challengeId: string, response: Record<s
   await recordSuccess(ip, found.userId, found.email);
   await audit(found.email, "login.passkey", ip);
   try {
-    await signIn("credentials", { ticket: signToken("ticket", found.userId), redirectTo: "/admin" });
+    await signIn("credentials", { ticket: signToken("ticket", found.userId), redirectTo: ADMIN_HREF });
   } catch (error) {
     if (error instanceof AuthError) return { error: t("login.invalid") };
     throw error;

@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF, instanceHref, isAdminPath } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -56,11 +57,11 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
     return { error: t("error.generic") };
   }
   await audit(user.email, `module.${active.instance.key}.${action}`, "", { module: active.mod.manifest.id, instance: active.instance.key });
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   if (result.redirect) {
     // Un module ne peut rediriger que dans l'admin : "?x=y" reste sur la page de l'instance, "/admin/…" va ailleurs dans l'admin.
-    const to = result.redirect.startsWith("?") ? `/admin/instances/${instanceId}${result.redirect === "?" ? "" : result.redirect}` : result.redirect;
-    if (to.startsWith("/admin/") && !to.startsWith("//")) redirect(to);
+    const to = result.redirect.startsWith("?") ? instanceHref(instanceId, result.redirect) : result.redirect;
+    if (isAdminPath(to)) redirect(to);
   }
   return { ok: result.ok, error: result.error, errors: sanitizeFieldErrors(result.errors) };
 }

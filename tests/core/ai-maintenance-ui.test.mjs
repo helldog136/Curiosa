@@ -77,11 +77,11 @@ test("signalement : le lien est dans le menu d'admin (les deux modes), la page d
   for (const f of [`${PANEL}/updates/page.tsx`, `${PANEL}/assistants/page.tsx`]) assert.match(read(f), /<BugReportLink href=\{bugUrl\}/, f);
   const error = read(`${PANEL}/error.tsx`);
   assert.match(error, /^"use client"/);
-  assert.match(error, /href="\/admin\/bug-report" target="_blank" rel="noopener noreferrer"/);
+  assert.match(error, /href=\{BUG_REPORT_HREF\} target="_blank" rel="noopener noreferrer"/);
   const route = read("src/app/admin/bug-report/route.ts");
   assert.match(route, /adminBugReportUrl/);
   assert.match(route, /currentUser\(\)/);
-  assert.match(route, /\/admin\/login/);
+  assert.match(route, /LOGIN_HREF/);
   assert.ok(fr["bugReport.link"] === "Signaler un bug" && en["bugReport.link"] === "Report a bug");
 });
 

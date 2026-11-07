@@ -1,4 +1,5 @@
 "use client";
+import { BUG_REPORT_HREF } from "@/core/adminLinks";
 
 /**
  * Page d'erreur de l'admin (le menu reste là). Le texte est écrit en français ET en anglais : un composant d'erreur n'a pas accès à la langue du serveur.
@@ -12,7 +13,7 @@ export default function AdminError({ retry }: { error: Error & { digest?: string
       <p className="text-sm leading-6 text-muted">This page could not be displayed. Your data is not affected. You can try again, or report it to us.</p>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => retry()} className="inline-flex items-center rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-accent-fg shadow-sm transition hover:brightness-110">Réessayer / Try again</button>
-        <a href="/admin/bug-report" target="_blank" rel="noopener noreferrer" data-testid="bug-report-link" className="text-sm underline underline-offset-2 hover:text-accent">🐞 Signaler un bug / Report a bug ↗</a>
+        <a href={BUG_REPORT_HREF} target="_blank" rel="noopener noreferrer" data-testid="bug-report-link" className="text-sm underline underline-offset-2 hover:text-accent">🐞 Signaler un bug / Report a bug ↗</a>
       </div>
     </div>
   );

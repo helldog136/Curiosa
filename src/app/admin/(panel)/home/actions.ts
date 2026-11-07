@@ -1,4 +1,5 @@
 "use server";
+import { HOME_HREF } from "@/core/adminLinks";
 
 import { CORE_INSTANCE, CORE_SECTION, isBlockKind, normalizeBlockDef } from "@/core/homeBlocks";
 import { revalidatePath } from "next/cache";
@@ -58,5 +59,5 @@ export async function saveHome(_prev: ActionState, formData: FormData): Promise<
 export async function restoreAssistantHome(): Promise<void> {
   const { user } = await adminCtx("admin");
   await restoreHome(user.email);
-  revalidatePath("/admin/home");
+  revalidatePath(HOME_HREF);
 }

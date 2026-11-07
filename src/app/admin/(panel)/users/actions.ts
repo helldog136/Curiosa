@@ -1,4 +1,5 @@
 "use server";
+import { USERS_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -37,7 +38,7 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
   const name = String(formData.get("name") ?? "").trim() || nameFromEmail(email);
   const r = await createMember(user.id, { name, email, password, role: formData.get("role"), mustChangePassword: generated });
   if (!r.ok) return memberErrors(r.reason, t);
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   if (!generated) return { ok: t("users.added", { name }) };
   return {
     ok: t("users.added.generated", { name }),
@@ -57,7 +58,7 @@ export async function setUserRolesAction(id: string, _prev: ActionState, formDat
   const { user, t } = await adminCtx({ right: "core:team" });
   const r = await setUserRoles(user.id, String(id ?? ""), formData.getAll("roleId").map(String));
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { ok: t("action.saved") };
 }
 
@@ -69,7 +70,7 @@ export async function createRoleAction(_prev: ActionState, formData: FormData): 
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await createRole(user.id, { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { ok: t("roles.created") };
 }
 
@@ -77,7 +78,7 @@ export async function updateRoleAction(id: string, _prev: ActionState, formData:
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await updateRole(user.id, String(id ?? ""), { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { ok: t("action.saved") };
 }
 
@@ -86,7 +87,7 @@ export async function deleteRoleAction(id: string, _prev: ActionState, formData:
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await deleteRole(user.id, String(id ?? ""), String(formData.get("replacement") ?? "") || null);
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { ok: t("roles.deleted") };
 }
 
@@ -94,25 +95,25 @@ export async function deleteRoleAction(id: string, _prev: ActionState, formData:
 export async function deleteUser(id: string): Promise<void> {
   const { user } = await adminCtx("admin");
   const r = await deleteMember(user.id, String(id ?? ""));
-  if (r.ok) revalidatePath("/admin/users");
+  if (r.ok) revalidatePath(USERS_HREF);
 }
 
 /** Débloque quelqu'un qui a trop essayé de se connecter (son e-mail redevient libre tout de suite). Droit `core:team`. */
 export async function unlockUser(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
-  if ((await unlockMember(user.id, String(id ?? ""))).ok) revalidatePath("/admin/users");
+  if ((await unlockMember(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
 /** Coupe toutes les sessions ouvertes de quelqu'un (appareil perdu, compte douteux). Droit `core:team`. */
 export async function revokeUserSessions(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
-  if ((await revokeMemberSessions(user.id, String(id ?? ""))).ok) revalidatePath("/admin/users");
+  if ((await revokeMemberSessions(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
 /** Réinitialise la double vérification ET les clés d'accès de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). Droit `core:team`. */
 export async function resetUserTwoFactor(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
-  if ((await resetMemberTwoFactor(user.id, String(id ?? ""))).ok) revalidatePath("/admin/users");
+  if ((await resetMemberTwoFactor(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
 /** Exiger la double vérification de toute l'équipe — seulement si le propriétaire l'a lui-même activée (sinon il s'enfermerait dehors). */
@@ -125,7 +126,7 @@ export async function setRequireTwoFactor(_prev: ActionState, formData: FormData
     await setSetting("security.require2fa", on);
     await audit(user.email, on ? "security.2fa.require" : "security.2fa.optional");
   }
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { ok: t("action.saved") };
 }
 
@@ -147,6 +148,6 @@ export async function setTemporaryPassword(id: string, mode: string, password?: 
       : t("users.temp.denied");
     return { error };
   }
-  revalidatePath("/admin/users");
+  revalidatePath(USERS_HREF);
   return { name: r.name, mailed: r.mailed, ...(r.password ? { password: r.password } : { chosen: true }) };
 }

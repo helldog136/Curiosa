@@ -5,7 +5,7 @@ import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 export type TabDef = { id: string; label: string };
 
 /**
- * Onglets en haut d'une page longue. Les panneaux sont des éléments quelconques portant `data-tab="<id>"` (ils peuvent se trouver dans des
+ * Onglets en haut d'une page longue (ils passent à la ligne sur un écran étroit : aucun défilement horizontal, aucun onglet caché hors de vue). Les panneaux sont des éléments quelconques portant `data-tab="<id>"` (ils peuvent se trouver dans des
  * formulaires différents, ou dans un seul : le formulaire reste entier, les panneaux masqués sont simplement cachés et continuent d'être envoyés).
  * `data-tab` accepte plusieurs ids séparés par des espaces (ex. un bouton « Enregistrer » commun à trois onglets).
  * L'onglet courant est mémorisé dans l'adresse (#apparence) : on peut le partager et il survit à un rechargement.
@@ -39,10 +39,10 @@ export function Tabs({ tabs, initial, children }: { tabs: TabDef[]; initial?: st
   return (
     <div ref={root} data-tabs-root data-active={active} className="space-y-6">
       <style>{css}</style>
-      <div role="tablist" className="-mx-1 flex gap-1 overflow-x-auto border-b border-line px-1">
+      <div role="tablist" className="flex flex-wrap gap-x-1 border-b border-line">
         {tabs.map((t) => (
           <button key={t.id} type="button" role="tab" aria-selected={active === t.id} onClick={() => choose(t.id)}
-            className={`-mb-px whitespace-nowrap border-b-2 px-4 py-2.5 text-[15px] font-medium transition-colors ${active === t.id ? "border-accent text-accent" : "border-transparent text-muted hover:text-fg"}`}>
+            className={`-mb-px min-h-11 border-b-2 px-3 py-2 text-[15px] font-medium transition-colors sm:px-4 ${active === t.id ? "border-accent text-accent" : "border-transparent text-muted hover:text-fg"}`}>
             {t.label}
           </button>
         ))}

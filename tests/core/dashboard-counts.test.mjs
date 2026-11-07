@@ -130,9 +130,9 @@ test("éléments rangés dans une extension sans liste : jamais comptés, mais s
 
 test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un chiffre, mode simple épuré", () => {
   const page = read("src/app/admin/(panel)/page.tsx");
-  assert.match(page, /\/admin\/entries\?c=\$\{p\.key\}&state=published/);
-  assert.match(page, /href="\/admin\/drafts"/);
-  assert.match(page, /\/admin\/entries\/\$\{d\.id\}/);
+  assert.match(page, /entriesHref\(p\.key, \{ state: "published" \}\)/);
+  assert.match(page, /href=\{DRAFTS_HREF\}/);
+  assert.match(page, /entryHref\(d\.id\)/);
   assert.match(page, /dashboard\.draftsNone/, "état vide qui dit quoi");
   assert.ok(page.indexOf('data-testid="to-finish"') < page.indexOf('data-testid="in-numbers"'), "les brouillons passent avant les chiffres");
   const numbers = page.slice(page.indexOf('data-testid="in-numbers"'));

@@ -138,7 +138,7 @@ test("branchements : le mot de passe seul n'ouvre jamais un compte protégé (ni
   assert.match(login, /signToken\("ticket"/);
   const perms = fs.readFileSync("src/core/auth/access.ts", "utf8");
   assert.match(perms, /needsTwoFactor && !opts\.allowUnenrolled\) return "enroll"/);
-  assert.match(perms, /enroll: "\/admin\/account\?need2fa=1"/);
+  assert.match(perms, /enroll: ACCOUNT_ENROLL_HREF/);
   const users = fs.readFileSync("src/app/admin/(panel)/users/actions.ts", "utf8");
   assert.match(users, /resetUserTwoFactor[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
   assert.match(users, /setRequireTwoFactor[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)[\s\S]*users\.require2faNeedsYou/, "le propriétaire ne peut pas l'exiger sans l'avoir activée");

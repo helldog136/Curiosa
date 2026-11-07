@@ -9,6 +9,7 @@ import {
   bounded, CHOICE_LIMITS, createLabel, decideChoice, filterItems, isChoiceId, matchText, NO_CREATE_REFERS, pageOf, sanitizeGet, sanitizeList, searchArgs,
 } from "./choiceValues";
 import type { ChoiceItem, ChoiceResolution, ChoiceSource, SettingField } from "./types";
+import { instanceHref } from "@/core/adminLinks";
 
 /**
  * RÉGLAGE `choice` (« choix parmi », cœur 0.2.0) : ce qui interroge les fournisseurs. Les règles pures sont dans choiceValues.ts.
@@ -328,7 +329,7 @@ export async function choiceAdminView(consumer: Consumer, field: ChoiceField, op
         let owner: { name: string; href: string } | null = null;
         if (field.source.kind === "service") {
           const master = (await providersOf(consumer, field.source.service, opts.locale)).find((p) => p.master);
-          if (master) owner = { name: master.name, href: `/admin/instances/${master.id}` };
+          if (master) owner = { name: master.name, href: instanceHref(master.id) };
         }
         return { mode: "none", kind: field.source.kind, service: field.source.service, min: field.source.kind === "providers" ? field.source.min : undefined, owner, canCreate };
       }

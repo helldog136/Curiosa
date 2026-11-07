@@ -1,4 +1,5 @@
 "use client";
+import { LOGIN_HREF } from "@/core/adminLinks";
 
 import { useActionState, useEffect, useRef, useState } from "react";
 import { ui } from "@/components/admin/ui";
@@ -100,7 +101,7 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
         <h1 className="text-3xl font-bold">{t("setup.restore.title")}</h1>
         <p className="mt-2 text-sm text-muted">{t("setup.restore.help")}</p>
         <div className="mt-8">
-          <RestorePanel labels={restoreLabels} previewUrl="/api/setup/restore" applyUrl="/api/setup/restore/apply" loginHref="/admin/login" needsToken={needsToken} />
+          <RestorePanel labels={restoreLabels} previewUrl="/api/setup/restore" applyUrl="/api/setup/restore/apply" loginHref={LOGIN_HREF} needsToken={needsToken} />
         </div>
         <button type="button" className={`${ui.btn} mt-8`} onClick={() => setMode("new")}>{t("setup.restore.back")}</button>
       </div>

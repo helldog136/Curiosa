@@ -20,6 +20,7 @@ import { presentStorage } from "@/core/storage/present";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Callout } from "@/components/admin/Page";
 import { MoreOptions } from "@/components/admin/MoreOptions";
+import { APPEARANCE_HREF, AUDIT_HREF, SETTINGS_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 
 /**
  * Les blocs du tableau de bord : des composants serveur, chacun dans son `Suspense`. Un bloc lent (une extension qui tarde, une lecture de base) ne retient ni la page ni les autres blocs ;
@@ -44,7 +45,7 @@ const env = (c: BlockCtx): DashboardEnv => ({ viewer: c.user, locale: c.locale, 
 // ── Mise en route ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function SetupBlock({ c }: { c: BlockCtx }) {
-  const state = await loadSetup({ contentInstanceIds: c.contentIds, locale: c.locale, links: { settings: "/admin/settings", appearance: "/admin/appearance", social: "/admin/social", newPage: c.newPageHref } }).catch(() => null);
+  const state = await loadSetup({ contentInstanceIds: c.contentIds, locale: c.locale, links: { settings: SETTINGS_HREF, appearance: APPEARANCE_HREF, social: SOCIAL_HREF, newPage: c.newPageHref } }).catch(() => null);
   if (!state?.visible) return null;
   const { t } = c;
   return (
@@ -209,7 +210,7 @@ export async function ActivityBlock({ c }: { c: BlockCtx }) {
     <section aria-labelledby="dash-activity" data-testid="dash-activity" className={`${ui.card} space-y-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="dash-activity" className="text-lg font-semibold">{t("dash.activity.title")}</h2>
-        {fullJournal && c.advanced && <a href="/admin/audit" className="text-sm underline hover:text-accent">{t("dash.activity.all")}{ARROW}</a>}
+        {fullJournal && c.advanced && <a href={AUDIT_HREF} className="text-sm underline hover:text-accent">{t("dash.activity.all")}{ARROW}</a>}
       </div>
       {lines.length === 0 ? (
         <p className="text-sm text-muted" data-testid="activity-none">{t("dash.activity.none")}</p>

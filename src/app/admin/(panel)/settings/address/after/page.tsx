@@ -1,3 +1,4 @@
+import { ASSISTANTS_HREF } from "@/core/adminLinks";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -12,6 +13,7 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { TaskTick } from "@/components/admin/TaskTick";
 import { ui } from "@/components/admin/ui";
 import { setAfterTask } from "../actions";
+import { ACCOUNT_HREF, OVERLAY_PAGES_HREF, SETTINGS_ADDRESS_AFTER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +21,7 @@ const CHIP = { ok: ui.chipOk, warn: ui.chipWarn, fail: ui.chipDanger, skipped: u
 
 export default async function AfterChangePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale, config, advanced } = await adminCtx("admin");
-  if (!advanced) redirect("/admin/settings");
+  if (!advanced) redirect(SETTINGS_HREF);
   const sp = await searchParams;
   const run = (Array.isArray(sp.run) ? sp.run[0] : sp.run) === "1";
   const legacy = parseLegacyHosts(process.env.LEGACY_HOSTS, hostOfUrl(siteUrl)).hosts;
@@ -43,7 +45,7 @@ export default async function AfterChangePage({ searchParams }: { searchParams: 
     <div className="space-y-6">
       <PageHeader title={t("domain.after.title")} intro={t("domain.after.intro")} />
       <Panel title={t("domain.after.checks")} help={t("domain.after.checksHelp")} testid="domain-after-checks">
-        <form method="get" action="/admin/settings/address/after">
+        <form method="get" action={SETTINGS_ADDRESS_AFTER_HREF}>
           <input type="hidden" name="run" value="1" />
           <PendingButton variant="primary" pendingLabel={t("domain.after.running")}>{results ? t("domain.after.again") : t("domain.after.run")}</PendingButton>
         </form>
@@ -69,9 +71,9 @@ export default async function AfterChangePage({ searchParams }: { searchParams: 
                 <TaskTick key={task.id} id={task.id} done={done.has(task.id)} title={taskTitle(task)} failed={t("domain.after.failed")} action={setAfterTask}>
                   <p className="text-sm leading-6 text-muted">{task.kind === "uses" ? checklist.uses.find((x, i) => task.id === `use:${x.instanceKey}:${i}`)?.where : t(`domain.after.${task.kind}Help`)}</p>
                   {r && <CopyBlock text={r.newUrl} label={t("domain.check.returnsNew")} {...cp} />}
-                  {task.kind === "passkeys" && <Link href="/admin/account" className="text-sm font-medium text-accent hover:underline">{t("domain.after.passkeysOpen")} →</Link>}
-                  {task.kind === "overlays" && <Link href="/admin/overlay-pages" className="text-sm font-medium text-accent hover:underline">{t("domain.check.overlaysOpen")} →</Link>}
-                  {task.kind === "assistants" && <Link href="/admin/assistants" className="text-sm font-medium text-accent hover:underline">{t("domain.check.assistantsOpen")} →</Link>}
+                  {task.kind === "passkeys" && <Link href={ACCOUNT_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.after.passkeysOpen")} →</Link>}
+                  {task.kind === "overlays" && <Link href={OVERLAY_PAGES_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.check.overlaysOpen")} →</Link>}
+                  {task.kind === "assistants" && <Link href={ASSISTANTS_HREF} className="text-sm font-medium text-accent hover:underline">{t("domain.check.assistantsOpen")} →</Link>}
                   {task.kind === "content" && (
                     <ul className="divide-y divide-line rounded-xl border border-line text-sm" data-testid="content-hits">
                       {checklist.content.hits.map((h, i) => (
@@ -88,7 +90,7 @@ export default async function AfterChangePage({ searchParams }: { searchParams: 
           </ul>
         )}
       </Panel>
-      <p><Link href="/admin/settings/address" className="text-sm underline hover:text-accent">← {t("domain.title")}</Link></p>
+      <p><Link href={SETTINGS_ADDRESS_HREF} className="text-sm underline hover:text-accent">← {t("domain.title")}</Link></p>
     </div>
   );
 }

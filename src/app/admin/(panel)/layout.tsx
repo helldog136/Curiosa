@@ -16,7 +16,7 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { administrationEntries, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
 import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
@@ -26,9 +26,8 @@ import { CropLabelsProvider } from "@/components/admin/CropLabels";
 import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
-import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
-import { setAdminMode, setAdminTheme } from "./mode/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +37,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Le menu ne montre que ce que cette personne peut ouvrir (droit relu en base à chaque requête).
   const nav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
   const editor = hasRole(user, "editor");
-  const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = hasRole(user, "admin");
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
@@ -51,8 +49,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
-  const entryHref = (m: (typeof nav)[number]) => (m.content ? `/admin/entries?c=${m.key}` : `/admin/instances/${m.id}`);
-  const entryAlso = (m: (typeof nav)[number]) => (m.content ? [`/admin/instances/${m.id}`] : []);
+  const entryHref = (m: (typeof nav)[number]) => (m.content ? entriesHref(m.key) : instanceHref(m.id));
+  const entryAlso = (m: (typeof nav)[number]) => (m.content ? [instanceHref(m.id)] : []);
   const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
@@ -62,22 +60,20 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const setupList = nav.flatMap((m) => { const s = statuses?.get(m.id); return s?.state === "setup" && s.missing.length > 0 ? [`${m.name} (${s.missing.map(shortLabel).join(", ")})`] : []; });
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
-  const unpinnedPages = nav.filter((m) => !menu.content.includes(m) && !menu.community.items.includes(m)).flatMap((m) => [`/admin/instances/${m.id}`, ...(m.content ? [`/admin/entries?c=${m.key}`] : [])]);
+  const shown = new Set([...menu.content, ...menu.community, ...menu.tools, ...menu.connections]);
+  const unpinnedPages = nav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
   const adminEntries = administrationEntries({ role: user.level, advanced });
+  // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
+  const maintenanceTabList = maintenanceTabs({ role: user.level, advanced });
+  const maintenanceBadge = (maintenanceTabList.includes("updates") && updateAvailable ? 1 : 0) + (maintenanceTabList.includes("upkeep") && upkeep?.state === "todo" ? upkeep.todo : 0);
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
-    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={["/admin/modules", ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
-    overlays: <NavLink key="overlays" href="/admin/overlay-pages">{t("nav.overlayPages")}</NavLink>,
+    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
+    overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{t("nav.overlayPages")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
-    users: <NavLink key="users" href="/admin/users">{t("nav.users")}</NavLink>,
-    health: <NavLink key="health" href="/admin/maintenance/content">{t("nav.health")}</NavLink>,
-    backup: <NavLink key="backup" href="/admin/backup">{t("nav.backup")}</NavLink>,
-    updates: <NavLink key="updates" href="/admin/updates" badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
-    upkeep: upkeep?.state === "todo"
-      ? <NavLink key="upkeep" href="/admin/maintenance/legacy" badge={upkeep.todo} badgeLabel={t("nav.upkeep.todo")}>{t("nav.upkeep")}</NavLink>
-      : <NavLink key="upkeep" href="/admin/maintenance/legacy" status={upkeep ? (upkeep.state === "kept" ? { label: t("nav.upkeep.kept"), tone: "info", hint: t("nav.upkeep.keptHint") } : { label: t("nav.upkeep.clean"), tone: "ok" }) : undefined}>{t("nav.upkeep")}</NavLink>,
-    audit: <NavLink key="audit" href="/admin/audit">{t("nav.audit")}</NavLink>,
+    users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
+    maintenance: <NavLink key="maintenance" href={maintenanceTabList.length > 0 ? MAINTENANCE_TAB_HREFS[maintenanceTabList[0]!] : HEALTH_HREF} also={maintenanceTabList.map((id) => MAINTENANCE_TAB_HREFS[id])} badge={maintenanceBadge} badgeLabel={t("nav.badge.maintenance")}>{t("nav.maintenance")}</NavLink>,
   };
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
@@ -85,37 +81,28 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   return (
     <div className="flex min-h-screen flex-col">
       <div className="flex flex-1 flex-col md:flex-row">
-      <MobileMenu menuLabel={t("nav.menu")} brand={<a href="/admin" className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
+      <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
-          <div className="mt-4"><NavLink href="/admin" exact>{t("nav.dashboard")}</NavLink></div>
-          {menu.content.length > 0 && (
-            <div>
-              <p className={group}>{t("nav.myContent")}</p>
-              {menu.content.map(entryLink)}
+          <div className="mt-4"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
+          {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => items.length > 0 && (
+            <div key={id} data-testid={`nav-section-${id}`}>
+              <p className={group}>{t(`nav.${id}`)}</p>
+              {items.map(entryLink)}
+            </div>
+          ))}
+          {menu.connections.length > 0 && (
+            <div className="mt-6" data-testid="nav-section-connections">
+              <NavGroup id="connections" title={t("nav.connections")} targets={menu.connections.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
+                {menu.connections.map(entryLink)}
+              </NavGroup>
             </div>
           )}
 
-          {menu.community.items.length > 0 && (
-            <div>
-              <p className={group}>{t("nav.myCommunity")}</p>
-              {menu.community.collapsible
-                ? menu.community.groups.map((g) => (
-                    <NavGroup key={g.id} id={g.id} title={t(`navgroup.${g.id}`)} targets={g.items.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState[g.id]} openByDefault={false} badge={g.items.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
-                      {g.items.map(entryLink)}
-                    </NavGroup>
-                  ))
-                : menu.community.items.map(entryLink)}
-            </div>
-          )}
-
-          <p className={group}>{t("nav.mySite")}</p>
-          {canManage && <NavLink href="/admin/home">{t("nav.home")}</NavLink>}
-          {canManage && <NavLink href="/admin/navigation">{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
-          {canManage && <NavLink href="/admin/appearance">{t("nav.appearance")}</NavLink>}
-          {canManage && <NavLink href="/admin/settings">{t("nav.settings")}</NavLink>}
-          {canManage && <NavLink href="/admin/social">{t("nav.social")}</NavLink>}
-          {canManage && <NavLink href="/admin/ai-visibility">{t("nav.aiVisibility")}</NavLink>}
-          {editor && <NavLink href="/admin/redirects">{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
+          <p className={group}>{t("nav.site")}</p>
+          {canManage && <NavLink href={HOME_HREF} also={[NAVIGATION_HREF, NAVIGATION_HEADER_HREF, SOCIAL_HREF]}>{t("nav.homeMenu")}</NavLink>}
+          {canManage && <NavLink href={APPEARANCE_HREF}>{t("nav.appearance")}</NavLink>}
+          {canManage && <NavLink href={SETTINGS_HREF}>{t("nav.settings")}</NavLink>}
+          {editor && <NavLink href={REDIRECTS_HREF}>{t("nav.redirects")}</NavLink>}
 
           {adminEntries.length > 0 && (
             <>
@@ -125,28 +112,14 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           )}
 
           <p className={group}>{t("nav.account")}</p>
-          <NavLink href="/admin/account">{t("nav.myAccount")}</NavLink>
+          <NavLink href={ACCOUNT_HREF}>{t("nav.myAccount")}</NavLink>
           <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
-        <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
-          <p className="mb-1 text-xs text-muted"><a href="/admin/mode" className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
-          <PendingButton title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</PendingButton>
-        </form>
-        <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
-          <p className="mb-1 text-xs text-muted">{t("theme.admin")}</p>
-          <div className="inline-flex overflow-hidden rounded-xl border border-line">
-            {ADMIN_THEMES.map((id) => (
-              <form key={id} action={setAdminTheme.bind(null, id)}>
-                <button aria-pressed={theme === id} className={`px-3 py-1.5 text-xs transition-colors ${theme === id ? "bg-accent font-semibold text-accent-fg" : "bg-surface hover:bg-accent/10"}`}>{t(`theme.admin.${id}`)}</button>
-              </form>
-            ))}
-          </div>
-        </div>
         <p className="mt-4 px-3"><BugReportLink href={bugUrl}>🐞 {t("bugReport.link")} ↗</BugReportLink></p>
         <form
           action={async () => {
             "use server";
-            await signOut({ redirectTo: "/admin/login" });
+            await signOut({ redirectTo: LOGIN_HREF });
           }}
           className="mt-6 px-3"
         >

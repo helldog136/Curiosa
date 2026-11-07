@@ -31,7 +31,7 @@ test("branchements : le numéro est dans le jeton, relu à chaque page d'admin, 
   assert.match(fs.readFileSync("src/core/auth/access.ts", "utf8"), /sessionIsCurrent\(tokenVersion, user\.sessionVersion\)/);
   assert.match(fs.readFileSync("src/core/permissions.ts", "utf8"), /loadAdminUser\(session\?\.user\?\.id, session\?\.user\?\.sv\)/);
   const account = fs.readFileSync("src/app/admin/(panel)/account/actions.ts", "utf8");
-  assert.match(account, /revokeSessions\(user\.id\);\s*await signOut\(\{ redirectTo: "\/admin\/login\?changed=1"/, "mot de passe changé : sessions coupées, reconnexion demandée");
+  assert.match(account, /revokeSessions\(user\.id\);\s*await signOut\(\{ redirectTo: `\$\{LOGIN_HREF\}\?changed=1`/, "mot de passe changé : sessions coupées, reconnexion demandée");
   assert.match(account, /export async function signOutEverywhere/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/users/actions.ts", "utf8"), /revokeUserSessions[\s\S]*adminCtx\(\{ right: "core:[a-z.]+" \}\)/);
   assert.match(fs.readFileSync("scripts/auth-recover.mjs", "utf8"), /sessionVersion: \{ increment: 1 \}/, "la commande de secours coupe aussi les sessions");

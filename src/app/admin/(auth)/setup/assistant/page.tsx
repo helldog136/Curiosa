@@ -5,6 +5,7 @@ import { ACCESS_PROFILES } from "@/core/services/mcp/profiles";
 import { profileLines } from "@/core/services/mcp/profileTexts";
 import { GUIDE_KEYS, type GuideTexts } from "@/components/admin/McpConnectGuide";
 import { AssistantStep } from "./AssistantStep";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ export default async function SetupAssistantPage({ searchParams }: { searchParam
   const { t } = await adminCtx({ right: "core:mcp.tokens" });
   const { modules } = await searchParams;
   // The dashboard notice about modules is carried over (a closed list, nothing else goes into the address).
-  const back = `/admin?welcome=1${modules === "partial" || modules === "failed" ? `&modules=${modules}` : ""}`;
+  const back = `${ADMIN_HREF}?welcome=1${modules === "partial" || modules === "failed" ? `&modules=${modules}` : ""}`;
   const guide = Object.fromEntries(GUIDE_KEYS.map((k) => [k, t(k)])) as GuideTexts;
   const text = (keys: readonly string[]) => keys.map((k) => t(k));
   return (

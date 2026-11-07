@@ -4,7 +4,7 @@ import { Checkbox } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import type { Translator } from "@/core/i18n/dictionary";
 import type { FeedOverview } from "@/core/feeds";
-import { saveFeedLink } from "./actions";
+import { saveFeedLink } from "./feed-actions";
 
 /**
  * Bloc « Flux RSS » : l'adresse à donner aux lecteurs, ce que contient le flux et d'où cela vient.

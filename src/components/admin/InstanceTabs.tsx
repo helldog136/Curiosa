@@ -1,4 +1,5 @@
 import type { Translator } from "@/core/i18n/dictionary";
+import { entriesHref, instanceHref } from "@/core/adminLinks";
 
 /** En-tête commun des sous-pages d'une instance : nom + onglets Contenu / Réglages. */
 export function InstanceTabs({ t, id, keyName, name, icon, active, content, canConfigure, titleOnly = false }: {
@@ -15,8 +16,8 @@ export function InstanceTabs({ t, id, keyName, name, icon, active, content, canC
       <h1 className="text-2xl font-bold">{icon} {name}</h1>
       {content && canConfigure && !titleOnly && (
         <nav className="flex gap-2 border-b border-line" aria-label={name}>
-          {tab(`/admin/entries?c=${keyName}`, t("tabs.content"), active === "entries")}
-          {tab(`/admin/instances/${id}`, t("tabs.settings"), active === "settings")}
+          {tab(entriesHref(keyName), t("tabs.content"), active === "entries")}
+          {tab(instanceHref(id), t("tabs.settings"), active === "settings")}
         </nav>
       )}
     </div>

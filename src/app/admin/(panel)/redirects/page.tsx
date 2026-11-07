@@ -26,6 +26,7 @@ import { reconcileManaged } from "@/core/managedRedirects";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { createRedirect, deleteRedirect, saveMeasureLinks, setRedirectActive, suggestRedirectName } from "./actions";
+import { REDIRECTS_HREF, instanceHref, redirectHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -33,7 +34,7 @@ const STATES: RedirectStateFilter[] = ["active", "off", "ended"];
 /** L'adresse de la liste pour une recherche, un état et une page. */
 const href = (q: string, page: number, state = "") => {
   const parts = [q ? `q=${encodeURIComponent(q)}` : "", state ? `state=${state}` : "", page > 1 ? `page=${page}` : ""].filter(Boolean);
-  return `/admin/redirects${parts.length ? `?${parts.join("&")}` : ""}`;
+  return `${REDIRECTS_HREF}${parts.length ? `?${parts.join("&")}` : ""}`;
 };
 
 export default async function RedirectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
@@ -75,8 +76,9 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-8">
       <div>
-        <h1 className={ui.pageTitle}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</h1>
-        <p className={ui.pageIntro}>{advanced ? t("redirects.intro") : t("redirects.introSimple", { site })}</p>
+        <h1 className={ui.pageTitle}>{t("nav.redirects")}</h1>
+        <p className={ui.pageIntro}>{t("redirects.line", { site })}</p>
+        {advanced && <p className={ui.help}>{t("redirects.intro")}</p>}
       </div>
 
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site })}</p>}
@@ -84,15 +86,15 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
         <div key={i.instanceId} role="alert" data-testid="managed-conflict" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4 text-sm text-fg">
           <p className="max-w-prose">{t(`redirects.managed.conflict.${i.kind}`, { name: i.moduleName, address: `/${i.path}`, example: `${i.path}-2` })}</p>
           <div className="flex flex-wrap gap-2">
-            <Link href={`/admin/instances/${i.instanceId}`} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.fix", { name: i.moduleName })}</Link>
-            {i.kind === "taken" && clashing.find((c) => c.path === i.path) && <Link href={`/admin/redirects/${clashing.find((c) => c.path === i.path)!.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.managed.seeYours", { address: `/${i.path}` })}</Link>}
+            <Link href={instanceHref(i.instanceId)} className={`${ui.btnPrimary} min-h-11`}>{t("redirects.managed.fix", { name: i.moduleName })}</Link>
+            {i.kind === "taken" && clashing.find((c) => c.path === i.path) && <Link href={redirectHref(clashing.find((c) => c.path === i.path)!.id)} className={`${ui.btn} min-h-11`}>{t("redirects.managed.seeYours", { address: `/${i.path}` })}</Link>}
           </div>
         </div>
       ))}
       {sp.deleted && <p role="status" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("redirects.deleted")}</p>}
 
       <nav aria-label={t("redirects.view.label")} className="flex flex-wrap gap-2" data-testid="redirects-views">
-        {([["all", "/admin/redirects", t("redirects.view.all")], ["destinations", "/admin/redirects?view=destinations", t("redirects.view.byDestination")]] as const).map(([id, to, label]) => (
+        {([["all", REDIRECTS_HREF, t("redirects.view.all")], ["destinations", `${REDIRECTS_HREF}?view=destinations`, t("redirects.view.byDestination")]] as const).map(([id, to, label]) => (
           <Link key={id} href={to} aria-current={view === id ? "page" : undefined} className={`${view === id ? ui.btnPrimary : ui.btn} min-h-11`}>{label}</Link>
         ))}
       </nav>
@@ -133,7 +135,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
         {(list.counts.all > 0 || q || state) && (
           <div className="space-y-3">
             {/* Recherche en direct, présente dès le premier lien (R15) : elle interroge le serveur pendant la frappe, donc toutes les pages, pas seulement celle qui est affichée. */}
-            <LiveSearch mode="server" scope="redirects" action="/admin/redirects" keep={state ? { state } : {}} initialQuery={q}
+            <LiveSearch mode="server" scope="redirects" action={REDIRECTS_HREF} keep={state ? { state } : {}} initialQuery={q}
               placeholder={t("redirects.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
             {showStates && (
               <nav aria-label={t("redirects.state.label")} className="flex flex-wrap gap-2" data-testid="redirects-states">
@@ -150,7 +152,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
 
         {redirects.length === 0 ? (
           q || state ? (
-            <NoResults message={t("search.none")} clearLabel={t("search.clear")} href="/admin/redirects" />
+            <NoResults message={t("search.none")} clearLabel={t("search.clear")} href={REDIRECTS_HREF} />
           ) : (
             // État vide : on explique à quoi ça sert, avec des exemples, et le formulaire juste au-dessus est l'étape suivante.
             <div className={`${ui.card} space-y-1 text-[15px] leading-6`}>
@@ -170,7 +172,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
                     <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
                       <p className="flex flex-wrap items-center gap-2">
-                        <Link href={`/admin/redirects/${r.id}`} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline">/{r.path}</Link>
+                        <Link href={redirectHref(r.id)} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline">/{r.path}</Link>
                         {/* Une étiquette seulement quand la ligne sort de l'ordinaire (R14) : « actif » est la règle, « désactivé » se lit sur l'interrupteur. */}
                         {rowState === "ended" && <span className={ui.chipWarn}>{t("redirects.state.ended")}</span>}
                         {r.entryId && <span className={ui.chip}>{t("redirects.followsEntry")}</span>}
@@ -188,9 +190,9 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                         <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")}
                           failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, r.id)} testid="redirect-switch" />
                       )}
-                      <Link href={`/admin/redirects/${r.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.open")}</Link>
+                      <Link href={redirectHref(r.id)} className={`${ui.btn} min-h-11`}>{t("redirects.open")}</Link>
                       {/* Un lien géré par une extension se règle chez elle : le bouton le dit et y mène (R30). */}
-                      {owner ? <Link href={`/admin/instances/${owner.id}`} className={`${ui.btn} min-h-11`}>{t("redirects.managed.open", { name: owner.name })}</Link> : (
+                      {owner ? <Link href={instanceHref(owner.id)} className={`${ui.btn} min-h-11`}>{t("redirects.managed.open", { name: owner.name })}</Link> : (
                         <RowMenu label={t("table.menu")}>
                           <form action={deleteRedirect.bind(null, r.id)}>
                             <ConfirmButton menu message={t("redirects.deleteConfirm", { address: `${site}/${r.path}` })} confirmLabel={t("redirects.deleteYes")} dangerConfirm pendingLabel={t("progress.deleting")}>{t("redirects.deleteMenu")}</ConfirmButton>

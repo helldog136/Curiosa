@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { MIN_PASSWORD_LENGTH } from "@/core/backup/crypto";
 import { BackupForm } from "@/components/admin/BackupForm";
 import { RestorePanel } from "@/components/admin/RestorePanel";
@@ -7,7 +8,7 @@ import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 export const dynamic = "force-dynamic";
 
 export default async function BackupPage() {
-  const { t, advanced } = await adminCtx({ right: "core:backup" });
+  const { t, advanced, user } = await adminCtx({ right: "core:backup" });
   const labels = Object.fromEntries(
     ["deps.missing", "deps.provided", "deps.note", "deps.title", "migrated", "migrationFailed", "file", "password", "check", "apply", "cancel", "done", "login", "entries", "users", "instances", "uploads", "replaceWarning", "confirmReplace", "trustCustom",
       "status.installed", "status.catalogue", "status.custom", "status.unavailable", "outcome.kept", "outcome.installed", "outcome.skipped", "outcome.failed", "outcome.unavailable", "skin", "status.skinPersonal", "trustCustomSkin", "skinOutcome.kept", "skinOutcome.installed", "skinOutcome.skipped", "skinOutcome.failed",
@@ -16,7 +17,8 @@ export default async function BackupPage() {
   );
   return (
     <div className="space-y-8">
-      <PageHeader title={t("nav.backup")} intro={t("backup.intro")} />
+      <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="backup" />
+      <PageHeader level={2} title={t("maint.tab.backup")} intro={t("backup.intro")} />
 
       <Panel title={t("backup.createTitle")} help={t("backup.createHelp")}>
         <Callout tone="warn">{t("backup.passwordWarning", { n: MIN_PASSWORD_LENGTH })}</Callout>

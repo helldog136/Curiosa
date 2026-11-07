@@ -14,8 +14,8 @@ import { catalogueIds } from "./helpers/extras.mjs";
  * continue du cœur seul), on garde un petit garde-fou de départ et le test le dit, au lieu d'une liste qui vieillit sans que personne la tienne.
  */
 const FALLBACK_MODULE_IDS = ["blog", "links", "codes", "pages", "hero", "partnerships", "sponsors", "maze-overlay"];
-/** Exceptions EXPLIQUÉES (audit B2) : la reprise finale RAWG (services/rawgHandover.ts) cite le module « Jaquettes de jeux » (qu'elle installe et à qui elle confie la clé et les corrections que le cœur garde encore) et les deux modules qui rangeaient autrefois la clé dans leurs réglages (lecture seule, 0.1.x). Elle disparaît avec la dernière donnée RAWG du cœur (purge optionnelle prévue plus tard). Une entrée = un fichier + les identifiants tolérés. */
-const KNOWN_CITATIONS = { "src/core/services/rawgHandover.ts": ["game-covers", "game-suggestions", "planning"] };
+/** Exceptions EXPLIQUÉES (audit B2) : le relais `ctx.api.rawg` (services/rawgRelay.ts, déprécié depuis la 0.3.0) nomme le module « Jaquettes de jeux » (`game-covers`) vers lequel il relaie les anciens modules ; la reprise finale qui citait aussi `game-suggestions` et `planning` est retirée (plancher 0.6.18). Il disparaît avec le relais. Une entrée = un fichier + les identifiants tolérés. */
+const KNOWN_CITATIONS = { "src/core/services/rawgRelay.ts": ["game-covers"] };
 function moduleIdsKnownToNobody(t) {
   const fromCatalogue = catalogueIds();
   if (fromCatalogue) return fromCatalogue;
@@ -45,8 +45,8 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     "src/core/services/index.ts": [],
     // Le client réseau ne connaît rien du cœur (ni modules, ni réglages, ni base) : il est aussi chargé seul par le kit de test.
     "src/core/services/net.ts": [],
-    // Le mécanisme MCP ne connaît ni les modules, ni le contenu, ni les instances.
-    "src/core/services/mcp": ["@/core/db", "@/core/settings", "@/core/modules/types"],
+    // Le mécanisme MCP ne connaît ni les modules, ni le contenu, ni les instances (adminLinks.ts : adresses pures, sans dépendance).
+    "src/core/services/mcp": ["@/core/db", "@/core/settings", "@/core/modules/types", "../../adminLinks", "@/core/adminLinks"],
     // Les sujets connaissent les modules (c'est leur objet) ; le sujet du cœur vient du moteur de contenu.
     "src/core/services/topics.ts": ["@/core/content/topics", "@/core/instances", "@/core/settings", "@/core/modules/budget", "@/core/modules/context", "@/core/modules/registry", "@/core/modules/types"],
   };

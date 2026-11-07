@@ -10,6 +10,7 @@ import type { Translator } from "../i18n/dictionary";
 import { EXTENSIONS_ADD_HREF } from "../modules/extensionsLinks";
 import type { ModuleAction } from "./modules";
 import type { TodoNavItem } from "./todo";
+import { REDIRECTS_HREF, entryNewHref } from "@/core/adminLinks";
 
 export type QuickAction = { id: string; icon: string; label: string; href: string; /** « core » ou l'identifiant de l'extension qui la propose. */ from: string };
 export const QUICK_MAX = 6;
@@ -22,10 +23,10 @@ export function coreQuickActions(opts: { user: AdminUser; t: Translator; advance
     const handled = new Set(opts.declared.map((d) => d.instanceId));
     for (const i of opts.nav) {
       if (!i.content || i.error || handled.has(i.id)) continue;
-      out.push({ id: `add-${i.id}`, icon: i.icon, label: t("dash.create.entry", { name: i.name }), href: `/admin/entries/new?c=${encodeURIComponent(i.key)}`, from: "core" });
+      out.push({ id: `add-${i.id}`, icon: i.icon, label: t("dash.create.entry", { name: i.name }), href: entryNewHref(i.key), from: "core" });
     }
   }
-  if (hasRole(user, "editor")) out.push({ id: "short-link", icon: "🔗", label: t("dash.create.link"), href: "/admin/redirects", from: "core" });
+  if (hasRole(user, "editor")) out.push({ id: "short-link", icon: "🔗", label: t("dash.create.link"), href: REDIRECTS_HREF, from: "core" });
   if (opts.advanced && hasRole(user, "admin")) out.push({ id: "extension", icon: "🧩", label: t("dash.create.extension"), href: EXTENSIONS_ADD_HREF, from: "core" });
   return out;
 }
