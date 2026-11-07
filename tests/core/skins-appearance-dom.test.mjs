@@ -301,9 +301,9 @@ test("page, un administrateur (pas propriétaire) : il règle l'apparence, mais 
 
 // ── Réglages : ce qui a bougé
 
-test("Réglages : un lien vers Apparence mais plus d'onglet Apparence ; le lien / bouton de l'en-tête est dans « Menu du site » ; plus de couleurs, de police, de fond ni de disposition dans ce formulaire ; le menu a l'entrée Apparence", () => {
+test("Réglages : plus d'onglet Apparence ni de rappel vers Apparence ; le lien / bouton de l'en-tête est dans « Menu du site » ; plus de couleurs, de police, de fond ni de disposition dans ce formulaire ; le menu a l'entrée Apparence", () => {
   const settings = read("src/app/admin/(panel)/settings/page.tsx");
-  assert.match(settings, /href=\{APPEARANCE_(?:FONTS_)?HREF\}/);
+  assert.doesNotMatch(settings, /to-appearance|settings\.appearanceHint/, "le rappel vers Apparence (doublon du menu) a disparu des réglages");
   assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
   assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
   const navigation = read("src/app/admin/(panel)/navigation/page.tsx");

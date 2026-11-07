@@ -22,7 +22,23 @@ The model is `maintenanceTabs({ role, advanced })` in `core/modules/adminMenu.ts
 
 Module updates (`/admin/extensions/updates`) stay under **Extensions**: that view has its own header and tabs, and the Updates tab of Maintenance links to it from its "Extensions" card.
 
-### Routes that are not tabs and must never be redirected
+## Settings: one entry, tabs inside one page
+
+`/admin/settings` is one page with client tabs (`components/admin/Tabs.tsx`); the open tab lives in the address as a hash, so a link such as `/admin/settings#privacy` opens that tab.
+
+| Tab (EN / FR) | Hash | Notes |
+|---|---|---|
+| Name and logo / Nom et logo | `#site` | was "Identity" |
+| Languages / Langues | `#languages` | |
+| Privacy / Confidentialité | `#privacy` | |
+| Search / Recherche | `#search` | |
+| AI visibility / Visibilité dans les IA | `#ai` | was its own entry and page; rendered in a `Suspense`, so it never holds the page back |
+| E-mail | `#mail` | owner only |
+| Web address / Adresse web | `#address` | advanced mode only; shows the address and a button to the guided steps |
+
+Old addresses: `/admin/ai-visibility` redirects to `/admin/settings#ai`. `/admin/settings/address` and `/admin/settings/address/after` keep their route (the guided steps are real pages, linked from mails and docs) and show a "back to Settings" link; `/admin/settings/rawg-covers` is untouched (modules link to it). A server redirect cannot see a `#`, so moved tabs use `components/admin/LegacyHash.tsx` (`#appearance`, `#header`).
+
+## Routes that are not tabs and must never be redirected
 
 `/api/admin/backup`, `/api/admin/backup/restore`, `/api/admin/backup/restore/apply` (backup handlers), `/api/admin/upload`, `/admin/overlay-pages/<id>/preview` (the preview), and the detail pages `/admin/modules/<id>`, `/admin/instances/<id>`.
 

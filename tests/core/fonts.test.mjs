@@ -419,7 +419,7 @@ test("structure de la page : l'envoi est DANS la section Polices (sous les deux 
   assert.ok(up.indexOf('name="license"') < up.indexOf("<MoreOptions"), "fichier et case d'abord, nom ensuite");
   const model = fs.readFileSync("src/app/admin/(panel)/appearance/fontModel.ts", "utf8");
   assert.ok(model.indexOf('id: "mine"') < model.indexOf('id: "system"'), "« Mes polices » en tête");
-  assert.match(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /APPEARANCE_FONTS_HREF/);
+  assert.doesNotMatch(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /APPEARANCE_FONTS_HREF/, "le rappel vers Apparence a été retiré des réglages (doublon du menu)");
 });
 
 test("suivi : une panne d'écriture ne laisse aucun reste (fichier temporaire, fichier sans entrée) ; CFF2 dit son message sous le champ", async () => {

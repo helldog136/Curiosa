@@ -1,4 +1,4 @@
-import { ASSISTANTS_HREF } from "@/core/adminLinks";
+import { ASSISTANTS_HREF, SETTINGS_ADDRESS_TAB_HREF } from "@/core/adminLinks";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { headers } from "next/headers";
@@ -44,6 +44,7 @@ export default async function AddressPage({ searchParams }: { searchParams: Sear
 
   return (
     <div className="space-y-6">
+      <p><Link href={SETTINGS_ADDRESS_TAB_HREF} className="text-sm underline hover:text-accent" data-testid="address-back">← {t("nav.settings")}</Link></p>
       <PageHeader title={t("domain.title")} intro={t("domain.intro")} />
       <Panel title={t("domain.current.title")} testid="domain-current">
         <p className="break-all text-lg font-semibold" data-testid="domain-current-url">{siteUrl}</p>

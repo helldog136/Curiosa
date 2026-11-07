@@ -331,7 +331,7 @@ test("visibilité : chaque contrôle passe à « à faire » quand son état est
 });
 
 test("visibilité : la page appelle les vraies fonctions de robots.txt, du plan du site et de llms.txt, sans réseau ; chaque texte existe en fr et en", () => {
-  const page = read("src/app/admin/(panel)/ai-visibility/page.tsx");
+  const page = read("src/app/admin/(panel)/settings/AiVisibilityPanel.tsx");
   assert.match(page, /robots\(\)/); assert.match(page, /buildSitemap\(\)/); assert.match(page, /buildLlmsTxt\(/);
   assert.ok(!/fetch\(/.test(page), "aucun appel réseau");
   const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
@@ -343,7 +343,8 @@ test("visibilité : la page appelle les vraies fonctions de robots.txt, du plan 
   }
   assert.match(fr["ai.intro"], /Rien ne garantit d'être cité/);
   assert.ok(!/\d+\s*\/\s*100|score/i.test(fr["ai.summary.todo"] + fr["ai.summary.done"] + fr["ai.intro"]), "pas de score chiffré");
-  assert.match(read("src/app/admin/(panel)/layout.tsx"), /AI_VISIBILITY_HREF/);
+  assert.match(read("src/app/admin/(panel)/settings/page.tsx"), /<AiVisibilityPanel \/>/, "la page est un onglet des réglages");
+  assert.match(read("src/app/admin/(panel)/ai-visibility/page.tsx"), /redirect\(SETTINGS_AI_HREF\)/, "l'ancienne adresse y mène");
 });
 
 test("textes pour Emma : l'explication des deux familles est affichée dans les réglages, sans promesse", () => {

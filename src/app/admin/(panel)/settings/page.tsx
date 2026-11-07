@@ -28,7 +28,10 @@ import Link from "next/link";
 import { I18nStatusCard } from "@/components/admin/I18nStatusCard";
 import { i18nStatus } from "@/core/i18n/status";
 import { LegacyHash } from "@/components/admin/LegacyHash";
-import { AI_VISIBILITY_HREF, APPEARANCE_FONTS_HREF, APPEARANCE_HREF, NAVIGATION_HEADER_HREF, SETTINGS_ADDRESS_HREF } from "@/core/adminLinks";
+import { APPEARANCE_HREF, NAVIGATION_HEADER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_AI_HREF } from "@/core/adminLinks";
+import { Suspense } from "react";
+import { AiVisibilityPanel } from "./AiVisibilityPanel";
+import { siteUrl } from "@/core/config";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
 
@@ -71,11 +74,9 @@ export default async function SettingsPage() {
       <header>
         <h1 className={ui.pageTitle}>{t("nav.settings")}</h1>
         <p className={ui.pageIntro}>{t("settings.intro")}</p>
-        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href={APPEARANCE_FONTS_HREF} className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
-        {advanced && <p className={`${ui.help} mt-1`}>{t("settings.addressHint")} <Link href={SETTINGS_ADDRESS_HREF} className="font-medium text-accent hover:underline" data-testid="to-address">{t("settings.addressOpen")} →</Link></p>}
       </header>
       <LegacyHash map={{ appearance: APPEARANCE_HREF, header: NAVIGATION_HEADER_HREF }} />
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, { id: "ai", label: t("settings.ai") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : []), ...(advanced ? [{ id: "address", label: t("settings.address") }] : [])]}>
       <div data-tab="site languages privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -179,7 +180,7 @@ export default async function SettingsPage() {
             <Select name="aiAnswers" label={t("settings.aiAnswers")} help={t("settings.aiAnswersHelp")} defaultValue={ai.blockAnswers ? "block" : "allow"}
               options={[{ value: "allow", label: t("settings.aiAllowed") }, { value: "block", label: t("settings.aiBlocked") }]} />
             <Checkbox name="llmsTxt" label={t("settings.llmsTxt")} help={t("settings.llmsTxtHelp")} defaultChecked={llmsTxt} />
-            <a href={AI_VISIBILITY_HREF} className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
+            <a href={SETTINGS_AI_HREF} className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
           </div>
           <div className={`${ui.card} space-y-4`}>
             <h3 className="font-semibold">{t("settings.privacyPage")}</h3>
@@ -231,6 +232,12 @@ export default async function SettingsPage() {
         </ActionForm>
       </section>
 
+      <section data-tab="ai" className="space-y-5">
+        <Suspense fallback={<p className={ui.help} role="status">{t("ai.loading")}</p>}>
+          <AiVisibilityPanel />
+        </Suspense>
+      </section>
+
       {isOwner && (
         <section data-tab="mail" className="space-y-5">
           <p className={ui.help}>{t("settings.mailHelp")}</p>
@@ -269,6 +276,16 @@ export default async function SettingsPage() {
           {mail && (
             <ActionForm action={sendTestMail} submitLabel={t("settings.mailTest")} pendingLabel={t("progress.sending")} className="space-y-3">{null}</ActionForm>
           )}
+        </section>
+      )}
+      {advanced && (
+        <section data-tab="address" className="space-y-5" data-testid="settings-address">
+          <p className={ui.help}>{t("settings.addressHelp")}</p>
+          <div className={`${ui.card} space-y-4`}>
+            <h3 className="font-semibold">{t("domain.current.title")}</h3>
+            <p className="break-all text-lg font-semibold" data-testid="settings-address-url">{siteUrl}</p>
+            <Link href={SETTINGS_ADDRESS_HREF} className={ui.btnPrimary} data-testid="to-address">{t("settings.addressChange")}</Link>
+          </div>
         </section>
       )}
       </Tabs>
