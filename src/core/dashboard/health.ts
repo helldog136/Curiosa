@@ -7,6 +7,7 @@ import { hasRole, can, type AdminUser } from "../auth/access";
 import { contentBadge } from "../maintenance/content/service";
 import { glance } from "../maintenance/inspect";
 import type { Translator } from "../i18n/dictionary";
+import { BACKUP_HREF, EXTENSIONS_HREF, HEALTH_HREF, UPDATES_HREF, STORAGE_HREF } from "@/core/adminLinks";
 
 export type HealthPoint = {
   id: "database" | "disk" | "update" | "instances" | "content" | "backup";
@@ -27,13 +28,13 @@ export function healthPoints(user: AdminUser, facts: HealthFacts, t: Translator)
   const g = facts.glance;
   const technical = can(user, "core:backup") || can(user, "core:updates");
   if (g && technical) {
-    if (!g.databaseOk) out.push({ id: "database", severity: "problem", label: t("dash.health.database"), href: can(user, "core:backup") ? "/admin/backup" : null });
-    if (g.disk === "critical" || g.disk === "low") out.push({ id: "disk", severity: "problem", label: t(g.disk === "critical" ? "dash.health.diskCritical" : "dash.health.diskLow"), href: "/admin#storage" });
-    if (g.updateFailed) out.push({ id: "update", severity: "problem", label: t("dash.health.update"), href: can(user, "core:updates") ? "/admin/updates" : null });
-    if (!g.backup.recent && can(user, "core:backup")) out.push({ id: "backup", severity: "advice", label: t(g.backup.at ? "dash.health.backupOld" : "dash.health.backupNever"), href: "/admin/backup" });
+    if (!g.databaseOk) out.push({ id: "database", severity: "problem", label: t("dash.health.database"), href: can(user, "core:backup") ? BACKUP_HREF : null });
+    if (g.disk === "critical" || g.disk === "low") out.push({ id: "disk", severity: "problem", label: t(g.disk === "critical" ? "dash.health.diskCritical" : "dash.health.diskLow"), href: STORAGE_HREF });
+    if (g.updateFailed) out.push({ id: "update", severity: "problem", label: t("dash.health.update"), href: can(user, "core:updates") ? UPDATES_HREF : null });
+    if (!g.backup.recent && can(user, "core:backup")) out.push({ id: "backup", severity: "advice", label: t(g.backup.at ? "dash.health.backupOld" : "dash.health.backupNever"), href: BACKUP_HREF });
   }
-  if (g && hasRole(user, "admin") && g.instancesSetAside > 0) out.push({ id: "instances", severity: "problem", label: t("dash.health.instances", { n: g.instancesSetAside }), href: "/admin/extensions" });
-  if (facts.contentLook && hasRole(user, "admin")) out.push({ id: "content", severity: "advice", label: t("dash.health.content"), href: "/admin/maintenance/content" });
+  if (g && hasRole(user, "admin") && g.instancesSetAside > 0) out.push({ id: "instances", severity: "problem", label: t("dash.health.instances", { n: g.instancesSetAside }), href: EXTENSIONS_HREF });
+  if (facts.contentLook && hasRole(user, "admin")) out.push({ id: "content", severity: "advice", label: t("dash.health.content"), href: HEALTH_HREF });
   return out;
 }
 

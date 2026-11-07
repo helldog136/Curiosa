@@ -6,12 +6,13 @@ import { clientIp } from "@/core/auth/clientIp";
 import { checkLogin, recordFailure, recordSuccess } from "@/core/auth/lockout";
 import { verifyPassword } from "@/core/auth/password";
 import { readToken } from "@/core/auth/twoFactor";
+import { LOGIN_HREF } from "@/core/adminLinks";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
   secret: getAuthSecret(),
   // Le site tourne derrière un reverse proxy qui fixe le Host.
   trustHost: true,
-  pages: { signIn: "/admin/login" },
+  pages: { signIn: LOGIN_HREF },
   // Session en jeton, valable 14 jours au plus ; elle se coupe aussi à tout moment (voir core/auth/sessions.ts).
   session: { strategy: "jwt", maxAge: 14 * 24 * 60 * 60 },
   providers: [

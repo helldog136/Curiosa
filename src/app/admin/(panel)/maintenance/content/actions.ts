@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF, HEALTH_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -30,7 +31,7 @@ export async function checkContentAction(opId: string | undefined, resume: boole
   const [report, ignored] = await Promise.all([readReport(), readIgnored()]);
   const counts = report ? tally(visibleGroups(report, ignored)) : null;
   await audit(user.email, "content.check", `${value.finished ? "done" : "partial"} · ${value.done}/${value.total} links${counts ? ` · important ${counts.important}, advised ${counts.advised}, info ${counts.info}` : ""}`);
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   return { state: value.finished ? "done" : "more", done: value.done, total: value.total };
 }
 
@@ -38,13 +39,13 @@ export async function checkContentAction(opId: string | undefined, resume: boole
 export async function ignoreAction(k: string): Promise<void> {
   await adminCtx("admin");
   await ignoreItem(k);
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
 }
 
 export async function unignoreAllAction(): Promise<void> {
   await adminCtx("admin");
   await unignoreAll();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
 }
 
 /** Les deux réglages. « Sites à ne jamais visiter » n'existe qu'en mode avancé : hors mode avancé, la valeur gardée n'est pas touchée. */
@@ -52,6 +53,6 @@ export async function saveContentSettings(_prev: ActionState, formData: FormData
   const { t, advanced } = await adminCtx("admin");
   const current = await readSettings();
   await writeSettings({ checkLinks: formData.get("checkLinks") === "on", skipHosts: advanced ? String(formData.get("skipHosts") ?? "").slice(0, 10_000) : current.skipHosts });
-  revalidatePath("/admin/maintenance/content");
+  revalidatePath(HEALTH_HREF);
   return { ok: t("content.settings.saved") };
 }

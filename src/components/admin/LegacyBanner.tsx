@@ -1,8 +1,9 @@
 "use client";
+import { UPKEEP_HREF } from "@/core/adminLinks";
 
 import { usePathname } from "next/navigation";
 
-export const LEGACY_PAGE = "/admin/maintenance/legacy";
+export const LEGACY_PAGE = UPKEEP_HREF;
 
 /**
  * Bandeau « mise à niveau pas terminée » de l'administration. Caché sur la page Entretien elle-même : elle dit déjà la même chose, en détail

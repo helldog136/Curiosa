@@ -7,6 +7,7 @@ import { pickLocalized } from "@/core/modules/profiles";
 import { ui } from "@/components/admin/ui";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { createFromTemplate } from "../actions";
+import { entriesHref } from "@/core/adminLinks";
 
 /**
  * « Partir d'un modèle » : les modèles d'entrée que le module déclare (`content.templates`). Un modèle crée un BROUILLON prérempli, jamais une page publiée ;
@@ -23,7 +24,7 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-6">
       <div>
-        <a href={`/admin/entries?c=${collection.key}`} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <h1 className="mt-1 text-2xl font-bold">{t("entries.templates.title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("entries.templates.intro")}</p>
       </div>

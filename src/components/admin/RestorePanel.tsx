@@ -1,4 +1,5 @@
 "use client";
+import { LOGIN_HREF } from "@/core/adminLinks";
 
 import { useState } from "react";
 import { AnimatedActionButton } from "./AnimatedActionButton";
@@ -14,7 +15,7 @@ type Report = { ok: boolean; error?: string; modules: { id: string; outcome: str
 type Labels = Record<string, string>;
 
 /** Restauration en deux temps : (1) fichier + mot de passe → aperçu ; (2) confirmation, module personnel par module personnel. */
-export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore", applyUrl = "/api/admin/backup/restore/apply", loginHref = "/admin/login", needsToken = false }: { labels: Labels; previewUrl?: string; applyUrl?: string; loginHref?: string; needsToken?: boolean }) {
+export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore", applyUrl = "/api/admin/backup/restore/apply", loginHref = LOGIN_HREF, needsToken = false }: { labels: Labels; previewUrl?: string; applyUrl?: string; loginHref?: string; needsToken?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);

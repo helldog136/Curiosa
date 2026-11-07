@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { providerInstance } from "@/core/modules/dependencies";
 import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgHandover";
+import { EXTENSIONS_ADD_DETAILS_HREF, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,11 @@ export default async function RawgCoversRedirect({ searchParams }: { searchParam
   await adminCtx("admin");
   const sp = await searchParams;
   const provider = await providerInstance(COVERS_SERVICE, COVERS_MODULE);
-  if (!provider) redirect(`/admin/extensions/add/details?id=${COVERS_MODULE}`);
+  if (!provider) redirect(`${EXTENSIONS_ADD_DETAILS_HREF}?id=${COVERS_MODULE}`);
   const keep = new URLSearchParams();
   const titre = one(sp.titre).slice(0, 400), q = one(sp.q).slice(0, 400), saved = one(sp.saved);
   if (titre) keep.set("titre", titre);
   if (q && titre) keep.set("q", q);
   if (["game", "none", "confirm", "forgot"].includes(saved)) keep.set("saved", saved);
-  redirect(`/admin/instances/${provider.instance.id}${keep.size ? `?${keep}` : ""}`);
+  redirect(instanceHref(provider.instance.id, keep.size ? `?${keep}` : ""));
 }

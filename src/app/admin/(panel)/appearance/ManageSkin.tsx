@@ -1,4 +1,5 @@
 "use client";
+import { APPEARANCE_HREF } from "@/core/adminLinks";
 
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -18,7 +19,7 @@ export function ManageSkin({ skin }: { skin: ManagedSkin }) {
   // Après une mise à jour, un retour en arrière ou un retrait, la zone change (ou disparaît) : le message de réussite est donc dit en haut de la page.
   const flash = (done: string, fn: (p: ActionState, f: FormData) => Promise<ActionState>) => async (p: ActionState, f: FormData): Promise<ActionState> => {
     const r = await fn(p, f);
-    if (r?.ok) router.replace(`/admin/appearance?done=${done}${(r.ok.match(/\d+\.\d+\.\d+/) ?? [""])[0] ? `&v=${(r.ok.match(/\d+\.\d+\.\d+/) ?? [""])[0]}` : ""}`);
+    if (r?.ok) router.replace(`${APPEARANCE_HREF}?done=${done}${(r.ok.match(/\d+\.\d+\.\d+/) ?? [""])[0] ? `&v=${(r.ok.match(/\d+\.\d+\.\d+/) ?? [""])[0]}` : ""}`);
     return r;
   };
   const [result, setResult] = useState<UpdateView | null>(null);

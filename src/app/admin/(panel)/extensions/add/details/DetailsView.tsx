@@ -24,6 +24,7 @@ import { FicheSkeleton, GallerySkeleton } from "@/components/admin/FicheSkeleton
 import { installBarState, readmeSummary, techSummary, whatItAdds } from "@/core/modules/ficheView";
 import { previewUrl, readInstalledPreviews, type PreviewSource } from "@/core/modules/previewServe";
 import { describeMissing } from "@/core/modules/dependencyMessages";
+import { moduleHref } from "@/core/adminLinks";
 
 /**
  * Avant d'installer : le README du module et ce qu'il demande (permissions, services), lus sans l'installer.
@@ -143,7 +144,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
       plan={planView ? <DependencyPlanBox view={planView} t={t} names={names} advanced={advanced} /> : null}
       summary={summary} needsNewerCore={entry?.needsNewerCore} currentCore={getCoreVersion()} incompatible={!!entry && !entry.compatible}
       bar={bar} firstProblem={firstProblem ? describeMissing(firstProblem, t, names) : undefined} action={action}
-      manageHref={entry ? `/admin/modules/${encodeURIComponent(entry.id)}` : undefined} />
+      manageHref={entry ? moduleHref(entry.id) : undefined} />
   );
 }
 

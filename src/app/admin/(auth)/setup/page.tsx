@@ -8,12 +8,13 @@ import { setupModules } from "@/core/modules/starter";
 import { countUsers } from "@/core/content/service";
 import { getAllSetupStrings } from "./strings";
 import { SetupWizard } from "./SetupWizard";
+import { LOGIN_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
 /** Première connexion : tant qu'aucun compte n'existe, c'est la seule page accessible. */
 export default async function SetupPage() {
-  if ((await countUsers()) > 0) redirect("/admin/login");
+  if ((await countUsers()) > 0) redirect(LOGIN_HREF);
   const { modules, profiles, unreachable } = await setupModules();
   const locales = Object.entries(KNOWN_LOCALES).map(([code, name]) => ({ code, name }));
   const view = setupView({ modules, profiles }, locales.map((l) => l.code));

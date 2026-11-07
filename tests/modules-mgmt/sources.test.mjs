@@ -102,5 +102,5 @@ test("branchements : réservé au propriétaire, journalisé, affiché dans le C
   assert.match(actions, /module\.source\.add/);
   const page = fs.readFileSync("src/app/admin/(panel)/extensions/add/page.tsx", "utf8");
   assert.match(page, /isOwner && advanced && \(\s*<section[\s\S]*catalogue\.sources/);
-  assert.match(page, /details\?repo=/, "chaque module passe par la page de détails (README, permissions, case « je comprends »)");
+  assert.match(page, /EXTENSIONS_ADD_DETAILS_HREF, \{ repo:/, "chaque module passe par la page de détails (README, permissions, case « je comprends »)");
 });

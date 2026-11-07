@@ -1,4 +1,5 @@
 "use client";
+import { instanceHref } from "@/core/adminLinks";
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
@@ -31,7 +32,7 @@ export function SuggestInstallForm({ instanceId, service, moduleId, extra, label
           setHref(r.href);
           return r.ok ? { ok: true } : { ok: false, error: r.error };
         }}
-        onDone={() => { router.push(href ?? `/admin/instances/${encodeURIComponent(instanceId)}`); router.refresh(); }} />
+        onDone={() => { router.push(href ?? instanceHref(instanceId)); router.refresh(); }} />
     </div>
   );
 }

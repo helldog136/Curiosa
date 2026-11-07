@@ -1,4 +1,5 @@
 "use client";
+import { moduleHref } from "@/core/adminLinks";
 
 import { useRef } from "react";
 import { useRouter } from "next/navigation";
@@ -12,7 +13,7 @@ type Labels = { idle: string; working: string; done: string; failed: string };
 export function ModuleUpdateButton({ id, kind, labels }: { id: string; kind: "check" | "update"; labels: Labels }) {
   const router = useRouter();
   // L'action dit où aller ensuite (page du module, avec le résultat ou l'erreur) ; on y va après l'animation.
-  const target = useRef(`/admin/modules/${id}`);
+  const target = useRef(moduleHref(id));
   return (
     <AnimatedActionButton look="secondary" track={kind === "update" ? "module-update" : undefined} trackKey={`module-update:${id}`} icon={kind === "update" ? "⬆" : "🔍"} testid={`module-${kind}-${id}`} labels={labels}
       run={async (opId) => { const r = await (kind === "update" ? updateModuleAction(id, opId) : checkUpdateAction(id)); target.current = r.href; return { ok: r.ok }; }}

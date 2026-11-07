@@ -1,4 +1,5 @@
 "use server";
+import { instanceHref, moduleHref } from "@/core/adminLinks";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -23,7 +24,7 @@ import { opIdOf, trackOperation } from "@/core/operations/run";
 // Installer ou mettre à jour du code exécuté côté serveur est réservé au propriétaire.
 
 /** Page d'un module (messages d'erreur, de résultat… compris) : c'est là qu'on atterrit après une action sur lui. */
-const modulePage = (id: string, query = "") => `/admin/modules/${encodeURIComponent(id)}${query ? `?${query}` : ""}`;
+const modulePage = (id: string, query = "") => moduleHref(id) + (query ? `?${query}` : "");
 
 /** Paramètres d'adresse d'un refus : l'erreur, sa précision, et (si l'installateur a détaillé ce qui manque) ce détail pour l'afficher en clair. */
 const refusal = (result: Extract<InstallResult, { ok: false }>, op = "") => {
@@ -196,5 +197,5 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
   await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
   if ((await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);
-  redirect(`/admin/instances/${created.id}`);
+  redirect(instanceHref(created.id));
 }

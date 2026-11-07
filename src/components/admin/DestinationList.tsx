@@ -3,6 +3,7 @@ import type { DestinationSummary } from "@/core/redirectGroups";
 import { redirectShortUrl } from "@/core/redirects";
 import { DestinationCurve } from "./DestinationCurve";
 import { ui } from "./ui";
+import { redirectHref } from "@/core/adminLinks";
 
 type T = (key: string, vars?: Record<string, string | number>) => string;
 
@@ -39,7 +40,7 @@ export function DestinationList({ summary, t, format }: { summary: DestinationSu
                 {g.links.map((l) => (
                   <li key={l.id} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-3 py-2">
                     <span className="flex min-w-0 flex-wrap items-center gap-2">
-                      <Link href={`/admin/redirects/${l.id}`} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline" title={redirectShortUrl(l.path)}>/{l.path}</Link>
+                      <Link href={redirectHref(l.id)} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline" title={redirectShortUrl(l.path)}>/{l.path}</Link>
                       <span className={stateChip[l.state]}>{t(`redirects.state.${l.state}`)}</span>
                     </span>
                     <span className="text-sm text-muted tabular-nums">{t("redirects.dest.aliasLine", { today: l.today, month: l.month, total: l.total })}</span>

@@ -1,4 +1,5 @@
 "use server";
+import { ADMIN_HREF, UPKEEP_HREF } from "@/core/adminLinks";
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
@@ -19,12 +20,12 @@ export async function rerunLegacySweep(): Promise<ActionState> {
   if (r.busy) return { error: t("legacy.rerun.busy") };
   await audit(user.email, "core.legacy.sweep", r.done ? "done" : r.timedOut ? "timeout" : "pending");
   forgetUpkeepSummary();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   if (r.done) return { ok: t("legacy.rerun.done") };
   return r.timedOut ? { error: t("legacy.rerun.timeout") } : { error: t("legacy.rerun.pending") };
 }
 
-const PAGE = "/admin/maintenance/legacy";
+const PAGE = UPKEEP_HREF;
 
 /** Un module copié par une très ancienne version : « Le garder tel quel ». Il ne retient plus la mise à niveau (règle dans legacyDismiss.ts). Refusé s'il n'est plus dans la liste. */
 export async function keepLegacyRowAction(id: string): Promise<void> {
@@ -36,7 +37,7 @@ export async function keepLegacyRowAction(id: string): Promise<void> {
     await runLegacySweep();
   }
   forgetUpkeepSummary();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   redirect(`${PAGE}?done=${row ? "kept" : "refused"}`);
 }
 
@@ -47,7 +48,7 @@ export async function undoKeepLegacyRowAction(id: string): Promise<void> {
   await audit(user.email, "core.legacy.keep.undo", id);
   await runLegacySweep();
   forgetUpkeepSummary();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   redirect(PAGE);
 }
 
@@ -79,6 +80,6 @@ export async function deleteInertCopyAction(instanceKey: string, collection: str
   }
   await audit(user.email, "core.legacy.copy.delete", `${collection} · ${r.deleted}`.slice(0, 200), { module: r.moduleId, instance: instanceKey, level: "warn" });
   forgetUpkeepSummary();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
   redirect(`${PAGE}?done=${r.remaining > 0 ? "copyPartial" : "copyDeleted"}`);
 }

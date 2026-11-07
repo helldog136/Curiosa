@@ -23,6 +23,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
 - **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
 - **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+- **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.
 
 ## 0.6.18 — 2026-11-06
 

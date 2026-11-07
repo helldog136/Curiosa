@@ -1,4 +1,5 @@
 "use server";
+import { entryHref } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -27,6 +28,6 @@ export async function runEntryPanelAction(instanceId: string, panelId: string, e
     return { error: t("error.generic") };
   }
   await audit(user.email, `module.${found.active.instance.key}.entry.${panelId}.${action}`);
-  if (!result?.error) revalidatePath(`/admin/entries/${entryId}`);
+  if (!result?.error) revalidatePath(entryHref(entryId));
   return { ok: result?.ok, error: result?.error, errors: sanitizeFieldErrors(result?.errors) };
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { STORAGE_HREF } from "@/core/adminLinks";
 import { currentUser, isMember } from "@/core/permissions";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { canSeeStorage } from "@/core/storage/access";
@@ -16,7 +17,7 @@ export async function GET() {
   const v = presentStorage(await storageInfo({ diskOnly: true }), t, locale);
   if (!v.uploadLine) return NextResponse.json({ line: null });
   return NextResponse.json(
-    { line: v.uploadLine, level: v.level, icon: v.icon, state: v.stateText, warning: v.level === "ok" ? null : t("storage.uploadWarn", { free: v.freeText ?? "" }), href: canSeeStorage(user) ? "/admin#storage" : null, details: t("storage.seeDetails") },
+    { line: v.uploadLine, level: v.level, icon: v.icon, state: v.stateText, warning: v.level === "ok" ? null : t("storage.uploadWarn", { free: v.freeText ?? "" }), href: canSeeStorage(user) ? STORAGE_HREF : null, details: t("storage.seeDetails") },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

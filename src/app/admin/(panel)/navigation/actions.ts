@@ -1,4 +1,5 @@
 "use server";
+import { NAVIGATION_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -63,5 +64,5 @@ export async function saveHeaderLinks(_prev: ActionState, formData: FormData): P
 export async function restoreAssistantMenu(): Promise<void> {
   const { user } = await adminCtx("admin");
   await restoreNavigation(user.email);
-  revalidatePath("/admin/navigation");
+  revalidatePath(NAVIGATION_HREF);
 }

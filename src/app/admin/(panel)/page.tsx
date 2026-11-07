@@ -10,6 +10,7 @@ import { ModulePill } from "@/components/admin/ModulePill";
 import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
 import { dashboardPlan } from "@/core/dashboard/layout";
 import { ActivityBlock, CardsBlock, CreateBlock, HealthPill, SetupBlock, Slot, StorageBlock, TodoBlock, VisitsBlock, type BlockCtx } from "@/components/admin/dashboard/Blocks";
+import { DRAFTS_HREF, REDIRECTS_HREF, entriesHref, entryHref, entryNewHref } from "@/core/adminLinks";
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
@@ -32,7 +33,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     t, locale, defaultLocale: config.defaultLocale, advanced, user,
     nav: nav.map((i) => ({ id: i.id, key: i.key, name: i.name, icon: i.icon, content: i.content, error: i.error, badge: i.badge, moduleId: i.moduleId })),
     contentIds: nav.filter((i) => i.content && !i.error).map((i) => i.id),
-    newPageHref: firstContent ? `/admin/entries/new?c=${encodeURIComponent(firstContent.key)}` : EXTENSIONS_ADD_HREF,
+    newPageHref: firstContent ? entryNewHref(firstContent.key) : EXTENSIONS_ADD_HREF,
   };
   const ARROW = <span aria-hidden="true"> →</span>;
   const plain = `${ui.card} block`;
@@ -52,7 +53,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           {c.parts.map((p) => {
             const row = (<><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}{canEdit && ARROW}</span></>);
             return <li key={p.key}>{canEdit
-              ? <a href={`/admin/entries?c=${p.key}&state=published`} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10">{row}</a>
+              ? <a href={entriesHref(p.key, { state: "published" })} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10">{row}</a>
               : <span className="flex items-center justify-between gap-3 px-2 py-1">{row}</span>}</li>;
           })}
         </ul>
@@ -64,7 +65,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
-            {draftList.total > 0 && <a href="/admin/drafts" data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
+            {draftList.total > 0 && <a href={DRAFTS_HREF} data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
           </div>
           {draftList.total === 0 ? (
             <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
@@ -75,7 +76,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
                   <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
                   <ModulePill id={d.key} name={d.name} icon={d.icon} />
                   <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
-                  <a href={`/admin/entries/${d.id}`} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
+                  <a href={entryHref(d.id)} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
                 </li>
               ))}
             </ul>
@@ -88,7 +89,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <div className="grid gap-4 sm:grid-cols-3">
           {publishedStat(counts.published)}
           {stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
-          {redirects > 0 && stat(t("dashboard.shortLinks"), redirects, "/admin/redirects", "stat-redirects")}
+          {redirects > 0 && stat(t("dashboard.shortLinks"), redirects, REDIRECTS_HREF, "stat-redirects")}
           {advanced && stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF, "stat-instances")}
           {advanced && stat(t("dashboard.modules"), modules, EXTENSIONS_HREF, "stat-modules")}
         </div>

@@ -49,6 +49,7 @@ import { PageTabs, TabPanel } from "@/components/admin/PageTabs";
 import { HISTORY_TAB, initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
 import { JournalView } from "@/components/admin/JournalView";
 import { Panel } from "@/components/admin/Page";
+import { AUDIT_HREF, entriesHref } from "@/core/adminLinks";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -339,7 +340,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const historyPanel = canHistory && (
     <Panel title={t("moduleTabs.history")} help={`${t("journal.history.intro", { name: moduleName })} ${t("journal.history.keep")}`} testid="module-history">
       <JournalView t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} sp={{ ...Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))), tab: HISTORY_TAB }} path="" prefix="h" moduleId={mod.manifest.id} testid="module-history-list" />
-      {can(user, "core:security") && <p className="text-sm"><a href="/admin/audit" className="underline hover:text-accent">{t("journal.history.global")} →</a></p>}
+      {can(user, "core:security") && <p className="text-sm"><a href={AUDIT_HREF} className="underline hover:text-accent">{t("journal.history.global")} →</a></p>}
     </Panel>
   );
 
@@ -361,7 +362,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   };
 
   // Module à contenu : « Contenu » (la liste des entrées, une autre page) se place devant les onglets, dans la même rangée.
-  const lead = content && manage ? { href: `/admin/entries?c=${instance.key}`, label: t("tabs.content") } : undefined;
+  const lead = content && manage ? { href: entriesHref(instance.key), label: t("tabs.content") } : undefined;
   const tabsLabels = { modified: t("moduleTabs.modified"), error: t("moduleTabs.error"), leave: t("moduleTabs.leaveConfirm"), list: t("moduleTabs.list", { name: labeler.label(instance) }) };
 
   return (

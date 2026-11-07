@@ -18,6 +18,6 @@ test("site settings : an old #services bookmark falls back to the first tab (no 
   const tabs = fs.readFileSync("src/components/admin/Tabs.tsx", "utf8");
   assert.match(tabs, /known\(hash\) \? hash : known\(initial\) \? initial : tabs\[0\]!\.id/);
   const old = fs.readFileSync("src/app/admin/(panel)/settings/rawg-covers/page.tsx", "utf8");
-  assert.match(old, /redirect\(`\/admin\/instances\/\$\{provider\.instance\.id\}/);
-  assert.match(old, /redirect\(`\/admin\/extensions\/add\/details\?id=\$\{COVERS_MODULE\}`\)/);
+  assert.match(old, /redirect\(instanceHref\(provider\.instance\.id/);
+  assert.match(old, /redirect\(`\$\{EXTENSIONS_ADD_DETAILS_HREF\}\?id=\$\{COVERS_MODULE\}`\)/);
 });

@@ -5,6 +5,7 @@ import { localized } from "@/core/modules/types";
 import { returnAddressUrl } from "@/core/modules/addressDecl";
 import { urlAccessIds } from "@/core/services/mcp/tokens";
 import { effectiveType } from "@/core/modules/manifest";
+import { HOME_HREF, NAVIGATION_HREF, SETTINGS_HREF, SOCIAL_HREF, entryHref, instanceHref, redirectHref } from "@/core/adminLinks";
 
 /**
  * LISTE DE CONTRÔLE D'UN CHANGEMENT DE DOMAINE (page « Adresse du site »). Tout est LECTURE SEULE et BORNÉ : on compte ce qui existe sur CE site et on liste les adresses publiques à
@@ -32,10 +33,10 @@ export type Checklist = {
 
 /** Les réglages du cœur qui portent un texte lisible par le public ou de la mise en page : seuls ceux-là sont cherchés, et rangés sous une page d'administration. */
 const SETTING_HOMES: { re: RegExp; kind: ContentKind; href: string }[] = [
-  { re: /^nav\./, kind: "menu", href: "/admin/navigation" },
-  { re: /^home\./, kind: "home", href: "/admin/home" },
-  { re: /^social\./, kind: "social", href: "/admin/social" },
-  { re: /^(?:site|footer|privacy)\./, kind: "settings", href: "/admin/settings" },
+  { re: /^nav\./, kind: "menu", href: NAVIGATION_HREF },
+  { re: /^home\./, kind: "home", href: HOME_HREF },
+  { re: /^social\./, kind: "social", href: SOCIAL_HREF },
+  { re: /^(?:site|footer|privacy)\./, kind: "settings", href: SETTINGS_HREF },
 ];
 /** Un réglage dont le nom évoque un secret n'est JAMAIS lu, même s'il est rangé sous une page connue. */
 const SECRET_NAME = /secret|token|passw|credential|sealed|hash|salt|auth|smtp|mail\.pass/i;
@@ -60,7 +61,7 @@ export async function findOldAddressInContent(host: string, locale: string, defa
   for (const tr of take(trans)) {
     if (seen.has(tr.entryId)) continue;
     seen.add(tr.entryId);
-    hits.push({ kind: "entry", title: clip(tr.title || "—", 80), detail: tr.entry.instance.key, href: `/admin/entries/${tr.entryId}?locale=${encodeURIComponent(tr.locale)}` });
+    hits.push({ kind: "entry", title: clip(tr.title || "—", 80), detail: tr.entry.instance.key, href: entryHref(tr.entryId, { locale: tr.locale }) });
   }
   const linked = await prisma.entry.findMany({
     where: { OR: [{ url: { contains: needle } }, { fields: { contains: needle } }, { cover: { contains: needle } }], id: { notIn: [...seen] } },
@@ -69,12 +70,12 @@ export async function findOldAddressInContent(host: string, locale: string, defa
   });
   for (const e of take(linked)) {
     const main = e.translations.find((x) => x.locale === defaultLocale) ?? e.translations[0];
-    hits.push({ kind: "entry", title: clip(main?.title || "—", 80), detail: e.instance.key, href: `/admin/entries/${e.id}${main ? `?locale=${encodeURIComponent(main.locale)}` : ""}` });
+    hits.push({ kind: "entry", title: clip(main?.title || "—", 80), detail: e.instance.key, href: entryHref(e.id, main ? { locale: main.locale } : {}) });
   }
 
   // Liens courts dont la DESTINATION est l'ancien domaine (le lien court lui-même, lui, continue de marcher).
   const redirects = await prisma.redirect.findMany({ where: { targetUrl: { contains: needle } }, select: { id: true, path: true }, orderBy: { path: "asc" }, take: CONTENT_HITS_MAX + 1 });
-  for (const r of take(redirects)) hits.push({ kind: "redirect", title: `/${r.path}`, detail: "", href: `/admin/redirects/${r.id}` });
+  for (const r of take(redirects)) hits.push({ kind: "redirect", title: `/${r.path}`, detail: "", href: redirectHref(r.id) });
 
   // Réglages : seulement ceux d'une page connue, jamais un réglage secret ; ceux d'une instance de module sont rangés sous la page de l'instance, sauf les champs « secret ».
   const settings = await prisma.setting.findMany({ where: { value: { contains: needle } }, select: { key: true }, take: 300 });
@@ -92,7 +93,7 @@ export async function findOldAddressInContent(host: string, locale: string, defa
       const id = `module:${found.instance.id}`;
       if (seenSetting.has(id)) continue;
       seenSetting.add(id);
-      grouped.push({ kind: "module", title: clip(labeler.label(found.instance), 80), detail: clip(localized(field.label, locale, defaultLocale), 80), href: `/admin/instances/${found.instance.id}` });
+      grouped.push({ kind: "module", title: clip(labeler.label(found.instance), 80), detail: clip(localized(field.label, locale, defaultLocale), 80), href: instanceHref(found.instance.id) });
       continue;
     }
     const home = SETTING_HOMES.find((h) => h.re.test(key));
@@ -124,7 +125,7 @@ export async function buildChecklist(opts: { oldBase: string; newBase: string; o
   let sources = 0;
   for (const { instance, mod } of active) {
     const name = labeler.label(instance);
-    const href = `/admin/instances/${instance.id}`;
+    const href = instanceHref(instance.id);
     for (const a of mod.manifest.returnAddresses ?? []) {
       returns.push({
         instanceKey: instance.key, instance: name, service: localized(a.label, locale, defaultLocale), where: localized(a.where, locale, defaultLocale), href,

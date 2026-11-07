@@ -1,6 +1,7 @@
 import { getAdminTranslator } from "@/core/i18n/request";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { currentUser } from "@/core/permissions";
+import { LOGIN_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(request: Request) {
   const user = await currentUser();
-  if (!user) return new Response(null, { status: 302, headers: { Location: new URL("/admin/login", request.url).toString(), "Cache-Control": "no-store" } });
+  if (!user) return new Response(null, { status: 302, headers: { Location: new URL(LOGIN_HREF, request.url).toString(), "Cache-Control": "no-store" } });
   const { t } = await getAdminTranslator(user.locale);
   return new Response(null, { status: 302, headers: { Location: await adminBugReportUrl(t), "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" } });
 }

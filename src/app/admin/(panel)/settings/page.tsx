@@ -28,6 +28,7 @@ import Link from "next/link";
 import { I18nStatusCard } from "@/components/admin/I18nStatusCard";
 import { i18nStatus } from "@/core/i18n/status";
 import { LegacyHash } from "@/components/admin/LegacyHash";
+import { AI_VISIBILITY_HREF, APPEARANCE_FONTS_HREF, APPEARANCE_HREF, NAVIGATION_HEADER_HREF, SETTINGS_ADDRESS_HREF } from "@/core/adminLinks";
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
 
@@ -70,10 +71,10 @@ export default async function SettingsPage() {
       <header>
         <h1 className={ui.pageTitle}>{t("nav.settings")}</h1>
         <p className={ui.pageIntro}>{t("settings.intro")}</p>
-        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href="/admin/appearance#polices" className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
-        {advanced && <p className={`${ui.help} mt-1`}>{t("settings.addressHint")} <Link href="/admin/settings/address" className="font-medium text-accent hover:underline" data-testid="to-address">{t("settings.addressOpen")} →</Link></p>}
+        <p className={`${ui.help} mt-1`}>{t("settings.appearanceHint")} <Link href={APPEARANCE_FONTS_HREF} className="font-medium text-accent hover:underline" data-testid="to-appearance">{t("settings.appearanceOpen")} →</Link></p>
+        {advanced && <p className={`${ui.help} mt-1`}>{t("settings.addressHint")} <Link href={SETTINGS_ADDRESS_HREF} className="font-medium text-accent hover:underline" data-testid="to-address">{t("settings.addressOpen")} →</Link></p>}
       </header>
-      <LegacyHash map={{ appearance: "/admin/appearance", header: "/admin/navigation#header" }} />
+      <LegacyHash map={{ appearance: APPEARANCE_HREF, header: NAVIGATION_HEADER_HREF }} />
       <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : [])]}>
       <div data-tab="site languages privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
@@ -178,7 +179,7 @@ export default async function SettingsPage() {
             <Select name="aiAnswers" label={t("settings.aiAnswers")} help={t("settings.aiAnswersHelp")} defaultValue={ai.blockAnswers ? "block" : "allow"}
               options={[{ value: "allow", label: t("settings.aiAllowed") }, { value: "block", label: t("settings.aiBlocked") }]} />
             <Checkbox name="llmsTxt" label={t("settings.llmsTxt")} help={t("settings.llmsTxtHelp")} defaultChecked={llmsTxt} />
-            <a href="/admin/ai-visibility" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
+            <a href={AI_VISIBILITY_HREF} className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
           </div>
           <div className={`${ui.card} space-y-4`}>
             <h3 className="font-semibold">{t("settings.privacyPage")}</h3>

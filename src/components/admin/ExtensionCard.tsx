@@ -8,6 +8,7 @@ import { InstanceState } from "./InstanceState";
 import { RowMenu } from "./RowMenu";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
+import { entriesHref, instanceHref, moduleHref } from "@/core/adminLinks";
 
 const ITEM = "flex min-h-11 w-full items-center gap-2 px-3 text-left text-sm hover:bg-accent/10 hover:text-accent";
 
@@ -29,7 +30,7 @@ const hasActions = (i: InstalledInstance) => i.content || !!i.unpinTo;
 function InstanceActions({ t, i }: { t: Translator; i: InstalledInstance }) {
   return (
     <>
-      {i.content && <a href={`/admin/entries?c=${i.key}`} className={ITEM}>{t("integrations.items")}</a>}
+      {i.content && <a href={entriesHref(i.key)} className={ITEM}>{t("integrations.items")}</a>}
       {i.unpinTo && (
         <form action={setPlacementAction.bind(null, i.id, i.pinned ? i.unpinTo : "menu")}>
           <button className={ITEM} data-testid={i.pinned ? "unpin" : "pin"}>📌 {i.pinned ? t("placement.unpin") : t("placement.pin")}</button>
@@ -61,7 +62,7 @@ function Chips({ t, m }: { t: Translator; m: InstalledModule }) {
 export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledModule; advanced: boolean }) {
   const single = m.instances.length === 1 ? m.instances[0]! : null;
   const many = m.instances.length > 1;
-  const settingsHref = single ? `/admin/instances/${single.id}` : `/admin/modules/${encodeURIComponent(m.id)}`;
+  const settingsHref = single ? instanceHref(single.id) : moduleHref(m.id);
   const badge = m.instances.reduce((n, i) => n + i.badge, 0);
   const hasMenu = single !== null && hasActions(single);
   return (
@@ -101,10 +102,10 @@ export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledM
             {m.instances.map((i) => (
               <li key={i.id} className="space-y-2 px-3 py-2" data-testid={`extension-instance-${i.id}`} data-state={i.state} data-pinned={i.pinned ? "1" : "0"}>
                 <div className="flex flex-wrap items-center gap-x-2 gap-y-2">
-                  <Link href={`/admin/instances/${i.id}`} scroll={false} className="min-w-0 basis-full break-words text-sm font-medium hover:text-accent sm:flex-1 sm:basis-0">{i.name}</Link>
+                  <Link href={instanceHref(i.id)} scroll={false} className="min-w-0 basis-full break-words text-sm font-medium hover:text-accent sm:flex-1 sm:basis-0">{i.name}</Link>
                   {i.state !== "on" && <InstanceState t={t} state={i.state} missing={i.setup} />}
                   {i.badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{i.badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
-                  <Link href={`/admin/instances/${i.id}`} scroll={false} aria-label={`${t("integrations.settings")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.settings")}</Link>
+                  <Link href={instanceHref(i.id)} scroll={false} aria-label={`${t("integrations.settings")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.settings")}</Link>
                   {hasActions(i) && <RowMenu label={t("extensions.menu", { name: i.name })}><InstanceActions t={t} i={i} /></RowMenu>}
                 </div>
                 {i.obsUrl && <ObsLine t={t} url={i.obsUrl} />}

@@ -4,6 +4,7 @@ import { getInstanceByKey } from "@/core/instances";
 import { getRefOptions } from "@/core/services/topics";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { EntryForm } from "../EntryForm";
+import { entriesHref } from "@/core/adminLinks";
 
 export default async function NewEntryPage({ searchParams }: { searchParams: Promise<{ c?: string; locale?: string }> }) {
   const { t, locale: adminLocale, config, advanced } = await adminCtx("editor");
@@ -17,7 +18,7 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <div>
-        <a href={`/admin/entries?c=${collection.key}`} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <h1 className="mt-1 text-2xl font-bold">{t("entries.new")}</h1>
         <p className="mt-1 text-sm text-muted">{t("entries.newIntro")}</p>
       </div>

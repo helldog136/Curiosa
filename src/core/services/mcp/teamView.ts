@@ -4,6 +4,7 @@
  * ses droits restent ceux de `access.ts` (plafond, actions accordées), résumés ici sans jargon.
  */
 import type { Ability } from "./accessView";
+import { AUDIT_HREF, withQuery } from "@/core/adminLinks";
 
 /** Ce qui distingue une ligne : une personne ou un assistant IA (colonne « Type » et pastilles de filtre). */
 export type MemberKind = "person" | "assistant";
@@ -45,5 +46,5 @@ export function lastActivity(usedAt: Date | null | undefined, journalAt: Date | 
 
 /** Adresse du Journal d'audit filtré sur ce que cet assistant a fait (origine « assistant » + son nom). */
 export function assistantHistoryHref(name: string): string {
-  return `/admin/audit?${new URLSearchParams({ kind: "assistant", q: name }).toString()}`;
+  return withQuery(AUDIT_HREF, { kind: "assistant", q: name });
 }

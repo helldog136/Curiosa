@@ -1,4 +1,5 @@
 "use server";
+import { UPDATES_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -15,7 +16,7 @@ import { EXTENSIONS_HREF, EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensi
 export async function checkNow(): Promise<ActionState> {
   const { t } = await adminCtx({ right: "core:updates" });
   const check = await checkForUpdate();
-  revalidatePath("/admin/updates");
+  revalidatePath(UPDATES_HREF);
   if (check.error) return { error: t("updates.unreachable") };
   return { ok: check.available ? t("updates.found", { version: check.latest ?? "" }) : t("updates.upToDate") };
 }
@@ -25,7 +26,7 @@ export async function applyUpdate(): Promise<ActionState> {
   const check = await getUpdateCheck();
   if (!check.available || !check.latest) return { error: t("updates.nothingToApply") };
   const result = await startUpdate(check.latest, user.email);
-  revalidatePath("/admin/updates");
+  revalidatePath(UPDATES_HREF);
   if (!result.ok) return { error: t(`updates.error.${result.error}`) };
   return { ok: t("updates.started", { version: check.latest }) };
 }
@@ -35,7 +36,7 @@ export async function saveAutoUpdate(_prev: ActionState, formData: FormData): Pr
   const on = formData.get("auto") === "on";
   await setAutoUpdate(on);
   await audit(user.email, on ? "update.auto.on" : "update.auto.off");
-  revalidatePath("/admin/updates");
+  revalidatePath(UPDATES_HREF);
   return { ok: t("action.saved") };
 }
 
@@ -47,7 +48,7 @@ export async function saveChannel(_prev: ActionState, formData: FormData): Promi
   await setUpdateChannel(rc ? "rc" : "stable");
   await checkForUpdate();
   await audit(user.email, rc ? "update.channel.rc" : "update.channel.stable");
-  revalidatePath("/admin/updates");
+  revalidatePath(UPDATES_HREF);
   return { ok: t("action.saved") };
 }
 
@@ -55,7 +56,7 @@ export async function saveChannel(_prev: ActionState, formData: FormData): Promi
 export async function recheckModules(): Promise<ActionState> {
   const { t } = await adminCtx({ right: "core:updates" });
   await getModulesReport(true);
-  revalidatePath("/admin/updates");
+  revalidatePath(UPDATES_HREF);
   revalidatePath(EXTENSIONS_HREF);
   revalidatePath(EXTENSIONS_UPDATES_HREF);
   return { ok: t("updates.modules.rechecked") };

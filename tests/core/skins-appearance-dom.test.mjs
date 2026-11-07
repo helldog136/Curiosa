@@ -303,7 +303,7 @@ test("page, un administrateur (pas propriétaire) : il règle l'apparence, mais 
 
 test("Réglages : un lien vers Apparence mais plus d'onglet Apparence ; le lien / bouton de l'en-tête est dans « Menu du site » ; plus de couleurs, de police, de fond ni de disposition dans ce formulaire ; le menu a l'entrée Apparence", () => {
   const settings = read("src/app/admin/(panel)/settings/page.tsx");
-  assert.match(settings, /href="\/admin\/appearance(#polices)?"/);
+  assert.match(settings, /href=\{APPEARANCE_(?:FONTS_)?HREF\}/);
   assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
   assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
   const navigation = read("src/app/admin/(panel)/navigation/page.tsx");
@@ -316,8 +316,8 @@ test("Réglages : un lien vers Apparence mais plus d'onglet Apparence ; le lien 
   assert.match(read("src/app/admin/(panel)/social/actions.ts"), /"header\.socials"/);
   assert.match(read("src/app/admin/(panel)/navigation/actions.ts"), /header\.secondaryHref[\s\S]*header\.buttonHref/);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /<NavLink href="\/admin\/appearance">\{t\("nav\.appearance"\)\}<\/NavLink>/);
-  assert.ok(layout.indexOf("/admin/appearance") < layout.indexOf("/admin/settings"));
+  assert.match(layout, /<NavLink href=\{APPEARANCE_HREF\}>\{t\("nav\.appearance"\)\}<\/NavLink>/);
+  assert.ok(layout.indexOf("APPEARANCE_HREF") < layout.indexOf("SETTINGS_HREF"));
   const appearance = read("src/app/admin/(panel)/appearance/page.tsx");
   assert.match(appearance, /<ThemePicker|<ColorSection/);
   assert.match(appearance, /text=\{config\.textColor\}|textColor/);
