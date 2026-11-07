@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ContentCheckButton } from "@/components/admin/ContentCheckButton";
 import { Checkbox, TextArea } from "@/components/admin/Field";
@@ -20,7 +21,7 @@ const CHIP: Record<Severity, string> = { important: ui.chipDanger, advised: ui.c
  * un « pourquoi », et par ligne « Corriger » (l'écran d'administration qui règle la chose) et « Ignorer ». Les visites de liens ne partent que sur « Vérifier maintenant ».
  */
 export default async function ContentHealthPage() {
-  const { t, locale, config, advanced } = await adminCtx("admin");
+  const { t, locale, config, advanced, user } = await adminCtx("admin");
   const [report, ignored, history, settings, busy] = await Promise.all([readReport(), readIgnored(), readHistory(), readSettings(), checkIsRunning()]);
   const groups = visibleGroups(report, ignored);
   const counts = tally(groups);
@@ -36,7 +37,8 @@ export default async function ContentHealthPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("content.title")} intro={t("content.intro")} icon="🩺" />
+      <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="health" />
+      <PageHeader level={2} title={t("content.title")} intro={t("content.intro")} />
 
       {verdict === "none" ? (
         <Callout tone="info" role="status" testid="content-verdict-none">{t("content.verdict.none")}</Callout>

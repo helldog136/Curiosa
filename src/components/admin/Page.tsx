@@ -6,11 +6,12 @@ import { ui } from "./ui";
  */
 
 /** En-tête de page : un titre, une phrase qui dit à quoi sert la page, et (à droite) l'action principale si elle est unique. */
-export function PageHeader({ title, intro, icon, children }: { title: React.ReactNode; intro?: React.ReactNode; icon?: string; children?: React.ReactNode }) {
+export function PageHeader({ title, intro, icon, level = 1, children }: { title: React.ReactNode; intro?: React.ReactNode; icon?: string; /** 2 : la page est un onglet d'une page déjà titrée (Entretien) ; son titre devient un sous-titre. */ level?: 1 | 2; children?: React.ReactNode }) {
+  const Heading = level === 1 ? "h1" : "h2";
   return (
     <header className="flex flex-wrap items-start justify-between gap-4">
       <div className="min-w-0">
-        <h1 className={ui.pageTitle}>{icon && <span aria-hidden>{icon} </span>}{title}</h1>
+        <Heading className={level === 1 ? ui.pageTitle : "text-xl font-semibold tracking-tight"}>{icon && <span aria-hidden>{icon} </span>}{title}</Heading>
         {intro && <p className={ui.pageIntro}>{intro}</p>}
       </div>
       {children}

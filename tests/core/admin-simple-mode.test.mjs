@@ -26,7 +26,7 @@ function renderAll(el) {
 }
 const { forbiddenWords } = await import("../../testsupport/ergonomics.mjs");
 const { RedirectError } = await import("next/navigation");
-const { administrationEntries, ADVANCED_ONLY_ENTRIES } = await import("@/core/modules/adminMenu");
+const { administrationEntries, ADVANCED_ONLY_ENTRIES, ADVANCED_ONLY_TABS, maintenanceTabs } = await import("@/core/modules/adminMenu");
 const { setSetting } = await import("@/core/settings");
 const { installModule } = await import("@/core/modules/installer");
 const R = await import("@/core/modules/registry");
@@ -157,22 +157,30 @@ test("la liste R9 attrape bien un texte technique (le garde-fou n'est pas muet)"
 /* ───────────── 3 : le menu ───────────── */
 
 test("menu : aucune entrée avancée en mode simple, pour chaque palier ; le mode avancé ne retire rien", () => {
-  assert.ok(ADVANCED_ONLY_ENTRIES.length > 0, "la liste des entrées avancées n'est pas vide (journal d'audit)");
+  assert.deepEqual(ADVANCED_ONLY_TABS, ["audit"], "le journal d'activité est l'onglet avancé d'Entretien");
   for (const role of ["owner", "coordinator", "admin", "editor", "none"]) {
     const simple = administrationEntries({ role, advanced: false });
     const adv = administrationEntries({ role, advanced: true });
     for (const e of ADVANCED_ONLY_ENTRIES) assert.ok(!simple.includes(e), `${role} : « ${e} » ne doit pas apparaître en mode simple`);
     for (const e of simple) assert.ok(adv.includes(e), `${role} : le mode avancé garde « ${e} »`);
   }
-  assert.ok(administrationEntries({ role: "owner", advanced: true }).includes("audit"), "le journal d'audit est bien là en mode avancé");
+  assert.ok(maintenanceTabs({ role: "owner", advanced: true }).includes("audit"), "le journal d'activité est bien là en mode avancé");
+  for (const role of ["owner", "coordinator", "admin", "editor", "none"]) assert.ok(!maintenanceTabs({ role, advanced: false }).includes("audit"), `${role} : pas de journal d'activité en mode simple`);
 });
 
-test("menu rendu : le journal d'audit n'est pas dans la barre latérale en mode simple, il y est en mode avancé", async () => {
+test("menu rendu : le journal d'activité n'est pas un onglet d'Entretien en mode simple, il y est en mode avancé", async () => {
   const Layout = (await import(`${PANEL}/layout.tsx`)).default;
   const nav = async (advanced) => { await setMode(owner, advanced); as(owner); return await renderAll(await Layout({ children: null })); };
   const simple = await nav(false); const adv = await nav(true);
+  // Les onglets sont dans les pages (MaintenanceHeader), pas dans la barre latérale : le menu n'a qu'une entrée.
   assert.doesNotMatch(simple, /href="\/admin\/audit"/);
-  assert.match(adv, /href="\/admin\/audit"/);
+  assert.doesNotMatch(adv, /href="\/admin\/audit"/);
+  assert.match(simple, /href="\/admin\/maintenance\/content"/, "une seule entrée « Entretien »");
+  const { MaintenanceHeader } = await import("../../src/components/admin/MaintenanceHeader.tsx");
+  const { makeTranslator } = await import("@/core/i18n/dictionary");
+  const bar = async (advanced) => renderAll(await MaintenanceHeader({ t: makeTranslator("fr"), level: "owner", advanced, current: "health" }));
+  assert.doesNotMatch(await bar(false), /href="\/admin\/audit"/);
+  assert.match(await bar(true), /href="\/admin\/audit"/);
   assert.match(simple, /href="\/admin\/settings"/, "le menu simple garde l'essentiel");
   assert.match(simple, /data-testid="app-version"/);
   await setMode(owner, false);

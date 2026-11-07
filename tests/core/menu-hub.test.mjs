@@ -369,8 +369,8 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Tableau de bord, Mon contenu, Ma communauté, Mon site, Administration, Compte");
   // Les entrées viennent de administrationEntries (adminMenu.ts) ; le layout les range dans cet ordre.
   const links = layout.slice(layout.indexOf("const adminLinks"), layout.indexOf("const group ="));
-  const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.health", "nav.backup", "nav.updates", "nav.upkeep", "nav.audit"].map((k) => links.indexOf(`"${k}"`));
-  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit");
+  const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.maintenance"].map((k) => links.indexOf(`"${k}"`));
+  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Entretien (une seule entrée)");
   assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("MCP_LEGACY_HREF") && !layout.includes("MAINTENANCE_IA_LEGACY_HREF"), "les deux anciennes entrées ont disparu");
   const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
   for (const href of ["HOME_HREF", "NAVIGATION_HREF", "SETTINGS_HREF", "SOCIAL_HREF", "AI_VISIBILITY_HREF", "REDIRECTS_HREF"]) assert.ok(site.includes(`href={${href}}`), href);
@@ -384,7 +384,7 @@ test("menu : « Apparence » et « Réglages du site » sont deux mots différen
   assert.ok(!layout.includes("nav.settings.simple"), "une seule étiquette pour les réglages, en mode simple comme avancé");
   for (const lang of ["fr", "en"]) {
     const d = JSON.parse(read(`src/locales/${lang}.json`));
-    const all = ["nav.dashboard", ...keys, "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.health", "nav.backup", "nav.updates", "nav.upkeep", "nav.audit", "nav.myAccount"].map((k) => d[k]);
+    const all = ["nav.dashboard", ...keys, "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount"].map((k) => d[k]);
     assert.equal(new Set(all.map((l) => l.toLowerCase())).size, all.length, `${lang} : deux entrées du menu portent le même nom`);
     assert.ok(!/(appearance|apparence)\s*(&|et|and)\s*(settings|r[ée]glages)/i.test(JSON.stringify(d["nav.settings"])), "plus d'entrée « Apparence et réglages »");
     assert.ok(!all.some((l) => /^(apparence|appearance)\b.+/i.test(l)), `${lang} : aucune entrée ne commence par « Apparence »`);
@@ -393,10 +393,10 @@ test("menu : « Apparence » et « Réglages du site » sont deux mots différen
 
 test("menu Administration : Assistants IA est UNE entrée, visible du propriétaire en mode simple ET avancé ; le journal d'audit reste avancé", async () => {
   const { administrationEntries } = await import("@/core/modules/adminMenu");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "upkeep"], "mode simple : Assistants IA y est, pas le journal");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "upkeep", "audit"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "maintenance"], "mode simple : Assistants IA y est, et une seule entrée Entretien");
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
   for (const advanced of [false, true]) {
-    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "overlays", "users", "health"], "un administrateur gère les extensions, les utilisateurs et la santé du site, pas les assistants");
+    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "overlays", "users", "maintenance"], "un administrateur gère les extensions, les utilisateurs et la santé du site, pas les assistants");
     assert.deepEqual(administrationEntries({ role: "editor", advanced }), [], "un éditeur n'a pas de rubrique Administration");
     assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
   }

@@ -16,7 +16,7 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { administrationEntries, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
 import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
@@ -29,7 +29,7 @@ import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { setAdminMode, setAdminTheme } from "./mode/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { ACCOUNT_HREF, ADMIN_HREF, AI_VISIBILITY_HREF, APPEARANCE_HREF, AUDIT_HREF, BACKUP_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MODE_HREF, MODULES_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, UPDATES_HREF, UPKEEP_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
+import { ACCOUNT_HREF, ADMIN_HREF, AI_VISIBILITY_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODE_HREF, MODULES_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -67,18 +67,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
   const adminEntries = administrationEntries({ role: user.level, advanced });
+  // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
+  const maintenanceTabList = maintenanceTabs({ role: user.level, advanced });
+  const maintenanceBadge = (maintenanceTabList.includes("updates") && updateAvailable ? 1 : 0) + (maintenanceTabList.includes("upkeep") && upkeep?.state === "todo" ? upkeep.todo : 0);
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
     overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{t("nav.overlayPages")}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
-    health: <NavLink key="health" href={HEALTH_HREF}>{t("nav.health")}</NavLink>,
-    backup: <NavLink key="backup" href={BACKUP_HREF}>{t("nav.backup")}</NavLink>,
-    updates: <NavLink key="updates" href={UPDATES_HREF} badge={updateAvailable ? 1 : 0} badgeLabel={t("nav.badge.update")}>{t("nav.updates")}</NavLink>,
-    upkeep: upkeep?.state === "todo"
-      ? <NavLink key="upkeep" href={UPKEEP_HREF} badge={upkeep.todo} badgeLabel={t("nav.upkeep.todo")}>{t("nav.upkeep")}</NavLink>
-      : <NavLink key="upkeep" href={UPKEEP_HREF} status={upkeep ? (upkeep.state === "kept" ? { label: t("nav.upkeep.kept"), tone: "info", hint: t("nav.upkeep.keptHint") } : { label: t("nav.upkeep.clean"), tone: "ok" }) : undefined}>{t("nav.upkeep")}</NavLink>,
-    audit: <NavLink key="audit" href={AUDIT_HREF}>{t("nav.audit")}</NavLink>,
+    maintenance: <NavLink key="maintenance" href={maintenanceTabList.length > 0 ? MAINTENANCE_TAB_HREFS[maintenanceTabList[0]!] : HEALTH_HREF} also={maintenanceTabList.map((id) => MAINTENANCE_TAB_HREFS[id])} badge={maintenanceBadge} badgeLabel={t("nav.badge.maintenance")}>{t("nav.maintenance")}</NavLink>,
   };
 
   const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
