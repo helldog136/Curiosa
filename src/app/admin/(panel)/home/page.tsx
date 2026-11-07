@@ -9,6 +9,8 @@ import { publishedEntryChoices } from "@/core/content/entries";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
+import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
+import { PageHeader } from "@/components/admin/Page";
 import { resolveSize } from "@/core/home";
 import { SECTION_SIZES, type SectionSize } from "@/core/modules/types";
 import { HomeBuilder, type HomeBlock, type HomeChoice } from "@/components/admin/HomeBuilder";
@@ -54,10 +56,8 @@ export default async function HomeAdminPage() {
   const blockLabels = Object.fromEntries(BLOCK_LABEL_KEYS.map((k) => [k, t(`block.${k}`)]));
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className={ui.pageTitle}>{t("nav.home")}</h1>
-        <p className={ui.pageIntro}>{advanced ? t("home.intro") : t("home.intro.simple")}</p>
-      </div>
+      <HomeMenuHeader t={t} current="home" />
+      <PageHeader level={2} title={t("nav.home")} intro={advanced ? t("home.intro") : t("home.intro.simple")} />
       {undo && <AssistantUndoNotice text={t("aim.undo.home", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.home.button")} action={restoreAssistantHome} />}
       <ActionForm action={saveHome} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <HomeBuilder choices={choices} initial={initial} locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))} blockLabels={blockLabels}

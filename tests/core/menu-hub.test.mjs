@@ -373,7 +373,8 @@ test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
   assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Entretien (une seule entrée)");
   assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("MCP_LEGACY_HREF") && !layout.includes("MAINTENANCE_IA_LEGACY_HREF"), "les deux anciennes entrées ont disparu");
   const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
-  for (const href of ["HOME_HREF", "NAVIGATION_HREF", "SETTINGS_HREF", "SOCIAL_HREF", "REDIRECTS_HREF"]) assert.ok(site.includes(`href={${href}}`), href);
+  // "Home and menu" is one link (home, menu, header link and social buttons are its tabs): see tests/core/home-menu-entry.test.mjs.
+  for (const href of ["HOME_HREF", "SETTINGS_HREF", "REDIRECTS_HREF"]) assert.ok(site.includes(`href={${href}}`), href);
 });
 
 test("menu : « Apparence » et « Réglages du site » sont deux mots différents, sans doublon de libellé, en français comme en anglais (R12)", () => {

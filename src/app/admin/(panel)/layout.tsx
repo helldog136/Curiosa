@@ -29,7 +29,7 @@ import { cookies } from "next/headers";
 import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { setAdminMode, setAdminTheme } from "./mode/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODE_HREF, MODULES_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
+import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODE_HREF, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -107,11 +107,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           )}
 
           <p className={group}>{t("nav.mySite")}</p>
-          {canManage && <NavLink href={HOME_HREF}>{t("nav.home")}</NavLink>}
-          {canManage && <NavLink href={NAVIGATION_HREF}>{advanced ? t("nav.navigation") : t("nav.navigation.simple")}</NavLink>}
+          {canManage && <NavLink href={HOME_HREF} also={[NAVIGATION_HREF, NAVIGATION_HEADER_HREF, SOCIAL_HREF]}>{t("nav.homeMenu")}</NavLink>}
           {canManage && <NavLink href={APPEARANCE_HREF}>{t("nav.appearance")}</NavLink>}
           {canManage && <NavLink href={SETTINGS_HREF}>{t("nav.settings")}</NavLink>}
-          {canManage && <NavLink href={SOCIAL_HREF}>{t("nav.social")}</NavLink>}
           {editor && <NavLink href={REDIRECTS_HREF}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</NavLink>}
 
           {adminEntries.length > 0 && (

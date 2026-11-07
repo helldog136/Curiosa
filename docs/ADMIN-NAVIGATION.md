@@ -38,6 +38,19 @@ Module updates (`/admin/extensions/updates`) stay under **Extensions**: that vie
 
 Old addresses: `/admin/ai-visibility` redirects to `/admin/settings#ai`. `/admin/settings/address` and `/admin/settings/address/after` keep their route (the guided steps are real pages, linked from mails and docs) and show a "back to Settings" link; `/admin/settings/rawg-covers` is untouched (modules link to it). A server redirect cannot see a `#`, so moved tabs use `components/admin/LegacyHash.tsx` (`#appearance`, `#header`).
 
+## Home and menu: one entry, four link tabs
+
+The Home page, the site menu, the header link and button, and the social buttons of the header are one sidebar entry. The tabs are **links** (`components/admin/LinkTabs.tsx`, through `components/admin/HomeMenuHeader.tsx`), not client tabs: the home builder, the menu editor and the social catalogue are heavy, and client tabs render every panel at once. Each page keeps its own route.
+
+| Tab (EN / FR) | Route | Who sees it |
+|---|---|---|
+| Home / Accueil | `/admin/home` | administration, owner |
+| Menu / Menu | `/admin/navigation` | administration, owner |
+| Link and button / Lien et bouton | `/admin/navigation/header` | administration, owner |
+| Social buttons / Boutons de réseaux | `/admin/social` | administration, owner |
+
+The addresses are `HOME_MENU_TAB_HREFS` in `adminLinks.ts`. The sidebar link goes to `/admin/home` and stays highlighted on the other three (`NavLink` `also`). "Link and button" used to be a client tab of the menu page (`/admin/navigation#header`): it is now a page of its own, and the menu page maps the old anchor to it with `LegacyHash` (so does the old settings anchor `#header`). The pages are titled "Site menu" (one name in both modes: "Navigation" is no longer shown) and carry the tab name as a level-2 title below the shared header.
+
 ## Routes that are not tabs and must never be redirected
 
 `/api/admin/backup`, `/api/admin/backup/restore`, `/api/admin/backup/restore/apply` (backup handlers), `/api/admin/upload`, `/admin/overlay-pages/<id>/preview` (the preview), and the detail pages `/admin/modules/<id>`, `/admin/instances/<id>`.

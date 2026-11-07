@@ -306,7 +306,7 @@ test("Réglages : plus d'onglet Apparence ni de rappel vers Apparence ; le lien 
   assert.doesNotMatch(settings, /to-appearance|settings\.appearanceHint/, "le rappel vers Apparence (doublon du menu) a disparu des réglages");
   assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
   assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
-  const navigation = read("src/app/admin/(panel)/navigation/page.tsx");
+  const navigation = read("src/app/admin/(panel)/navigation/header/page.tsx");
   assert.match(navigation, /name="headerSecondaryHref"/);
   assert.match(navigation, /name="headerButtonHref"/);
   for (const gone of ["ThemePicker", "HeaderLayoutPicker", "bgPreset", "name=\"font\"", "name=\"glow\"", "data-testid=\"bg-layers\""]) assert.ok(!settings.includes(gone), `Réglages ne doit plus contenir ${gone}`);

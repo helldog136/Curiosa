@@ -45,8 +45,7 @@ export const APPEARANCE_HREF = "/admin/appearance";
 export const SETTINGS_HREF = "/admin/settings";
 export const SETTINGS_ADDRESS_HREF = "/admin/settings/address";
 export const SETTINGS_ADDRESS_AFTER_HREF = "/admin/settings/address/after";
-/** Historical address, still published by modules ("Not the right game?" links): it keeps working. */
-export const RAWG_COVERS_HREF = "/admin/settings/rawg-covers";
+// `/admin/settings/rawg-covers` (published by modules, "Not the right game?" links) keeps working: it is a route file, not a constant.
 export const SOCIAL_HREF = "/admin/social";
 /** Old address of "AI visibility" (now a tab of the settings): kept, it redirects to SETTINGS_AI_HREF. */
 export const AI_VISIBILITY_HREF = "/admin/ai-visibility";
@@ -57,11 +56,16 @@ export const SETTINGS_SITE_HREF = `${SETTINGS_HREF}#site`;
 export const SETTINGS_LANGUAGES_HREF = `${SETTINGS_HREF}#languages`;
 export const SETTINGS_AI_HREF = `${SETTINGS_HREF}#ai`;
 export const SETTINGS_ADDRESS_TAB_HREF = `${SETTINGS_HREF}#address`;
-export const SETTINGS_MAIL_HREF = `${SETTINGS_HREF}#mail`;
-export const SETTINGS_SEARCH_HREF = `${SETTINGS_HREF}#search`;
 export const SETTINGS_PRIVACY_HREF = `${SETTINGS_HREF}#privacy`;
 export const APPEARANCE_FONTS_HREF = `${APPEARANCE_HREF}#polices`;
-export const NAVIGATION_HEADER_HREF = `${NAVIGATION_HREF}#header`;
+/** The "Link and button" tab of the Home and menu entry (it used to be a client tab of the menu page: `/admin/navigation#header` is mapped here). */
+export const NAVIGATION_HEADER_HREF = `${NAVIGATION_HREF}/header`;
+
+/**
+ * The tabs of the "Home and menu" entry, in display order. Each tab keeps its own address (no redirect): the sidebar entry and the tab bar link to these.
+ * The three pages are heavy (home builder, menu editor, social catalogue), so they are link tabs, never client tabs that would render all panels at once.
+ */
+export const HOME_MENU_TAB_HREFS = { home: HOME_HREF, menu: NAVIGATION_HREF, header: NAVIGATION_HEADER_HREF, social: SOCIAL_HREF } as const;
 
 // ── Administration ─────────────────────────────────────────────────────────────────────────────────────────────────────
 export const OVERLAY_PAGES_HREF = "/admin/overlay-pages";
