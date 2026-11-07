@@ -445,11 +445,11 @@ test("backup : la garde HTTP exige le droit core:backup", async () => {
 
 /* ───────────── Ce qui reste au propriétaire seul ───────────── */
 
-test("inventaire : les seules pages et actions qui exigent encore « owner » sont les réglages d'e-mail et de jaquettes (sans droit propre)", () => {
+test("inventaire : la seule page ou action qui exige encore « owner » est celle des réglages d'e-mail (sans droit propre)", () => {
   const found = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /adminCtx\("owner"/.test(read(p))) found.push(p); } };
   walk("src/app");
-  assert.deepEqual(found.sort(), ["src/app/admin/(panel)/settings/mail-actions.ts", "src/app/admin/(panel)/settings/rawg-actions.ts"]);
+  assert.deepEqual(found.sort(), ["src/app/admin/(panel)/settings/mail-actions.ts"]);
 });
 
 /* ───────────── Migration depuis 0.3.1 ───────────── */
