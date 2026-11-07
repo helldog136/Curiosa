@@ -17,8 +17,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Le menu a quatre rubriques : Contenu, Communauté, Outils, Connexions.** Vos outils personnels ne sont plus mêlés à votre communauté, et les connecteurs (bots, domotique…) ont leur groupe « Connexions », replié. Un seul lien par extension ; vos épinglages ne changent pas.
 - **(English) The menu has four sections: Content, Community, Tools, Connections.** Your own tools are no longer mixed with your community, and connectors (bots, home automation…) get a collapsed "Connections" group. One link per extension; your pins do not change.
-- **« Redirections » devient « Liens courts ».** Un seul nom dans les deux modes, dans le menu et sur la page. L'adresse de la page ne change pas. Dans Extensions, « Overlays » devient « Outils pour OBS » et une famille « Outils » apparaît.
-- **(English) "Redirects" becomes "Short links".** One name in both modes, in the menu and on the page. The page address does not change. In Extensions, "Overlays" becomes "OBS helpers" and a "Tools" family appears.
+- **« Redirections » devient « Liens courts ».** Un seul nom dans les deux modes, dans le menu et sur la page, à la même adresse. Dans Extensions, « Overlays » devient « Outils pour OBS ».
+- **(English) "Redirects" becomes "Short links".** One name in both modes, in the menu and on the page, at the same address. In Extensions, "Overlays" becomes "OBS helpers".
 
 - **Une seule entrée « Accueil et menu » dans le menu.** Elle réunit la page d'accueil, le menu du site, le lien et le bouton d'en-tête et les boutons de réseaux (ex-« Réseaux sociaux »), en onglets. Chaque page garde son adresse : vos favoris fonctionnent comme avant.
 - **(English) One "Home and menu" entry in the menu.** It gathers the home page, the site menu, the header link and button and the network buttons (ex-"Social networks"), as tabs. Every page keeps its address: your bookmarks work as before.
