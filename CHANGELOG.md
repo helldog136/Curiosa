@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
+
+**In short.** The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
+
+### Administration
+
+- **L'onglet « Jaquettes de jeux » des réglages du site n'existe plus.** Il ne contenait qu'un rappel : votre clé et vos corrections se règlent dans le module, comme avant. Un ancien favori ouvre simplement le premier onglet.
+- **(English) The "Game covers" tab of the site settings is gone.** It only held a reminder: your key and your corrections are set in the module, as before. An old bookmark simply opens the first tab.
+
+### Pour les développeurs
+
+- **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
+- **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
+- **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+
 ## 0.6.18 — 2026-11-06
 
 **En bref.** Sur le site, l'affichage « liste » des articles et des autres entrées devient une suite de cartes pleine largeur, plus lisibles et entièrement cliquables. Un champ « Rechercher » peut s'afficher au-dessus de la liste et la filtre pendant la frappe. Il est activé par défaut en affichage liste, et se règle pour chaque liste. Une carte « Stockage » sur l'accueil de l'administration dit combien de place prend votre site et combien il en reste sur le serveur. Un petit rappel de la place libre apparaît aussi à côté des boutons d'envoi d'images.
