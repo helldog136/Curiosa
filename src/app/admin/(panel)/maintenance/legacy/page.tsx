@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { legacyReport, legacyStatus, type LegacyReport } from "@/core/modules/legacyReport";
 import { upkeepRows, upkeepSummary, type UpkeepGroup, type UpkeepId, type UpkeepRow } from "@/core/modules/legacyUpkeep";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -44,7 +45,7 @@ function chipsOf(row: UpkeepRow, r: LegacyReport, t: Translator, advanced: boole
 }
 
 export default async function LegacyPage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {
-  const { t, locale, advanced } = await adminCtx({ right: "core:updates" });
+  const { t, locale, advanced, user } = await adminCtx({ right: "core:updates" });
   const { done } = await searchParams;
   const r = await legacyReport();
   const status = legacyStatus(r);
@@ -120,7 +121,8 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
   const counts: Record<UpkeepGroup, number> = { todo: sum.todo, kept: sum.kept, done: byGroup("done").length };
   return (
     <div className="space-y-6">
-      <PageHeader title={t("legacy.title")} intro={t("upkeep.intro")} />
+      <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="upkeep" />
+      <PageHeader level={2} title={t("legacy.title")} intro={t("upkeep.intro")} />
       {done && <Callout tone={done === "refused" || done === "copyRefused" ? "warn" : "ok"} role="status" testid="legacy-result">{t(`legacy.result.${done === "kept" || done === "removed" || done === "erased" || done === "copyDeleted" || done === "copyPartial" || done === "copyRefused" ? done : "refused"}`)}</Callout>}
       {/* Un seul message, dit sans alarme : le site public fonctionne dans tous les cas. */}
       <Callout tone={sum.state === "todo" ? "warn" : "ok"} role="status" testid={`upkeep-status-${sum.state}`}>

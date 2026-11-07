@@ -24,7 +24,7 @@ const U = await import("@/core/modules/legacyUpkeep");
 const R = await import("@/core/modules/registry");
 const { createInstance } = await import("@/core/instanceService");
 const { setSetting } = await import("@/core/settings");
-const { administrationEntries } = await import("@/core/modules/adminMenu");
+const { maintenanceTabs } = await import("@/core/modules/adminMenu");
 const { forbiddenWords, labelProblems, toneProblems } = await import("../../testsupport/ergonomics.mjs");
 const { maintenanceToolProvider } = await import("@/core/maintenance/tools");
 
@@ -133,9 +133,11 @@ async function menuHtml(user = owner, advanced = false) {
   const Layout = (await import(`${PANEL}/layout.tsx`)).default;
   return renderAll(await Layout({ children: null }));
 }
-const link = (html) => /<a[^>]*href="\/admin\/maintenance\/legacy"[\s\S]*?<\/a>/.exec(html)?.[0] ?? "";
+// L'entrée de menu « Entretien » (un seul lien dans la barre latérale) et l'onglet « Restes » (dans la page).
+const link = (html) => /<a[^>]*href="\/admin\/maintenance\/content"[\s\S]*?<\/a>/.exec(html)?.[0] ?? "";
+const tab = (html) => /<a[^>]*data-tab="upkeep"[\s\S]*?<\/a>/.exec(html)?.[0] ?? "";
 
-test("site propre (marqueur posé) : la page dit « Tout est à jour », rien à faire, aucun bouton ; le menu dit « À jour »", async () => {
+test("site propre (marqueur posé) : la page dit « Tout est à jour », rien à faire, aucun bouton ; ni le menu ni l'onglet n'ont de pastille", async () => {
   await setMarker();
   const html = await pageHtml();
   assert.match(html, /data-testid="upkeep-status-clean"/);
@@ -144,8 +146,9 @@ test("site propre (marqueur posé) : la page dit « Tout est à jour », rien à
   assert.match(html, /upkeep-group-done/, "le « terminé » est replié mais présent");
   const menu = link(await menuHtml());
   assert.match(menu, /Entretien/);
-  assert.match(menu, /data-testid="admin-status"[^>]*>À jour/, "pastille écrite, pas seulement colorée");
   assert.doesNotMatch(menu, /data-testid="admin-badge"/);
+  assert.match(tab(html), /Restes/);
+  assert.doesNotMatch(tab(html), /tab-badge/);
 });
 
 test("copie gardée (Partenariats : 5 éléments + la reprise) : état « gardé par prudence », texte vrai, aucune action, pastille distincte, mode simple et avancé", async () => {
@@ -172,8 +175,8 @@ test("copie gardée (Partenariats : 5 éléments + la reprise) : état « gardé
   const adv = await pageHtml(owner, true);
   assert.match(adv, /partenariats · legacyContacts \(5\)/, "mode avancé : où cela se trouve, précisément");
   assert.match(adv, /partenariats · meta \(1\)/);
-  assert.match(await menuHtml(owner, false), /data-testid="admin-status"[^>]*>Copie gardée/);
   assert.doesNotMatch(link(await menuHtml(owner, false)), /data-testid="admin-badge"/, "une copie gardée n'est pas un nombre « à faire »");
+  assert.doesNotMatch(tab(simple), /tab-badge/, "ni dans l'onglet");
 });
 
 test("une action à faire : section « À faire », pastille numérique dans le menu, bouton unique « Relancer la mise à niveau »", async () => {
@@ -192,20 +195,20 @@ test("une action à faire : section « À faire », pastille numérique dans le 
   assert.match(html, /Relancer la mise à niveau/);
   assert.equal((html.match(/Relancer la mise à niveau/g) ?? []).length, 1, "un seul bouton principal");
   const menu = link(await menuHtml());
-  assert.match(menu, /data-testid="admin-badge"[^>]*>1/);
-  assert.doesNotMatch(menu, /data-testid="admin-status"/, "un nombre OU un état écrit, jamais les deux");
+  assert.match(menu, /data-testid="admin-badge"[^>]*>1/, "la pastille de l'entrée Entretien compte les restes à traiter");
+  assert.match(tab(html), /data-testid="tab-badge"[^>]*>1/, "et l'onglet Restes aussi");
 });
 
 test("droits : la personne propriétaire voit l'entrée en mode simple et avancé ; l'administration, l'édition et un rôle sans droit ne la voient pas ; la page est refusée", async () => {
   for (const advanced of [false, true]) {
-    assert.ok(administrationEntries({ role: "owner", advanced }).includes("upkeep"));
-    assert.ok(administrationEntries({ role: "coordinator", advanced }).includes("upkeep"));
-    for (const role of ["admin", "editor", "none"]) assert.ok(!administrationEntries({ role, advanced }).includes("upkeep"), role);
+    assert.ok(maintenanceTabs({ role: "owner", advanced }).includes("upkeep"));
+    assert.ok(maintenanceTabs({ role: "coordinator", advanced }).includes("upkeep"));
+    for (const role of ["admin", "editor", "none"]) assert.ok(!maintenanceTabs({ role, advanced }).includes("upkeep"), role);
   }
-  assert.match(await menuHtml(owner, false), /href="\/admin\/maintenance\/legacy"/);
-  assert.match(await menuHtml(owner, true), /href="\/admin\/maintenance\/legacy"/);
-  assert.doesNotMatch(await menuHtml(admin, false), /href="\/admin\/maintenance\/legacy"/);
-  assert.doesNotMatch(await menuHtml(editor, false), /href="\/admin\/maintenance\/legacy"/);
+  assert.match(await menuHtml(owner, false), /href="\/admin\/maintenance\/content"/);
+  assert.match(await pageHtml(owner, false), /data-tab="upkeep"/, "l'onglet « Restes » est dans la page");
+  assert.match(await pageHtml(owner, true), /data-tab="upkeep"/);
+  assert.doesNotMatch(await menuHtml(editor, false), /href="\/admin\/maintenance\/(content|legacy)"/);
   for (const u of [admin, editor]) await assert.rejects(() => pageHtml(u), undefined, `${u.role} ne peut pas ouvrir la page`);
   await setMode(owner, false);
 });
@@ -261,7 +264,7 @@ test("textes : aucun mot interdit (R9), libellés ≤ 60 caractères sans deux-p
   }
   for (const k of KEYS.filter((x) => /^upkeep\.(row|group|filter|action|search)\.?[\w.]*$/.test(x) && !/\.(text|help)$/.test(x) && !x.endsWith("absent.named")))
     for (const lang of [fr, en]) assert.deepEqual(labelProblems(lang[k]), [], k);
-  for (const k of ["nav.upkeep", "nav.upkeep.clean", "nav.upkeep.kept", "nav.upkeep.todo"]) for (const lang of [fr, en]) assert.ok(lang[k].length <= 14, `${k} : pastille courte`);
+  for (const k of ["nav.upkeep.todo"]) for (const lang of [fr, en]) assert.ok(lang[k].length <= 14, `${k} : pastille courte`);
 });
 
 test("textes : le texte des copies de sécurité est vrai dans les deux cas (l'extension les vide seule, ou les garde) et ne promet rien", () => {
@@ -274,9 +277,9 @@ test("textes : le texte des copies de sécurité est vrai dans les deux cas (l'e
   assert.ok(!Object.keys(fr).some((k) => k.startsWith("legacy.row.")), "l'ancien texte trompeur (legacy.row.collections) est retiré");
 });
 
-test("le menu et la page : Entretien est rangé entre Mises à jour et le Journal d'audit ; la page est dans le garde-fou du mode simple", () => {
+test("le menu et la page : « Restes » est l'onglet entre Mises à jour et le Journal d'activité ; la page est dans le garde-fou du mode simple", () => {
   const layout = read(`src/app/admin/(panel)/layout.tsx`);
-  assert.ok(layout.indexOf('"nav.updates"') < layout.indexOf('"nav.upkeep"') && layout.indexOf('"nav.upkeep"') < layout.indexOf('"nav.audit"'));
+  assert.deepEqual(maintenanceTabs({ role: "owner", advanced: true }).slice(2), ["updates", "upkeep", "audit"]);
   assert.match(layout, /legacyUpkeepSummary\(\)/);
   assert.match(layout, /legacyConversionPending\(\)/, "le bandeau reste pour l'urgent");
   assert.match(read("tests/core/admin-simple-mode.test.mjs"), /maintenance\/legacy\/page\.tsx/);

@@ -9,20 +9,26 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
+**En bref.** Dans le menu d'administration, cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
 
-**In short.** The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
+**In short.** In the admin menu, five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
 
 ### Administration
 
 - **L'onglet « Jaquettes de jeux » des réglages du site n'existe plus.** Il ne contenait qu'un rappel : votre clé et vos corrections se règlent dans le module, comme avant. Un ancien favori ouvre simplement le premier onglet.
 - **(English) The "Game covers" tab of the site settings is gone.** It only held a reminder: your key and your corrections are set in the module, as before. An old bookmark simply opens the first tab.
 
+- **Une seule entrée « Entretien » dans le menu.** Elle réunit le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et, en mode avancé, le journal d'activité, en onglets en haut de chaque page. Chaque page garde son adresse : vos favoris et vos liens fonctionnent comme avant.
+- **(English) One "Maintenance" entry in the menu.** It gathers the health check, backup, updates, leftovers from older versions and, in advanced mode, the activity log, as tabs at the top of each page. Every page keeps its address: your bookmarks and links work as before.
+- **Des noms plus clairs.** « Journal d'audit » devient « Journal d'activité », « Santé de mon site » devient « Contrôle du site », « Overlays » devient « Pages d'overlay », et « Users » devient « Team » en anglais (« Équipe » en français, inchangé).
+- **(English) Clearer names.** "Audit log" becomes "Activity log", "Site health" becomes "Health check", "Overlays" becomes "Overlay pages", and "Users" becomes "Team".
+
 ### Pour les développeurs
 
 - **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
 - **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
 - **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+- **Maintenance tabs.** `adminMenu.ts` now has `maintenanceTabs()` and one `maintenance` entry instead of five; `LinkTabs` and `MaintenanceHeader` render the bar; `PageHeader` takes `level={2}`. See `docs/ADMIN-NAVIGATION.md`. No route changed.
 - **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.
 
 ## 0.6.18 — 2026-11-06

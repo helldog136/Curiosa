@@ -1,4 +1,5 @@
 import { adminCtx } from "@/core/admin";
+import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { inspectHosting } from "@/core/updates/hosting";
 import { checkForUpdate, dockerUpdatePlan, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readStartupState, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
@@ -31,7 +32,7 @@ function VersionCard({ label, version, tone, children }: { label: string; versio
 
 /** Mettre le site à jour, dans l'ordre où on y pense : où j'en suis, ce qui existe, ce que ça change, puis un seul bouton ; pendant l'installation, où on en est. */
 export default async function UpdatesPage() {
-  const { t, locale, advanced, config } = await adminCtx({ right: "core:updates" });
+  const { t, locale, advanced, config, user } = await adminCtx({ right: "core:updates" });
   const info = getInstallInfo();
   // Docker : même vérification, mêmes notes, mêmes étapes ; mais on ne peut rien installer d'ici, on montre la commande exacte à lancer.
   const docker = info.kind === "docker";
@@ -73,7 +74,8 @@ export default async function UpdatesPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title={t("nav.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
+      <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="updates" />
+      <PageHeader level={2} title={t("maint.tab.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
 
       {!info.canCheck && (
         <Panel title={t("updates.yourVersion")}>

@@ -72,6 +72,11 @@ export const HEALTH_HREF = "/admin/maintenance/content";
 /** Leftovers of older versions (the "Upkeep" page). */
 export const UPKEEP_HREF = "/admin/maintenance/legacy";
 export const AUDIT_HREF = "/admin/audit";
+/**
+ * The tabs of the Maintenance entry, in display order. Each tab keeps its own address (no redirect): the sidebar entry and the tab bar link to these.
+ * Not tabs, and never to be redirected: /admin/backup/restore and /admin/backup/route (handlers), /admin/upload, the overlay preview.
+ */
+export const MAINTENANCE_TAB_HREFS = { health: HEALTH_HREF, backup: BACKUP_HREF, updates: UPDATES_HREF, upkeep: UPKEEP_HREF, audit: AUDIT_HREF } as const;
 export const DRAFTS_HREF = "/admin/drafts";
 /** The storage card of the dashboard. */
 export const STORAGE_HREF = "/admin#storage";

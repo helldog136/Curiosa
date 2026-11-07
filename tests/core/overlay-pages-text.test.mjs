@@ -37,7 +37,7 @@ test("chaque clé de texte citée dans le code existe, et chaque clé écrite se
 });
 
 test("vocabulaire du document de conception : « page d'overlay », « élément », « Résolution », « Mode test », « Aperçu en direct », « Changer l'adresse secrète », vouvoiement", () => {
-  assert.equal(fr["ovp.title"], "Overlays"); assert.equal(fr["ovp.intro"], "Composez vos pages pour OBS.");
+  assert.equal(fr["ovp.title"], "Pages d'overlay"); assert.equal(fr["ovp.intro"], "Composez vos pages pour OBS.");
   assert.equal(fr["ovp.new"], "Nouvelle page d'overlay"); assert.equal(fr["ovp.ed.add"], "Ajouter un élément"); assert.equal(fr["ovp.ed.remove"], "Retirer l'élément");
   assert.equal(fr["ovp.resolution"], "Résolution"); assert.equal(fr["ovp.test"], "Mode test"); assert.equal(fr["ovp.ed.live"], "Aperçu en direct"); assert.equal(fr["ovp.reset"], "Changer l'adresse secrète");
   assert.equal(fr["ovp.testOn"], "Mode test actif, s'arrête à {time}"); assert.equal(fr["ovp.testStop"], "Arrêter maintenant"); assert.equal(fr["ovp.testExtend"], "Prolonger de 30 minutes");

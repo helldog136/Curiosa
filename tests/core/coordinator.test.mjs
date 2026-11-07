@@ -134,10 +134,10 @@ test("une personne dont une ancienne version a changé User.role perd le niveau 
 });
 
 test("menu d'administration par niveau (sans changement pour owner, admin, editor)", () => {
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "upkeep", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "upkeep", "audit"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "health", "backup", "updates", "upkeep"]);
-  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "health"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "maintenance"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
 });
 

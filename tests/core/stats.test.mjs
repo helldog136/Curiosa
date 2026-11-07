@@ -187,7 +187,7 @@ test("pastilles d'admin : hook adminBadge → menu et carte « À traiter » ; m
   assert.match(read("src/core/modules/adminNav.ts"), /Math\.min\(Math\.floor\(n\), 999\)/, "borné, une erreur = 0");
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /can\(user, "core:updates"\) && \(await getUpdateCheck/);
-  assert.match(layout, /href=\{UPDATES_HREF\} badge=/);
+  assert.match(layout, /badge=\{maintenanceBadge\}/);
   assert.match(read("src/components/admin/dashboard/Blocks.tsx"), /data-testid="todo"/);
 });
 
