@@ -9,9 +9,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Dans le menu d'administration, cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
+**En bref.** Dans le menu d'administration, cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
 
-**In short.** In the admin menu, five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
+**In short.** In the admin menu, five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. "Site settings" becomes "Settings" and gathers AI visibility and, in advanced mode, the web address. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
 
 ### Administration
 
@@ -23,11 +23,16 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Des noms plus clairs.** « Journal d'audit » devient « Journal d'activité », « Santé de mon site » devient « Contrôle du site », « Overlays » devient « Pages d'overlay », et « Users » devient « Team » en anglais (« Équipe » en français, inchangé).
 - **(English) Clearer names.** "Audit log" becomes "Activity log", "Site health" becomes "Health check", "Overlays" becomes "Overlay pages", and "Users" becomes "Team".
 
+- **Un seul endroit pour les réglages.** La visibilité dans les IA devient un onglet des Réglages, et les anciens liens y mènent. En mode avancé, un onglet « Adresse web » mène aux étapes pour la changer.
+- **(English) One place for the settings.** AI visibility becomes a tab of Settings, and old links lead there. In advanced mode, a "Web address" tab leads to the steps to change it.
+- **Moins de rappels.** Les deux phrases de la page Réglages qui renvoyaient vers Apparence et vers l'adresse du site doublaient le menu : elles sont retirées.
+- **(English) Fewer reminders.** The two sentences at the top of Settings that pointed to Appearance and to the site address repeated the menu: they are gone.
 ### Pour les développeurs
 
 - **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
 - **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
 - **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+- **Settings tabs.** `AiVisibilityPanel` (was `/admin/ai-visibility`) is the `ai` tab, and that address redirects to `/admin/settings#ai`. New advanced `address` tab. `Tabs` now wraps on phones. See `docs/ADMIN-NAVIGATION.md`.
 - **Maintenance tabs.** `adminMenu.ts` now has `maintenanceTabs()` and one `maintenance` entry instead of five; `LinkTabs` and `MaintenanceHeader` render the bar; `PageHeader` takes `level={2}`. See `docs/ADMIN-NAVIGATION.md`. No route changed.
 - **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.
 

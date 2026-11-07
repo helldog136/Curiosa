@@ -39,7 +39,7 @@ const PANEL = "../../src/app/admin/(panel)";
 const PAGES = [
   ["dashboard", "page.tsx"], ["settings", "settings/page.tsx"], ["appearance", "appearance/page.tsx"], ["users", "users/page.tsx"], ["backup", "backup/page.tsx"],
   ["updates", "updates/page.tsx"], ["health", "maintenance/content/page.tsx"], ["redirects", "redirects/page.tsx"], ["social", "social/page.tsx"],
-  ["ai-visibility", "ai-visibility/page.tsx"], ["navigation", "navigation/page.tsx"], ["home", "home/page.tsx"], ["overlay-pages", "overlay-pages/page.tsx"],
+  ["navigation", "navigation/page.tsx"], ["home", "home/page.tsx"], ["overlay-pages", "overlay-pages/page.tsx"],
   ["assistants", "assistants/page.tsx"], ["account", "account/page.tsx"], ["mode", "mode/page.tsx"], ["extensions", "extensions/page.tsx"],
   ["extensions/add", "extensions/add/page.tsx"], ["extensions/updates", "extensions/updates/page.tsx"], ["maintenance/legacy", "maintenance/legacy/page.tsx"],
 ];

@@ -9,7 +9,7 @@ const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
 test("site settings : no game covers tab any more (handled by the module); the tabs are identity, languages, privacy, search, mail", () => {
   assert.ok(!/id: "services"|data-tab="services"|rawg-moved-card|rawg-pending-card|rawgHandover|retryRawgHandover/.test(page));
   const ids = [...page.matchAll(/\{ id: "(\w+)", label: t\("settings\.\w+"\) \}/g)].map((m) => m[1]);
-  assert.deepEqual(ids, ["site", "languages", "privacy", "search", "mail"]);
+  assert.deepEqual(ids, ["site", "languages", "privacy", "search", "ai", "mail", "address"]);
   assert.ok(!fs.existsSync("src/app/admin/(panel)/settings/rawg-actions.ts"));
   for (const dict of [en, fr]) assert.deepEqual(Object.keys(dict).filter((k) => /^settings\.(services|servicesHelp|rawg\w*)$/.test(k)), []);
 });

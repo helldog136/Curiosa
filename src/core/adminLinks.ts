@@ -48,12 +48,17 @@ export const SETTINGS_ADDRESS_AFTER_HREF = "/admin/settings/address/after";
 /** Historical address, still published by modules ("Not the right game?" links): it keeps working. */
 export const RAWG_COVERS_HREF = "/admin/settings/rawg-covers";
 export const SOCIAL_HREF = "/admin/social";
+/** Old address of "AI visibility" (now a tab of the settings): kept, it redirects to SETTINGS_AI_HREF. */
 export const AI_VISIBILITY_HREF = "/admin/ai-visibility";
 export const REDIRECTS_HREF = "/admin/redirects";
 
 /** Anchors inside pages (a server redirect cannot see a `#`, see components/admin/LegacyHash). */
 export const SETTINGS_SITE_HREF = `${SETTINGS_HREF}#site`;
 export const SETTINGS_LANGUAGES_HREF = `${SETTINGS_HREF}#languages`;
+export const SETTINGS_AI_HREF = `${SETTINGS_HREF}#ai`;
+export const SETTINGS_ADDRESS_TAB_HREF = `${SETTINGS_HREF}#address`;
+export const SETTINGS_MAIL_HREF = `${SETTINGS_HREF}#mail`;
+export const SETTINGS_SEARCH_HREF = `${SETTINGS_HREF}#search`;
 export const SETTINGS_PRIVACY_HREF = `${SETTINGS_HREF}#privacy`;
 export const APPEARANCE_FONTS_HREF = `${APPEARANCE_HREF}#polices`;
 export const NAVIGATION_HEADER_HREF = `${NAVIGATION_HREF}#header`;
