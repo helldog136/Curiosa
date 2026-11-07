@@ -22,7 +22,7 @@ function legacy() {
     if (type === "content") return "menu";
     return (m.mcp?.length ?? 0) > 0 || (m.offers?.length ?? 0) > 0 || (m.requires?.length ?? 0) > 0 ? "menu" : "integrations";
   };
-  // The sidebar section moved on in 0.6.19 (Tools and Connections exist now): the old Content/Community rule, plus social/integration -> connections and a simple overlay -> tools.
+  // The sidebar section moved on in 0.7.0 (Tools and Connections exist now): the old Content/Community rule, plus social/integration -> connections and a simple overlay -> tools.
   const section = (m) => (isOverlay(m) && m.type !== "social" && m.type !== "integration" ? "tools" : m.type === "social" || m.type === "integration" ? "connections" : m.content || m.type === "content" ? "content" : "community");
   const family = (m) => {
     if (isOverlay(m)) return "overlays";
@@ -89,7 +89,7 @@ test("family déclarée : elle prime sur la déduction (rangement, rubrique, fam
   const conn = { type: "widget", mcp: [{}], family: "connections" };
   assert.equal(F.extensionFamily(conn), "connections");
   assert.equal(P.defaultPlacement(conn), "integrations");
-  assert.equal(P.defaultSection(conn), "connections", "since 0.6.19 the sidebar has a Connections section");
+  assert.equal(P.defaultSection(conn), "connections", "since 0.7.0 the sidebar has a Connections section");
   // « community » sur un module à contenu.
   const comm = { content: { display: "list", clickAction: "page" }, family: "community" };
   assert.equal(F.extensionFamily(comm), "community");
@@ -122,7 +122,7 @@ test("manifeste : « family » est validée ; absente, le manifeste est inchang�
   assert.equal(plain.manifest.family, undefined);
 });
 
-// ─── menuGroup (core 0.6.19) ─────────────────────────────────────────────────────────────────────────────────────
+// ─── menuGroup (core 0.7.0) ─────────────────────────────────────────────────────────────────────────────────────
 
 test("menuGroup: the four values, validated; absent, the manifest is unchanged; an older core ignores the key", () => {
   const base = { apiVersion: 2, id: "demo-x", name: "X", version: "1.0.0", main: "index.mjs" };

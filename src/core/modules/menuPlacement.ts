@@ -30,7 +30,7 @@ export type PlacementManifest = {
   sections?: readonly unknown[];
   /** (0.2.14) Rangement DÉCLARÉ par le module (`family` du manifeste) : il prime sur la déduction ci-dessous. Absent ou inapplicable : la règle habituelle, inchangée. */
   family?: string;
-  /** (0.6.19) Where the module sits in the sidebar: `content`, `community`, `tools` or `connections`. Optional; it wins over `family` and over the type rule, and changes nothing else (not the pinning default). */
+  /** (0.7.0) Where the module sits in the sidebar: `content`, `community`, `tools` or `connections`. Optional; it wins over `family` and over the type rule, and changes nothing else (not the pinning default). */
   menuGroup?: string;
 };
 
