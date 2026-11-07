@@ -112,7 +112,7 @@ test("nom déjà pris par un lien de la personne : refusé sous le champ avec un
   // Le champ du nom (replié sous « Plus d'options », qui s'ouvre sur une erreur) porte le message : c'est lui qu'il faut changer.
   assert.match(bad.errors?.s__shortLinkName ?? "", /\/alpha/);
   assert.match(bad.errors.s__shortLinkName, /alpha-2/, "un exemple de nom libre");
-  assert.match(bad.errors.s__shortLinkName, /Raccourcis de liens|Link shortcuts/, "dit où est l'autre lien");
+  assert.match(bad.errors.s__shortLinkName, /Liens courts|Short links/, "dit où est l'autre lien");
   assert.equal((await getSettingByLocale(`instance.${inst.id}.createShortLink`))[""], undefined, "rien n'est enregistré");
   // Sous le champ du nom quand c'est lui que la personne a rempli.
   const bad2 = await save(inst, [["s__profile", "https://alpha.example/moi"], ["s__createShortLink", "on"], ["s__shortLinkName", "alpha"]]);

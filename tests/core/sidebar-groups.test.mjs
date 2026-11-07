@@ -53,7 +53,7 @@ test("Short links: one name in both modes, for the sidebar, the page title and t
   assert.match(page, /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/);
   assert.match(page, /t\("redirects\.line", \{ site \}\)/);
   assert.match(en["redirects.line"], /^A short address on your site that sends visitors elsewhere\. Example: /);
-  assert.match(fr["redirects.line"], /^Une adresse courte de votre site qui envoie vos visiteurs ailleurs\. Par exemple : /);
+  assert.match(fr["redirects.line"], /^Une adresse courte de votre site qui envoie votre public ailleurs\. Par exemple : /);
   for (const d of [en, fr]) for (const k of ["nav.redirects", "redirects.line", "redirects.empty", "redirects.add"]) assert.ok(!/redirect|redirection|shortcut|raccourci/i.test(d[k]), `${k}: one word only`);
   assert.ok(!/Link shortcuts|Raccourcis de liens/.test(JSON.stringify(en) + JSON.stringify(fr)), "the old names are gone from the texts");
 });
