@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { providerInstance } from "@/core/modules/dependencies";
-import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgHandover";
+import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgRelay";
 import { EXTENSIONS_ADD_DETAILS_HREF, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";

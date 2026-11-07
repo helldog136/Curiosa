@@ -1,6 +1,7 @@
 import { callProvider, providerInstance } from "@/core/modules/dependencies";
-import { COVERS_MODULE, COVERS_SERVICE, ensureRawgHandover, handoverState } from "./rawgHandover";
-import { trackRawgJob } from "./rawgNote";
+/** Le service de jaquettes, et le module officiel qui le fournit (son identifiant, jamais un nom affiché). */
+export const COVERS_SERVICE = "game.cover";
+export const COVERS_MODULE = "game-covers";
 
 /**
  * `ctx.api.rawg` (permission « rawg », DÉPRÉCIÉE depuis la 0.3.0) — un relais minimal pour les modules d'avant, qui ne connaissent pas encore le service `game.cover`.
@@ -17,12 +18,6 @@ export type RawgCandidate = { id: number; name: string; year: number | null; pla
 export type RawgCandidates = { status: RawgStatus; candidates: RawgCandidate[] };
 
 const STATUSES: RawgStatus[] = ["found", "none", "no-key", "refused", "unreachable"];
-const ADOPT_WAIT_MS = 4_000;
-const SETTLED_MS = 60_000;
-let settledUntil = 0;
-let absentUntil = 0;
-/** Pour les tests. */
-export function resetRelay(): void { settledUntil = 0; absentUntil = 0; }
 
 const httpsUrl = (v: unknown): string | null => { if (typeof v !== "string" || v.length > 2000) return null; try { return new URL(v).protocol === "https:" ? v : null; } catch { return null; } };
 const text = (v: unknown, max: number): string => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, max) : "");
@@ -50,23 +45,10 @@ export function candidatesOf(v: unknown): RawgCandidates {
   return { status: status === "found" && !list.length ? "none" : status, candidates: status === "found" ? list : [] };
 }
 
-/**
- * Le module est-il là ? Absent : une reprise est tentée en arrière-plan (espacée, elle ne fait rien si le site n'utilisait pas RAWG). Présent mais reprise pas faite : on la
- * termine d'abord (4 s au plus), pour que le tout premier appel ne réponde pas « no-key » à tort.
- */
+/** Le module est-il là ? Sinon : « no-key », sans exception. */
 async function available(): Promise<boolean> {
   try {
-    const provider = await providerInstance(COVERS_SERVICE);
-    if (!provider) {
-      // Au plus une tentative par minute (la reprise lit les réglages : pas à chaque jaquette demandée).
-      if (Date.now() >= absentUntil) { absentUntil = Date.now() + SETTLED_MS; trackRawgJob(ensureRawgHandover({ install: true })); }
-      return false;
-    }
-    if (provider.mod.manifest.id === COVERS_MODULE && Date.now() >= settledUntil && !(await handoverState()).doneAt) {
-      settledUntil = Date.now() + SETTLED_MS;   // quel qu'en soit le résultat : au plus une tentative par minute, jamais une attente à chaque demande
-      await Promise.race([ensureRawgHandover({ install: false }), new Promise<string>((r) => { const t = setTimeout(() => r("late"), ADOPT_WAIT_MS); t.unref?.(); })]);
-    }
-    return true;
+    return !!(await providerInstance(COVERS_SERVICE));
   } catch (error) {
     console.error("[rawg] relay failed:", (error as Error)?.name);
     return false;
