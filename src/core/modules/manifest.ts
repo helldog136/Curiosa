@@ -276,7 +276,7 @@ export const manifestSchema = z.object({
   sitemapFromPage: z.boolean().optional(),
   /** (0.2.14) Rangement dans l'administration : « content » (Contenu), « community » (Communauté), « connections » (Réseaux et connexions) ou « overlays » (permis seulement à un module qui sert une source navigateur). Prime sur la déduction du cœur ; absent = la règle habituelle. Un cœur ancien ignore la clé : `minCore: "0.2.14"`. */
   family: z.enum(["content", "community", "connections", "overlays"]).optional(),
-  /** (core 0.6.19, no `minCore` to declare) Where the module sits in the admin sidebar and in the Extensions list: "content", "community", "tools" or "connections". Wins over `family` and over the type rule; changes nothing else (not the pinning default). A separate key, not a new `family` value, so that an older core ignores it instead of refusing the manifest. Absent: the usual rule. */
+  /** (core 0.7.0, no `minCore` to declare) Where the module sits in the admin sidebar and in the Extensions list: "content", "community", "tools" or "connections". Wins over `family` and over the type rule; changes nothing else (not the pinning default). A separate key, not a new `family` value, so that an older core ignores it instead of refusing the manifest. Absent: the usual rule. */
   menuGroup: z.enum(["content", "community", "tools", "connections"]).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))

@@ -9,7 +9,7 @@ export const parseFamily = (v: unknown): ExtensionFamily | null => ((EXTENSION_F
 
 /**
  * Famille d'un module, déduite de son manifeste seul :
- * 00. (0.6.19) `menuGroup` declared in the manifest (content, community, tools, connections): it wins, and it is the same word as the sidebar section;
+ * 00. (0.7.0) `menuGroup` declared in the manifest (content, community, tools, connections): it wins, and it is the same word as the sidebar section;
  * 0. (0.2.14) `family` déclarée dans le manifeste : elle l'emporte ;
  * 1. overlay (type ou permission) → Overlays ;
  * 2. catégorie « social » ou « integration », plateforme déclarée, ou simple liste de liens vers l'extérieur → Réseaux et connexions (ce qui se règle une fois) ;

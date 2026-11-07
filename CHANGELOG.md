@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.7.0 — 2026-11-07
 
 **En bref.** Le mode simple ou avancé et le thème de l'administration se règlent dans « Mon compte ». Le menu d'administration range les extensions en Contenu, Communauté, Outils et Connexions, et « Redirections » devient « Liens courts ». « Page d'accueil », « Menu du site » et « Réseaux sociaux » deviennent une seule entrée « Accueil et menu » avec des onglets. Cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
 
