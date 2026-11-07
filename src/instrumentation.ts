@@ -41,11 +41,6 @@ export async function register() {
   startUpdateScheduler();
   const { startTaskScheduler } = await import("@/core/services/scheduler");
   startTaskScheduler();
-  // Reprise finale RAWG (voir services/rawgHandover.ts) : un site qui avait encore une clé ou des corrections de jaquettes dans les réglages du cœur les voit confiées au module « Jaquettes
-  // de jeux » (installé au besoin), une fois. Les anciennes données ne sont jamais effacées. Sans attendre (le démarrage n'attend ni le catalogue ni le réseau), sans jamais lever.
-  const { ensureRawgHandover } = await import("@/core/services/rawgHandover");
-  const { trackRawgJob } = await import("@/core/services/rawgNote");
-  trackRawgJob(ensureRawgHandover({ install: true, force: true }));
   // Warm the caches an AI maintenance call would otherwise pay for after a restart (a few seconds after the start, only when the site has an AI access).
   const { scheduleMaintenanceWarmup } = await import("@/core/maintenance/warmup");
   scheduleMaintenanceWarmup();

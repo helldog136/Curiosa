@@ -1,5 +1,4 @@
 import fs from "node:fs";
-import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import path from "node:path";
 import { Prisma } from "@prisma/client";
 import { FONTS_DIR, UPLOADS_DIR } from "@/core/config";
@@ -338,7 +337,5 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const skins = await restoreSkins({ before: skinsBefore, confirmCustom: opts.confirmCustom, actor: opts.actor });
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
-  // Reprise finale RAWG (services/rawgHandover.ts) : une sauvegarde d'avant la reprise rend les réglages d'avant ; le module « Jaquettes de jeux » est (ré)installé et repris, au mieux, sans attendre.
-  noteRawgModulesChanged();
   return { ok: true, modules: outcomes, skins, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

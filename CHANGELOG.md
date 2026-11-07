@@ -27,11 +27,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) One place for the settings.** AI visibility becomes a tab of Settings, and old links lead there. In advanced mode, a "Web address" tab leads to the steps to change it.
 - **Moins de rappels.** Les deux phrases de la page Réglages qui renvoyaient vers Apparence et vers l'adresse du site doublaient le menu : elles sont retirées.
 - **(English) Fewer reminders.** The two sentences at the top of Settings that pointed to Appearance and to the site address repeated the menu: they are gone.
+- **Les très anciens sites se mettent à jour en deux étapes.** Un site en version 0.6.10 à 0.6.17 passe d'abord par la 0.6.18, puis par la nouvelle version ; le site propose les étapes lui-même. Un site en 0.6.18 ou plus récent n'est pas concerné.
+- **(English) Older sites update in two steps.** A site on 0.6.10 to 0.6.17 first updates to 0.6.18, then to the new version, and the site offers the steps itself. A site on 0.6.18 or newer is not affected.
 ### Pour les développeurs
 
 - **Settings page.** Removed the `services` tab of `/admin/settings`, its two cards, the `retryRawgHandover` action and the `settings.services*` and `settings.rawg*` strings.
 - **Handover kept.** `services/rawgHandover.ts` still runs at start-up, after a module change or restore, and on the first call of an old module. The settings page no longer starts it.
 - **Old address kept.** `/admin/settings/rawg-covers` still redirects to the module.
+- **Support floor raised to 0.6.18** (`upgrade.json`, `docs/MIGRATIONS.md`). Removed the RAWG handover (`rawgHandover.ts`, `rawgNote.ts`, hooks); `rawg.*` settings are left untouched; `ctx.api.rawg`, the `rawg-covers` redirect and the MCP short names stay. `menu-freeze` is kept: it also reads backups made before the stored menu.
 - **Settings tabs.** `AiVisibilityPanel` (was `/admin/ai-visibility`) is the `ai` tab, and that address redirects to `/admin/settings#ai`. New advanced `address` tab. `Tabs` now wraps on phones. See `docs/ADMIN-NAVIGATION.md`.
 - **Maintenance tabs.** `adminMenu.ts` now has `maintenanceTabs()` and one `maintenance` entry instead of five; `LinkTabs` and `MaintenanceHeader` render the bar; `PageHeader` takes `level={2}`. See `docs/ADMIN-NAVIGATION.md`. No route changed.
 - **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.

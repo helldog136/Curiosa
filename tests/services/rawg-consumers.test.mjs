@@ -18,13 +18,12 @@ if (!present) test("consommateurs de jaquettes sur le cœur 0.3.0", { skip: "dé
 else {
   const db = await useTestDb();
   const cat = createCatalogue();
-  const H = await import("@/core/services/rawgHandover");
-  const RL = await import("@/core/services/rawgRelay");
   const I = await import("@/core/modules/installer");
   const Rec = await import("@/core/modules/recognized");
   const { setSetting } = await import("@/core/settings");
   const { getActiveInstances } = await import("@/core/modules/registry");
   const { buildContext } = await import("@/core/modules/context");
+  const { callProvider } = await import("@/core/modules/dependencies");
   const { ensureDefaultInstance } = await import("@/core/modules/defaultInstance");
   const code = {
     gs: await import(pathToFileURL(path.join(extras, "modules/game-suggestions/index.mjs")).href),
@@ -67,7 +66,6 @@ else {
     await settleBackground();
     await db.reset(); await cat.clear(); Rec.clearRecognizedCache();
     await setSetting("i18n.default", "fr"); await setSetting("i18n.enabled", ["fr", "en"]);
-    H.resetHandover(); RL.resetRelay();
   });
   after(async () => { await settleBackground(); cat.close(); return db.close(); });
 
@@ -79,16 +77,16 @@ else {
       cover: [await code.gs.coverFor(gs, title), await code.pl.coverFor(pl, title), (await code.ss.coverOf(ss, title))],
     };
   };
-  const legacy = async () => {
-    await setSetting("rawg.key", KEY);
-    await setSetting("rawg.fixes", { hades: { title: "Hades", kind: "game", rawgId: 22, name: "Hades II", img: "/media/games/022/jeu-22.jpg", at: NOW } });
+  /** Ce que la personne propriétaire règle dans le module « Jaquettes de jeux » : sa clé et une correction (le module garde ses données ; le cœur ne les reprend plus). */
+  const enterData = async () => {
+    const r = await callProvider("game.cover", "adopt", { key: KEY, fixes: { hades: { title: "Hades", kind: "game", rawgId: 22, name: "Hades II", img: "/media/games/022/jeu-22.jpg", at: NOW } }, todo: [] }, { moduleId: "game-covers" });
+    assert.equal(r.ok, true, "le module accepte ses données");
   };
 
-  test("sur le cœur 0.3.0, avec le module et la reprise faite : les trois consommateurs reçoivent la jaquette corrigée (service direct), avec ou sans ctx.api.rawg", async () => {
+  test("sur le cœur 0.3.0, avec le module et ses données : les trois consommateurs reçoivent la jaquette corrigée (service direct), avec ou sans ctx.api.rawg", async () => {
     for (const id of NEEDED) await publishReal(id);
-    await legacy();
-    for (const id of ["game-suggestions", "planning", "stream-story"]) await install(id);
-    assert.equal(await H.ensureRawgHandover({ install: true, force: true }), "done", "la reprise installe game-covers du catalogue et lui confie clé et corrections");
+    for (const id of ["game-covers", "game-suggestions", "planning", "stream-story"]) await install(id);
+    await enterData();
     for (const rawg of ["keep", "absent"]) {
       const r = await asks(rawg);
       assert.deepEqual(r.has, [true, true, true], rawg);
@@ -112,13 +110,10 @@ else {
     }
   });
 
-  test("module « Jaquettes de jeux » absent et catalogue injoignable (données du cœur gardées, reprise en attente) : « no-key » partout, sans exception ; la reprise se fait quand le catalogue revient", async () => {
+  test("module « Jaquettes de jeux » absent : « no-key » partout, sans exception ; installé ensuite avec ses données, les consommateurs reçoivent la jaquette", async () => {
     for (const id of NEEDED.filter((x) => x !== "game-covers")) await publishReal(id);   // le catalogue n'a (encore) pas le module : les consommateurs s'installent sans lui
-    await legacy();
     for (const id of ["game-suggestions", "planning", "stream-story"]) await install(id);
-    await settleBackground();
     await publishReal("game-covers");
-    await cat.down({ forget: true });
     for (const rawg of ["keep", "absent"]) {
       const r = await quiet(() => asks(rawg));
       assert.deepEqual(r.has, [false, false, false], rawg);
@@ -126,10 +121,9 @@ else {
       assert.deepEqual(r.cover[1], { status: "no_key", url: null });
       assert.equal(r.cover[2].coverState, "no_key");
     }
-    await settleBackground();
-    await cat.up();
-    assert.equal(await H.ensureRawgHandover({ install: true, force: true }), "done");
-    RL.resetRelay();
+    assert.equal(await (await import("@/core/modules/registry")).getModule("game-covers"), null, "le cœur n'installe plus le module de lui-même");
+    await install("game-covers");
+    await enterData();
     const r = await asks("keep");
     assert.deepEqual(r.cover[0], { status: "found", url: FIXED });
   });

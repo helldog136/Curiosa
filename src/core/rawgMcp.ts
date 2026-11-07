@@ -2,7 +2,7 @@ import { buildContext } from "@/core/modules/context";
 import { providerInstance } from "@/core/modules/dependencies";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { validateArgs } from "@/core/services/mcp/validate";
-import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgHandover";
+import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgRelay";
 
 /**
  * ALIAS DES DEUX OUTILS DE L'ASSISTANT « JAQUETTES DE JEUX » — `rawg_covers_to_check` (lecture) et `rawg_cover_set` (écriture, jamais accordée d'office).

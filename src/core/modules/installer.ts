@@ -1,6 +1,5 @@
 import { execFile } from "node:child_process";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { noteRawgModulesChanged } from "@/core/services/rawgNote";
 import fs from "node:fs";
 import path from "node:path";
 import { promisify } from "node:util";
@@ -596,14 +595,7 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
  * données intactes (`modules.error.requires` + `missing`). Une migration qui échoue met l'instance à l'écart avec « Réessayer » ; les fournisseurs restent.
  */
 export async function updateModule(id: string): Promise<InstallResult> {
-  const result = await updateModuleWithin(id, [id]);
-  if (result.ok) noteModulesChanged();
-  return result;
-}
-
-/** Une installation ou une mise à jour vient de réussir : la reprise finale RAWG se prépare, au mieux et sans attendre (services/rawgHandover.ts). */
-function noteModulesChanged(): void {
-  noteRawgModulesChanged();
+  return updateModuleWithin(id, [id]);
 }
 
 /** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */
@@ -919,9 +911,7 @@ export async function installFromCatalogue(id: string, opts: { dependencies?: bo
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   const { confirmExtra: _confirmed, ...rest } = opts;
   void _confirmed;
-  const result = await installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
-  if (result.ok) noteModulesChanged();
-  return result;
+  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
 }
 
 /**
