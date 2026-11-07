@@ -26,10 +26,8 @@ import { CropLabelsProvider } from "@/components/admin/CropLabels";
 import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
-import { ADMIN_THEMES, ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
-import { setAdminMode, setAdminTheme } from "./mode/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODE_HREF, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
+import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +37,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Le menu ne montre que ce que cette personne peut ouvrir (droit relu en base à chaque requête).
   const nav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
   const editor = hasRole(user, "editor");
-  const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const canManage = hasRole(user, "admin");
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
@@ -118,20 +115,6 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <NavLink href={ACCOUNT_HREF}>{t("nav.myAccount")}</NavLink>
           <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
         </nav>
-        <form action={setAdminMode.bind(null, !advanced)} className="mt-4 px-3">
-          <p className="mb-1 text-xs text-muted"><a href={MODE_HREF} className="hover:text-accent hover:underline">{advanced ? t("mode.advanced") : t("mode.simple")}</a></p>
-          <PendingButton title={t("mode.help")}>{advanced ? t("mode.switchToSimple") : t("mode.switchToAdvanced")}</PendingButton>
-        </form>
-        <div className="mt-4 px-3" role="group" aria-label={t("theme.admin")}>
-          <p className="mb-1 text-xs text-muted">{t("theme.admin")}</p>
-          <div className="inline-flex overflow-hidden rounded-xl border border-line">
-            {ADMIN_THEMES.map((id) => (
-              <form key={id} action={setAdminTheme.bind(null, id)}>
-                <button aria-pressed={theme === id} className={`px-3 py-1.5 text-xs transition-colors ${theme === id ? "bg-accent font-semibold text-accent-fg" : "bg-surface hover:bg-accent/10"}`}>{t(`theme.admin.${id}`)}</button>
-              </form>
-            ))}
-          </div>
-        </div>
         <p className="mt-4 px-3"><BugReportLink href={bugUrl}>🐞 {t("bugReport.link")} ↗</BugReportLink></p>
         <form
           action={async () => {

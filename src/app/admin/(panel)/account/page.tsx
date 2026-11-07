@@ -11,10 +11,14 @@ import { TwoFactorPanel } from "@/components/admin/TwoFactorPanel";
 import { listPasskeys } from "@/core/auth/passkeys";
 import { remainingRecoveryCodes } from "@/core/auth/twoFactor";
 import { getSetting } from "@/core/settings";
+import { AdminPreferences } from "@/components/admin/AdminPreferences";
+import { cookies } from "next/headers";
+import { ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { changePassword, confirmTwoFactor, disableMyTwoFactor, finishPasskeyRegistration, regenerateMyRecoveryCodes, removeMyPasskey, renameMyPasskey, signOutEverywhere, startPasskeyRegistration, startTwoFactor, updateProfile } from "./actions";
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ need2fa?: string }> }) {
-  const { t, user, config } = await adminCtx("member", { allowUnenrolled: true });
+  const { t, user, config, advanced } = await adminCtx("member", { allowUnenrolled: true });
+  const theme = parseAdminTheme((await cookies()).get(ADMIN_THEME_COOKIE)?.value);
   const { need2fa } = await searchParams;
   const enforced = (await getSetting<boolean>("security.require2fa")) === true;
   const remaining = user.totp ? await remainingRecoveryCodes(user.id) : 0;
@@ -35,6 +39,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <Select name="locale" label={t("account.language")} help={t("account.languageHelp")} defaultValue={user.locale ?? ""} options={options} />
         </ActionForm>
       </Panel>
+
+      <AdminPreferences t={t} advanced={advanced} theme={theme} />
 
       <Panel title={t("account.password")} help={t("account.passwordHelp")} testid="password-card">
         <ActionForm action={changePassword} submitLabel={t("account.passwordButton")}>

@@ -39,5 +39,6 @@ test("thème de l'admin : cookie, action, sélecteur dans le menu, attribut sur 
   const actions = fs.readFileSync("src/app/admin/(panel)/mode/actions.ts", "utf8");
   assert.match(actions, /export async function setAdminTheme/);
   assert.match(actions, /parseAdminTheme\(theme\)/, "valeur validée avant d'être écrite dans le cookie");
-  assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /ADMIN_THEMES\.map/);
+  // The selector moved from the sidebar footer to the Preferences of My account (tests/core/account-preferences.test.mjs).
+  assert.match(fs.readFileSync("src/components/admin/AdminPreferences.tsx", "utf8"), /ADMIN_THEMES\.map/);
 });

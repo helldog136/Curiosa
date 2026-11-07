@@ -44,6 +44,10 @@ Top to bottom: Dashboard; **Content**, **Community**, **Tools** (pinned module i
 
 R12: no two sidebar entries share a name or a first word, in English and in French (`tests/core/sidebar-groups.test.mjs`). The pages of an entry that became a tab keep their address; "Redirects" is named **Short links / Liens courts** in both modes, and the address `/admin/redirects` did not change.
 
+## Preferences in My account
+
+The admin mode (simple or advanced) and the admin theme (auto, light, dark) are set in the **Preferences** panel of `/admin/account` (`components/admin/AdminPreferences.tsx`), not in the sidebar footer. Each choice is a button in its own form (`setAdminMode`, `setAdminTheme` in `(panel)/mode/actions.ts`), so it works without a script and applies at once. The mode is stored on the account; the theme is a cookie of the browser. `/admin/mode` (the page that explains the difference) is unchanged and linked from the panel. The sidebar footer keeps the bug report link and sign out.
+
 ## Home and menu: one entry, four link tabs
 
 The Home page, the site menu, the header link and button, and the social buttons of the header are one sidebar entry. The tabs are **links** (`components/admin/LinkTabs.tsx`, through `components/admin/HomeMenuHeader.tsx`), not client tabs: the home builder, the menu editor and the social catalogue are heavy, and client tabs render every panel at once. Each page keeps its own route.
