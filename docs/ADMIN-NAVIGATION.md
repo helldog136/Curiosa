@@ -38,6 +38,12 @@ Module updates (`/admin/extensions/updates`) stay under **Extensions**: that vie
 
 Old addresses: `/admin/ai-visibility` redirects to `/admin/settings#ai`. `/admin/settings/address` and `/admin/settings/address/after` keep their route (the guided steps are real pages, linked from mails and docs) and show a "back to Settings" link; `/admin/settings/rawg-covers` is untouched (modules link to it). A server redirect cannot see a `#`, so moved tabs use `components/admin/LegacyHash.tsx` (`#appearance`, `#header`).
 
+## Sidebar sections
+
+Top to bottom: Dashboard; **Content**, **Community**, **Tools** (pinned module instances, one link per module); **Connections** (collapsed group of pinned connector instances); **Site** (Home and menu, Appearance, Settings, Short links); **Administration** (Extensions, Overlay pages, AI assistants, Team, Maintenance); **Account** (My account, View site). Empty module sections are hidden. The section of a module comes from `defaultSection` in `core/modules/menuPlacement.ts`: the optional manifest key `menuGroup`, then the older `family`, then the type (`social` and `integration` are Connections, a simple overlay is Tools, `content` is Content, the rest is Community). See `docs/MODULES.md` ("Rubrique d'une instance épinglée"). The Extensions list uses the same words as families (plus "OBS helpers" for overlay modules).
+
+R12: no two sidebar entries share a name or a first word, in English and in French (`tests/core/sidebar-groups.test.mjs`). The pages of an entry that became a tab keep their address; "Redirects" is named **Short links / Liens courts** in both modes, and the address `/admin/redirects` did not change.
+
 ## Home and menu: one entry, four link tabs
 
 The Home page, the site menu, the header link and button, and the social buttons of the header are one sidebar entry. The tabs are **links** (`components/admin/LinkTabs.tsx`, through `components/admin/HomeMenuHeader.tsx`), not client tabs: the home builder, the menu editor and the social catalogue are heavy, and client tabs render every panel at once. Each page keeps its own route.

@@ -76,8 +76,9 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-8">
       <div>
-        <h1 className={ui.pageTitle}>{advanced ? t("nav.redirects") : t("nav.redirects.simple")}</h1>
-        <p className={ui.pageIntro}>{advanced ? t("redirects.intro") : t("redirects.introSimple", { site })}</p>
+        <h1 className={ui.pageTitle}>{t("nav.redirects")}</h1>
+        <p className={ui.pageIntro}>{t("redirects.line", { site })}</p>
+        {advanced && <p className={ui.help}>{t("redirects.intro")}</p>}
       </div>
 
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site })}</p>}

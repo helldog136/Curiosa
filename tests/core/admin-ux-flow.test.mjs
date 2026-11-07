@@ -11,7 +11,7 @@ test("pages d'administration du site : le titre porte le même nom que le menu, 
   assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
   // The menu page is a tab of "Home and menu": same name in both modes ("Navigation" is gone), see tests/core/home-menu-entry.test.mjs.
   assert.match(page("navigation"), /title=\{t\("navigation\.title"\)\}/);
-  assert.match(page("redirects"), /advanced \? t\("nav\.redirects"\) : t\("nav\.redirects\.simple"\)/);
+  assert.match(page("redirects"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/, "one name, \"Short links\", in both modes");
 });
 
 test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui répète l'onglet), un seul enregistrement flottant, rien d'autre", () => {

@@ -107,34 +107,32 @@ test("épinglage : le choix de l'utilisateur l'emporte dans les deux sens ; une 
 // ─── Rubriques, groupes et ordre ────────────────────────────────────────────────────────────────────────────────
 const item = (id, type, over = {}) => ({ id, type, section: P.defaultSection({ type, content: type === "content" ? {} : undefined }), placement: "menu", error: false, badge: 0, content: type === "content", ...over });
 
-test("rubrique par défaut : lue dans le manifeste (contenu → Mon contenu ; le reste → Ma communauté), sans nouveau champ", () => {
-  assert.deepEqual(P.MENU_SECTIONS, ["content", "community"]);
+test("default section: read from the manifest (content, social/integration, overlay, rest), no new field needed", () => {
+  assert.deepEqual(P.MENU_SECTIONS, ["content", "community", "tools", "connections"]);
   const sections = Object.fromEntries(EXTRAS.map((e) => [e.id, P.defaultSection(asManifest(e))]));
   for (const id of ["blog", "pages", "sponsors", "collection", "codes", "links"]) assert.equal(sections[id], "content", id);
-  for (const id of ["contacts", "partnerships", "planning", "contact-form", "game-suggestions", "twitch-channel", "live-status", "hero"]) assert.equal(sections[id], "community", id);
-  assert.equal(P.defaultSection({ type: "content" }), "content", "catégorie « content » sans bloc de contenu");
+  for (const id of ["contacts", "partnerships", "planning", "contact-form", "game-suggestions", "live-status", "hero"]) assert.equal(sections[id], "community", id);
+  assert.equal(P.defaultSection({ type: "content" }), "content", "type content without a content block");
   assert.equal(P.defaultSection({ content: { display: "cards" } }), "content");
-  assert.equal(P.defaultSection({}), "community", "module tiers sans rien de déclaré");
-  assert.equal(P.defaultSection({ type: "inconnu" }), "community");
+  assert.equal(P.defaultSection({ type: "social" }), "connections");
+  assert.equal(P.defaultSection({ type: "integration" }), "connections");
+  assert.equal(P.defaultSection({ type: "overlay" }), "tools");
+  assert.equal(P.defaultSection({ permissions: ["overlay"] }), "tools", "overlay permission without page or sections");
+  assert.equal(P.defaultSection({ permissions: ["overlay"], page: true }), "community", "a module with a page that also serves an overlay follows its category");
+  assert.equal(P.defaultSection({}), "community", "third-party module with nothing declared");
+  assert.equal(P.defaultSection({ type: "unknown" }), "community");
 });
 
-test("menu : Mon contenu à part, puis Ma communauté en groupes dans l'ordre fixe ; les groupes vides n'existent pas ; catégorie inconnue → « Autres »", () => {
+test("menu: four sections in a fixed order, in arrival order inside each, empty ones do not exist", () => {
   const layout = P.buildMenuLayout([
-    item("tiers", "zzz"), item("plan", "widget"), item("blog", "content"), item("contacts", "utility"), item("form", "widget"), item("sans-type", undefined),
+    item("third", "zzz"), item("plan", "widget"), item("blog", "content"), item("contacts", "utility"), item("bot", "integration"), item("alerts", "overlay"), item("none", undefined),
   ]);
   assert.deepEqual(layout.content.map((i) => i.id), ["blog"]);
-  assert.deepEqual(layout.community.groups.map((g) => g.id), ["utility", "widget", "other"]);
-  assert.deepEqual(layout.community.groups.map((g) => g.items.map((i) => i.id)), [["contacts"], ["plan", "form"], ["tiers", "sans-type"]], "l'ordre d'arrivée est conservé dans un groupe");
-  assert.deepEqual(layout.community.items.map((i) => i.id), ["contacts", "plan", "form", "tiers", "sans-type"], "en liste simple, dans l'ordre des groupes");
-  assert.deepEqual(P.buildMenuLayout([item("blog", "content")]).community, { items: [], groups: [], collapsible: false });
-  assert.equal(P.menuGroupOf("social"), "other");
-});
-
-test("menu : Ma communauté passe en groupes pliables au-delà de OPEN_BY_DEFAULT_MAX entrées, jamais avant", () => {
-  const many = (n) => Array.from({ length: n }, (_, i) => item(`c${i}`, i % 2 ? "widget" : "utility"));
-  assert.equal(P.buildMenuLayout(many(P.OPEN_BY_DEFAULT_MAX)).community.collapsible, false);
-  assert.equal(P.buildMenuLayout(many(P.OPEN_BY_DEFAULT_MAX + 1)).community.collapsible, true);
-  assert.equal(P.buildMenuLayout([...many(3), ...Array.from({ length: 9 }, (_, i) => item(`b${i}`, "content"))]).community.collapsible, false, "les entrées de Mon contenu ne comptent pas");
+  assert.deepEqual(layout.community.map((i) => i.id), ["third", "plan", "contacts", "none"]);
+  assert.deepEqual(layout.tools.map((i) => i.id), ["alerts"]);
+  assert.deepEqual(layout.connections.map((i) => i.id), ["bot"]);
+  assert.deepEqual(Object.keys(P.buildMenuLayout([])), ["content", "community", "tools", "connections", "unpinnedBadge"]);
+  assert.deepEqual(P.buildMenuLayout([item("blog", "content")]).community, []);
 });
 
 test("menu : seules les instances épinglées qui tournent y figurent ; les autres ne vivent que dans Extensions et leurs pastilles remontent", () => {
@@ -143,7 +141,7 @@ test("menu : seules les instances épinglées qui tournent y figurent ; les autr
     item("t", "utility", { placement: "integrations", badge: 3 }), item("e", "utility", { placement: "integrations", error: true, badge: 4 }),
     item("ov", "overlay", { placement: "overlays", badge: 1 }),
   ]);
-  assert.deepEqual(layout.community.items.map((i) => i.id), ["c"], "en erreur ou non épinglée : pas dans le menu");
+  assert.deepEqual(layout.community.map((i) => i.id), ["c"], "in error or not pinned: not in the menu");
   assert.equal(layout.unpinnedBadge, 4, "seule une pastille d'instance qui tourne remonte (3 + 1) ; en erreur : non");
   assert.equal(P.buildMenuLayout([]).unpinnedBadge, 0);
   assert.equal(P.buildMenuLayout([item("c", "widget", { badge: 5 })]).unpinnedBadge, 0, "une instance épinglée garde sa pastille sur son propre lien");
@@ -151,7 +149,7 @@ test("menu : seules les instances épinglées qui tournent y figurent ; les autr
 
 test("menu : la pastille d'un contenu épinglé reste sur son lien (Contacts : 5)", () => {
   const layout = P.buildMenuLayout([item("contacts", "utility", { badge: 5 })]);
-  assert.equal(layout.community.groups[0].items[0].badge, 5);
+  assert.equal(layout.community[0].badge, 5);
 });
 
 test("pastille d'Extensions : mises à jour de modules + modules à régler + pastilles des modules non épinglés ; le libellé dit « mises à jour » seulement s'il n'y a que cela", () => {
@@ -163,40 +161,35 @@ test("pastille d'Extensions : mises à jour de modules + modules à régler + pa
 
 // ─── Plié / déplié ──────────────────────────────────────────────────────────────────────────────────────────────
 test("plié mémorisé : cookie lisible côté serveur, valeurs illisibles ignorées, aller-retour fidèle", () => {
-  assert.deepEqual(P.parseNavState("utility:1,widget:0"), { utility: true, widget: false });
+  assert.deepEqual(P.parseNavState("connections:1,tools:0"), { connections: true, tools: false });
   assert.deepEqual(P.parseNavState(undefined), {});
-  assert.deepEqual(P.parseNavState("x:2,:1,utility:1,<script>:1,other:0"), { utility: true, other: false });
-  const state = { utility: false, widget: true };
+  assert.deepEqual(P.parseNavState("x:2,:1,connections:1,<script>:1,tools:0"), { connections: true, tools: false });
+  const state = { connections: false, tools: true };
   assert.deepEqual(P.parseNavState(P.serializeNavState(state)), state);
   assert.equal(P.serializeNavState({ "mauvais id": true, ok: false }), "ok:0");
   assert.equal(P.NAV_STATE_COOKIE, "curiosa_nav_groups");
 });
 
-test("plié par défaut : dépliés jusqu'à 6 instances épinglées, repliés au-delà ; le choix mémorisé et la page courante priment", () => {
-  assert.equal(P.groupOpenByDefault(0), true);
-  assert.equal(P.groupOpenByDefault(6), true);
-  assert.equal(P.groupOpenByDefault(7), false);
-  assert.equal(P.isGroupOpen("utility", {}, true, false), true);
-  assert.equal(P.isGroupOpen("utility", {}, false, false), false);
-  assert.equal(P.isGroupOpen("utility", { utility: true }, false, false), true, "dernier choix : déplié");
-  assert.equal(P.isGroupOpen("utility", { utility: false }, true, false), false, "dernier choix : plié");
-  assert.equal(P.isGroupOpen("utility", { utility: false }, false, true), true, "l'adresse courante déplie toujours son groupe");
+test("collapsed by default: a stored choice and the current page win over the default", () => {
+  assert.equal(P.isGroupOpen("connections", {}, true, false), true);
+  assert.equal(P.isGroupOpen("connections", {}, false, false), false);
+  assert.equal(P.isGroupOpen("connections", { connections: true }, false, false), true, "last choice: open");
+  assert.equal(P.isGroupOpen("connections", { connections: false }, true, false), false, "last choice: closed");
+  assert.equal(P.isGroupOpen("connections", { connections: false }, false, true), true, "the current address always opens its group");
 });
 
-test("plié mémorisé : le serveur lit le cookie (pas de clignotement) et le groupe suit la page courante", () => {
+test("collapsed state: the server reads the cookie (no flicker) and the Connections group follows the current page", () => {
   const layout = read(`${PANEL}/layout.tsx`);
   assert.match(layout, /parseNavState\(\(await cookies\(\)\)\.get\(NAV_STATE_COOKIE\)\?\.value\)/);
-  assert.match(layout, /menu\.community\.collapsible/, "groupes pliables seulement quand il y a beaucoup d'entrées");
-  assert.match(layout, /<NavGroup key=\{g\.id\} id=\{g\.id\}[^]*?stored=\{navState\[g\.id\]\} openByDefault=\{false\}/);
+  assert.match(layout, /<NavGroup id="connections"[^]*?stored=\{navState\.connections\} openByDefault=\{false\}/, "Connections is collapsed by default");
   const group = read("src/components/admin/NavGroup.tsx");
-  assert.match(group, /<details open=\{open\}/, "rendu côté serveur déjà dans le bon état");
-  assert.match(group, /isCurrent\(t, path, search\)/, "la page ouverte déplie son groupe");
+  assert.match(group, /<details open=\{open\}/, "rendered on the server already in the right state");
+  assert.match(group, /isCurrent\(t, path, search\)/, "the open page opens its group");
   assert.match(group, /isGroupOpen\(id,/);
   assert.match(group, /document\.cookie = `\$\{NAV_STATE_COOKIE\}=/);
-  assert.match(group, /badge > 0/, "la pastille d'un groupe plié reste visible");
+  assert.match(group, /badge > 0/, "the badge of a closed group stays visible");
 });
 
-// ─── Intégrations : états, recherche, page ──────────────────────────────────────────────────────────────────────
 test("états d'une carte : erreur > à configurer > en place (jamais « éteint »)", () => {
   const base = { error: false, toFill: false };
   assert.equal(P.integrationState(base), "on");
@@ -363,24 +356,25 @@ test("entrée de menu « Extensions » : active sur ses trois onglets, le catalo
   assert.match(layout, /badge=\{extensions\.count\}/);
 });
 
-test("menu : l'ordre des rubriques et des entrées d'Administration", () => {
+test("menu: order of the sections and of the Administration entries", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  const order = ["nav.dashboard", "nav.myContent", "nav.myCommunity", "nav.mySite", "nav.admin", "nav.account"].map((k) => layout.indexOf(`"${k}"`));
-  assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Tableau de bord, Mon contenu, Ma communauté, Mon site, Administration, Compte");
+  const order = ["nav.dashboard", "nav.${id}", "nav.connections", "nav.site", "nav.admin", "nav.account"].map((k) => layout.indexOf(k.startsWith("nav.${") ? k : `"${k}"`));
+  assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Dashboard, Content/Community/Tools, Connections, Site, Administration, Account");
+  assert.match(layout, /\[\["content", menu\.content\], \["community", menu\.community\], \["tools", menu\.tools\]\]/, "Content, Community, Tools in this order");
   // Les entrées viennent de administrationEntries (adminMenu.ts) ; le layout les range dans cet ordre.
   const links = layout.slice(layout.indexOf("const adminLinks"), layout.indexOf("const group ="));
   const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.maintenance"].map((k) => links.indexOf(`"${k}"`));
   assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Entretien (une seule entrée)");
   assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("MCP_LEGACY_HREF") && !layout.includes("MAINTENANCE_IA_LEGACY_HREF"), "les deux anciennes entrées ont disparu");
-  const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
+  const site = layout.slice(layout.indexOf('t("nav.site")'), layout.indexOf('t("nav.admin")'));
   // "Home and menu" is one link (home, menu, header link and social buttons are its tabs): see tests/core/home-menu-entry.test.mjs.
   for (const href of ["HOME_HREF", "SETTINGS_HREF", "REDIRECTS_HREF"]) assert.ok(site.includes(`href={${href}}`), href);
 });
 
 test("menu : « Apparence » et « Réglages du site » sont deux mots différents, sans doublon de libellé, en français comme en anglais (R12)", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
-  const keys = [...site.matchAll(/t\("(nav\.[A-Za-z.]+)"\)/g)].map((m) => m[1]).filter((k) => k !== "nav.mySite" && k !== "nav.admin");
+  const site = layout.slice(layout.indexOf('t("nav.site")'), layout.indexOf('t("nav.admin")'));
+  const keys = [...site.matchAll(/t\("(nav\.[A-Za-z.]+)"\)/g)].map((m) => m[1]).filter((k) => k !== "nav.site" && k !== "nav.admin");
   assert.ok(keys.includes("nav.appearance") && keys.includes("nav.settings"));
   assert.ok(!layout.includes("nav.settings.simple"), "une seule étiquette pour les réglages, en mode simple comme avancé");
   for (const lang of ["fr", "en"]) {
@@ -415,7 +409,7 @@ test("menu : la page Assistants IA et celle d'un accès restent surlignées dans
 
 // ─── Familles d'Extensions ──────────────────────────────────────────────────────────────────────────────────────
 test("familles d'Extensions : Contenu, Communauté, Réseaux et connexions, Overlays — règle lue dans le manifeste, sur les 21 modules d'extras", () => {
-  assert.deepEqual(F.EXTENSION_FAMILIES, ["content", "community", "connections", "overlays"]);
+  assert.deepEqual(F.EXTENSION_FAMILIES, ["content", "community", "tools", "connections", "overlays"]);
   const fam = (e) => F.extensionFamily({ ...asManifest(e), ...(e.platform ? { platform: e.platform } : {}) });
   const byId = Object.fromEntries(EXTRAS.map((e) => [e.id, fam(e)]));
   for (const id of ["alerts-overlay", "maze-overlay", "sponsor-ticker", "ticker-overlay"]) assert.equal(byId[id], "overlays", id);
@@ -454,7 +448,7 @@ test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets 
   ];
   const keys = new Set();
   for (const f of files) for (const m of read(f).matchAll(/\bt\(\s*(?:advanced \? )?"([a-zA-Z][\w.]*)"/g)) keys.add(m[1]);
-  for (const g of P.MENU_GROUPS) keys.add(`navgroup.${g}`);
+  for (const g of P.MENU_SECTIONS) keys.add(`nav.${g}`);
   for (const s of ["on", "setup", "error"]) keys.add(`integrations.state.${s}`);
   for (const f of F.EXTENSION_FAMILIES) { keys.add(`family.${f}`); keys.add(`family.${f}.help`); }
   assert.ok(keys.size > 30);
@@ -471,7 +465,7 @@ test("i18n : toutes les clés utilisées par le menu, Extensions et ses onglets 
 test("mode simple : pas de jargon dans les textes d'Extensions (ni « instance », ni « manifeste »)", () => {
   const fr = JSON.parse(read("src/locales/fr.json"));
   const en = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "extensions.manyItems", "extensions.menu", "nav.myCommunity", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.connections.help", "family.overlays.help"]) {
+  for (const k of ["extensions.introSimple", "hub.tab.installed.simple", "hub.tab.catalogue.simple", "extensions.manyItems", "extensions.menu", "nav.community", "nav.extensions", "placement.pin", "placement.unpin", "placement.park", "family.content.help", "family.community.help", "family.tools.help", "family.connections.help", "family.overlays.help"]) {
     assert.ok(!/instance|manifest|manifeste/i.test(fr[k]), `fr ${k}`);
     assert.ok(!/instance|manifest/i.test(en[k]), `en ${k}`);
   }

@@ -76,7 +76,7 @@ test("old address: the menu page still maps #header to the new tab page", () => 
 
 test("the sidebar has one link for the entry, highlighted on all four pages, and none of the three old ones", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  const site = layout.slice(layout.indexOf('t("nav.mySite")'), layout.indexOf('t("nav.admin")'));
+  const site = layout.slice(layout.indexOf('t("nav.site")'), layout.indexOf('t("nav.admin")'));
   assert.match(site, /<NavLink href=\{HOME_HREF\} also=\{\[NAVIGATION_HREF, NAVIGATION_HEADER_HREF, SOCIAL_HREF\]\}>\{t\("nav\.homeMenu"\)\}<\/NavLink>/);
   assert.ok(!site.includes("nav.social") && !site.includes("nav.navigation") && !/href=\{NAVIGATION_HREF\}>/.test(site));
   const en = JSON.parse(read("src/locales/en.json")), fr = JSON.parse(read("src/locales/fr.json"));
