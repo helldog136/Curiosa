@@ -10,6 +10,8 @@ import { searchText } from "@/core/adminkit/search";
 import { prisma } from "@/core/db";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { ui } from "@/components/admin/ui";
+import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
+import { PageHeader } from "@/components/admin/Page";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { SocialSwitch } from "@/components/admin/SocialSwitch";
 import { HeaderSocialsSwitch } from "@/components/admin/HeaderSocialsSwitch";
@@ -74,10 +76,8 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className={ui.pageTitle}>{t("social.title")}</h1>
-        <p className={ui.pageIntro}>{t("social.intro")}</p>
-      </div>
+      <HomeMenuHeader t={t} current="social" />
+      <PageHeader level={2} title={t("homemenu.tab.social")} intro={t("social.intro")} />
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error, { service: "" }) : t("error.generic")}</p>}
 
       {sources.length > 0 && (

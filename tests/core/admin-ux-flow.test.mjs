@@ -9,7 +9,8 @@ const en = JSON.parse(read("src/locales/en.json"));
 
 test("pages d'administration du site : le titre porte le même nom que le menu, en mode simple comme en mode avancé", () => {
   assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
-  assert.match(page("navigation"), /advanced \? t\("nav\.navigation"\) : t\("nav\.navigation\.simple"\)/);
+  // The menu page is a tab of "Home and menu": same name in both modes ("Navigation" is gone), see tests/core/home-menu-entry.test.mjs.
+  assert.match(page("navigation"), /title=\{t\("navigation\.title"\)\}/);
   assert.match(page("redirects"), /advanced \? t\("nav\.redirects"\) : t\("nav\.redirects\.simple"\)/);
 });
 

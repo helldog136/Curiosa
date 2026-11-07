@@ -9,11 +9,16 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Dans le menu d'administration, cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
+**En bref.** Dans le menu d'administration, « Page d'accueil », « Menu du site » et « Réseaux sociaux » deviennent une seule entrée « Accueil et menu » avec des onglets. Cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
 
-**In short.** In the admin menu, five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. "Site settings" becomes "Settings" and gathers AI visibility and, in advanced mode, the web address. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
+**In short.** In the admin menu, "Home page", "Site menu" and "Social networks" become one "Home and menu" entry with tabs. Five entries (Site health, Backup, Updates, Maintenance, Audit log) become one "Maintenance" entry with tabs. "Site settings" becomes "Settings" and gathers AI visibility and, in advanced mode, the web address. The "Game covers" tab is removed from the site settings: it only said the module handles it. Nothing changes for your covers.
 
 ### Administration
+
+- **Une seule entrée « Accueil et menu » dans le menu.** Elle réunit la page d'accueil, le menu du site, le lien et le bouton d'en-tête, et les boutons de réseaux (l'ancienne page « Réseaux sociaux »), en onglets en haut de chaque page. Chaque page garde son adresse : vos favoris et vos liens fonctionnent comme avant, et l'ancien onglet « Lien et bouton » du menu a maintenant sa propre page.
+- **(English) One "Home and menu" entry in the menu.** It gathers the home page, the site menu, the header link and button, and the network buttons (the former "Social networks" page), as tabs at the top of each page. Every page keeps its address: your bookmarks and links work as before, and the old "Link and button" tab of the menu now has its own page.
+- **Un seul nom pour le menu du site.** Le mot « Navigation » n'apparaît plus en mode avancé : la page s'appelle toujours « Menu du site ».
+- **(English) One name for the site menu.** The word "Navigation" no longer shows in advanced mode: the page is always called "Site menu".
 
 - **L'onglet « Jaquettes de jeux » des réglages du site n'existe plus.** Il ne contenait qu'un rappel : votre clé et vos corrections se règlent dans le module, comme avant. Un ancien favori ouvre simplement le premier onglet.
 - **(English) The "Game covers" tab of the site settings is gone.** It only held a reminder: your key and your corrections are set in the module, as before. An old bookmark simply opens the first tab.
@@ -37,6 +42,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Support floor raised to 0.6.18** (`upgrade.json`, `docs/MIGRATIONS.md`). Removed the RAWG handover (`rawgHandover.ts`, `rawgNote.ts`, hooks); `rawg.*` settings are left untouched; `ctx.api.rawg`, the `rawg-covers` redirect and the MCP short names stay. `menu-freeze` is kept: it also reads backups made before the stored menu.
 - **Settings tabs.** `AiVisibilityPanel` (was `/admin/ai-visibility`) is the `ai` tab, and that address redirects to `/admin/settings#ai`. New advanced `address` tab. `Tabs` now wraps on phones. See `docs/ADMIN-NAVIGATION.md`.
 - **Maintenance tabs.** `adminMenu.ts` now has `maintenanceTabs()` and one `maintenance` entry instead of five; `LinkTabs` and `MaintenanceHeader` render the bar; `PageHeader` takes `level={2}`. See `docs/ADMIN-NAVIGATION.md`. No route changed.
+- **Home and menu tabs.** `HomeMenuHeader` (link tabs) over `/admin/home`, `/admin/navigation`, the new `/admin/navigation/header` (the former client tab of the menu page; `#header` is mapped to it with `LegacyHash`) and `/admin/social`. `HOME_MENU_TAB_HREFS` in `adminLinks.ts`. Removed the unused `RAWG_COVERS_HREF`, `SETTINGS_MAIL_HREF` and `SETTINGS_SEARCH_HREF` constants and the `nav.social`, `nav.navigation*`, `social.title` strings. See `docs/ADMIN-NAVIGATION.md`.
 - **One file for admin addresses.** `src/core/adminLinks.ts` holds every administration path and link helper (`entriesHref`, `instanceHref`…). Pages, actions and tools use it, and a test fails on a stray `"/admin/…"` literal. No address or text changed.
 
 ## 0.6.18 — 2026-11-06
