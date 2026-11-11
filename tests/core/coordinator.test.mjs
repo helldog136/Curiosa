@@ -487,7 +487,7 @@ test("migration : texte SQL purement additif ; migration postérieure à toutes 
   const sql = read(path.join("prisma/migrations", MIGRATION, "migration.sql")).replace(/--.*$/gm, "");
   assert.ok(!/\bDROP\b|\bRENAME\b|DELETE\s+FROM|UPDATE\s+"/i.test(sql));
   assert.match(sql, /ALTER TABLE "User" ADD COLUMN "coordinator" BOOLEAN NOT NULL DEFAULT false/);
-  const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
+  const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d) && d !== "20261111090000_overlay_skins").sort();   // 0.8.0 adds one more, after all of these
   // Les pages d'overlay (0.5.0) ont ajouté la migration suivante : celle-ci est l'avant-dernière, rien ne s'intercale avant elle.
   assert.equal(all.at(-4), MIGRATION);
   assert.equal(all.at(-3), "20261030090000_overlay_pages");

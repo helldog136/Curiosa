@@ -5,6 +5,7 @@ import { keepOptions } from "./options";
 import { newSecret, secretColumns, unsealSecret } from "./secret";
 import { cleanName, type PageValue } from "./pageInput";
 import { parseStyle } from "./tokens";
+import { parseLook, type PageLook } from "./look";
 
 /** Accès à la base des pages d'overlay. Les limites dures (20 pages, 10 actives, 30 éléments) sont appliquées ICI, à l'écriture. Lectures toujours bornées (20 lignes). */
 type Fail = { ok: false; error: "notFound" | "limitPages" | "limitActive" | "name" | "resolution" };
@@ -30,7 +31,7 @@ export function parseElements(raw: string): PageElement[] {
 export function toData(row: OverlayPage): OverlayPageData {
   return {
     id: row.id, name: row.name, width: clampInt(row.width, MIN_SIDE, MAX_SIDE, DEFAULT_RESOLUTION[0]), height: clampInt(row.height, MIN_SIDE, MAX_SIDE, DEFAULT_RESOLUTION[1]),
-    active: row.active, style: parseStyle(parse(row.style, {})), elements: parseElements(row.elements), rev: row.rev, testUntil: row.testUntil ? row.testUntil.getTime() : null,
+    active: row.active, style: parseStyle(parse(row.style, {})), look: parseLook(parse(row.look, {})), elements: parseElements(row.elements), rev: row.rev, testUntil: row.testUntil ? row.testUntil.getTime() : null,
   };
 }
 
@@ -52,7 +53,7 @@ export async function readSecret(id: string): Promise<string | null> {
   return row ? unsealSecret(row.secretSealed) : null;
 }
 
-export async function createPage(input: { name: string; width: number; height: number; style?: unknown; elements?: PageElement[] }): Promise<StoreResult<{ page: OverlayPageData }>> {
+export async function createPage(input: { name: string; width: number; height: number; style?: unknown; look?: PageLook; elements?: PageElement[] }): Promise<StoreResult<{ page: OverlayPageData }>> {
   const name = cleanName(input.name);
   if (!name || name.length > NAME_MAX) return { ok: false, error: "name" };
   if ([input.width, input.height].some((n) => !Number.isInteger(n) || n < MIN_SIDE || n > MAX_SIDE)) return { ok: false, error: "resolution" };
@@ -60,7 +61,7 @@ export async function createPage(input: { name: string; width: number; height: n
     if ((await tx.overlayPage.count()) >= MAX_PAGES) return { ok: false, error: "limitPages" } as Fail;
     // Une nouvelle page est active tant que la limite d'actives n'est pas atteinte (sinon elle attend, inactive).
     const active = (await tx.overlayPage.count({ where: { active: true } })) < MAX_ACTIVE_PAGES;
-    const row = await tx.overlayPage.create({ data: { name, width: input.width, height: input.height, active, style: JSON.stringify(parseStyle(input.style)), elements: JSON.stringify((input.elements ?? []).slice(0, MAX_ELEMENTS_PER_PAGE)), ...secretColumns(newSecret()) } });
+    const row = await tx.overlayPage.create({ data: { name, width: input.width, height: input.height, active, style: JSON.stringify(parseStyle(input.style)), look: JSON.stringify(parseLook(input.look)), elements: JSON.stringify((input.elements ?? []).slice(0, MAX_ELEMENTS_PER_PAGE)), ...secretColumns(newSecret()) } });
     return { ok: true, page: toData(row) } as const;
   });
 }
@@ -70,7 +71,7 @@ export async function duplicatePage(id: string, copyName: (name: string) => stri
   const from = await getPage(id);
   if (!from) return { ok: false, error: "notFound" };
   const name = copyName(from.name).slice(0, NAME_MAX);
-  const made = await createPage({ name, width: from.width, height: from.height, style: from.style, elements: from.elements });
+  const made = await createPage({ name, width: from.width, height: from.height, style: from.style, look: from.look, elements: from.elements });
   if (!made.ok) return made;
   const row = await prisma.overlayPage.update({ where: { id: made.page.id }, data: { active: false } });
   return { ok: true, page: toData(row) };
@@ -102,6 +103,13 @@ export async function deletePage(id: string): Promise<StoreResult> {
 export async function savePage(id: string, value: PageValue): Promise<StoreResult<{ page: OverlayPageData }>> {
   if (value.elements.length > MAX_ELEMENTS_PER_PAGE) return { ok: false, error: "notFound" };
   const r = await prisma.overlayPage.updateMany({ where: { id }, data: { name: value.name, width: value.width, height: value.height, style: JSON.stringify(value.style), elements: JSON.stringify(value.elements), rev: { increment: 1 } } });
+  if (!r.count) return { ok: false, error: "notFound" };
+  return { ok: true, page: (await getPage(id))! };
+}
+
+/** Saves the look (validated by `validateLook`). `rev` does not change: the page reads the skin on its next check, without reloading. */
+export async function saveLook(id: string, look: PageLook): Promise<StoreResult<{ page: OverlayPageData }>> {
+  const r = await prisma.overlayPage.updateMany({ where: { id }, data: { look: JSON.stringify(parseLook(look)) } });
   if (!r.count) return { ok: false, error: "notFound" };
   return { ok: true, page: (await getPage(id))! };
 }

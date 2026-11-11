@@ -16,7 +16,8 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { Callout, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { savePageAction, testAction } from "../actions";
-import { OVERLAY_PAGES_HREF, overlayPagePreviewHref } from "@/core/adminLinks";
+import { OVERLAY_PAGES_HREF, overlayPageHref, overlayPagePreviewHref, overlayPageSkinHref } from "@/core/adminLinks";
+import { LinkTabs } from "@/components/admin/LinkTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +64,8 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
       <PageHeader title={page.name} intro={t("ovp.editIntro")}>
         <Link href={OVERLAY_PAGES_HREF} className={ui.btn}>{t("ovp.back")}</Link>
       </PageHeader>
+
+      <LinkTabs tabs={[{ id: "layout", href: overlayPageHref(page.id), label: t("ovp.tab.layout") }, { id: "skin", href: overlayPageSkinHref(page.id), label: t("ovp.tab.skin") }]} current="layout" label={t("ovp.tab.label")} />
 
       <section aria-label={t("ovp.test")} className={`rounded-2xl border p-4 ${testing ? "border-amber-500/50 bg-amber-500/10" : "border-line bg-surface"}`} data-testid="test-mode">
         <div className="flex flex-wrap items-center gap-3">

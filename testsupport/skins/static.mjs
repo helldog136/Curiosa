@@ -76,6 +76,7 @@ export async function staticCheck(dir, options = {}) {
   const result = { dir: folder, issues, validation, manifest: validation.manifest, css: validation.css, tokens: validation.tokens, composed: null, modules, layer, files: validation.files };
   const m = validation.manifest;
   if (!m) return finish(result);
+  if (m.kind === "overlay") return finish(overlayStatic(result, folder, m, options));
 
   const raw = (rel) => { try { return fs.readFileSync(path.join(folder, rel)); } catch { return null; } };
   const sourceCss = m.stylesheet ? (raw(m.stylesheet)?.toString("utf8") ?? "") : "";
@@ -170,6 +171,35 @@ export async function staticCheck(dir, options = {}) {
     for (const v of violations(files, rules)) add(kitIssue("kit-neutral", { term: v.term, file: v.file }));
   }
   return finish(result);
+}
+
+/**
+ * (core 0.8.0) Static check of an OVERLAY skin: the lib already judged the manifest, the closed `--ov-*` tokens, the rule grammar and the contrast (`validateSkinFolder`).
+ * What is left for the kit: preview sizes (an overlay sample is 640 x 360, or twice that), own licence, README and the neutrality of the texts. No site composition,
+ * coverage or browser level applies to an overlay skin (it never touches the public site).
+ */
+function overlayStatic(result, folder, m, options) {
+  const add = (i) => { result.issues.push(i); };
+  const raw = (rel) => { try { return fs.readFileSync(path.join(folder, rel)); } catch { return null; } };
+  for (const p of m.previews ?? []) {
+    const bytes = raw(p.file);
+    if (!bytes) continue;
+    const size = imageSize(bytes);
+    if (!size) { add(kitIssue("kit-preview-unreadable", { file: p.file })); continue; }
+    if (!((size.width === 640 && size.height === 360) || (size.width === 1280 && size.height === 720))) add(kitIssue("kit-preview-size", { file: p.file, size: `${size.width} × ${size.height}`, expected: "640 × 360 / 1280 × 720" }));
+  }
+  const names = fs.readdirSync(folder);
+  if (!names.some((n) => /^LICENSE(\.md|\.txt)?$/.test(n))) add(kitIssue("kit-no-own-license"));
+  if (!names.some((n) => /^README(\.[a-z]{2})?\.md$/.test(n))) add(kitIssue("kit-no-readme"));
+  const rules = parseRules(loadRulesText(options.neutrality));
+  if (!rules.length) add(kitIssue("kit-neutral-skipped"));
+  else {
+    const files = [["skin.json", raw("skin.json")?.toString("utf8") ?? ""], [m.tokens, raw(m.tokens)?.toString("utf8") ?? ""]];
+    if (m.stylesheet) files.push([m.stylesheet, raw(m.stylesheet)?.toString("utf8") ?? ""]);
+    for (const n of names) if (/^README(\.[a-z]{2})?\.md$/.test(n)) files.push([n, raw(n)?.toString("utf8") ?? ""]);
+    for (const v of violations(files, rules)) add(kitIssue("kit-neutral", { term: v.term, file: v.file }));
+  }
+  return result;
 }
 
 function finish(result) {

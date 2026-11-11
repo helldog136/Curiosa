@@ -24,6 +24,8 @@ export type SkinOrigin = "official" | "extra" | "personal";
 
 export type SkinCatalogueEntry = {
   id: string;
+  /** (core 0.8.0) "overlay": restyles OBS overlay pages (listed in `catalogue/overlay-skins.json`); default "site". */
+  kind: "site" | "overlay";
   name: Text;
   description: Text;
   /** Dépôt (adresse https sans fragment). */
@@ -65,7 +67,7 @@ function text(v: unknown, fallback: string, max: number): Text {
 }
 
 /** Entrées valides d'un index (`{ skins: [...] }` ou tableau) : identifiant, dépôt https sur un hôte autorisé, doublons écartés. Rien n'est cru sur parole. */
-export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: "official" | "extra" = "official"): SkinCatalogueEntry[] {
+export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: "official" | "extra" = "official", kind: "site" | "overlay" = "site"): SkinCatalogueEntry[] {
   const list = Array.isArray(json) ? json : Array.isArray((json as { skins?: unknown })?.skins) ? (json as { skins: unknown[] }).skins : [];
   const seen = new Set<string>();
   const out: SkinCatalogueEntry[] = [];
@@ -80,7 +82,7 @@ export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: 
     const modes = Array.isArray(i.modes) ? [...new Set(i.modes.filter((m: unknown): m is "light" | "dark" => m === "light" || m === "dark"))] as ("light" | "dark")[] : [];
     seen.add(i.id);
     out.push({
-      id: i.id, name: text(i.name, i.id, 40), description: text(i.description, "", 200), repo: r.repo.url, subdir, ref,
+      id: i.id, kind, name: text(i.name, i.id, 40), description: text(i.description, "", 200), repo: r.repo.url, subdir, ref,
       version: typeof i.version === "string" && /^\d+\.\d+\.\d+$/.test(i.version) ? i.version : undefined,
       skinContract: contract, author: str(i.author, 120), icon: str(i.icon, 8),
       tags: Array.isArray(i.tags) ? i.tags.filter((t: unknown): t is string => typeof t === "string" && TAG_VOCABULARY.includes(t)).slice(0, 6) : [],
@@ -106,7 +108,7 @@ const cacheFile = () => path.join(DATA_DIR, "cache", "skins-index.json");
 function readPersisted(coreVersion: string): { entries: SkinCatalogueEntry[]; fetchedAt: number; origin: string | null } | null {
   try {
     const raw = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
-    return { entries: sanitizeSkinEntries(raw, coreVersion), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
+    return { entries: [...sanitizeSkinEntries(raw, coreVersion), ...sanitizeSkinEntries({ skins: (raw as { overlaySkins?: unknown }).overlaySkins }, coreVersion, "official", "overlay")], fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
   } catch { return null; }
 }
 
@@ -129,12 +131,12 @@ export async function readSkinCatalogue(opts: CatalogueOptions): Promise<Catalog
   const repo = resolveSkinsRepo();
   if (repo) {
     try {
-      const got = await fetchCatalogueFromRepo(repo, process.env.CURIOSA_SKINS_REF || "HEAD");
-      const entries = sanitizeSkinEntries(got.index, opts.coreVersion);
+      const got = await fetchCatalogueFromRepo(repo, process.env.CURIOSA_SKINS_REF || "HEAD", undefined, true);
+      const entries = [...sanitizeSkinEntries(got.index, opts.coreVersion), ...sanitizeSkinEntries(got.overlaySkins, opts.coreVersion, "official", "overlay").filter((o) => o.kind === "overlay")];
       base = { entries, source: "repository", fetchedAt: now(), origin: repo, unreachable: false };
       try {
         fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
-        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, skins: entries }));
+        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, skins: entries.filter((e) => e.kind === "site"), overlaySkins: entries.filter((e) => e.kind === "overlay") }));
       } catch { /* la copie locale est un plus */ }
     } catch { /* injoignable : on retombe sur la dernière copie reçue */ }
   }

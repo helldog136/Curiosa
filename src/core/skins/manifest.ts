@@ -51,6 +51,8 @@ const preview = z.object({
 
 export const skinManifestSchema = z.object({
   skinContract: z.number().int().min(1).max(1000),
+  /** (core 0.8.0) "site" (default) or "overlay": an overlay skin restyles the OBS overlay pages and never the public site. */
+  kind: z.enum(["site", "overlay"]).optional(),
   id: z.string().regex(SKIN_ID_RE),
   name: localized(40),
   description: localized(200),
@@ -59,7 +61,7 @@ export const skinManifestSchema = z.object({
   author: z.union([z.string().trim().min(1).max(120), z.object({ name: z.string().trim().min(1).max(120), url: z.string().max(300).optional() })]).optional(),
   license: z.string().min(1).max(40),
   tags: z.array(z.string().max(30)).max(12).optional(),
-  modes: z.array(z.enum(["light", "dark"])).min(1).max(2).refine((m) => new Set(m).size === m.length, "duplicate mode"),
+  modes: z.array(z.enum(["light", "dark"])).min(1).max(2).refine((m) => new Set(m).size === m.length, "duplicate mode").optional(),
   tokens: z.string().min(1).max(100),
   stylesheet: z.string().min(1).max(100).optional(),
   previews: z.array(preview).max(40).optional(),
@@ -76,7 +78,7 @@ export const skinManifestSchema = z.object({
 });
 
 export type SkinAssetDecl = z.infer<typeof asset>;
-export type SkinManifest = Omit<z.infer<typeof skinManifestSchema>, "author" | "tags" | "assets"> & { author?: { name: string; url?: string }; tags: string[]; assets: SkinAssetDecl[] };
+export type SkinManifest = Omit<z.infer<typeof skinManifestSchema>, "author" | "tags" | "assets" | "modes" | "kind"> & { author?: { name: string; url?: string }; tags: string[]; assets: SkinAssetDecl[]; modes: ("light" | "dark")[]; kind: "site" | "overlay" };
 
 const KNOWN_KEYS = new Set(Object.keys(skinManifestSchema.shape));
 
@@ -113,5 +115,8 @@ export function parseSkinManifest(json: unknown): ManifestParse {
   if (tags.length < (m.tags ?? []).length || tags.length > 6) warnings.push(makeIssue("manifest-unknown-key", { field: "tags" }));
   if (tags.length > 6) tags.length = 6;
   const author = typeof m.author === "string" ? { name: m.author } : m.author;
-  return { ok: true, manifest: { ...m, author, tags, assets: m.assets ?? [] }, warnings };
+  const kind = m.kind ?? "site";
+  // `modes` only means something for a site skin; an overlay skin has one look.
+  if (kind === "site" && !m.modes) return { ok: false, issues: [makeIssue("manifest-field", { field: "modes" })] };
+  return { ok: true, manifest: { ...m, kind, modes: m.modes ?? ["dark"], author, tags, assets: m.assets ?? [] }, warnings };
 }
