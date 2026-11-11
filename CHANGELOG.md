@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.8.1 — 2026-11-11
 
 **En bref.** Une IA connectée voit maintenant ce qu'une extension lui apporterait avant de l'installer, sait quel droit vous demander, reçoit les textes dans la langue du site et vous prévient quand sa liste d'outils n'est plus à jour.
 
