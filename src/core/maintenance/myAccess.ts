@@ -5,6 +5,7 @@ import type { McpTool } from "@/core/services/mcp/types";
 import { getSiteConfig } from "@/core/settings";
 import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
 import { ALWAYS_HUMAN } from "./actions";
+import { reconnectView } from "./reconnect";
 import { getApprovalMode } from "./settings";
 import { remainingSlots } from "./slots";
 
@@ -26,9 +27,10 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   // Loaded when called: platform.ts imports the tool definitions, which import this file.
   const { listMcpTools } = await import("@/core/platform");
   const token = actor.tokenId ? await getTokenGrants(actor.tokenId) : null;
-  if (!token) return { error: "This access is not active any more." };
   const config = await getSiteConfig();
-  const t = makeTranslator(config.adminLocale ?? config.defaultLocale);
+  // Every sentence returned here follows the site language (English and French in step), like the rights page.
+  const t = makeTranslator(config.adminLocale ?? config.defaultLocale, config.defaultLocale);
+  if (!token) return { error: t("aim.my.inactive") };
   const tools = await listMcpTools();
 
   const plain = (tool: McpTool): string => {
@@ -45,26 +47,32 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     if (canUse(tool, token)) granted.push({ tool: tool.name, kind: kindOf(tool), summary: plain(tool) });
     else notGranted.push({ tool: tool.name, kind: kindOf(tool), why: withinCeiling(tool, token.scope) ? "box_not_ticked" : "access_is_read_only", rightToTick: plain(tool) });
   }
+  // Module tools whose text is not in the site language (the module has no translation): shown in English, and said so, so that nobody blames the site.
+  const wanted = (config.adminLocale ?? config.defaultLocale).split("-")[0]!;
+  const inEnglish = tools.filter((x) => x.descriptionLang && x.descriptionLang.split("-")[0] !== wanted).map((x) => x.name);
   const approval = await getApprovalMode(actor.tokenId);
   const readOnly = token.scope === "read";
   const slots = await remainingSlots(actor.tokenId);
+  // Top level, first thing the assistant reads: did the rights or the features change after its list was sent?
+  const reconnect = await reconnectView(actor.tokenId, token, t, granted.map((g) => g.tool));
   return {
-    access: { name: actor.name, ceiling: token.scope, ceilingMeaning: readOnly ? "Read only: no tool that writes can ever be granted to this access, whatever boxes are ticked. The owner must create or change the access to lift this." : "Read and write: a tool that writes works once its box is ticked." },
+    ...reconnect,
+    access: { name: actor.name, ceiling: token.scope, ceilingMeaning: t(readOnly ? "aim.my.ceiling.read" : "aim.my.ceiling.write") },
     approvalSetting: {
       value: approval === "direct" ? "act_without_asking" : "ask_first",
-      meaning: approval === "direct"
-        ? "Updates, uninstalls, font and colour changes, publishing and changes to the site settings (name, tagline, presentation, contact e-mail, logos) and to the menu or the home page happen at once, without the owner's approval; the owner is told afterwards."
-        : "Updates, uninstalls, font and colour changes, publishing and changes to the site settings (name, tagline, presentation, contact e-mail, logos) and to the menu or the home page only create a request that the owner approves in Admin > AI assistants. Poll maintenance_request_status.",
+      meaning: t(approval === "direct" ? "aim.my.approval.direct" : "aim.my.approval.ask"),
       alwaysAskedWhateverTheSetting: ALWAYS_HUMAN.map((a) => `maintenance_${a}`),
     },
     hourlyLimits: {
-      meaning: "Each counter covers a rolling hour. When one is used up, calls of that kind are refused until the next slot frees up; the owner can reset the counters in Admin > AI assistants > this access.",
-      risky: { ...slots.risky, covers: "install, update, uninstall, core update, skins, adding an instance, reinstall, restart" },
-      content: { ...slots.content, covers: "publishing, images, site settings, module settings, fonts and colours, content check, backups, and the menu and home page" },
+      meaning: t("aim.my.limits.meaning"),
+      risky: { ...slots.risky, covers: t("aim.my.limits.risky") },
+      content: { ...slots.content, covers: t("aim.my.limits.content") },
     },
     granted,
     notGranted: notGranted.slice(0, 300),
-    howToGetMore: notGranted.length ? `Tell the owner which right you need (rightToTick, in plain words). They tick it in Admin > AI assistants > this access, then you reconnect.` : "Nothing is missing: every tool of this site is granted to this access.",
-    reconnect: RECONNECT_NOTICE,
+    howToGetMore: notGranted.length ? t("aim.my.howToGetMore") : t("aim.my.nothingMissing"),
+    ...(inEnglish.length ? { textsNotInYourLanguage: { count: inEnglish.length, tools: inEnglish.slice(0, 10), note: t("aim.my.lang.gap", { n: inEnglish.length, lang: wanted }) } } : {}),
+    reconnect: t("aim.my.reconnect"),
+    discover: t("aim.my.discover"),
   };
 }

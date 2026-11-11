@@ -19,6 +19,8 @@ import { normalizeNeeds, normalizeOffers, type ServiceNeed } from "@/core/module
 import { planTabs, settingTab } from "@/core/modules/tabs";
 import { localized } from "@/core/modules/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
+import { getTokenGrants } from "@/core/services/mcp/tokens";
+import { declaredTools, toolsBlock } from "./moduleTools";
 import { deps } from "./deps";
 import { publicRepo, redactSecrets } from "./redact";
 
@@ -191,7 +193,7 @@ function relatedTo(entry: CatalogueEntry | undefined, manifest: ParsedManifest |
 
 const FILLABLE_NOTE = "Settings with needsValue: true must be filled before the module is fully useful.";
 
-export async function catalogGet(args: Record<string, unknown>) {
+export async function catalogGet(args: Record<string, unknown>, actor?: { name: string; tokenId?: string }) {
   const a = validateArgs(CATALOG_GET_INPUT, args);
   const id = String(a.module ?? "");
   if (!ID_RE.test(id)) throw new McpToolError('argument "module" must be a module identifier (see maintenance_catalog_list)');
@@ -290,6 +292,11 @@ export async function catalogGet(args: Record<string, unknown>) {
     tab: settingTab(tabs, f),
   }));
 
+  // The AI tools this module adds, from its manifest: what you would get at once, what the owner would have to tick (for THIS access).
+  const access = actor?.tokenId ? await getTokenGrants(actor.tokenId).catch(() => null) : null;
+  const instanceKey = row ? instances[0]?.key : undefined;
+  const addedTools = manifest ? toolsBlock(L(manifest.name), declaredTools(manifest, { locale: adminLocale, main, access, instanceKey }), t, adminLocale.split("-")[0]!) : null;
+
   return {
     notice: NOTICE,
     id,
@@ -330,7 +337,7 @@ export async function catalogGet(args: Record<string, unknown>) {
       note: "Required dependencies are proposed in the installation request and shown to the owner; optional ones are never installed by themselves.",
     },
     settingsToPlan: { note: FILLABLE_NOTE, secretsCount: settingsToPlan.filter((s) => "secret" in s).length, fields: settingsToPlan },
-    ...(manifest?.mcp?.length ? { toolsForYourAssistant: manifest.mcp.slice(0, 20).map((m) => ({ name: m.name, readOnly: m.readOnly === true })) } : {}),
+    ...(addedTools ? { toolsForYourAssistant: addedTools.tools, toolsForYourAssistantInfo: { note: addedTools.note, ...(addedTools.languageGap ? { languageGap: addedTools.languageGap } : {}), ...(addedTools.sayToTheOwner ? { sayToTheOwner: addedTools.sayToTheOwner } : {}) } } : {}),
     goesWellWith: relatedTo(entry, manifest, id, entries, installedIds, nameOf, candidatesFor),
     ...(entry?.repo ? { source: { repo: publicRepo(entry.repo), ref: entry.ref ?? null } } : {}),
     next: row

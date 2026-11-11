@@ -21,6 +21,8 @@ export type McpTool = {
    * Distinct from `destructive`: a request is not a deletion. Profiles, the rights page and the confirmations read this field.
    */
   request?: boolean;
+  /** Language of `description` when the tool comes from a module (`en` when the module has no text in the site language): maintenance_my_access reports the gaps. */
+  descriptionLang?: string;
   input: JsonSchemaLite;
   /** D'où vient l'outil : « core », ou la clé d'une instance (affiché dans l'admin). */
   source: string;

@@ -20,7 +20,7 @@ const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 type Sheet = Record<string, unknown> & { id?: string };
 const list = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 
-export async function catalogPlan(args: Record<string, unknown>) {
+export async function catalogPlan(args: Record<string, unknown>, actor?: { name: string; tokenId?: string }) {
   const a = validateArgs(CATALOG_PLAN_INPUT, args);
   const ids = [...new Set(list<unknown>(a.modules).map((v) => String(v)))];
   if (!ids.length) throw new McpToolError('argument "modules" must list at least one module identifier');
@@ -29,7 +29,7 @@ export async function catalogPlan(args: Record<string, unknown>) {
   if (badId) throw new McpToolError(`"${badId.slice(0, 40)}" is not a module identifier (see maintenance_catalog_list)`);
 
   const got = await Promise.all(ids.map(async (id) => {
-    try { return { id, sheet: (await catalogGet({ module: id })) as Sheet }; } catch (error) {
+    try { return { id, sheet: (await catalogGet({ module: id }, actor)) as Sheet }; } catch (error) {
       if (error instanceof McpToolError) return { id, problem: error.message };
       throw error;
     }
@@ -45,6 +45,9 @@ export async function catalogPlan(args: Record<string, unknown>) {
     return {
       id: g.id, known: true, name: s.name, whatItIsFor: s.whatItIsFor, installed: s.installed, installable: s.installable, ...(s.reason ? { reason: s.reason } : {}),
       instancesAllowed: s.instancesAllowed, visitorSees: s.visitorSees, dataCollected: s.dataCollected, permissions: s.permissions,
+      // What the module adds for an assistant, compact (the full sentences are in maintenance_catalog_get): name, kind, whether this access has it at once.
+      addsTools: list<{ name: string; kind: string; forYourAccess?: string }>(s.toolsForYourAssistant).map((x) => ({ name: x.name, kind: x.kind, ...(x.forYourAccess ? { forYourAccess: x.forYourAccess } : {}) })),
+      ...((s.toolsForYourAssistantInfo as { sayToTheOwner?: string } | undefined)?.sayToTheOwner ? { sayToTheOwner: (s.toolsForYourAssistantInfo as { sayToTheOwner: string }).sayToTheOwner } : {}),
       needs: { required: deps?.required ?? [], optional: deps?.optional ?? [], alsoInstalledWithIt: deps?.alsoInstalledWithIt ?? [] },
       toConfigureAfter: { fill: settings.filter((x) => x.needsValue && !x.secret && !x.advanced).map((x) => ({ key: x.key, label: x.label })), secretsTheOwnerTypes: settings.filter((x) => x.secret).map((x) => ({ key: x.key, label: x.label })) },
     };
@@ -75,6 +78,8 @@ export async function catalogPlan(args: Record<string, unknown>) {
       ...(order.length ? { installOrder: order } : {}),
       alsoInstalledWithThem: [...alsoInstalled].map(([id, name]) => ({ id, name })),
       permissionsAsked: Object.entries(permissionsAsked).map(([permission, by]) => ({ permission, askedBy: by })),
+      // Every right the owner would have to tick for the assistant to use what these modules add (none when nothing is blocked for this access).
+      rightsToTick: modules.flatMap((m) => (m.known ? list<{ name: string; forYourAccess?: string; rightToTick?: string }>((m as { addsTools?: unknown }).addsTools).filter((x) => x.forYourAccess === "owner_must_tick").map((x) => ({ module: m.id, tool: x.name })) : [])).slice(0, 60),
       modulesCollectingPersonalData: modules.filter((m) => m.known && (m as { dataCollected?: { declared?: unknown } }).dataCollected?.declared === true).map((m) => m.id),
       alreadyInstalled: modules.filter((m) => m.known && (m as { installed?: unknown }).installed === true).map((m) => m.id),
     },
