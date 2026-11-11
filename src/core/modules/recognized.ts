@@ -61,6 +61,8 @@ const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const INDEX_PATH = "catalogue/index.json";
 const SUGGESTED_PATH = "catalogue/suggested.json";
 const PROFILES_PATH = "catalogue/profiles.json";
+/** (core 0.8.0) Overlay skins are listed in their own optional file, so an older core never sees them. */
+const OVERLAY_SKINS_PATH = "catalogue/overlay-skins.json";
 const TTL = 15 * 60_000;
 const MAX_INDEX_BYTES = 1024 * 1024;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -138,7 +140,7 @@ export function resolveIndexRepo(): string | null {
 }
 
 /** Lit `catalogue/index.json` et `catalogue/suggested.json` (facultatif) dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
-export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit): Promise<{ index: unknown; suggested: unknown; profiles?: unknown }> {
+export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit, withOverlaySkins = false): Promise<{ index: unknown; suggested: unknown; profiles?: unknown; overlaySkins?: unknown }> {
   if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
@@ -150,7 +152,9 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
     try { suggested = JSON.parse(await git(["show", `FETCH_HEAD:${SUGGESTED_PATH}`], tmp)); } catch { /* pas de liste : rien n'est suggéré */ }
     let profiles: unknown = [];
     try { profiles = JSON.parse(await git(["show", `FETCH_HEAD:${PROFILES_PATH}`], tmp)); } catch { /* pas de fichier : aucun profil de départ */ }
-    return { index: JSON.parse(text), suggested, profiles };
+    let overlaySkins: unknown = [];
+    if (withOverlaySkins) try { overlaySkins = JSON.parse(await git(["show", `FETCH_HEAD:${OVERLAY_SKINS_PATH}`], tmp)); } catch { /* no overlay skins listed */ }
+    return { index: JSON.parse(text), suggested, profiles, overlaySkins };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }

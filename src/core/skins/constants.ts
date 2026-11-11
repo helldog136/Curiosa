@@ -4,13 +4,15 @@
  */
 
 /** Version du contrat de skin que CE cœur comprend (`skinContract` du manifeste, §5.2). */
-export const SKIN_CONTRACT = 1;
+export const SKIN_CONTRACT = 2;
+/** Contract an overlay skin must declare (core 0.8.0): older cores refuse it cleanly ("contract newer") instead of misreading it. */
+export const OVERLAY_SKIN_CONTRACT = 2;
 
 /** Licences SPDX permises pour le contenu d'un skin et pour chacune de ses ressources (§5.2). */
 export const SPDX_ALLOWED: readonly string[] = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "OFL-1.1"];
 
 /** Vocabulaire contrôlé des étiquettes d'un skin (§5.2). */
-export const TAG_VOCABULARY: readonly string[] = ["light", "dark", "serif", "sans", "mono", "pixel", "playful", "minimal", "bold", "editorial", "retro", "glass", "high-contrast"];
+export const TAG_VOCABULARY: readonly string[] = ["light", "dark", "serif", "sans", "mono", "pixel", "playful", "minimal", "bold", "editorial", "retro", "glass", "high-contrast", "epic", "spooky", "fantasy", "scifi", "cozy", "neon", "nature"];
 
 export const HEADER_LAYOUTS: readonly string[] = ["classic", "twoRows", "centered", "minimal"];
 

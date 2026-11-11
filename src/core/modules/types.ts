@@ -673,6 +673,17 @@ export type PageResult = {
 /** Un fichier texte ajouté à la sauvegarde ; `path` est relatif au dossier de l'instance (`modules/<instance>/<path>`). */
 export type BackupFile = { path: string; content: string };
 
+/** (core 0.8.0) One value of an overlay context: a stable `id` (what rules store) and a readable `name`. */
+export type OverlayContextValue = { id: string; name: string };
+/**
+ * (core 0.8.0) What a module provides for a context declared in `overlayContexts`. `current` answers the value now (or null: nothing known, offline…);
+ * `values` lists the values known so far, for the picker of the rules table (`search` may be empty; return at most `limit`). Both run SERVER side with the module's secrets.
+ */
+export type OverlayContextProvider = {
+  current: (ctx: ModuleContext) => OverlayContextValue | null | undefined | Promise<OverlayContextValue | null | undefined>;
+  values?: (ctx: ModuleContext, query: { search: string; limit: number }) => OverlayContextValue[] | Promise<OverlayContextValue[]>;
+};
+
 export type ModuleDefinition = {
   /** Contribue des blocs à un emplacement du site (une fois par instance active). */
   slots?: Partial<Record<Slot, (ctx: SlotContext) => Block[] | null | undefined | Promise<Block[] | null | undefined>>>;
@@ -699,6 +710,8 @@ export type ModuleDefinition = {
    * lecteurs en même temps (le même élément peut figurer dans plusieurs pages) : chaque lecteur a son propre repère dans le flux d'événements. Un cœur plus ancien ignore la clé.
    */
   overlayElements?: Record<string, (ctx: ModuleContext, request: OverlayElementRequest) => OverlayElementAddress | null | Promise<OverlayElementAddress | null>>;
+  /** (core 0.8.0) Context values offered to overlay pages, by id declared in `overlayContexts` of the manifest (`minCore: "0.8.0"`). See `OverlayContextProvider`. */
+  overlayContexts?: Record<string, OverlayContextProvider>;
   /** Informations exposées aux consommateurs, par sujet déclaré dans `provides`. Exécuté pour chaque instance fournisseuse. */
   exports?: Record<string, (ctx: ModuleContext, query: TopicQuery) => Record<string, unknown>[] | Promise<Record<string, unknown>[]>>;
   /** Routes exposées sous /m/<clé d'instance>/<route> (GET et POST). */

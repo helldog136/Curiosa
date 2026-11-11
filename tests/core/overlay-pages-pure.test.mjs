@@ -280,7 +280,7 @@ test("page de rendu : page inactive = « Cet overlay est désactivé » ; texte 
   assert.doesNotMatch(evil, /<script>alert/); assert.match(evil, /&lt;script&gt;/);
   assert.match(R.renderPage({ page: pageData({ name: "</title><script>x</script>" }), elements: [], t: makeTranslator("fr"), lang: "fr", test: false, now: 0, nonce: "n", stateUrl: "" }), /&lt;\/title&gt;/);
   const script = fs.readFileSync("src/core/overlays/render.ts", "utf8");
-  assert.match(script, /gap=n<6\?5000:n<12\?10000:15000/, "intervalle de 5 s qui ralentit");
+  assert.match(script, /gap=C\.ctx\?5000:n<6\?5000:n<12\?10000:15000/, "intervalle de 5 s qui ralentit");
   assert.doesNotMatch(script, /setInterval/, "aucun minuteur répété : chaque contrôle programme le suivant");
 });
 

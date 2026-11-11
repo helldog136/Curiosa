@@ -1,22 +1,24 @@
-# Proposer des éléments pour les pages d'overlay
+# Offering elements for overlay pages
 
-Depuis la 0.5.0, la section **Overlays** de l'administration permet de composer des **pages d'overlay** pour OBS : on choisit une résolution, puis on place où l'on veut des **éléments** fournis par les modules. Une page d'overlay n'a qu'**une seule adresse** à coller dans OBS.
+Since 0.5.0, the **Overlays** section of the administration lets people compose **overlay pages** for OBS: pick a resolution, then place **elements** provided by modules wherever they want. An overlay page has **one address** to paste into OBS.
 
-Votre module peut proposer des éléments. C'est **volontaire** : sans la clé `overlayElements` dans `module.json`, votre module ne propose aucun élément et rien ne change pour lui. Vos overlays actuels (`/overlays/<clé>`) continuent de marcher, avec les mêmes adresses.
+Your module can offer elements. This is **voluntary**: without the `overlayElements` key in `module.json`, your module offers no element and nothing changes for it. Your current overlays (`/overlays/<key>`) keep working, with the same addresses.
 
-Un exemple complet, prêt à lire et à copier, se trouve dans `examples/overlay-demo/` (quatre éléments : horloge, tableau, scène, fil en direct).
+A complete example, ready to read and copy, lives in `examples/overlay-demo/` (four elements: clock, board, scene, live feed).
 
-Dans ce guide : le mot **page d'overlay** désigne la composition, le mot **élément** désigne un morceau fourni par un module. Ce sont les mots que voit la personne qui gère le site.
+In this guide, **overlay page** means the composition and **element** means a piece provided by a module. These are the words people who run the site see.
 
-## En deux minutes
+Since 0.8.0 an overlay page can also wear an **overlay skin** and can change skin depending on a **context** (the current game, for example). Elements need no change for this: see [OVERLAY-SKINS.md](OVERLAY-SKINS.md) and section 3 below.
 
-1. Dans `module.json`, ajoutez `"minCore": "0.5.0"` et une liste `overlayElements`.
-2. Dans `index.mjs`, ajoutez `overlayElements` : pour chaque élément, une fonction qui répond **l'adresse de la page de l'élément**.
-3. Écrivez la page de l'élément (une route de votre module, ou votre overlay actuel) : elle remplit la fenêtre qu'on lui donne, lit son style et ses options dans l'adresse.
-4. Lancez `npm run module:check -- <votre dossier>` : l'exigence `overlay.elements` vérifie la partie contrat.
-5. Ajoutez le test « plusieurs lecteurs » si votre élément suit un flux d'événements (voir plus bas).
+## In two minutes
 
-## 1. Déclarer les éléments (`module.json`)
+1. In `module.json`, add `"minCore": "0.5.0"` and an `overlayElements` list.
+2. In `index.mjs`, add `overlayElements`: for each element, a function that answers **the address of the element's page**.
+3. Write the element's page (a route of your module, or your current overlay): it fills the window it is given and reads its style and options from the address.
+4. Run `npm run module:check -- <your folder>`: the `overlay.elements` requirement checks the contract part.
+5. Add the "several readers" test if your element follows an event stream (see below).
+
+## 1. Declare the elements (`module.json`)
 
 ```json
 {
@@ -41,141 +43,149 @@ Dans ce guide : le mot **page d'overlay** désigne la composition, le mot **él�
 }
 ```
 
-Le cœur **refuse** proprement un manifeste qui ne suit pas ces règles (message clair, module non installé), et exige `minCore` à `0.5.0` ou plus (un cœur plus ancien ignore la clé).
+The core **refuses** a manifest that does not follow these rules (clear message, module not installed) and requires `minCore` `0.5.0` or later (an older core ignores the key).
 
-| Clé | Rôle |
+| Key | Role |
 | --- | --- |
-| `id` | Identifiant de l'élément dans votre module : minuscules, chiffres, tirets (41 caractères au plus). Ne change plus une fois publié. |
-| `label`, `description` | Ce que lit la personne dans « Ajouter un élément », en français **et** en anglais. Le libellé affiché est « Nom de l'instance · Libellé ». |
-| `fit` | `scale` (défaut), `ratio` ou `fluid`. Voir le paragraphe suivant. |
-| `size` | `scale` : la taille naturelle, par exemple `600 × 200`. |
-| `referenceHeight` | `ratio` : la hauteur de la fenêtre virtuelle, par exemple `1080`. |
-| `ratios` | `ratio` (obligatoire) et `fluid` (facultatif) : la plage de ratios largeur/hauteur que l'élément accepte, par exemple `{ "min": 1.3, "max": 2.4 }`. |
-| `minSize` | `ratio` et `fluid` : la taille minimale du cadre. Plus petit, le cœur garde cette taille puis réduit le tout. |
-| `followsStyle` | `true` (défaut) : l'élément suit le style commun de la page. `false` : il ne sait pas (une scène 3D, par exemple) et reste tel quel ; l'éditeur le dit à la personne. |
-| `options` | Les options réglables par élément (voir plus bas). Vingt au plus. |
-| `demo` | `true` : l'élément sait montrer un contenu d'exemple quand l'adresse reçoit `ov-demo=1` (mode test). |
+| `id` | Identifier of the element in your module: lowercase letters, digits, dashes (41 characters at most). Never changes once published. |
+| `label`, `description` | What people read in "Add an element", in French **and** English. The displayed label is "Instance name · Label". |
+| `fit` | `scale` (default), `ratio` or `fluid`. See the next paragraph. |
+| `size` | `scale`: the natural size, for example `600 × 200`. |
+| `referenceHeight` | `ratio`: the height of the virtual window, for example `1080`. |
+| `ratios` | `ratio` (required) and `fluid` (optional): the range of width/height ratios the element accepts, for example `{ "min": 1.3, "max": 2.4 }`. |
+| `minSize` | `ratio` and `fluid`: the minimum size of the frame. Smaller, the core keeps this size and then shrinks everything. |
+| `followsStyle` | `true` (default): the element follows the page's common style, **and an overlay skin applies to it**. `false`: it cannot (a 3D scene, for example) and stays as it is; the editor tells the person. |
+| `options` | The options adjustable per element (see below). Twenty at most. |
+| `demo` | `true`: the element can show sample content when the address receives `ov-demo=1` (test mode). |
 
-Au plus **20 éléments** par module.
+At most **20 elements** per module.
 
-### Les trois comportements
+### The three behaviours
 
-Un élément en choisit **un seul**. Les personnes ne voient jamais ces noms : l'éditeur écrit « garde ses proportions », « s'adapte au ratio du cadre » ou « s'adapte à la taille choisie ».
+An element picks **one**. People never see these names: the editor writes "keeps its proportions", "adapts to the frame ratio" or "adapts to the chosen size".
 
-- **`scale` — garde ses proportions.** Vous déclarez une taille naturelle (par exemple 600 × 200). Le cœur affiche votre page dans une fenêtre de cette taille, puis la met à l'échelle comme une image (ratio verrouillé). Pour : alertes, bandeau de sponsors, compte à rebours.
-- **`ratio` — s'adapte au ratio.** Vous déclarez une hauteur de référence (1080). Le cœur donne une fenêtre **virtuelle** de cette hauteur dont la **largeur suit le ratio du cadre** (dans votre plage), puis met le tout à l'échelle : même échelle visuelle, scène plus large. Pour : une scène 3D qui doit s'afficher en 21:9 comme en 16:9.
-- **`fluid` — s'adapte à la taille choisie.** Votre page reçoit une fenêtre aux **dimensions réelles** du cadre et se réorganise comme un site « responsive ». Pour : sondages, planning, statistiques.
+- **`scale`: keeps its proportions.** You declare a natural size (for example 600 × 200). The core shows your page in a window of that size, then scales it like an image (ratio locked). For: alerts, sponsor banner, countdown.
+- **`ratio`: adapts to the ratio.** You declare a reference height (1080). The core gives a **virtual** window of that height whose **width follows the frame's ratio** (within your range), then scales everything: same visual scale, wider scene. For: a 3D scene that must look right in 21:9 as in 16:9.
+- **`fluid`: adapts to the chosen size.** Your page gets a window with the frame's **real dimensions** and reorganises like a responsive site. For: polls, planning, statistics.
 
-Dans l'éditeur, le ratio est verrouillé à la poignée pour `scale` et `ratio`, libre pour `fluid` ; la plage de ratios et la taille minimale sont appliquées pour toutes les saisies. Le serveur applique les mêmes règles à l'enregistrement.
+In the editor, the ratio is locked at the handle for `scale` and `ratio`, free for `fluid`; the ratio range and the minimum size apply to every input. The server applies the same rules on save.
 
-### Les options
+### Options
 
-Quatre types seulement :
+Only four types:
 
-| Type | Champs |
+| Type | Fields |
 | --- | --- |
-| `choice` | `choices: [{ value, label }]` (2 à 30), `default` |
+| `choice` | `choices: [{ value, label }]` (2 to 30), `default` |
 | `boolean` | `default` |
 | `number` | `min`, `max`, `integer`, `default` |
-| `text` | `maxLength` (200 au plus), `default` |
+| `text` | `maxLength` (200 at most), `default` |
 
-Chaque option a un `label` (FR/EN), une `help` facultative (affichée dans une bulle « ? ») et un `example` facultatif (repris dans le message d'erreur sous le champ : « Entrez un nombre entre 20 et 200. Exemple : 96. »). Le cœur dessine le formulaire d'après cette déclaration.
+Each option has a `label` (FR/EN), an optional `help` (shown in a "?" bubble) and an optional `example` (reused in the error message under the field: "Enter a number between 20 and 200. Example: 96."). The core draws the form from this declaration.
 
-**Visez un jeu d'options minimal**, le plus court possible : la personne règle son élément en quelques secondes. Cinq est un repère, pas une limite ; un module complexe peut en avoir davantage. Seule une **borne dure de 20** protège le formulaire, et au-delà de 8 options, le cœur range les suivantes sous « Plus d'options » (replié).
+**Aim for a minimal set of options**: people set up their element in a few seconds. Five is a guide, not a limit; a complex module can have more. Only a **hard limit of 20** protects the form, and beyond 8 options the core folds the rest under "More options".
 
-Les options servent aussi à **distinguer deux éléments du même module**. Exemple : deux compteurs sur deux événements différents (option `event`).
+Options also **tell two elements of the same module apart**. Example: two counters on two different events (option `event`).
 
-## 2. Servir les éléments (`index.mjs`)
+## 2. Serve the elements (`index.mjs`)
 
 ```js
 export default {
   overlayElements: {
-    // Une fonction par élément déclaré. Elle tourne CÔTÉ SERVEUR, avec les secrets de votre module.
+    // One function per declared element. It runs SERVER side, with your module's secrets.
     countdown: (ctx, request) => ({ url: `/m/${ctx.instance.key}/element/countdown` }),
   },
-  routes: { "element/:slug": (req, ctx) => { /* … la page de l'élément … */ } },
+  routes: { "element/:slug": (req, ctx) => { /* … the element's page … */ } },
 };
 ```
 
-### Ce que le cœur vous donne (`request`)
+### What the core gives you (`request`)
 
-| Champ | Contenu |
+| Field | Content |
 | --- | --- |
-| `element` | L'identifiant de l'élément demandé. |
-| `fit` | `"scale"`, `"ratio"` ou `"fluid"`. |
-| `width`, `height` | La taille de la fenêtre dans laquelle l'élément s'affichera : la taille naturelle (`scale`), la fenêtre virtuelle (`ratio`) ou la taille réelle (`fluid`). |
-| `style` | Le style commun `{ text, surface, corners }`, ou `null` si l'élément ne le suit pas. |
-| `options` | Les valeurs des options, **déjà contrôlées** par le cœur d'après votre déclaration (une option absente prend son défaut). |
-| `lang` | La langue demandée. |
+| `element` | The identifier of the requested element. |
+| `fit` | `"scale"`, `"ratio"` or `"fluid"`. |
+| `width`, `height` | The size of the window the element will be shown in: the natural size (`scale`), the virtual window (`ratio`) or the real size (`fluid`). |
+| `style` | The common style `{ text, surface, corners }`, or `null` if the element does not follow it. |
+| `options` | The option values, **already checked** by the core against your declaration (a missing option takes its default). |
+| `lang` | The requested language. |
 
-**Votre module valide encore** : il reste propriétaire du sens. Une valeur inconnue (un événement supprimé, par exemple) est **ignorée sans rien casser** : affichez un état vide, jamais une erreur. Une option que vous ne connaissez pas est ignorée.
+**Your module still validates**: it stays the owner of the meaning. An unknown value (a deleted event, for example) is **ignored without breaking anything**: show an empty state, never an error. An option you do not know is ignored.
 
-### Ce que vous répondez
+### What you answer
 
-`{ url: "/chemin" }` : un **chemin du site** qui commence par `/` (une route de votre module `/m/<clé>/…`, ou `/overlays/<clé>?k=…` pour réutiliser votre overlay). Jamais une adresse externe, ni `//`, ni `..`, ni `#`. Ou `null` si l'élément n'est pas disponible (cadre vide). Une adresse refusée donne un cadre vide.
+`{ url: "/path" }`: a **site path** starting with `/` (a route of your module `/m/<key>/…`, or `/overlays/<key>?k=…` to reuse your overlay). Never an external address, nor `//`, `..`, `#`. Or `null` if the element is not available (empty frame). A refused address gives an empty frame.
 
-Le secret de votre module (par exemple `?k=` d'un overlay) est ajouté **ici, côté serveur** : il n'apparaît jamais dans l'administration. Le cœur ne fait que donner l'adresse à la page d'OBS.
+Your module's secret (for example the `?k=` of an overlay) is added **here, server side**: it never appears in the administration. The core only hands the address to the OBS page.
 
-Le cœur **ajoute à votre adresse** (et remplace ce que vous auriez mis) ces paramètres réservés :
+The core **adds to your address** (replacing anything you put) these reserved parameters:
 
-| Paramètre | Valeur |
+| Parameter | Value |
 | --- | --- |
-| `ov-w`, `ov-h` | La taille de la fenêtre (comme `width`, `height`). |
-| `ov-fit` | `scale`, `ratio` ou `fluid`. |
-| `ov-lang` | La langue. |
-| `ov-text`, `ov-surface`, `ov-corners` | Le style commun (seulement si `followsStyle` est vrai). |
-| `opt-<id>` | La valeur de chaque option (`1` / `0` pour un oui/non). |
-| `ov-demo` | `1` en mode test, pour un élément qui déclare `demo`. |
+| `ov-w`, `ov-h` | The size of the window (like `width`, `height`). |
+| `ov-fit` | `scale`, `ratio` or `fluid`. |
+| `ov-lang` | The language. |
+| `ov-text`, `ov-surface`, `ov-corners` | The common style (only if `followsStyle` is true). |
+| `opt-<id>` | The value of each option (`1` / `0` for a yes/no). |
+| `ov-demo` | `1` in test mode, for an element that declares `demo`. |
 
-Votre page lit ces paramètres, **les valide** et remplit **toute** la fenêtre. Les réglages de place et de taille de votre overlay actuel sont **ignorés** dans une page d'overlay : l'élément remplit le cadre donné. Ce que la personne règle chez vous (contenu, durées, apparence propre) reste chez vous.
+Your page reads these parameters, **validates them** and fills the **whole** window. The position and size settings of your current overlay are **ignored** in an overlay page: the element fills the frame it is given. What the person sets in your module (content, durations, own look) stays with you.
 
-Si votre module garde déjà un overlay, le plus simple est que la fonction réponde l'adresse de cet overlay et que la page lise les paramètres `ov-*` et `opt-*`.
+If your module already has an overlay, the simplest is for the function to answer that overlay's address and for the page to read the `ov-*` and `opt-*` parameters.
 
-### Le son
+### Sound
 
-Un élément qui joue un son le fait dans son iframe (`allow="autoplay"`). Le contrôle du son reste celui d'OBS (« Contrôler l'audio via OBS »).
+An element that plays a sound does it in its iframe (`allow="autoplay"`). Sound control stays OBS's ("Control audio via OBS").
 
-## 3. L'apparence : style commun et jetons `--ov-*`
+## 3. Look: common style, skins and the `--ov-*` tokens
 
-Chaque page d'overlay a un **style commun** (texte clair ou sombre, fond transparent ou semi-transparent, coins arrondis ou droits). Le cœur le transmet à l'élément sous forme de paramètres ; la page de l'élément en déduit les **jetons** :
+Each overlay page has a **common style** (light or dark text, transparent or semi-transparent background, rounded or square corners). The core hands it to the element as parameters; the element's page derives the **tokens** from them:
 
-| Paramètre | Jeton | Valeurs |
+| Parameter | Token | Values |
 | --- | --- | --- |
 | `ov-text` = `light` / `dark` | `--ov-fg` | `#ffffff` / `#111111` |
-| `ov-surface` = `transparent` / `soft` | `--ov-surface` | `transparent` / `rgba(0,0,0,.55)` (texte clair) ou `rgba(255,255,255,.7)` (texte sombre) |
+| `ov-surface` = `transparent` / `soft` | `--ov-surface` | `transparent` / `rgba(0,0,0,.55)` (light text) or `rgba(255,255,255,.7)` (dark text) |
 | `ov-corners` = `round` / `square` | `--ov-radius` | `12px` / `0px` |
-| (déduit du fond) | `--ov-border` | `transparent` ou un liseré discret |
+| (derived from the background) | `--ov-border` | `transparent` or a discreet outline |
 
-Écrivez votre CSS avec ces jetons et un **repli** (`color: var(--ov-fg, #fff)`), et placez des attributs sur vos morceaux : `data-ov-part="panel"`, `data-ov-region="element"`. **Stylez par les jetons et les attributs, pas par des classes en dur.** C'est ce qui permettra, plus tard, des « skins d'overlay » (dans le dépôt `curiosa-skins`, avec la mention « skin d'overlay » dans leur `skin.json`) sans toucher à votre code. Ces skins ne sont pas encore livrés ; le vocabulaire est réservé dès maintenant.
+Write your CSS with these tokens and a **fallback** (`color: var(--ov-fg, #fff)`), and put attributes on your pieces: `data-ov-part="panel"`, `data-ov-region="element"`. **Style through tokens and attributes, not hard-coded classes.**
 
-Le cœur **réserve** les noms `--ov-*`, `data-ov-part`, `data-ov-region` et les paramètres `ov-*`. Autour de chaque élément, la page du cœur émet `data-ov-region="element"` et `data-ov-part="frame"` (cadre), `test-frame` (cadre de test), `label`, `empty`.
+**Overlay skins (0.8.0).** When a page wears an overlay skin, the core injects the skin into your element's page once it has loaded (the iframe is same-origin, and a skin is only data: tokens and a sanitised sheet of rules, adopted with a constructed style sheet; nothing is executed). The skin then:
 
-**Étanchéité.** La page d'un élément ne charge **jamais** le skin du site, et vous n'utilisez ni `--sk-*` ni `data-skin-*` sur la page de l'élément. Un skin d'overlay ne touche jamais le site public. Le style commun **ne reprend pas** le skin du site. Un élément qui ne sait pas suivre le style (une scène 3D) le déclare avec `followsStyle: false`.
+1. overrides the `--ov-*` tokens on the document root and on your `data-ov-region="element"` node, so everything that reads them follows the skin;
+2. sets the **extended tokens** (accent, muted text, fonts, border width, shadow, text shadow, case, motion preset) and the core maps them onto the reserved parts, only for the tokens the skin defines;
+3. restyles your pieces through `[data-ov-part="…"]` rules.
 
-## 4. Le mode test
+So **an element needs no change** to follow a skin, as long as it declares `followsStyle: true` and marks its pieces with `data-ov-part`. The more of the shared part names it uses (`panel`, `card`, `bubble`, `quote`, `title`, `subtitle`, `name`, `body`, `text`, `message`, `label`, `value`, `badge`, `tag`, `kind`, `status`, `avatar`, `track`, `bar-fill`, `dot`, `stars`, `winner`, `source`, `foot`, `footer`, `author`), the better skins look. Tokens are overridden on the document root and on the `data-ov-region="element"` node: declare yours there (`:root{--ov-…}` or on the region node), not on a node deeper inside, which a skin cannot reach. The full vocabulary, the rule grammar and the contrast checks are in [OVERLAY-SKINS.md](OVERLAY-SKINS.md).
 
-La personne active le **mode test** d'une page d'overlay : dans OBS, un **cadre coloré dessiné par le cœur** apparaît autour de chaque élément, avec « module · élément · taille en pixels ». Votre contenu reste visible dessous ; si vous déclarez `demo: true`, il reçoit `ov-demo=1` et peut montrer un contenu d'exemple (une horloge à 12:34:56, une liste de démonstration…). La page d'OBS le remarque d'elle-même (une interrogation légère, toutes les 5 secondes au début puis de plus en plus espacée, jamais de minuteur côté serveur). Le mode test **s'arrête tout seul au bout de 30 minutes** (constaté à la lecture).
+The core **reserves** the names `--ov-*`, `data-ov-part`, `data-ov-region`, `data-ov-skin` and the `ov-*` parameters. Around each element, the core page emits `data-ov-region="element"` and `data-ov-part="frame"`, `test-frame`, `label`, `empty`.
 
-Ce cadre ne remplace pas un éventuel mode d'aperçu qui serait propre à votre module.
+**Sealing.** An element's page **never** loads the site skin, and you use neither `--sk-*` nor `data-skin-*` on it. An overlay skin never touches the public site, and a site skin never touches an overlay. The common style **does not** reuse the site skin. An element that cannot follow the style (a 3D scene) declares `followsStyle: false`: no skin is injected into it.
 
-## 5. Plusieurs lecteurs d'un même élément
+## 4. Test mode
 
-Une même page d'overlay peut figurer dans plusieurs pages, et un même élément peut apparaître deux fois : **plusieurs lecteurs lisent donc le même flux au même moment**, et tous doivent afficher la même information au même instant. Règle :
+The person turns on **test mode** for an overlay page: in OBS, a **coloured frame drawn by the core** appears around each element, with "module · element · size in pixels". Your content stays visible underneath; if you declare `demo: true`, it receives `ov-demo=1` and can show sample content (a clock at 12:34:56, a demo list…). The OBS page notices by itself (a light poll, every 5 seconds at first then more and more spaced, never a server-side timer). Test mode **stops by itself after 30 minutes** (checked when read).
 
-> **Chaque lecteur a son propre repère dans le flux d'événements. Jamais une file partagée que le premier lecteur viderait.**
+This frame does not replace a preview mode that would be specific to your module.
 
-Concrètement : si votre élément suit des événements (alertes, messages), le lecteur garde un **curseur** (le dernier événement vu) et le renvoie à chaque lecture ; votre module ne retient rien de lui et ne supprime pas un événement parce qu'il a été lu. Un lecteur neuf démarre « à la fin » du flux (`now`). Lisez toujours **par morceaux bornés** (50 événements, par exemple).
+## 5. Several readers of the same element
 
-`examples/overlay-demo/index.mjs` montre un flux complet (`readFeed`, `publish`). Le test réutilisable est dans le kit de test :
+An overlay page can appear in several pages, and an element can appear twice: **several readers therefore read the same stream at the same time**, and all must show the same information at the same instant. Rule:
+
+> **Each reader has its own marker in the event stream. Never a shared queue that the first reader would empty.**
+
+Concretely: if your element follows events (alerts, messages), the reader keeps a **cursor** (the last event seen) and sends it back on each read; your module remembers nothing about it and does not delete an event because it was read. A new reader starts "at the end" of the stream (`now`). Always read **in bounded chunks** (50 events, for example).
+
+`examples/overlay-demo/index.mjs` shows a complete stream (`readFeed`, `publish`). The reusable test is in the test kit:
 
 ```js
-import { assertMultiReaders } from "<dossier du cœur>/testsupport/index.mjs";
+import { assertMultiReaders } from "<core folder>/testsupport/index.mjs";
 
-test("plusieurs lecteurs reçoivent les mêmes événements", async () => {
+test("several readers get the same events", async () => {
   await assertMultiReaders({
-    publish: async (event) => { /* ajoute un événement à votre flux */ },
+    publish: async (event) => { /* adds an event to your stream */ },
     open: async () => {
-      let cursor = (await readFeed(ctx, "now")).cursor;           // le repère est pris TOUT DE SUITE
+      let cursor = (await readFeed(ctx, "now")).cursor;           // the marker is taken RIGHT AWAY
       return { read: async () => { const r = await readFeed(ctx, cursor); cursor = r.cursor; return r.events; } };
     },
     readers: 4,
@@ -183,33 +193,33 @@ test("plusieurs lecteurs reçoivent les mêmes événements", async () => {
 });
 ```
 
-Le test ouvre plusieurs lecteurs, publie des événements, les lit dans le désordre, en même temps et en ordre inverse, ouvre un lecteur en retard, puis vérifie que **chaque lecteur a reçu tous les événements, dans l'ordre, une seule fois**. Une file partagée est détectée avec un message qui dit quoi corriger.
+The test opens several readers, publishes events, reads them out of order, at the same time and in reverse order, opens a late reader, then checks that **each reader received all events, in order, exactly once**. A shared queue is detected with a message that says what to fix.
 
-## 6. Ce que fait le cœur (et ce qu'il ne fait pas)
+## 6. What the core does (and does not do)
 
-- **Le cœur possède les pages d'overlay** (une seule source de vérité) : nom, résolution, éléments avec position, taille, ordre, visible ou masqué, options, style commun, actif ou non, mode test. Vous ne voyez jamais la composition, seulement la taille de votre cadre. Les pages font partie des sauvegardes.
-- **Un élément dont le module a disparu** reste en place, vide (« Cet élément n'est plus disponible ») ; la page ne casse pas.
-- **Un élément qui échoue** (erreur, pas de réponse en 8 s, adresse refusée) donne un cadre **vide et silencieux** en direct ; le détail n'apparaît qu'en mode test et dans l'administration. Le message d'une erreur de module n'est jamais journalisé (il pourrait contenir un secret).
-- **Sécurité de la page** : chaque élément est un `iframe` avec `sandbox="allow-scripts allow-same-origin"` (ni formulaire, ni fenêtre, ni navigation du haut, ni téléchargement). L'en-tête de sécurité n'autorise comme iframes que les adresses exactes des éléments de la page ; aucun cookie, aucun suivi, aucun chargement tiers. L'adresse de la page ne sort jamais par « Referer ». Votre page d'élément est servie par votre module : mettez-lui sa propre politique de sécurité (voir l'exemple).
-- **Limites dures** : 20 pages d'overlay, 10 actives, 30 éléments par page, 20 options par élément, 20 éléments par module.
-- **Droits** : composer les pages d'overlay demande le palier « Administration » ou au-dessus. Aucun nouveau droit à déclarer.
-- **Rien n'est lu sans borne** et aucun minuteur ne tourne en fond.
+- **The core owns overlay pages** (one source of truth): name, resolution, elements with position, size, order, visible or hidden, options, common style, skin and skin rules (0.8.0), active or not, test mode. You never see the composition, only the size of your frame. Pages are part of backups.
+- **An element whose module has disappeared** stays in place, empty ("This element is no longer available"); the page does not break.
+- **An element that fails** (error, no answer within 8 s, refused address) gives an **empty and silent** frame live; the detail only appears in test mode and in the administration. A module error message is never logged (it could contain a secret).
+- **Page security**: each element is an `iframe` with `sandbox="allow-scripts allow-same-origin"` (no form, no window, no top navigation, no download). The security header only allows as iframes the exact addresses of the page's elements; no cookie, no tracking, no third-party loading. The page address never leaves through "Referer". Your element page is served by your module: give it its own security policy (see the example). A skin is injected from the core page by script and never loads anything.
+- **Hard limits**: 20 overlay pages, 10 active, 30 elements per page, 20 options per element, 20 elements per module.
+- **Rights**: composing overlay pages needs the "Administration" tier or above. No new right to declare.
+- **Nothing is read without a bound** and no timer runs in the background.
 
-## 7. Liste de contrôle d'adoption
+## 7. Adoption checklist
 
-À cocher avant de publier la version de votre module qui propose des éléments :
+Tick before publishing the version of your module that offers elements:
 
-- [ ] `module.json` : `"minCore": "0.5.0"`, une entrée `overlayElements` par élément, libellés et descriptions en français **et** en anglais.
-- [ ] Le bon comportement : `scale` (taille naturelle), `ratio` (hauteur de référence **et** plage de ratios) ou `fluid` (taille minimale).
-- [ ] Un jeu d'options **minimal** ; chaque option a un libellé, une aide si utile et un **exemple** pour les nombres et les textes.
-- [ ] `index.mjs` : une fonction `overlayElements.<id>` par élément déclaré, et inversement. Elle répond un chemin du site, ou `null`.
-- [ ] La page de l'élément **remplit toute la fenêtre** (`ov-w` × `ov-h`), ignore les réglages de place de l'overlay du module, et reste lisible à toute taille permise.
-- [ ] Les options reçues (`opt-<id>`) sont **validées** ; une valeur inconnue est ignorée sans erreur, un état vide s'affiche proprement.
-- [ ] Le style : jetons `--ov-*` avec repli, attributs `data-ov-part`, **aucune** classe en dur pour la couleur du texte ou le fond ; sinon `followsStyle: false`.
-- [ ] Aucun `--sk-*` ni `data-skin-*` sur la page de l'élément ; aucun chargement tiers ; texte venu d'ailleurs **échappé**.
-- [ ] Plusieurs lecteurs : un curseur par lecteur, lecture bornée, test `assertMultiReaders` écrit si l'élément suit un flux.
-- [ ] `demo: true` si l'élément sait montrer un contenu d'exemple, pour le mode test.
-- [ ] Le son, s'il y en a, se joue dans l'élément (contrôle par OBS).
-- [ ] `npm run module:check -- <dossier>` : l'exigence `overlay.elements` réussit.
-- [ ] Version mineure en plus (`1.4.0` → `1.5.0`) et mention dans le README du module.
-- [ ] Vous avez essayé dans OBS : une page d'overlay en 3440×1440, mode test activé, éléments redimensionnés, page désactivée.
+- [ ] `module.json`: `"minCore": "0.5.0"`, one `overlayElements` entry per element, labels and descriptions in French **and** English.
+- [ ] The right behaviour: `scale` (natural size), `ratio` (reference height **and** ratio range) or `fluid` (minimum size).
+- [ ] A **minimal** set of options; each option has a label, a help text if useful and an **example** for numbers and texts.
+- [ ] `index.mjs`: one `overlayElements.<id>` function per declared element, and the reverse. It answers a site path, or `null`.
+- [ ] The element page **fills the whole window** (`ov-w` × `ov-h`), ignores the placement settings of the module's overlay, and stays readable at every allowed size.
+- [ ] The received options (`opt-<id>`) are **validated**; an unknown value is ignored without error, an empty state is shown properly.
+- [ ] Style: `--ov-*` tokens with a fallback, `data-ov-part` attributes using the shared part names, **no** hard-coded class for text colour or background; otherwise `followsStyle: false`.
+- [ ] No `--sk-*` nor `data-skin-*` on the element page; no third-party loading; text from elsewhere **escaped**.
+- [ ] Several readers: one cursor per reader, bounded reads, `assertMultiReaders` test written if the element follows a stream.
+- [ ] `demo: true` if the element can show sample content, for test mode.
+- [ ] Sound, if any, plays inside the element (OBS control).
+- [ ] `npm run module:check -- <folder>`: the `overlay.elements` requirement passes.
+- [ ] A minor version bump (`1.4.0` → `1.5.0`) and a mention in the module's README.
+- [ ] You tried it in OBS: an overlay page in 3440×1440, test mode on, elements resized, page turned off, and an overlay skin worn.

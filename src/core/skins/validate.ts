@@ -18,6 +18,10 @@ import { parseSkinManifest, type SkinManifest } from "./manifest";
 import { makeIssue, type Params, type SkinIssue } from "./messages";
 import { checkReadability, type Mode, type ModulePair, type ReadabilityIssue } from "./readability";
 import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
+import { checkToken } from "../overlays/skinTokens";
+import { sanitizeOverlayCss } from "../overlays/skinCss";
+import { checkSkinTokens } from "../overlays/skinSheet";
+import { OVERLAY_SKIN_CONTRACT } from "./constants";
 import { coreSatisfies } from "./semver";
 
 export type ValidateOptions = {
@@ -156,7 +160,9 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   else if (!coreSatisfies(m.minCore, opts.coreVersion)) add("manifest-core-newer", { need: m.minCore, have: opts.coreVersion });
   if ((m.previews ?? []).length === 0) add("manifest-no-preview");
   if ((m.previews ?? []).length > FILE_LIMITS.previews) add("previews-too-many", { max: FILE_LIMITS.previews });
+  if (m.kind === "overlay" && m.skinContract < OVERLAY_SKIN_CONTRACT) add("overlay-contract");
   if (hasErrors(issues)) return fail();   // le reste dépend d'un manifeste sain
+  if (m.kind === "overlay") return runOverlay(m, found, byRel, issues, fail);
 
   // ---- 3. Quels fichiers sont prévus ? Tout le reste est refusé.
   const kinds = new Map<string, FileKind>([["skin.json", "manifest"]]);
@@ -379,4 +385,72 @@ function typedCheck(name: string, value: string, skinId: string, issues: SkinIss
   if (r.ok) return true;
   for (const i of r.issues) if (i.severity === "error") issues.push({ ...i, line: undefined, column: undefined });
   return false;
+}
+
+/**
+ * (core 0.8.0) Validation of an OVERLAY skin folder: same folder rules, licences, previews and fingerprint as a site skin, but a closed token vocabulary (`--ov-*`),
+ * a strict rule grammar (overlays/skinCss.ts), a contrast check (overlays/skinSheet.ts) and NO font or image (system fonts only). Nothing is executed.
+ */
+function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, issues: SkinIssue[], fail: () => SkinValidation): SkinValidation {
+  const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
+  const kinds = new Map<string, FileKind>([["skin.json", "manifest"]]);
+  if (m.assets.length) add("overlay-no-assets");
+  const declare = (rel: string, kind: FileKind, re: RegExp, missing: string): boolean => {
+    if (!re.test(rel)) { add("asset-bad-path", { file: rel }); return false; }
+    if (!byRel.has(rel)) { add(missing, { file: rel }); return false; }
+    kinds.set(rel, kind);
+    return true;
+  };
+  const hasTokens = declare(m.tokens, "tokens", TOKENS_FILE_RE, "tokens-missing");
+  const hasSheet = m.stylesheet ? declare(m.stylesheet, "stylesheet", SHEET_FILE_RE, "stylesheet-missing") : false;
+  const previews = (m.previews ?? []).filter((p) => declare(p.file, "preview", PREVIEW_PATH_RE, "asset-missing"));
+  for (const f of found) {
+    if (kinds.has(f.rel)) continue;
+    if (README_RE.test(f.rel) || OWN_LICENSE_RE.test(f.rel) || LICENSE_FILE_RE.test(f.rel)) kinds.set(f.rel, README_RE.test(f.rel) ? "readme" : "license");
+    else add("skin-file-unlisted", { file: f.rel });
+  }
+  const sizeOf = (rel: string) => byRel.get(rel)?.size ?? 0;
+  if (hasTokens && sizeOf(m.tokens) > FILE_LIMITS.tokensBytes) add("tokens-too-large", { size: kb(sizeOf(m.tokens)), max: kb(FILE_LIMITS.tokensBytes) });
+  for (const p of previews) if (sizeOf(p.file) > FILE_LIMITS.previewBytes) add("file-too-large", { file: p.file, size: kb(sizeOf(p.file)), max: kb(FILE_LIMITS.previewBytes) });
+  const content = new Map<string, Buffer>();
+  const read = (rel: string): Buffer => { let b = content.get(rel); if (!b) { b = fs.readFileSync(byRel.get(rel)!.abs); content.set(rel, b); } return b; };
+  for (const p of previews) if (sizeOf(p.file) <= FILE_LIMITS.previewBytes && !hasSignature(p.file, read(p.file))) add("asset-signature", { file: p.file });
+
+  const tokens: Record<string, string> = {};
+  if (hasTokens && sizeOf(m.tokens) <= FILE_LIMITS.tokensBytes) {
+    let raw: unknown;
+    try { raw = JSON.parse(read(m.tokens).toString("utf8").replace(/^\uFEFF/, "")); } catch { add("tokens-unreadable"); }
+    const doc = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>).tokens : undefined;
+    if (raw !== undefined) {
+      if (!doc || typeof doc !== "object" || Array.isArray(doc)) add("overlay-tokens-shape");
+      else for (const [k, v] of Object.entries(doc as Record<string, unknown>).slice(0, 60)) {
+        const r = checkToken(k, v);
+        if (r.ok) tokens[k] = r.value;
+        else add(r.code === "unknown" ? "overlay-token-unknown" : "overlay-token-value", { name: k });
+      }
+    }
+    if (!hasErrors(issues)) for (const i of checkSkinTokens(tokens)) {
+      if (i.code === "missing") add("overlay-token-missing", { name: i.token! });
+      else if (i.code === "no-shadow") add("overlay-no-shadow");
+      else add("overlay-contrast", { pair: i.pair!, ratio: i.ratio! });
+    }
+  }
+  let css = "";
+  if (hasSheet && sizeOf(m.stylesheet!) <= 40 * 1024) {
+    const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id);
+    for (const i of sheet.issues) add("overlay-css", { detail: `${i.code}${i.detail ? ` ${i.detail}` : ""}${i.line ? ` l.${i.line}` : ""}` });
+    css = sheet.css;
+  }
+  const files: ValidatedFile[] = [];
+  const installFiles: { path: string; content: Buffer }[] = [];
+  let totalBytes = 0;
+  for (const rel of [...kinds.keys()].sort()) {
+    const b = read(rel);
+    files.push({ path: rel, bytes: b.length, sha256: sha(b), kind: kinds.get(rel)! });
+    installFiles.push({ path: rel, content: b });
+    totalBytes += b.length;
+  }
+  const ok = !hasErrors(issues);
+  if (!ok) return { ...fail(), issues: unique(issues) };
+  return { ok, issues: unique(issues), manifest: m, css, tokens: { light: {}, dark: {}, common: tokens, modules: {} }, readability: [], files, installFiles, fingerprint: fingerprintOf(files), totalBytes };
 }

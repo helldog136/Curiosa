@@ -26,6 +26,8 @@ export type SkinRow = {
   ref: string | null;
   subdir: string | null;
   source: SkinSource;
+  /** (core 0.8.0) "overlay": restyles the OBS overlay pages only; absent or "site": a skin of the public site. */
+  kind?: "site" | "overlay";
   commit: string;
   /** Empreinte git du dossier du skin dans le dépôt (sert à voir si une mise à jour existe). */
   tree: string | null;
@@ -47,6 +49,7 @@ function cleanRow(raw: unknown): SkinRow | null {
   return {
     id: r.id, version: r.version, repo: r.repo, ref: strOrNull(r.ref, 100), subdir: strOrNull(r.subdir, 200),
     source: r.source === "personal" ? "personal" : "catalogue",
+    ...(r.kind === "overlay" ? { kind: "overlay" as const } : {}),
     commit: typeof r.commit === "string" ? r.commit.slice(0, 64) : "", tree: strOrNull(r.tree, 64),
     fingerprint: typeof r.fingerprint === "string" ? r.fingerprint.slice(0, 64) : "",
     installedAt: typeof r.installedAt === "string" ? r.installedAt.slice(0, 40) : "",

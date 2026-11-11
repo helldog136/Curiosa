@@ -76,10 +76,10 @@ export const CATALOGUE_UNREACHABLE: Text = {
   en: "The list of skins cannot be reached right now. Your installed skins keep working; please try again later.",
 };
 
-export async function listCatalogue(opts: { fresh?: boolean; fetchImpl?: typeof fetch } = {}): Promise<CatalogueListing> {
+export async function listCatalogue(opts: { fresh?: boolean; fetchImpl?: typeof fetch; kind?: "site" | "overlay" } = {}): Promise<CatalogueListing> {
   const cat = await readSkinCatalogue({ coreVersion: getCoreVersion(), fresh: opts.fresh, fetchImpl: opts.fetchImpl });
   const rows = await readRows();
-  const items = cat.entries.map((e): CatalogueItem => {
+  const items = cat.entries.filter((e) => e.kind === (opts.kind ?? "site")).map((e): CatalogueItem => {
     const row = rows.find((r) => r.id === e.id);
     const newer = !!row && ((!!e.version && compareVersions(e.version, row.version) > 0) || (!e.version && !!e.ref && e.ref !== row.ref));
     return { ...e, installed: !!row, installedVersion: row?.version, updateAvailable: newer };
@@ -187,7 +187,7 @@ async function installFrom(spec: Spec, o: { source: SkinSource; expectId?: strin
       try {
         await hooks.beforeSwitch?.();
         const row: SkinRow = {
-          id: m.id, version: m.version, repo: spec.url, ref: spec.ref ?? null, subdir: spec.subdir ?? null, source: o.source,
+          id: m.id, version: m.version, repo: spec.url, ref: spec.ref ?? null, subdir: spec.subdir ?? null, source: o.source, ...(m.kind === "overlay" ? { kind: "overlay" as const } : {}),
           commit: fetched.commit, tree: fetched.tree, fingerprint: v.fingerprint, installedAt: new Date().toISOString(),
         };
         await writeRows([...rows.filter((r) => r.id !== m.id), row].sort((a, b) => (a.id < b.id ? -1 : 1)));
@@ -400,6 +400,8 @@ export async function remove(id: string, opts: Opts = {}): Promise<{ ok: true; i
 
 export type InstalledSkin = {
   id: string;
+  /** (core 0.8.0) "overlay" skins restyle OBS overlay pages; the Appearance page lists "site" skins only. */
+  kind: "site" | "overlay";
   version: string;
   name: Text;
   description: Text;
@@ -427,7 +429,7 @@ export async function installed(): Promise<InstalledSkin[]> {
   const active = await readActiveSetting();
   const out: InstalledSkin[] = [];
   for (const row of rows) {
-    const base = { id: row.id, version: row.version, source: row.source, repo: row.repo, ref: row.ref, subdir: row.subdir, commit: row.commit, fingerprint: row.fingerprint, installedAt: row.installedAt, active: active === row.id, ...(row.previous ? { previous: { version: row.previous.version } } : {}) };
+    const base = { id: row.id, kind: row.kind ?? "site" as const, version: row.version, source: row.source, repo: row.repo, ref: row.ref, subdir: row.subdir, commit: row.commit, fingerprint: row.fingerprint, installedAt: row.installedAt, active: active === row.id, ...(row.previous ? { previous: { version: row.previous.version } } : {}) };
     const fallbackName: Text = { fr: row.id, en: row.id };
     if (!filesPresent(row.id, row.version)) {
       out.push({ ...base, name: fallbackName, description: { fr: "", en: "" }, modes: [], tags: [], status: "missing", problems: [makeIssue("skin-files-missing")], previews: [] });
