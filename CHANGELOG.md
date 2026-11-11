@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Une IA connectée voit maintenant ce qu'une extension lui apporterait avant de l'installer, sait quel droit vous demander, reçoit les textes dans la langue du site et vous prévient quand sa liste d'outils n'est plus à jour.
+
+**In short.** A connected AI now sees what an extension would give it before installing it, knows which right to ask you for, gets the texts in the site language and tells you when its tool list is out of date.
+
+### Assistants IA
+
+- **La fiche d'une extension dit ce qu'elle apporte à l'IA.** Pour chaque outil : ce qu'il fait en une phrase, s'il lit ou s'il écrit, s'il est accordé d'office et, pour cet accès, le droit que vous devriez cocher. L'IA peut vous dire « en installant cette extension, je pourrais faire ceci ; cochez cela ».
+- **(English) The sheet of an extension says what it gives the AI.** For each tool: what it does in one sentence, whether it reads or writes, whether it is on by default and, for this access, the right you would have to tick. The AI can tell you "installing this extension would let me do this; tick that".
+- **Les réponses de l'IA suivent la langue du site.** Les explications de « Mon accès » (droits, limites, reconnexion) sont en français ou en anglais selon votre site. Un outil d'extension sans texte français reste en anglais et l'IA le signale.
+- **(English) The AI's answers follow the site language.** The explanations of "My access" (rights, limits, reconnection) are in French or English like your site. An extension tool with no French text stays in English and the AI says so.
+- **L'IA sait quand elle doit se reconnecter.** Si vous avez coché un droit ou installé une extension après sa connexion, elle le voit tout de suite dans « Mon accès » et dans « État du site », avec une phrase à vous dire.
+- **(English) The AI knows when it must reconnect.** If you ticked a right or installed an extension after it connected, it sees it at once in "My access" and in "Site status", with a sentence to tell you.
+
+### Pour les développeurs
+
+- **Tool discovery.** `moduleTools.ts` (`declaredTools`, `toolsBlock`) builds `toolsForYourAssistant` from the manifest `mcp` and `i18n` blocks (`toolDescriptionLang`, `toolGrantedByDefault` in `mcpProvider.ts`); `catalogGet` and `catalogPlan` take the calling access. New `McpTool.descriptionLang`. See `docs/MAINTENANCE-IA.md`.
+- **Language.** The sentences of `maintenance_my_access` are `aim.my.*` and `aim.mod.*` keys (EN and FR), in the site language.
+- **Reconnection.** `tools/list` records `mcp.listSeen.<access>` (revision and tool names, `listSeen.ts`); `reconnect.ts` compares it with the current state for `maintenance_my_access` (exact names) and `maintenance_status` (revision only). No push, no timer, no migration.
+
 ## 0.8.0 — 2026-11-11
 
 **En bref.** Vos pages d'overlay peuvent porter un skin : une allure complète (couleurs, polices, bordures, ombres, petite animation) qui s'applique à tous les éléments sans rien changer à leur contenu. Un nouvel onglet « Skin » propose une galerie avec aperçus. Un interrupteur « Un skin par jeu » (ou par scène, ou par ambiance, selon l'extension) change le skin tout seul quand la situation change. Rien ne change pour vos pages existantes tant que vous ne choisissez pas de skin.
