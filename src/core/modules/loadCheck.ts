@@ -54,6 +54,11 @@ export function shapeProblems(shape: Shape | undefined): string[] {
       else if (!FN(v)) out.push(`${group}.${k} must be a function`);
     }
   }
+  const ctxs = shape.overlayContexts;
+  if (ctxs !== undefined) {
+    if (!isMap(ctxs)) out.push('"overlayContexts" must be an object');
+    else for (const [k, v] of Object.entries(ctxs)) if (!isMap(v) || !FN(v.current) || (v.values !== undefined && !FN(v.values))) out.push(`overlayContexts.${k} needs a "current" function (and "values", if present, must be a function)`);
+  }
   const dash = shape.dashboard;
   if (dash !== undefined) {
     if (!isMap(dash)) out.push('"dashboard" must be an object');

@@ -55,6 +55,7 @@ test("étanchéité : le code des pages d'overlay n'emploie jamais le vocabulair
     const text = fs.readFileSync(f, "utf8");
     // Le seul endroit qui NOMME ce vocabulaire est le commentaire qui l'interdit (tokens.ts, render.ts) ; aucun chargement ni usage.
     const code = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-    assert.doesNotMatch(code, /--sk-|data-skin|skins\/render|core\/skins|getActiveSkin|skinCss/, f);
+    // 0.8.0: overlay skins reuse the install pipeline (service, registry) but never the site skin vocabulary or its composition and sheet sanitiser.
+    assert.doesNotMatch(code, /--sk-|data-skin|skins\/render|skins\/compose|skins\/sanitize|getActiveSkin|sanitizeSkinCss/, f);
   }
 });

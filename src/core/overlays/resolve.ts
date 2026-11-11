@@ -20,6 +20,8 @@ export type ResolvedElement = {
   /** Pourquoi, pour le mode test et l'administration seulement (jamais montré en direct). */
   reason?: "gone" | "stalled" | "error" | "address" | "empty";
   layout?: FrameLayout;
+  /** The element follows the common style, so an overlay skin applies to it (`followsStyle`). */
+  follows?: boolean;
   src?: string;
   demoSrc?: string;
 };
@@ -49,7 +51,7 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
       const base = parseAddress(answer);
       if (!base) return { el, title, status: "failed", reason: "address", layout };
       const input = { decl, layout, style: page.style, options, lang: opts.lang };
-      return { el, title, status: "ok", layout, src: finalAddress(base, input), ...(decl.demo ? { demoSrc: finalAddress(base, input, true) } : {}) };
+      return { el, title, status: "ok", layout, follows: decl.followsStyle, src: finalAddress(base, input), ...(decl.demo ? { demoSrc: finalAddress(base, input, true) } : {}) };
     } catch (error) {
       // Le message d'un module peut contenir une adresse secrète : on ne journalise que sa nature.
       console.error(`[overlays] element ${a.instance.key}/${decl.id} failed (${error instanceof Error ? error.name : "error"})`);

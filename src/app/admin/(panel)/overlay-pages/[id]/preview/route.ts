@@ -14,5 +14,6 @@ export async function GET(request: Request, { params }: { params: Promise<{ id: 
   const user = await currentUser();
   if (!hasRole(user, OVERLAY_NEED)) return new Response("Forbidden", { status: 403, headers: { "Cache-Control": "no-store" } });
   const page = await getPage((await params).id);
-  return page ? pageResponse(page, request, { preview: true }) : notFoundResponse();
+  const forced = new URL(request.url).searchParams.get("skin");
+  return page ? pageResponse(page, request, { preview: true, ...(forced !== null ? { forceSkin: forced.slice(0, 41) } : {}) }) : notFoundResponse();
 }

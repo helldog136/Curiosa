@@ -15,6 +15,7 @@ import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
+import { overlayContextIssues, overlayContextsSchema } from "../overlays/contextDecl";
 import { previewIssues, previewsSchema } from "./previews";
 import { MAX_IMAGE_HOSTS, isDeclarableImageHost } from "../adminkit/image";
 import { LANG_CODE_RE } from "../i18n/audit.mjs";
@@ -367,6 +368,11 @@ export const manifestSchema = z.object({
    */
   overlayElements: overlayElementsSchema.optional(),
   /**
+   * (core 0.8.0) Named CONTEXT values the module can provide to overlay pages (the current game…): the core maps a value to an overlay skin. Generic: the core never names a module.
+   * See docs/OVERLAY-SKINS.md. An older core ignores the key: the module declares `minCore: "0.8.0"` (required here).
+   */
+  overlayContexts: overlayContextsSchema.optional(),
+  /**
    * (cœur 0.6.1) VISUELS du module : 6 captures au plus (`{ file: "previews/commandes.webp", caption, alt, type: "public" | "admin" | "overlay" }`, légende et texte alternatif en français ET en anglais)
    * qui montrent dans la fiche de l'extension ce que le module ajoute. Images WebP ou PNG de 150 Ko au plus, lues par le cœur (jamais chargées par le navigateur depuis un site tiers). Voir docs/CREATE-A-MODULE.md.
    * AJOUT SANS DANGER : un cœur plus ancien ignore la clé et affiche la fiche comme avant, donc aucun `minCore` n'est à déclarer pour elle.
@@ -393,6 +399,7 @@ export const manifestSchema = z.object({
   })).max(MAX_MODULE_RIGHTS).optional(),
 }).superRefine((m, ctx) => {
   if (m.skin) for (const issue of moduleSkinIssues(m.id, m.skin)) ctx.addIssue({ code: "custom", path: ["skin", ...issue.path], message: issue.message });
+  for (const issue of overlayContextIssues(m.overlayContexts, m.minCore)) ctx.addIssue({ code: "custom", path: ["overlayContexts", ...issue.path], message: issue.message });
   for (const issue of overlayElementIssues(m.overlayElements, m.minCore)) ctx.addIssue({ code: "custom", path: ["overlayElements", ...issue.path], message: issue.message });
   if (m.pageSetting !== undefined) {
     const field = m.settings.find((f) => f.key === m.pageSetting);

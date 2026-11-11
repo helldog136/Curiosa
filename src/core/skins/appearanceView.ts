@@ -133,7 +133,7 @@ function skinFonts(bare: Composed): AppearanceView["fonts"]["skin"] {
 export async function loadAppearanceView(): Promise<AppearanceView> {
   const layer = await getModuleSkinLayer();
   const rawActive = await readActiveSetting();
-  const rows = await installed();
+  const rows = (await installed()).filter((r) => r.kind !== "overlay");
   const rowOf = (id: string) => rows.find((r) => r.id === id) ?? null;
 
   let activeDef = rawActive === BASIC_ID ? BASIC : null;
