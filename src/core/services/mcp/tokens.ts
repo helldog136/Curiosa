@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
 import { getSetting, setSetting } from "@/core/settings";
+import { forgetListSeen } from "./listSeen";
 import { parseGrants, type Grants, type Scope } from "./access";
 
 export type TokenScope = Scope;
@@ -49,6 +50,7 @@ export async function findTokenId(token: string): Promise<string | null> {
 export async function revokeToken(id: string): Promise<void> {
   await prisma.apiToken.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
   await setUrlAccess(id, false);
+  await forgetListSeen(id);
 }
 
 export type AuthedToken = { id: string; name: string; scope: TokenScope; grants: Grants };

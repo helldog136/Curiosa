@@ -20,6 +20,10 @@ import { deps } from "./deps";
 import { within } from "./within";
 import { contentSummary } from "./content/service";
 import { publicRepo, redactSecrets, tailLines } from "./redact";
+import { makeTranslator } from "@/core/i18n/dictionary";
+import { getSiteConfig } from "@/core/settings";
+import { getTokenGrants } from "@/core/services/mcp/tokens";
+import { reconnectView } from "./reconnect";
 import { diskSpace } from "@/core/storage/disk";
 import { storageInfo } from "@/core/storage/service";
 import { storageForTool } from "@/core/storage/tool";
@@ -44,11 +48,16 @@ export function updateRunning(): boolean {
 /** Une version stable `X.Y.Z` (jamais `-rc.N`, `dev-…` ni un commit). */
 export const isStableVersion = (v: string | null | undefined): v is string => !!v && /^v?\d+\.\d+\.\d+$/.test(v);
 
-export async function status() {
+export async function status(actor?: { name: string; tokenId?: string }) {
+  // Top level, cheap (no module is loaded): did the rights or the features change after this access was shown its tool list? The same sentence as maintenance_my_access.
+  const token = actor?.tokenId ? await getTokenGrants(actor.tokenId).catch(() => null) : null;
+  const config = token ? await getSiteConfig() : null;
+  const reconnect = token && config ? await reconnectView(actor!.tokenId, token, makeTranslator(config.adminLocale ?? config.defaultLocale, config.defaultLocale)).catch(() => null) : null;
   const info = getInstallInfo(appDir());
   const state = readUpdateState(dataDir());
   const rows = await listModuleRows();
   return {
+    ...(reconnect ? { reconnectNeeded: reconnect.reconnectNeeded, ...("sayToTheUser" in reconnect ? { sayToTheUser: reconnect.sayToTheUser, checkWith: "maintenance_my_access" } : {}) } : {}),
     core: { version: readVersion(appDir()), channel: await getUpdateChannel(), install: info.mode, canUpdateFromAdmin: info.canUpdate, restart: info.restart },
     runtime: { node: process.version, platform: `${process.platform}-${process.arch}`, uptimeSeconds: Math.round(process.uptime()) },
     modules: { installed: rows.length },

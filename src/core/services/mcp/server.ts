@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/core/db";
 import { getSiteConfig } from "@/core/settings";
 import { canUse } from "./access";
+import { recordListSeen, revisionNow } from "./listSeen";
 import { authenticate, authenticateByUrl, isMcpEnabled, rateLimited, type AuthedToken } from "./tokens";
 import type { McpTool } from "./types";
 
@@ -57,9 +58,12 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools)
     }
     case "ping":
       return rpcResult(rpc.id, {});
-    case "tools/list":
+    case "tools/list": {
+      const shown = visible(await listTools(), token);
+      // What this client is shown now: the baseline of "has my list changed since?" (maintenance_my_access, maintenance_status).
+      await revisionNow(token).then((rev) => recordListSeen(token.id, rev, shown.map((t) => t.name))).catch(() => {});
       return rpcResult(rpc.id, {
-        tools: visible(await listTools(), token).map((t) => ({
+        tools: shown.map((t) => ({
           name: t.name,
           title: t.title,
           description: t.description,
@@ -67,6 +71,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools)
           annotations: { readOnlyHint: t.readOnly, destructiveHint: t.destructive, idempotentHint: false, openWorldHint: false },
         })),
       });
+    }
     case "tools/call": {
       const name = String(rpc.params?.name ?? "");
       const tool = (await listTools({ name })).find((t) => t.name === name);
