@@ -59,3 +59,9 @@ test("étanchéité : le code des pages d'overlay n'emploie jamais le vocabulair
     assert.doesNotMatch(code, /--sk-|data-skin|skins\/render|skins\/compose|skins\/sanitize|getActiveSkin|sanitizeSkinCss/, f);
   }
 });
+
+test("sélecteur d'éléments : groupes au nom (traduit) du module, surnom d'instance seulement s'il y en a plusieurs, recherche en direct", () => {
+  const page = fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/page.tsx", "utf8"), editor = fs.readFileSync("src/components/admin/OverlayEditor.tsx", "utf8");
+  assert.match(page, /group: c\.moduleName, groupId: c\.moduleId/); assert.match(page, /\.size \?\? 0\) > 1 \? c\.instanceLabel : ""/); assert.match(page, /localeCompare\(b\.moduleName, locale\)|a\.moduleName\.localeCompare\(b\.moduleName, locale\)/);
+  assert.match(editor, /foldText\(`\$\{a\.group\} \$\{a\.label\} \$\{a\.description\} \$\{a\.hint\}`\)/); assert.match(editor, /<details key=\{id\} open/); assert.match(editor, /s\("ed\.pickClear"\)/);
+});

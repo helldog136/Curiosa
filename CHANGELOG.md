@@ -9,9 +9,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## 0.8.2 — 2026-11-12
 
-**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher.
+**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher. La liste « Ajouter un élément » est rangée par nom d'extension, avec une recherche.
 
-**In short.** In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field.
+**In short.** In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field. The "Add an element" list is arranged by extension name, with a search.
 
 ### Overlays
 
@@ -20,8 +20,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Les aperçus viennent de votre site.** Chaque image n'est lue qu'au moment où sa carte apparaît, puis gardée sur votre site. Si elle n'est pas disponible, une image neutre la remplace.
 - **(English) Previews come from your own site.** Each image is only read when its card comes into view, then kept on your site. If it is not available, a neutral picture replaces it.
 
+- **« Ajouter un élément » est plus lisible.** Les groupes portent le nom de l'extension (par exemple « Labyrinthe »), triés dans votre langue, et chacun montre combien d'éléments il contient. Le nom de l'instance n'apparaît que si une extension en a plusieurs.
+- **(English) "Add an element" is easier to read.** Groups carry the extension's name (for example "Labyrinthe"), sorted in your language, and each shows how many elements it holds. The instance name only shows when an extension has several.
+- **Une recherche en haut de la liste.** Elle filtre en direct sur le nom du groupe, celui de l'élément et sa description, sans tenir compte des accents ni des majuscules.
+- **(English) A search at the top of the list.** It filters live on the group name, the element name and its description, ignoring accents and case.
+
 ### Pour les développeurs
 
+- **Element picker.** `page.tsx` titles each group with `moduleName` and passes `groupId` and `hint` (instance label, only when the module has several instances); the list is sorted with the person's locale; `OverlayEditor` filters with `foldText`/`queryWords`. Frame titles in the page are unchanged.
 - **Catalogue previews.** `overlays/skinPreview.ts` reads the `.webp` of a catalogue overlay entry (one bounded request, pinned on its tag, signature and size checked), keeps it in `data/cache` and serves it from `/admin/overlay-pages/skin-preview/<id>` (admin only, id from the catalogue). Placeholder when unavailable.
 
 ## 0.8.1 — 2026-11-11

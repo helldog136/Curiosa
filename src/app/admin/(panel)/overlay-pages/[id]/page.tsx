@@ -24,7 +24,7 @@ export const dynamic = "force-dynamic";
 /** Les textes de l'éditeur (ovp.ed.<clé>) : envoyés tels quels au navigateur, qui n'a pas le dictionnaire. */
 const STRINGS = [
   "name", "resolution", "resolutionOther", "resolutionHelp", "width", "height", "style", "styleHelp", "style.text", "style.text.light", "style.text.dark", "style.background", "style.background.transparent", "style.background.soft",
-  "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "previewScale", "zoom", "zoomFit", "zoomX", "hidden", "gone", "goneHelp", "elements", "empty",
+  "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "pickSearch", "pickNone", "pickClear", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "previewScale", "zoom", "zoomFit", "zoomX", "hidden", "gone", "goneHelp", "elements", "empty",
   "visible", "panel", "field.x", "field.y", "field.w", "field.h", "anchor", "anchorHelp", "margin", "front", "back", "up", "down", "options", "moreOptions", "noStyle", "remove", "removed", "added",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
@@ -47,8 +47,12 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
   const testing = testActive(page.testUntil, now);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
-  const available: ClientElement[] = [...catalog.values()].sort((a, b) => a.instanceLabel.localeCompare(b.instanceLabel) || L(a.decl.label).localeCompare(L(b.decl.label))).map((c) => ({
-    key: catalogKey(c.instance, c.decl.id), instance: c.instance, element: c.decl.id, group: c.instanceLabel, title: `${c.instanceLabel} · ${L(c.decl.label)}`, label: L(c.decl.label), description: L(c.decl.description),
+  // Groups are titled with the TRANSLATED NAME OF THE MODULE ("Labyrinthe", "Bandeau sponsors"); the instance nickname is only a hint, and only when a module has several instances.
+  const instancesOf = new Map<string, Set<string>>();
+  for (const c of catalog.values()) instancesOf.set(c.moduleId, new Set([...(instancesOf.get(c.moduleId) ?? []), c.instance]));
+  const available: ClientElement[] = [...catalog.values()].sort((a, b) => a.moduleName.localeCompare(b.moduleName, locale) || a.instanceLabel.localeCompare(b.instanceLabel, locale) || L(a.decl.label).localeCompare(L(b.decl.label), locale)).map((c) => ({
+    key: catalogKey(c.instance, c.decl.id), instance: c.instance, element: c.decl.id, group: c.moduleName, groupId: c.moduleId, hint: (instancesOf.get(c.moduleId)?.size ?? 0) > 1 ? c.instanceLabel : "",
+    title: `${c.instanceLabel} · ${L(c.decl.label)}`, label: L(c.decl.label), description: L(c.decl.description),
     layout: { fit: c.decl.fit, size: c.decl.size, referenceHeight: c.decl.referenceHeight, ratios: c.decl.ratios, minSize: c.decl.minSize }, followsStyle: c.decl.followsStyle,
     options: c.decl.options.map((o) => ({
       id: o.id, type: o.type, label: L(o.label), help: L(o.help), example: o.example ?? "", default: defaultOf(o),

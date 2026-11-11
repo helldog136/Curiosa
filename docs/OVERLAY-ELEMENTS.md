@@ -48,7 +48,7 @@ The core **refuses** a manifest that does not follow these rules (clear message,
 | Key | Role |
 | --- | --- |
 | `id` | Identifier of the element in your module: lowercase letters, digits, dashes (41 characters at most). Never changes once published. |
-| `label`, `description` | What people read in "Add an element", in French **and** English. The displayed label is "Instance name · Label". |
+| `label`, `description` | What people read in "Add an element", in French **and** English. The displayed label is "Instance name · Label". In the "Add an element" list, elements are grouped under the translated name of the module (the instance name is a hint only when the module has several instances), with a live search over group, element name and description. |
 | `fit` | `scale` (default), `ratio` or `fluid`. See the next paragraph. |
 | `size` | `scale`: the natural size, for example `600 × 200`. |
 | `referenceHeight` | `ratio`: the height of the virtual window, for example `1080`. |
