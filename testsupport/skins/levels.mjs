@@ -26,6 +26,9 @@ const PRINCIPLE = new Set([
 
 export function levelOf(code) {
   if (PRINCIPLE.has(code)) return "principle";
+  if (code === "overlay-contrast" || code === "overlay-no-shadow") return "readability";   // (0.8.0) overlay skins
+  if (/^overlay-token|^overlay-tokens/.test(code)) return "tokens";
+  if (/^overlay-(contract|no-assets)$/.test(code)) return "manifest";
   if (/^(read-|probable-)/.test(code)) return "readability";
   if (/^tokens-|^module-token|^module-skin|^module-pair/.test(code)) return "tokens";
   if (/^(manifest-|bad-skin-id$|previews-too-many$|skin-modified$)/.test(code)) return "manifest";

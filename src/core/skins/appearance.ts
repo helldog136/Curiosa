@@ -96,7 +96,7 @@ async function takeSnapshot(kind: SkinSnapshot["kind"]): Promise<{ snapshot: Ski
 /** Un skin peut-il être appliqué ? `basic` toujours ; un autre doit être installé et passer encore le contrôle (fichiers présents et intacts). */
 export async function usableSkin(id: string): Promise<true | Failure> {
   if (id === BASIC_ID) return true;
-  if (!SKIN_ID_RE.test(id) || !(await readRows()).some((r) => r.id === id)) return fail("skins.error.notfound");
+  if (!SKIN_ID_RE.test(id) || !(await readRows()).some((r) => r.id === id && r.kind !== "overlay")) return fail("skins.error.notfound");
   const loaded = await loadInstalledSkin(id);
   return loaded.ok ? true : fail("skins.error.invalid", { issues: loaded.issues });
 }

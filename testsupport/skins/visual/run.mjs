@@ -49,6 +49,8 @@ let basicRegressionMemo = null;
 export async function visualCheck(st, options = {}) {
   const issues = [];
   const info = { widths: [], modes: [], pages: [], shots: 0 };
+  // (0.8.0) An overlay skin never touches the public site: there is no demonstration site to draw it on. Its sheet is a closed grammar checked statically.
+  if (st.manifest?.kind === "overlay") return { issues, info: { ...info, overlay: true } };
   let browser, playwright;
   try {
     const pw = await import("../../../scripts/visual/lib/playwright.mjs");

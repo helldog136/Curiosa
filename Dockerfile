@@ -2,7 +2,7 @@
 # source tree): what ships is exactly what the release workflow built and smoke-tested (tests/core/docker-image.test.mjs enforces it).
 #
 # Build context (made by .github/workflows/release.yml): archive-amd64.tar.gz and archive-arm64.tar.gz, the curiosa-vX.Y.Z-linux-<arch>.tar.gz release archives.
-#   docker buildx build --platform linux/amd64,linux/arm64 --build-arg VERSION=0.7.0 <context>
+#   docker buildx build --platform linux/amd64,linux/arm64 --build-arg VERSION=0.8.0 <context>
 # The Prisma CLI (used for migrations at start) must use the engines that ship in the archive and must never try to download or write them: the site
 # runs as a non-root user and may have no network. Their file names depend on the architecture, hence one tiny stage per architecture.
 ARG TARGETARCH

@@ -70,10 +70,12 @@ test("migration : additive (une table et son index, rien d'existant modifié) et
   assert.deepEqual([...sql.matchAll(/^(CREATE (?:UNIQUE )?(?:TABLE|INDEX)|ALTER|DROP|INSERT|UPDATE|DELETE)/gm)].map((m) => m[1]), ["CREATE TABLE", "CREATE UNIQUE INDEX"]);
   assert.doesNotMatch(sql, /ALTER|DROP|REFERENCES/);
   const cols = (await db.prisma.$queryRawUnsafe(`PRAGMA table_info("OverlayPage")`)).map((c) => c.name);
-  for (const c of ["id", "name", "width", "height", "active", "style", "elements", "secretHash", "secretSealed", "testUntil", "rev", "createdAt", "updatedAt"]) assert.ok(cols.includes(c), c);
+  for (const c of ["id", "name", "width", "height", "active", "style", "look", "elements", "secretHash", "secretSealed", "testUntil", "rev", "createdAt", "updatedAt"]) assert.ok(cols.includes(c), c);
   const migrations = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
-  assert.equal(migrations.at(-3), "20261030090000_overlay_pages", "les pages d'overlay précèdent seulement le journal central");
-  assert.equal(migrations.at(-2), "20261101090000_central_journal");
+  assert.ok(migrations.indexOf("20261030090000_overlay_pages") >= 0 && migrations.indexOf("20261101090000_central_journal") > migrations.indexOf("20261030090000_overlay_pages"));
+  // 0.8.0: one column added to the table, nothing else.
+  const skinSql = fs.readFileSync("prisma/migrations/20261111090000_overlay_skins/migration.sql", "utf8").replace(/^--.*$/gm, "").trim();
+  assert.match(skinSql, /^ALTER TABLE "OverlayPage" ADD COLUMN "look" TEXT NOT NULL DEFAULT '\{\}';$/);
 });
 
 // ── Stockage et limites dures ─────────────────────────────────────────────────────────────────────────────────────────────

@@ -443,6 +443,7 @@ model OverlayPage {
   active       Boolean   @default(true)
   style        String    @default("{}")
   elements     String    @default("[]")
+  look         String    @default("{}")
   secretHash   String    @unique
   secretSealed String    @default("")
   testUntil    DateTime?

@@ -128,7 +128,11 @@ export const redirectHref = (redirectId: string, query: Record<string, string | 
 export const redirectsHref = (query: Record<string, string | undefined> = {}): string => withQuery(REDIRECTS_HREF, query);
 /** One overlay page (its editor), and its preview (a real handler: never redirect it). */
 export const overlayPageHref = (pageId: string): string => `${OVERLAY_PAGES_HREF}/${seg(pageId)}`;
-export const overlayPagePreviewHref = (pageId: string): string => `${overlayPageHref(pageId)}/preview`;
+export const overlayPagePreviewHref = (pageId: string, query: Record<string, string | undefined> = {}): string => withQuery(`${overlayPageHref(pageId)}/preview`, query);
+/** The skin tab of an overlay page (default skin, skin per context rules), the list of known context values (JSON, for the picker) and the sample page of a skin (a real handler). */
+export const overlayPageSkinHref = (pageId: string, query: Record<string, string | undefined> = {}): string => withQuery(`${overlayPageHref(pageId)}/skin`, query);
+export const overlayPageValuesHref = (pageId: string): string => `${overlayPageHref(pageId)}/skin/values`;
+export const overlaySkinSampleHref = (skinId: string): string => `${OVERLAY_PAGES_HREF}/skin-sample/${seg(skinId)}`;
 
 /** True for a path inside the administration (`/admin` or `/admin/…`, never `//host`). Used to accept a redirect target that comes from a module. */
 export function isAdminPath(to: string): boolean {

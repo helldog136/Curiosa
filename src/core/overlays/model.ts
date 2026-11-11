@@ -1,4 +1,5 @@
 import type { OverlayElementDecl } from "./decl";
+import type { PageLook } from "./look";
 
 /**
  * PAGES D'OVERLAY (0.5.0) : types et bornes dures. Pur, sans base ni Next : testé directement.
@@ -45,6 +46,8 @@ export type OverlayPageData = {
   height: number;
   active: boolean;
   style: OverlayStyle;
+  /** (0.8.0) Overlay skin and skin per context rules; the default look changes nothing. */
+  look: PageLook;
   elements: PageElement[];
   rev: number;
   testUntil: number | null;

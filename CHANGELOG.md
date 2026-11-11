@@ -7,6 +7,40 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.8.0 — 2026-11-11
+
+**En bref.** Vos pages d'overlay peuvent porter un skin : une allure complète (couleurs, polices, bordures, ombres, petite animation) qui s'applique à tous les éléments sans rien changer à leur contenu. Un nouvel onglet « Skin » propose une galerie avec aperçus. Un interrupteur « Un skin par jeu » (ou par scène, ou par ambiance, selon l'extension) change le skin tout seul quand la situation change. Rien ne change pour vos pages existantes tant que vous ne choisissez pas de skin.
+
+**In short.** Your overlay pages can wear a skin: a complete look (colors, fonts, borders, shadows, a small animation) applied to every element without changing their content. A new "Skin" tab offers a gallery with previews. A "Skin per game" switch (or per scene, or per mood, depending on the extension) changes the skin by itself when the situation changes. Nothing changes for your existing pages until you pick a skin.
+
+### Overlays
+
+- **Un onglet « Skin » dans chaque page d'overlay.** Une galerie montre chaque skin installé avec un aperçu vivant, et un clic suffit pour l'utiliser.
+- **(English) A "Skin" tab in every overlay page.** A gallery shows every installed skin with a live preview, and one click is enough to use it.
+- **Un skin selon la situation.** Quand une extension connaît la situation (le jeu en cours, par exemple), un interrupteur apparaît. Activé, un tableau avec recherche vous laisse choisir un skin par jeu ; le reste garde le skin par défaut.
+- **(English) A skin by situation.** When an extension knows the situation (the current game, for example), a switch appears. Turned on, a searchable table lets you pick a skin per game; the rest keeps the default skin.
+- **Le changement est doux et sûr.** Le skin ne change que si la situation reste la même sur deux contrôles de suite, avec un fondu. Pour les personnes qui préfèrent moins de mouvement, le changement est instantané et rien ne bouge.
+- **(English) The change is smooth and safe.** The skin only changes when the situation is the same on two checks in a row, with a fade. For people who prefer less motion, the change is instant and nothing moves.
+- **Lisibilité garantie.** Un skin est refusé si son texte n'est pas assez contrasté avec son fond. Un skin ne contient aucun programme : seulement des couleurs, des tailles et des formes.
+- **(English) Readability guaranteed.** A skin is refused if its text does not contrast enough with its background. A skin contains no program: only colors, sizes and shapes.
+- **Si l'extension est absente ou hors ligne, rien ne casse.** La page retombe sur le skin par défaut, puis sur le style commun.
+- **(English) If the extension is missing or offline, nothing breaks.** The page falls back to the default skin, then to the common style.
+
+### Assistant IA
+
+- **Quatre outils pour votre assistant.** Il peut lister les skins et lire, ajouter ou modifier les règles « situation → skin ». Les deux outils qui modifient ne sont jamais accordés d'office, et aucun ne supprime quoi que ce soit.
+- **(English) Four tools for your assistant.** It can list skins and read, add or change the "situation → skin" rules. The two tools that change things are never granted by default, and none deletes anything.
+
+### Pour les développeurs
+
+- **Overlay skins.** `skin.json` accepts `kind: "overlay"` (contract 2; `SKIN_CONTRACT` is now 2, older cores refuse it as "contract newer"). Closed `--ov-*` vocabulary, strict rule grammar, contrast checks and compiled sheet in `overlays/skin*.ts`; `runOverlay` in `skins/validate.ts`; `kind` in registry rows; no fonts or images. See `docs/OVERLAY-SKINS.md`.
+- **Injection.** The core page adopts the compiled sheet into each `followsStyle` element iframe (constructed style sheet, `data-ov-skin` on the root); the `state` endpoint carries the skin key and the sheet only when it differs; two identical reads before a switch; reduced motion respected.
+- **Overlay contexts.** New manifest key `overlayContexts` (`minCore` 0.8.0) and `overlayContexts.<id>.current/values` in `index.mjs`: a generic, optional contract, and the core never imports a module (`overlays/context.ts`). No provider, module off, slow or failing means the default skin.
+- **Look of a page.** `OverlayPage.look` (migration `20261111090000_overlay_skins`, one column with a default), `overlays/look.ts` (one validation for the administration and the AI tools), included in backups. Support floor unchanged (no conversion).
+- **Catalogue.** Overlay skins are listed in `catalogue/overlay-skins.json` of the skins repository, a separate file so older cores never see them; `listCatalogue({ kind })`. The Appearance page only lists and activates site skins.
+- **MCP.** `overlay_skins_list`, `overlay_skin_rules_list` (read, profile "read"), `overlay_skin_rules_create`, `overlay_skin_rules_update` (write, profile "full", `default: false`).
+- **Docs.** `docs/OVERLAY-ELEMENTS.md` is now in English; new `docs/OVERLAY-SKINS.md`.
+
 ## 0.7.0 — 2026-11-07
 
 **En bref.** Le mode simple ou avancé et le thème de l'administration se règlent dans « Mon compte ». Le menu d'administration range les extensions en Contenu, Communauté, Outils et Connexions, et « Redirections » devient « Liens courts ». « Page d'accueil », « Menu du site » et « Réseaux sociaux » deviennent une seule entrée « Accueil et menu » avec des onglets. Cinq entrées (Santé de mon site, Sauvegarde, Mises à jour, Entretien, Journal d'audit) deviennent une seule entrée « Entretien » avec des onglets. « Réglages du site » devient « Réglages » et réunit la visibilité dans les IA et, en mode avancé, l'adresse web. L'onglet « Jaquettes de jeux » disparaît des réglages du site : il ne faisait que dire que le module s'en occupe. Rien ne change pour vos jaquettes.
