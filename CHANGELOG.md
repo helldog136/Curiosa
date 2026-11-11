@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.8.2 — 2026-11-12
+
+**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher.
+
+**In short.** In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field.
+
+### Overlays
+
+- **Un aperçu pour chaque skin à obtenir.** Les cartes ont toutes la même hauteur, avec l'aperçu, le nom, une courte phrase et le bouton « Installer » toujours au même endroit. Un champ filtre la liste pendant la frappe.
+- **(English) A preview for every skin to get.** Cards all have the same height, with the preview, the name, a short sentence and the "Install" button always in the same place. A field filters the list as you type.
+- **Les aperçus viennent de votre site.** Chaque image n'est lue qu'au moment où sa carte apparaît, puis gardée sur votre site. Si elle n'est pas disponible, une image neutre la remplace.
+- **(English) Previews come from your own site.** Each image is only read when its card comes into view, then kept on your site. If it is not available, a neutral picture replaces it.
+
+### Pour les développeurs
+
+- **Catalogue previews.** `overlays/skinPreview.ts` reads the `.webp` of a catalogue overlay entry (one bounded request, pinned on its tag, signature and size checked), keeps it in `data/cache` and serves it from `/admin/overlay-pages/skin-preview/<id>` (admin only, id from the catalogue). Placeholder when unavailable.
+
 ## 0.8.1 — 2026-11-11
 
 **En bref.** Une IA connectée voit maintenant ce qu'une extension lui apporterait avant de l'installer, sait quel droit vous demander, reçoit les textes dans la langue du site et vous prévient quand sa liste d'outils n'est plus à jour.
