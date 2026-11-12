@@ -17,7 +17,7 @@ import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page"
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Switch } from "@/components/admin/Switch";
 import { ui } from "@/components/admin/ui";
-import { chooseContextAction, installOverlaySkinAction, removeRuleAction, saveRuleAction, searchValuesAction, setPageSkinAction, toggleByContextAction } from "./actions";
+import { chooseContextAction, installOverlaySkinAction, refreshSkinCatalogueAction, removeRuleAction, saveRuleAction, searchValuesAction, setPageSkinAction, toggleByContextAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +56,12 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
           <Link href={OVERLAY_PAGES_HREF} className={ui.btn}>{t("ovp.back")}</Link>
         </PageHeader>
         <LinkTabs tabs={tabs} current="skin" label={t("ovp.tab.label")} />
-        {ok && <Callout tone="info" role="status">{ok === "removed" ? t("ovp.skin.ok.removed") : ok === "installed" ? t("ovp.skin.ok.installed") : t("ovp.skin.ok.skin")}</Callout>}
+        {ok && <Callout tone="info" role="status">{ok === "removed" ? t("ovp.skin.ok.removed") : ok === "installed" ? t("ovp.skin.ok.installed") : ok === "refreshed" ? t("ovp.skin.ok.refreshed") : t("ovp.skin.ok.skin")}</Callout>}
         {err && <Callout tone="warn" role="alert">{t(err === "install" ? "ovp.skin.err.install" : "ovp.skin.err.generic")}</Callout>}
       </div>
 
       <Panel title={t("ovp.skin.gallery")} help={t("ovp.skin.galleryHelp")} testid="skin-gallery">
-        <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} /></div>
+        <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} reducedNote={t("ovp.skin.animReduced")} forceLabel={t("ovp.skin.animForce")} /></div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[{ id: "", label: t("ovp.skin.common"), text: t("ovp.skin.commonHelp") }, ...usable.map((s) => ({ id: s.id, label: name(s), text: desc(s) }))].map((s) => {
             const on = (look.skin ?? "") === s.id;
@@ -81,6 +81,8 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
         <section className="mt-6 space-y-3" aria-labelledby="skin-get-title" data-testid="skin-get">
           <h3 id="skin-get-title" className="text-base font-semibold">{t("ovp.skin.get")}</h3>
           {catalogue?.unreachable && <p role="status" className={ui.help}>{t("skins.error.catalogue")}</p>}
+          {catalogue?.source === "cache" && !catalogue.unreachable && <p role="status" className={ui.help} data-testid="skin-get-old">{t("ovp.skin.getOld")}</p>}
+          <form action={refreshSkinCatalogueAction.bind(null, id)}><PendingButton variant="btn" className="min-h-11" pendingLabel={t("progress.checking")}>{t("ovp.skin.refresh")}</PendingButton></form>
           {!catalogue?.unreachable && toGet.length === 0 && <p className={ui.help}>{t("ovp.skin.getNone")}</p>}
           {toGet.length > 0 && (
             <>

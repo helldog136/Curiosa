@@ -56,7 +56,7 @@ export type CatalogueSource = "repository" | "cache" | "none";
 export type CatalogueRead = { entries: SkinCatalogueEntry[]; source: CatalogueSource; fetchedAt: number | null; /** Adresse du dépôt du catalogue lu. */ origin: string | null; /** Ni dépôt ni dernière copie reçue : « réessayez » et non « rien à proposer ». */ unreachable: boolean };
 
 const TTL = 15 * 60_000;
-/** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
+/** Un catalogue injoignable (ou remplacé par la dernière copie reçue) n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure (0.10.1). */
 const FAILED_TTL = 20_000;
 const MAX_ENTRIES = 300;
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
@@ -128,7 +128,7 @@ export async function readSkinCatalogue(opts: CatalogueOptions): Promise<Catalog
   const { fetchImpl = fetch, now = Date.now } = opts;
   const extraUrl = process.env.SKINS_INDEX_URL;
   const key = `${process.env.CURIOSA_SKINS_REPO ?? ""}|${process.env.CURIOSA_SKINS_REF ?? ""}|${extraUrl ?? ""}`;
-  if (!opts.fresh && memo && memo.key === key && memo.coreVersion === opts.coreVersion && now() - memo.at < (memo.result.source === "none" ? FAILED_TTL : TTL)) return memo.result;
+  if (!opts.fresh && memo && memo.key === key && memo.coreVersion === opts.coreVersion && now() - memo.at < (memo.result.source === "repository" ? TTL : FAILED_TTL)) return memo.result;
 
   let base: CatalogueRead = { entries: [], source: "none", fetchedAt: null, origin: null, unreachable: true };
   const repo = resolveSkinsRepo();
