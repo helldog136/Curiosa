@@ -89,7 +89,7 @@ test("feuille compilée : jetons prioritaires sur la racine et l'élément, rend
   const p = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: GOOD, css: `html[data-ov-skin="epic"] [data-ov-part="panel"]{color:#fff}` });
   assert.match(p.css, /^html\[data-ov-skin="epic"\],html\[data-ov-skin="epic"\] \[data-ov-region="element"\]\{--ov-fg:#ffffff!important/);
   assert.match(p.css, /font-family:var\(--ov-font\)/); assert.match(p.css, /box-shadow:var\(--ov-shadow\)/); assert.match(p.css, /@keyframes ov-rise/);
-  assert.match(p.css, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \*\{animation:none!important/);
+  assert.match(p.css, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \*,html\[data-ov-skin="epic"\] \*::before,html\[data-ov-skin="epic"\] \*::after\{animation:none!important/);
   const plain = Sh.compileSkin({ id: "plain", version: "1.0.0", tokens: { "--ov-fg": "#fff", "--ov-surface": "#000" }, css: "" });
   assert.doesNotMatch(plain.css, /font-family|box-shadow|@keyframes|prefers-reduced-motion/, "an undefined token maps nothing: elements keep their own look");
 });
@@ -270,7 +270,7 @@ test("aperçu d'un skin : scène fixe sans donnée réelle, le skin y est appliq
   await setup(); await installSkin("epic");
   const p = await Load.skinPayload("epic");
   const html = Sample.renderSample(p, makeTranslator("fr"), "fr", "NONCE");
-  assert.match(html, /data-ov-skin="epic"/); assert.match(html, /data-ov-part="panel"/); assert.match(html, /nonce="NONCE"/); assert.doesNotMatch(html, /<script|https?:\/\//);
+  assert.match(html, /data-ov-skin="epic"/); assert.match(html, /data-ov-part="panel"/); assert.match(html, /nonce="NONCE"/); assert.doesNotMatch(html, /https?:\/\/|src=|<link|@import/); assert.match(html, /matchMedia\("\(prefers-reduced-motion: reduce\)"\)\.matches;if\(rm\)return/, "still frame for reduced motion"); assert.match(html, /d\.ov==="play"/, "plays only when the parent says so");
   assert.doesNotMatch(Sample.renderSample(null, makeTranslator("en"), "en", "N"), /data-ov-skin/);
   assert.equal(await Load.skinPayload("nope"), null);
 });
@@ -344,7 +344,7 @@ test("aperçu d'un skin du catalogue : lu une fois depuis le dépôt, vérifié 
   const P = await import("@/core/overlays/skinPreview");
   const { clearSkinCatalogueCache } = await import("@/core/skins/catalogue");
   const { DATA_DIR } = await import("@/core/config");
-  const entry = { id: "epic", name: { fr: "Épique", en: "Epic" }, description: { fr: "d", en: "d" }, repo: "https://github.com/example/skins", subdir: "skins/epic", ref: "epic/v1.0.0", version: "1.0.0", skinContract: 2, requires: { core: "0.8.0" }, preview: "skins/epic/previews/overlay-640.webp" };
+  const entry = { id: "epic", name: { fr: "Épique", en: "Epic" }, description: { fr: "d", en: "d" }, repo: "https://github.com/example/skins", subdir: "skins/epic", ref: "epic/v1.0.0", version: "1.0.0", skinContract: 2, requires: { core: "0.8.0" }, preview: "skins/epic/previews/overlay-640.webp", previewAnim: "skins/epic/previews/overlay-anim.webp" };
   fs.mkdirSync(path.join(DATA_DIR, "cache"), { recursive: true });
   fs.writeFileSync(path.join(DATA_DIR, "cache", "skins-index.json"), JSON.stringify({ version: 1, fetchedAt: Date.now(), origin: null, skins: [], overlaySkins: [entry] }));
   process.env.CURIOSA_SKINS_REPO = "https://github.com/example/no-such-skins-repo";   // unreachable: the last copy received (written above) is what the catalogue gives
@@ -358,6 +358,13 @@ test("aperçu d'un skin du catalogue : lu une fois depuis le dépôt, vérifié 
     assert.equal(first.length, webp.length);
     assert.deepEqual(asked, ["https://raw.githubusercontent.com/example/skins/epic/v1.0.0/skins/epic/previews/overlay-640.webp"], "one bounded request, pinned on the tag, on the one host");
     assert.equal((await P.catalogueSkinPreview("epic")).length, webp.length); assert.equal(rawStats.requests - before, 1, "cached on the site: no second request");
+    // the animated variant: its own file, its own (larger) bound, cached apart
+    const anim = await sharp({ create: { width: 640, height: 360, channels: 3, background: "#321" } }).webp().toBuffer();
+    setRawFetch(async (url) => { asked.push(String(url)); return new Response(String(url).endsWith("overlay-anim.webp") ? anim : "nope", { status: 200 }); });
+    assert.equal((await P.catalogueSkinPreview("epic", "anim")).length, anim.length);
+    assert.ok(asked.at(-1).endsWith("/skins/epic/previews/overlay-anim.webp")); assert.equal((await P.catalogueSkinPreview("epic", "anim")).length, anim.length);
+    assert.equal(P.ANIMATED_MAX_BYTES, 450 * 1024);
+    setRawFetch(async (url) => { asked.push(String(url)); return new Response(String(url).endsWith("overlay-640.webp") ? webp : "nope", { status: 200 }); });
     assert.equal(await P.catalogueSkinPreview("unknown"), null, "only catalogue entries");
     assert.equal(await P.catalogueSkinPreview("../etc"), null);
     fs.rmSync(path.join(DATA_DIR, "cache", "overlay-skin-previews"), { recursive: true, force: true });
@@ -367,4 +374,32 @@ test("aperçu d'un skin du catalogue : lu une fois depuis le dépôt, vérifié 
     assert.equal(await P.catalogueSkinPreview("epic"), null, "offline: null, the page draws a placeholder");
     assert.match(P.PLACEHOLDER_SVG, /^<svg/); assert.doesNotMatch(P.PLACEHOLDER_SVG.replace(/ xmlns="[^"]+"/, ""), /script|http|url\(|href/);
   } finally { setRawFetch(null); delete process.env.CURIOSA_SKINS_REPO; clearSkinCatalogueCache(); }
+});
+
+// ── contract 3: closed presets, layout, structure ────────────────────────────────────────────────────
+test("contrat 3 : formes, cadres, décorations, mouvements et polices sont des NOMS d'une liste fermée, développés par le cœur", () => {
+  const ok = C.sanitizeOverlayCss(`[data-ov-part="panel"]{ov-shape:slanted 16px;ov-frame:double #e8a23b;ov-deco:brackets #e8a23b,scanlines;ov-motion:flicker;ov-font:stencil;ov-text:glow #e8a23b;flex-direction:row-reverse;gap:6px;margin:0 0 6px 0;transform:rotate(-1.5deg);text-align:center}
+[data-ov-part="badge"]{ov-shape:ribbon 10px;ov-deco:shimmer}`, "epic");
+  assert.equal(ok.ok, true, JSON.stringify(ok.issues)); assert.equal(ok.v3, true);
+  assert.match(ok.css, /clip-path:polygon\(0 0,100% 0,calc\(100% - 16px\) 100%,0 100%\)/); assert.match(ok.css, /background-image:linear-gradient\([^)]*\) /, "decorations are background layers of the element itself"); assert.doesNotMatch(ok.css, /::before|::after|(^|[;{])position:/, "no pseudo-element, no position: nothing can move or cover an element's content");
+  assert.match(ok.css, /@media \(prefers-reduced-motion:no-preference\)\{[^}]*animation:ov-flicker/, "idle motion only without a reduced-motion request");
+  assert.doesNotMatch(ok.css, /!important|url\(|@import|content:/);
+  assert.equal(C.sanitizeOverlayCss(`[data-ov-part="panel"]{color:#fff}`, "epic").v3, false, "a contract 2 sheet stays contract 2");
+  const bad = [`[data-ov-part="panel"]{ov-shape:star}`, `[data-ov-part="panel"]{ov-shape:slanted 90px}`, `[data-ov-part="panel"]{ov-deco:brackets,hazard,grain}`, 
+    `[data-ov-part="panel"]{ov-motion:flicker;ov-deco:evil}`, `[data-ov-part="panel"]::before{ov-shape:notch}`, `[data-ov-part="panel"]{ov-font:comic}`, `[data-ov-part="panel"]{ov-deco:glow url(x)}`,
+    `[data-ov-part="panel"]{transform:rotate(40deg)}`, `[data-ov-part="panel"]{transform:translateX(900px)}`, `[data-ov-part="panel"]{margin:-90px}`, `[data-ov-part="panel"]{flex-direction:evil}`, `[data-ov-part="panel"]{max-width:20%}`];
+  for (const css of bad) { const r = C.sanitizeOverlayCss(css, "epic"); assert.equal(r.ok, false, css); assert.equal(r.css, "", css); }
+  assert.equal(C.sanitizeOverlayCss(`[data-ov-part="panel"]{ov-motion:flicker;ov-motion:flicker}`, "epic").ok, false, "a motion once per rule");
+  const compiled = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: { "--ov-fg": "#fff", "--ov-surface": "#000" }, css: ok.css });
+  assert.match(compiled.css, /@keyframes ov-flicker/); assert.match(compiled.css, /@keyframes ov-shimmer/); assert.match(compiled.css, /@property --ov-shimmer-x/); assert.match(compiled.css, /prefers-reduced-motion:reduce/);
+});
+
+test("contrat 3 : un skin qui utilise le vocabulaire du contrat 3 doit l'annoncer ; un ancien cœur le refuse proprement", () => {
+  const css = `[data-ov-part="panel"]{ov-shape:notch 12px}`;
+  const r2 = check(skinFolder("epic", { css, manifest: { skinContract: 2 } }));
+  assert.equal(r2.ok, false); assert.ok(r2.issues.some((i) => i.code === "overlay-contract-v3"));
+  const r3 = check(skinFolder("epic", { css, manifest: { skinContract: 3, minCore: "0.8.0" } }));
+  assert.equal(r3.ok, true, JSON.stringify(r3.issues.map((i) => i.code)));
+  const future = check(skinFolder("epic", { manifest: { skinContract: 4 } }));
+  assert.ok(future.issues.some((i) => i.code === "manifest-contract-newer"));
 });

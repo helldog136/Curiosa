@@ -4,9 +4,11 @@
  */
 
 /** Version du contrat de skin que CE cœur comprend (`skinContract` du manifeste, §5.2). */
-export const SKIN_CONTRACT = 2;
+export const SKIN_CONTRACT = 3;
 /** Contract an overlay skin must declare (core 0.8.0): older cores refuse it cleanly ("contract newer") instead of misreading it. */
 export const OVERLAY_SKIN_CONTRACT = 2;
+/** (core 0.9.0) Contract of overlay skins that use the closed presets and layout properties (docs/OVERLAY-SKINS.md section 3): older cores refuse it as "contract newer". */
+export const OVERLAY_SKIN_CONTRACT_V3 = 3;
 
 /** Licences SPDX permises pour le contenu d'un skin et pour chacune de ses ressources (§5.2). */
 export const SPDX_ALLOWED: readonly string[] = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "OFL-1.1"];

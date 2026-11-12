@@ -1,5 +1,7 @@
 # Overlay skins and skin per context
 
+> Contract 3 (core 0.9.0) adds structure to skins: closed shape, frame, decoration, motion and font presets, and layout properties (section 2b). Contract 2 skins keep working unchanged.
+
 Since core 0.8.0, an overlay page can wear an **overlay skin**: a folder of pure data (no code) that restyles every element of the page, and the page can change skin by **context** (the current game, a scene, a mood…) through a generic contract that any module may implement. The first four tokens (`--ov-fg`, `--ov-surface`, `--ov-radius`, `--ov-border`) and every existing page are unchanged: with no skin, nothing is injected.
 
 Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in the same repository as site skins (`curiosa-skins`) and declare themselves in `skin.json`; the vocabulary is distinct from the site's (`--ov-*`, `data-ov-part`, `data-ov-region`); a site skin never touches an overlay and an overlay skin never touches the public site; the elements keep working untouched.
@@ -33,6 +35,7 @@ Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in
 - `skinContract: 2` is required (an older core refuses the skin as "contract newer" instead of misreading it). `modes` does not apply to an overlay skin.
 - The folder rules, licences (SPDX), previews (at least one `.webp`, 150 KB at most) and fingerprint are the ones of site skins. **No fonts and no images**: overlay skins use system fonts and CSS gradients.
 - Install: the same pipeline as site skins (`https://github.com/<owner>/curiosa-skins#<id>/v<version>:skins/<id>`, the catalogue, personal repositories with confirmation). The registry row carries `kind: "overlay"`. The Appearance page lists only site skins; the overlay skin tab lists only overlay skins.
+- Previews: `previews/overlay-640.webp` (still, 150 KB at most) and optionally `previews/overlay-anim.webp` (a looping animated webp of the same scene, 640 x 360, 450 KB at most; the catalogue entry names it in `previewAnim`). The catalogue shows the animated one when the card is on screen and the animation budget allows, and falls back to the still one; both are read once from the repository, checked on their bytes, kept on the site and served by the site itself.
 - Catalogue: official overlay skins are listed in `catalogue/overlay-skins.json` of the skins repository (same entry format as `catalogue/index.json`), a separate file so that older cores never see them.
 - Check with `npm run skin:check -- <folder>`: the same function (`validateSkinFolder`) serves the install, the update and the check.
 
@@ -78,6 +81,25 @@ Only flat rules (24 KB, 90 rules, 14 declarations per rule). The grammar is clos
 
 Any refusal is a precise message in French and English (`overlay-*` codes of `src/core/skins/messages.ts`); nothing is ever copied as is.
 
+### 2b. Contract 3: structure, not only colours (core 0.9.0)
+
+With tokens alone, every skin is the same panels recoloured. Contract 3 lets a rule change the **composition** of the parts, still as pure data: six declarations take a **name from a closed list** (plus an optional bounded number and colour) and the core expands each into fixed CSS. The skin never writes a `clip-path`, a gradient list, a pseudo-element or an animation of its own. A sheet that uses any of this (or the layout properties below) must declare `"skinContract": 3` and `"minCore": "0.9.0"`; an older core refuses it as "contract newer".
+
+| Declaration | Names (closed) | Optional | What the core writes |
+| --- | --- | --- | --- |
+| `ov-shape` | `slanted`, `slanted-both`, `hexagon`, `chevron`, `ticket`, `notch`, `ribbon`, `pill` | cut `4px` to `28px`, `flush` | a `clip-path` polygon (or a pill radius) and inner padding so text is never cut; `flush` removes the padding for avatars and bars |
+| `ov-frame` | `double`, `dashed`, `inset`, `glow`, `thick` | colour | an outline, an inset ring or a glow |
+| `ov-deco` | `brackets`, `hazard`, `scanlines`, `grain`, `halftone`, `glow`, `tape`, `stamp`, `rings`, `stripe`, `flashlight`, `radar`, `shimmer` (two at most, comma separated) | colour | **background layers of the element itself**: no pseudo-element and no `position`, so a decoration paints behind the text and can never move or cover content |
+| `ov-motion` | `drift`, `flicker`, `pulse`, `float` | none | one idle animation, wrapped in `prefers-reduced-motion: no-preference` (`shimmer` of `ov-deco` also moves) |
+| `ov-font` | `stencil`, `handwritten`, `typewriter`, `condensed`, `wide`, `display`, `rounded`, `mono`, `serif` | none | a system font stack (and stretch or tracking for `condensed` and `wide`) |
+| `ov-text` | `outline`, `glow`, `emboss`, `engrave`, `lift` | colour | a text stroke or text shadow |
+
+Layout and shape properties added to the allowed list (all bounded): `flex-direction`, `order`, `align-items`, `justify-content`, `gap`, `margin` (-4 px to 32 px), `max-width` (50 % to 100 %), `transform` (only `rotate()` up to 8 degrees, `skewX()` or `skewY()` up to 10), `font-variant-caps`, `word-spacing`. Flex properties only matter on parts that are flex containers; they never change what a part contains.
+
+Rules of thumb: a shape clips the element's own shadow and border at the cut (use `ov-frame` or a token shadow on parts without a shape); a `hazard` strip or a `tape` needs a little extra `padding-bottom` or `padding-top` on that part; idle motion replaces the entrance preset on the same part (one `animation` list per rule). The sample scene and the real elements are the test: decorations stay behind the text, shapes keep the text inside.
+
+The core also guarantees the text/surface pair: for every skin, containers (`panel`, `card`, `bubble`, `quote`) take `--ov-surface` as background and `--ov-fg` as text, and the text parts (`title`, `name`, `body`, `text`, `message`, `value`, `label`…) follow `--ov-fg`, so an element that draws its own colours cannot put the skin's text on a colour the skin never checked.
+
 ## 3. What the core maps for you
 
 For the tokens a skin defines, the core adds (before the skin's own rules, so a rule can refine them): font and tracking on the element root and on the shared parts, heading font and weight on `title`, `name`, `subtitle`, `kind`, `label`, `badge`, `tag`; case on `title`, `kind`, `badge`, `tag`, `label`; text shadow; muted colour on `subtitle`, `source`, `foot`, `footer`, `author`, `kind`, `how`; surface gradient, border style and width, shadow on `panel`, `card`, `bubble`, `quote`; accent on `bar-fill`, `dot`, `badge` (and `stars`, `winner` text) with `--ov-accent-fg` on badges; and the motion preset on the same containers, switched off for reduced motion.
@@ -118,7 +140,7 @@ export default {
 
 **Overlays > an overlay page > Skin** (the Layout and Skin tabs):
 
-- the **gallery**: the common style and every installed overlay skin with a live sample (a fixed scene drawn by the core, `/admin/overlay-pages/skin-sample/<id>`, no real data); one click on "Use this skin". skins of the catalogue are shown in "Get more skins" as regular cards (live search, same height, the Install button always in the same place) with their 640 x 360 preview, read once from the repository when the card comes into view, kept on the site (`data/cache`) and served by the site itself, with a neutral placeholder when it is unavailable;
+- the **gallery**: the common style and every installed overlay skin with a live, animated sample (a fixed scene drawn by the core, `/admin/overlay-pages/skin-sample/<id>`, no real data): an alert, a counter, a list, a featured card and a banner, with a short looping scenario (alert in and out, counter tick, new row, featured card change, banner change) that shows the skin's entrance and idle motion. The scene runs only while it is on screen, at most six at a time, never with `prefers-reduced-motion: reduce` (a still frame), not while the tab is hidden, and a "Pause the animations" button stops them all; one click on "Use this skin". skins of the catalogue are shown in "Get more skins" as regular cards (live search, same height, the Install button always in the same place) with their 640 x 360 preview, read once from the repository when the card comes into view, kept on the site (`data/cache`) and served by the site itself, with a neutral placeholder when it is unavailable;
 - **Skin by situation**: a switch whose text comes from the module ("Skin per game"), off by default, shown only when a module offers a context. When on: a searchable table (live, no button) "value → skin" with an empty state that gives an example, "Add a rule", and "Edit" opening the core dialog: a searchable picker of the values the module has seen (nothing is typed as a key), a skin list and a live preview of the skin. "Everything else uses: <default skin>" says what happens in the other cases.
 
 ## 6. AI tools (MCP)

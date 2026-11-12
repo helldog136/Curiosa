@@ -2,6 +2,7 @@ import postcss from "postcss";
 import { parseColor } from "../skins/colorParse";
 import { composite, contrastRatio } from "../skins/readability";
 import { lengthPx } from "./skinTokens";
+import { PRESET_PROPS, MOTION_TIMING, emptyExpansion, expandPreset, layerDecls, type PresetProp } from "./skinPresets";
 
 /**
  * SANITISER FOR THE STYLE SHEET OF AN OVERLAY SKIN (core 0.8.0). Pure: no database, no Next, no network.
@@ -12,15 +13,15 @@ import { lengthPx } from "./skinTokens";
  * Every selector is RE-WRITTEN from what was understood under `html[data-ov-skin="<id>"]`: nothing is copied as is.
  */
 export type OverlayCssIssue = { code: string; line?: number; detail?: string };
-export type OverlayCssResult = { ok: boolean; css: string; issues: OverlayCssIssue[]; rules: number };
+export type OverlayCssResult = { ok: boolean; css: string; issues: OverlayCssIssue[]; rules: number; /** The sheet uses contract-3 vocabulary (presets or layout properties): the skin must declare `skinContract: 3`. */ v3?: boolean };
 
-export const OVERLAY_CSS_LIMITS = { maxBytes: 24 * 1024, maxRules: 90, maxDeclarations: 14, maxSelectors: 6 } as const;
+export const OVERLAY_CSS_LIMITS = { maxBytes: 24 * 1024, maxRules: 90, maxDeclarations: 18, maxSelectors: 8 } as const;
 const NAME = "[a-z][a-z0-9-]{0,30}";
 const COMPOUND_RE = new RegExp(`^\\[data-ov-(part|region)="(${NAME})"\\](:first-child|:last-child)?$`);
 const SELECTOR_RE = new RegExp(`^\\[data-ov-(?:part|region)="${NAME}"\\](?::first-child|:last-child)?(?: \\[data-ov-(?:part|region)="${NAME}"\\](?::first-child|:last-child)?){0,2}(::before|::after)?$`);
 export const ANIM_NAMES = ["ov-fade", "ov-rise", "ov-pop", "ov-glow"] as const;
 
-type Kind = "color" | "bg" | "len" | "shadow" | "font" | "weight" | "num" | "transform" | "anim-name" | "time" | "style" | "content" | "deco-len" | "align" | "radius" | "pos";
+type Kind = "color" | "bg" | "len" | "shadow" | "font" | "weight" | "num" | "transform" | "anim-name" | "time" | "style" | "content" | "deco-len" | "align" | "radius" | "pos" | "enum" | "margin" | "xform" | "maxw" | "stretch";
 
 const PROPS: Record<string, Kind> = {
   color: "color", "background-color": "color", "border-color": "color", "border-top-color": "color", "border-bottom-color": "color", "border-left-color": "color", "border-right-color": "color",
@@ -31,8 +32,11 @@ const PROPS: Record<string, Kind> = {
   "border-radius": "radius", "box-shadow": "shadow", "text-shadow": "shadow", "font-family": "font", "font-weight": "weight", "font-style": "style", "font-size": "len",
   "letter-spacing": "len", "line-height": "num", "text-transform": "transform", "text-decoration": "style", padding: "len", "padding-top": "len", "padding-bottom": "len", "padding-left": "len", "padding-right": "len",
   opacity: "num", "animation-name": "anim-name", "animation-duration": "time", "animation-delay": "time", "text-align": "align", "backdrop-filter": "len",
+  "flex-direction": "enum", order: "num", "align-items": "enum", "justify-content": "enum", gap: "len", margin: "margin", "margin-top": "margin", "margin-bottom": "margin", "margin-left": "margin", "margin-right": "margin", "max-width": "maxw", transform: "xform", "font-variant-caps": "enum", "word-spacing": "len",
   width: "deco-len", height: "deco-len", position: "pos", top: "deco-len", bottom: "deco-len", left: "deco-len", right: "deco-len", inset: "deco-len", "z-index": "num", content: "content", "pointer-events": "style",
 };
+const V3_PROPS = new Set(["flex-direction", "order", "align-items", "justify-content", "gap", "margin", "margin-top", "margin-bottom", "margin-left", "margin-right", "max-width", "transform", "font-variant-caps", "word-spacing"]);
+const ENUMS: Record<string, readonly string[]> = { "flex-direction": ["row", "column", "row-reverse", "column-reverse"], "align-items": ["flex-start", "center", "flex-end", "stretch", "baseline"], "justify-content": ["flex-start", "center", "flex-end", "space-between", "space-around"], "font-variant-caps": ["normal", "small-caps", "all-small-caps"] };
 const DECO_ONLY = new Set(["width", "height", "position", "top", "bottom", "left", "right", "inset", "z-index", "content", "pointer-events"]);
 
 const GENERIC = ["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded"];
@@ -117,6 +121,7 @@ function checkValue(prop: string, kind: Kind, value: string, deco: boolean): str
       return bad;
     }
     case "len": {
+      if (prop === "gap") return okLen(v, 24) && !v.startsWith("-") ? v : bad;
       if (prop === "backdrop-filter") return /^blur\(\d{1,2}(\.\d)?px\)$/.test(v) && parseFloat(v.slice(5)) <= 24 ? v : bad;
       if (prop === "font-size") return /^\d{2,3}(\.\d+)?%$/.test(v) && parseFloat(v) >= 60 && parseFloat(v) <= 160 || (/^\d(\.\d+)?em$/.test(v) && parseFloat(v) >= 0.6 && parseFloat(v) <= 1.6) ? v : bad;
       if (prop === "letter-spacing") return okLen(v, 6) ? v : bad;
@@ -157,6 +162,10 @@ function checkValue(prop: string, kind: Kind, value: string, deco: boolean): str
     case "time": { const m = /^(\d{1,4}(?:\.\d{1,3})?)(ms|s)$/.exec(v); const ms = m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : NaN; return ms >= 0 && ms <= 5000 ? v : bad; }
     case "align": return /^(left|center|right|start|end)$/.test(v) ? v : bad;
     case "pos": return deco && /^(absolute|relative)$/.test(v) ? v : bad;
+    case "enum": return (ENUMS[prop] ?? []).includes(v) ? v : bad;
+    case "margin": { const ws = split(v, /\s/); return ws.length <= 4 && ws.every((w) => w === "0" || (lengthPx(w) !== null && /(px|em|rem)$/.test(w) && lengthPx(w)! >= -4 && lengthPx(w)! <= 32)) ? v : bad; }
+    case "maxw": return /^\d{2,3}%$/.test(v) && parseFloat(v) >= 50 && parseFloat(v) <= 100 ? v : bad;
+    case "xform": { const ws = v.match(/^(rotate|skewX|skewY)\((-?\d{1,2}(\.\d)?)deg\)$/); return ws && Math.abs(parseFloat(ws[2]!)) <= (ws[1] === "rotate" ? 8 : 10) ? v : bad; }
     case "deco-len": return deco && (prop === "inset" ? split(v, /\s/).every((w) => okLen(w, 400)) : okLen(v, 400)) ? v : bad;
     case "content": return deco && (v === '""' || /^"[·—»«/|•◆◇★☆✦✧▪▫]"$/.test(v)) ? v : bad;
   }
@@ -194,7 +203,7 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
   let root;
   try { root = postcss.parse(source, { from: undefined }); } catch { return { ok: false, css: "", issues: [{ code: "syntax" }], rules: 0 }; }
   const out: string[] = [];
-  let rules = 0;
+  let rules = 0, v3 = false;
   for (const node of root.nodes) {
     const line = node.source?.start?.line;
     if (node.type === "comment") continue;
@@ -204,6 +213,7 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
     const sel = rewriteSelectors(node.selector, skinId);
     if (!sel) { fail("selector", line, node.selector.slice(0, 60)); continue; }
     const decls: string[] = [];
+    const exp = emptyExpansion();
     const seen = new Map<string, string>();
     for (const d of node.nodes ?? []) {
       if (d.type === "comment") continue;
@@ -211,6 +221,13 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
       const prop = d.prop.toLowerCase();
       if (decls.length >= OVERLAY_CSS_LIMITS.maxDeclarations) { fail("too-many-declarations", d.source?.start?.line); break; }
       if (d.important) { fail("important-forbidden", d.source?.start?.line); continue; }
+      if ((PRESET_PROPS as readonly string[]).includes(prop)) {
+        if (sel.deco) fail("preset-on-pseudo", d.source?.start?.line, prop);
+        else if (!expandPreset(prop as PresetProp, d.value, exp)) fail("preset-value", d.source?.start?.line, prop);
+        else v3 = true;
+        continue;
+      }
+      if (V3_PROPS.has(prop)) v3 = true;
       const kind = PROPS[prop];
       if (!kind) { fail(/^(display|visibility|clip|clip-path|filter|transform|margin|float|overflow|animation)/.test(prop) ? "property-forbidden" : "property-unknown", d.source?.start?.line, prop); continue; }
       if (DECO_ONLY.has(prop) && !sel.deco) { fail("deco-only", d.source?.start?.line, prop); continue; }
@@ -230,7 +247,11 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
     if (f && f.a < 0.7) fail("text-too-faint", line);
     if (sel.deco && !seen.has("content")) fail("deco-needs-content", line);
     if (sel.deco) { decls.push("pointer-events:none"); }
+    if (new Set(exp.motion).size !== exp.motion.length) fail("preset-conflict", line);
+    decls.push(...exp.decls, ...layerDecls(exp.layers));
     if (decls.length) out.push(`${sel.selectors.join(",")}{${decls.join(";")}}`);
+    // Idle motion only when the person has not asked for reduced motion.
+    if (exp.motion.length) out.push(`@media (prefers-reduced-motion:no-preference){${sel.selectors.join(",")}{animation:${exp.motion.map((m) => `ov-${m} ${MOTION_TIMING[m]}`).join(",")}}}`);
   }
-  return { ok: issues.length === 0, css: issues.length ? "" : out.join("\n"), issues, rules };
+  return { ok: issues.length === 0, css: issues.length ? "" : out.join("\n"), issues, rules, v3 };
 }
