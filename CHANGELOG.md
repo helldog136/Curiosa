@@ -7,6 +7,29 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.9.0 — 2026-11-12
+
+**En bref.** Les skins d'overlay peuvent maintenant changer la composition des éléments : formes découpées, cadres, décorations, mouvements discrets et polices variées. Les 14 skins du catalogue sont redessinés pour ne plus se ressembler. Les aperçus du catalogue et de la galerie sont animés (alerte, compteur, liste, carte à l'honneur, bandeau).
+
+**In short.** Overlay skins can now change the composition of elements: cut shapes, frames, decorations, quiet motion and varied fonts. The 14 catalogue skins are redesigned so they no longer look alike. Catalogue and gallery previews are animated (alert, counter, list, featured card, banner).
+
+### Overlays
+
+- **Des skins vraiment différents.** Un skin peut découper les panneaux (biais, hexagone, ticket, ruban…), ajouter un cadre double, des coins, des rayures de danger, un grain ou un balayage de lumière, et un mouvement discret. Tout reste de la donnée : rien ne s'exécute.
+- **(English) Truly different skins.** A skin can cut panels (slanted, hexagon, ticket, ribbon…), add a double frame, corners, hazard stripes, grain or a sweep of light, and a quiet motion. It all stays data: nothing runs.
+- **Rien ne cache le contenu.** Les décorations passent derrière le texte, le texte et le fond restent assortis, et tout mouvement s'arrête si votre système demande moins d'animations.
+- **(English) Nothing hides the content.** Decorations sit behind the text, the text and background stay matched, and all motion stops if your system asks for less animation.
+- **Aperçus animés.** La galerie et le catalogue jouent une petite scène (une alerte arrive, le compteur monte, une ligne s'ajoute, le bandeau change) seulement quand la carte est visible, six au plus à la fois, jamais si vous préférez moins de mouvement. Un bouton met tout en pause.
+- **(English) Animated previews.** The gallery and the catalogue play a small scene (an alert arrives, the counter goes up, a row is added, the banner changes) only while the card is visible, six at most at a time, never if you prefer less motion. A button pauses everything.
+- **Les 14 skins sont redessinés (version 1.1.0).** Chacun a sa composition : cadre doré et bandeau pour Trône de braise, panneaux en biais et hexagones pour Bannière héroïque, radar et rayures de danger pour Signal profond, étiquette de preuve et lampe de poche pour Veille nocturne, et ainsi de suite.
+- **(English) The 14 skins are redesigned (version 1.1.0).** Each has its own composition: gilded frame and banner for Ember throne, slanted panels and hexagons for Heroic banner, radar and hazard stripes for Deep signal, evidence tag and flashlight for Night watch, and so on.
+
+### Pour les développeurs
+
+- **Contract 3.** `SKIN_CONTRACT` is 3: six closed declarations (`ov-shape`, `ov-frame`, `ov-deco`, `ov-motion`, `ov-font`, `ov-text`) and bounded layout properties, expanded by `overlays/skinPresets.ts`, and a sheet that uses them must declare `skinContract: 3`. Decorations are background layers: no pseudo-element, no `position` (`docs/OVERLAY-SKINS.md` 2b).
+- **Text/surface pair.** The compiled sheet always sets `--ov-surface` and `--ov-fg` on containers and text parts.
+- **Previews.** The sample scene has five elements and a scripted scenario (nonce script, `postMessage` play/pause, still under reduced motion). Catalogue entries may carry `previewAnim` (animated webp, 450 KB at most), cached and served by the site like the still preview; a shared animation budget (six, visible only, pausable).
+
 ## 0.8.2 — 2026-11-12
 
 **En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher. Une page d'overlay désactivée n'affiche plus rien dans OBS. La liste « Ajouter un élément » est rangée par nom d'extension, avec une recherche.

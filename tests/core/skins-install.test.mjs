@@ -229,7 +229,7 @@ test("refus : id du manifeste différent du dossier, du catalogue, ou réservé 
   assert.deepEqual([mismatch.ok, mismatch.error], [false, "skins.error.idmismatch"]);
   await db.prisma.auditLog.deleteMany();
   await refused("trop-neuf", { patch: (m) => { m.minCore = "9.0.0"; } }, "skins.error.core", "manifest-core-newer");
-  await refused("contrat-futur", { patch: (m) => { m.skinContract = 3; } }, "skins.error.contract", "manifest-contract-newer");
+  await refused("contrat-futur", { patch: (m) => { m.skinContract = 4; } }, "skins.error.contract", "manifest-contract-newer");
   assert.equal((await S.install(personal("trop-neuf"), { confirmPersonal: true })).needsCore, "9.0.0");
 });
 

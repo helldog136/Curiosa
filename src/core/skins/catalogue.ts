@@ -41,6 +41,8 @@ export type SkinCatalogueEntry = {
   modes: ("light" | "dark")[];
   /** Cœur minimal annoncé (`requires.core`). */
   requires?: { core: string };
+  /** (core 0.9.0) Optional animated preview of an overlay skin (`skins/<id>/previews/*-anim.webp`), played by the gallery when allowed. */
+  previewAnim?: string;
   /** Chemin de l'image d'aperçu dans le dépôt (le site ne la charge jamais depuis GitHub : voir `inspect`). */
   preview?: string;
   /** Ce skin vise-t-il un contrat que CE cœur comprend ? Sinon il est listé mais pas installable. */
@@ -87,6 +89,7 @@ export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: 
       skinContract: contract, author: str(i.author, 120), icon: str(i.icon, 8),
       tags: Array.isArray(i.tags) ? i.tags.filter((t: unknown): t is string => typeof t === "string" && TAG_VOCABULARY.includes(t)).slice(0, 6) : [],
       modes, requires: core ? { core } : undefined,
+      previewAnim: typeof i.previewAnim === "string" && /^[\w./-]{1,150}-anim\.webp$/.test(i.previewAnim) && !i.previewAnim.includes("..") ? i.previewAnim : undefined,
       preview: typeof i.preview === "string" && /^[\w./-]{1,150}$/.test(i.preview) && !i.preview.includes("..") ? i.preview : undefined,
       compatible: contract === undefined || contract <= SKIN_CONTRACT,
       needsNewerCore: core && !coreSatisfies(core, coreVersion) ? core : undefined,

@@ -14,25 +14,29 @@ import { hasSignature } from "../skins/validate";
  * pinned to the entry's tag, so a skin is read at most once per version and only when its card scrolls into view. Any failure gives null (the page draws a placeholder).
  */
 export const PREVIEW_MAX_BYTES = 150 * 1024;
+/** (0.9.0) The optional animated preview (looping 640 x 360 webp) may be heavier. */
+export const ANIMATED_MAX_BYTES = 450 * 1024;
 const dir = () => path.join(DATA_DIR, "cache", "overlay-skin-previews");
 
-export async function catalogueSkinPreview(id: string): Promise<Buffer | null> {
+export async function catalogueSkinPreview(id: string, variant: "still" | "anim" = "still"): Promise<Buffer | null> {
   try {
     if (!/^[a-z][a-z0-9-]{1,40}$/.test(id)) return null;
     const cat = await readSkinCatalogue({ coreVersion: getCoreVersion() });
     const e = cat.entries.find((x) => x.id === id && x.kind === "overlay");
-    if (!e?.preview || !e.subdir || !e.preview.startsWith(`${e.subdir}/`)) return null;
-    const file = e.preview.slice(e.subdir.length + 1);
-    const key = `${id}-${crypto.createHash("sha256").update(`${e.ref ?? ""}|${e.preview}`).digest("hex").slice(0, 12)}.webp`;
+    const wanted = variant === "anim" ? e?.previewAnim : e?.preview;
+    const cap = variant === "anim" ? ANIMATED_MAX_BYTES : PREVIEW_MAX_BYTES;
+    if (!e || !wanted || !e.subdir || !wanted.startsWith(`${e.subdir}/`)) return null;
+    const file = wanted.slice(e.subdir.length + 1);
+    const key = `${id}-${variant}-${crypto.createHash("sha256").update(`${e.ref ?? ""}|${wanted}`).digest("hex").slice(0, 12)}.webp`;
     const cached = path.join(dir(), key);
-    try { const b = fs.readFileSync(cached); if (b.length <= PREVIEW_MAX_BYTES && hasSignature(".webp", b)) return b; } catch { /* not cached yet */ }
+    try { const b = fs.readFileSync(cached); if (b.length <= cap && hasSignature(".webp", b)) return b; } catch { /* not cached yet */ }
     const base = rawBase(e.repo, e.ref);
     const url = base ? rawFileUrl(base, e.subdir, file) : null;
     if (!url) return null;
-    const bytes = await rawGet(url, PREVIEW_MAX_BYTES);
+    const bytes = await rawGet(url, cap);
     if (!bytes || !hasSignature(".webp", bytes)) return null;
     fs.mkdirSync(dir(), { recursive: true });
-    for (const old of fs.readdirSync(dir())) if (old.startsWith(`${id}-`) && old !== key) fs.rmSync(path.join(dir(), old), { force: true });
+    for (const old of fs.readdirSync(dir())) if (old.startsWith(`${id}-${variant}-`) && old !== key) fs.rmSync(path.join(dir(), old), { force: true });
     const tmp = `${cached}.${process.pid}.tmp`;
     fs.writeFileSync(tmp, bytes);
     fs.renameSync(tmp, cached);
