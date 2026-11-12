@@ -5,6 +5,7 @@ import { EditDialog } from "./EditDialog";
 import { PendingButton } from "./PendingButton";
 import { useModalWindow } from "./ModalWindow";
 import { FieldErrorText } from "./FieldErrors";
+import { HelpTip } from "./HelpTip";
 import { ui } from "./ui";
 import type { ActionState } from "./ActionForm";
 
@@ -32,18 +33,18 @@ export const animationsAllowed = () => !paused && (forced || !reduced()) && (typ
 
 /**
  * The "Pause the animations / Play the animations" button of a gallery: the choice lasts for the page and is not stored.
- * When the system asks to reduce motion, the previews stay still and a note says why, with a button to play them anyway (0.10.1).
+ * When the system asks to reduce motion, the previews stay still: the button plays them (explicit choice) and its "?" bubble says why they are paused (0.10.1).
  */
-export function AnimationsToggle({ pauseLabel, playLabel, reducedNote, forceLabel }: { pauseLabel: string; playLabel: string; reducedNote: string; forceLabel: string }) {
+export function AnimationsToggle({ pauseLabel, playLabel, reducedNote }: { pauseLabel: string; playLabel: string; reducedNote: string }) {
   const [p, setP] = useState(false);
   const [f, setF] = useState(false);
   const rm = useSyncExternalStore(() => () => {}, reduced, () => false);
   if (rm && !f) {
     return (
-      <div className="flex flex-wrap items-center gap-3" data-testid="animations-reduced">
-        <p role="status" className={ui.help}>{reducedNote}</p>
-        <button type="button" onClick={() => { forced = true; setF(true); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-force">{forceLabel}</button>
-      </div>
+      <span className="inline-flex items-center gap-1" data-testid="animations-reduced">
+        <button type="button" onClick={() => { forced = true; setF(true); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-force">{playLabel}</button>
+        <HelpTip help={reducedNote} name={playLabel} />
+      </span>
     );
   }
   return <button type="button" aria-pressed={p} onClick={() => { paused = !p; setP(!p); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-toggle">{p ? playLabel : pauseLabel}</button>;
