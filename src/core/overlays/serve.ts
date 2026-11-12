@@ -8,7 +8,7 @@ import { skinForPage, skinPayload, type LoadedPayload } from "./skinLoad";
 
 /** Réponse de la page de rendu, publique (par l'adresse secrète) ou d'aperçu (administration, sans secret ni interrogation). */
 export const NOT_FOUND_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Content-Type": "text/plain; charset=utf-8" };
-export const notFoundResponse = (): Response => new Response("Not found", { status: 404, headers: NOT_FOUND_HEADERS });
+export const notFoundResponse = (): Response => new Response(null, { status: 404, headers: NOT_FOUND_HEADERS });   // empty body: nothing to show, nothing shown in OBS
 
 export async function pageResponse(page: OverlayPageData, request: Request, opts: { preview?: boolean; stateUrl?: string; /** Admin preview only: wear this installed overlay skin instead of the page's own ("" = the common style). */ forceSkin?: string } = {}): Promise<Response> {
   const config = await getSiteConfig();

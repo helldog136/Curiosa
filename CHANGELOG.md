@@ -7,6 +7,31 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.8.2 — 2026-11-12
+
+**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher. Une page d'overlay désactivée n'affiche plus rien dans OBS. La liste « Ajouter un élément » est rangée par nom d'extension, avec une recherche.
+
+**In short.** A turned-off overlay page now shows nothing at all in OBS. In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field. The "Add an element" list is arranged by extension name, with a search.
+
+### Overlays
+
+- **Une page désactivée n'affiche plus rien.** Dans OBS, elle reste vide et transparente : le message « Cet overlay est désactivé » n'apparaît plus qu'en mode test. Une adresse inconnue ou un overlay absent n'affiche plus de « 404 » non plus.
+- **(English) A turned-off page shows nothing.** In OBS it stays empty and transparent: the "This overlay is turned off" message only shows in test mode. An unknown address or a missing overlay no longer shows a "404" either.
+- **Un aperçu pour chaque skin à obtenir.** Les cartes ont toutes la même hauteur, avec l'aperçu, le nom, une courte phrase et le bouton « Installer » toujours au même endroit. Un champ filtre la liste pendant la frappe.
+- **(English) A preview for every skin to get.** Cards all have the same height, with the preview, the name, a short sentence and the "Install" button always in the same place. A field filters the list as you type.
+- **Les aperçus viennent de votre site.** Chaque image n'est lue qu'au moment où sa carte apparaît, puis gardée sur votre site. Si elle n'est pas disponible, une image neutre la remplace.
+- **(English) Previews come from your own site.** Each image is only read when its card comes into view, then kept on your site. If it is not available, a neutral picture replaces it.
+
+- **« Ajouter un élément » est plus lisible.** Les groupes portent le nom de l'extension (par exemple « Labyrinthe »), triés dans votre langue, et chacun montre combien d'éléments il contient. Le nom de l'instance n'apparaît que si une extension en a plusieurs.
+- **(English) "Add an element" is easier to read.** Groups carry the extension's name (for example "Labyrinthe"), sorted in your language, and each shows how many elements it holds. The instance name only shows when an extension has several.
+- **Une recherche en haut de la liste.** Elle filtre en direct sur le nom du groupe, celui de l'élément et sa description, sans tenir compte des accents ni des majuscules.
+- **(English) A search at the top of the list.** It filters live on the group name, the element name and its description, ignoring accents and case.
+
+### Pour les développeurs
+
+- **Element picker.** `page.tsx` titles each group with `moduleName` and passes `groupId` and `hint` (instance label, only when the module has several instances); the list is sorted with the person's locale; `OverlayEditor` filters with `foldText`/`queryWords`. Frame titles in the page are unchanged.
+- **Catalogue previews.** `overlays/skinPreview.ts` reads the `.webp` of a catalogue overlay entry (one bounded request, pinned on its tag, signature and size checked), keeps it in `data/cache` and serves it from `/admin/overlay-pages/skin-preview/<id>` (admin only, id from the catalogue). Placeholder when unavailable.
+
 ## 0.8.1 — 2026-11-11
 
 **En bref.** Une IA connectée voit maintenant ce qu'une extension lui apporterait avant de l'installer, sait quel droit vous demander, reçoit les textes dans la langue du site et vous prévient quand sa liste d'outils n'est plus à jour.
