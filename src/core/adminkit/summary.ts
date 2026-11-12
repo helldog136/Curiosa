@@ -23,7 +23,7 @@ export function summarizeField(f: RareField, stored: unknown, locale: string, t:
     case "datetime": return `${f.label} : ${describeDateTime(String(stored), locale, t("datetime.at"))}`;
     case "duration": return `${f.label} : ${describeDuration(Number(stored), t("unit.day"))}`;
     case "number": return `${f.label} : ${stored}${f.unit ? ` ${f.unit}` : ""}`;
-    case "color": case "secret": case "image": case "video": return f.label;
+    case "color": case "secret": case "image": case "video": case "audio": return f.label;
     default: {
       const text = String(stored).replace(/\s+/g, " ").trim();
       return /^\d{4}-\d{2}-\d{2}$/.test(text) ? `${f.label} : ${describeDate(text, locale)}` : `${f.label} : ${text.length > 24 ? `${text.slice(0, 23)}…` : text}`;

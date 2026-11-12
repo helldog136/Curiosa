@@ -15,6 +15,8 @@ export type AdminField = {
   kind?: "text" | "textarea" | "email" | "url" | "number" | "date" | "select" | "hidden" | "image" | "checkbox"
     /** (cœur 0.2.0) Fichier TEXTE (UTF-8) de 5 Mo au plus, lu par le cœur et transmis à l'action en texte dans `values[name]`. Un cœur plus ancien l'ignore (exigez `minCore` 0.2.0). */
     | "file"
+    /** (cœur 0.10.0, `minCore` 0.10.0) Un SON envoyé sur le site (mp3, ogg, wav, m4a, aac) : envoi ou adresse `/uploads/…`, avec écoute dans l'admin. La valeur reçue est l'adresse. Un cœur plus ancien le montre comme un champ texte. */
+    | "audio"
     /**
      * (cœur 0.6.0, `minCore` 0.6.0, un cœur plus ancien les montre comme un champ texte) Contrôles « une notion = un champ » :
      * `switch` interrupteur dans un formulaire (comme `checkbox`, la valeur `on` est reçue si activé, absente sinon),

@@ -78,7 +78,7 @@ function show(field: Pick<SettingField, "type">, value: unknown): Shown {
   if (typeof value === "number" || typeof value === "boolean") return value;
   if (Array.isArray(value)) return clean(value.filter((v): v is string => typeof v === "string").join(", "), 300);   // plusieurs choix (0.2.14)
   if (typeof value !== "string") return clean(JSON.stringify(value) ?? "", 80);
-  return field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video" ? safeUrl(value) : clean(value, 300);
+  return field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video" || field.type === "audio" ? safeUrl(value) : clean(value, 300);
 }
 
 type Ctx = { inst: InstanceView; mod: LoadedModule; locale: string; locales: string[]; t: Translator; L: (v: Parameters<typeof localized>[0]) => string };
@@ -103,7 +103,7 @@ function whereInAdmin(c: Ctx, field: SettingField): string {
   return `${c.t("nav.extensions")} › ${c.L(c.mod.manifest.name)} › ${tabName}`;
 }
 
-const EXAMPLE: Record<string, string> = { period: "11-01/11-30", datetime: "2026-11-30T18:30", duration: "90", range: "12", number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…", multichoice: "[\"a\", \"b\"]" };
+const EXAMPLE: Record<string, string> = { period: "11-01/11-30", datetime: "2026-11-30T18:30", duration: "90", range: "12", number: "12", color: "#ff8800", url: "https://example.org/page", link: "/contact  ·  https://example.org  ·  mailto:me@example.org", image: "https://example.org/picture.jpg", video: "/uploads/… (a video uploaded in the admin)", audio: "/uploads/… (a sound uploaded in the admin)", text: "…", textarea: "…", boolean: "true", select: "…", choice: "…", multichoice: "[\"a\", \"b\"]" };
 
 function allowedText(field: SettingField, c: Ctx): string {
   switch (field.type) {
@@ -118,6 +118,7 @@ function allowedText(field: SettingField, c: Ctx): string {
     case "link": return "a page of the site such as /contact, an https:// address or a mailto: address";
     case "image": return "an https:// address or a file already uploaded in the admin (/uploads/…)";
     case "video": return "a video already uploaded in the admin (/uploads/….mp4 or .webm): an AI cannot upload files";
+    case "audio": return "a sound already uploaded in the admin (/uploads/….mp3, .ogg, .wav, .m4a or .aac): an AI cannot upload files here";
     case "choice": return "the id of one of the listed options";
     case "multichoice": return `a list of values taken from: ${(field.options ?? []).slice(0, 20).map((o) => o.value).join(", ")}${field.minChoices ? `; at least ${field.minChoices}` : ""}${field.maxChoices ? `; at most ${field.maxChoices}` : ""}. [] ticks nothing`;
     case "secret": return "never set by an AI";

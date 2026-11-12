@@ -234,7 +234,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
           return { errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } };
         }
         // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
-        return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
+        return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "audio" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
       }
       // Réseau social : l'adresse du profil est vérifiée AVANT d'être enregistrée, sous le champ, avec un exemple (R22) ; la réussite montre le bouton qui s'affichera.
       if (isSocialProfileField(mod, field.key)) {

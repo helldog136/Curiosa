@@ -42,7 +42,7 @@ export type ChoiceResolution =
 export type SettingField = {
   key: string;
   label: LocalizedString;
-  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "choice" | "multichoice"
+  type: "text" | "textarea" | "url" | "link" | "number" | "boolean" | "select" | "color" | "secret" | "image" | "video" | "audio" | "choice" | "multichoice"
     /**
      * (cœur 0.6.0, `minCore: "0.6.0"`) Un seul contrôle compact par notion : `period` (« Du 1er novembre au 30 novembre, chaque année » : deux dates, un interrupteur
      * « chaque année » et une phrase d'aperçu), `datetime` (date et heure en un champ), `duration` (un nombre et une unité : secondes, minutes, heures, jours).
