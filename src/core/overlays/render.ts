@@ -1,7 +1,7 @@
 import type { Translator } from "../i18n/dictionary";
 import type { ResolvedElement } from "./resolve";
 import type { OverlayPageData } from "./model";
-import { OV_PARTS, tokensCss } from "./tokens";
+import { OV_PARTS, ownerSurfaceCss, tokensCss } from "./tokens";
 import type { LoadedPayload } from "./skinLoad";
 
 /**
@@ -71,6 +71,10 @@ if(C.fit){var f=function(){var s=Math.min(innerWidth/C.w,innerHeight/C.h),st=doc
 if(C.test&&C.left>0)timer=setTimeout(function(){test(false,0)},C.left+50);
 if(C.state)setTimeout(tick,gap)})();`;
 
+/** (0.11.0) Opaque background: adopts the solid panel colour into each element that follows the style (only on an opaque page, so other pages are unchanged byte for byte). A skin brings its own solid colour instead. */
+const OWNER_SCRIPT = (css: string): string => `(function(){var css=${JSON.stringify(css).replace(/</g, "\\u003c")},SH=new WeakMap();function ap(f){try{var d=f.contentDocument,w=f.contentWindow;if(!d||!w||!d.documentElement||!w.CSSStyleSheet||d.adoptedStyleSheets===undefined)return;var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-owner","1")}catch(e){}}
+var f=document.querySelectorAll("iframe[data-follows]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
+
 const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, "");
 
 export type RenderInput = {
@@ -113,7 +117,8 @@ export function renderPage(i: RenderInput): string {
     return `<div class="el" data-ov-region="element" data-ov-part="${r.status === "ok" ? "frame" : "empty"}" data-uid="${esc(el.uid)}" style="left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;z-index:${idx + 1}">${iframe}<div class="tf" data-ov-part="test-frame" style="--tc:hsl(${hue(idx)} 85% 62%)"><span class="lb" data-ov-part="label">${esc(label)}${note}</span></div></div>`;
   }).join("");
   void OV_PARTS;
-  return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"${i.test ? ' data-test="1"' : ""}><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page"><div class="stage" style="width:${page.width}px;height:${page.height}px">${frames}</div>${script}</body></html>`;
+  const own = page.style.background === "opaque" && i.elements.some((r) => r.status === "ok" && r.follows) ? `<script nonce="${i.nonce}">${OWNER_SCRIPT(ownerSurfaceCss(page.style))}</script>` : "";
+  return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"${i.test ? ' data-test="1"' : ""}><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page"><div class="stage" style="width:${page.width}px;height:${page.height}px">${frames}</div>${script}${own}</body></html>`;
 }
 
 /** Ensemble des chemins d'iframes à autoriser (pour la politique de sécurité). */

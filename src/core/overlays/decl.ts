@@ -10,6 +10,8 @@ import { z } from "zod";
 
 /** Version du cœur à partir de laquelle la clé existe. */
 export const OVERLAY_ELEMENTS_MIN_CORE = "0.5.0";
+/** Version of the core from which `tvScale` exists (an older core ignores the parameter and the element falls back to its own sizes). */
+export const TV_SCALE_MIN_CORE = "0.11.0";
 
 export const FITS = ["scale", "ratio", "fluid"] as const;
 export type Fit = (typeof FITS)[number];
@@ -69,6 +71,8 @@ export const overlayElementSchema = z.object({
   options: z.array(option).max(MAX_OPTIONS).default([]),
   /** L'élément sait montrer un contenu d'exemple quand l'adresse reçoit `ov-demo=1` (mode test). */
   demo: z.boolean().optional(),
+  /** (0.11.0) The element sizes its text with the TV type scale: the core adds `ov-tv` to its address (docs/OVERLAY-ELEMENTS.md, "Text size"). Needs `minCore` 0.11.0. */
+  tvScale: z.boolean().optional(),
 }).strict().superRefine((e, ctx) => {
   const bad = (path: string, message: string) => ctx.addIssue({ code: "custom", path: [path], message });
   if (e.fit === "scale") {
@@ -113,5 +117,6 @@ export function overlayElementIssues(elements: readonly OverlayElementDecl[] | u
   const m = /^(\d+)\.(\d+)\.(\d+)$/.exec(minCore ?? "");
   const ok = m && (Number(m[1]) > 0 || Number(m[2]) >= 5);
   if (!ok) out.push({ path: [], message: `overlayElements needs minCore ${OVERLAY_ELEMENTS_MIN_CORE} or later (an older core ignores the key)` });
+  if (elements.some((e) => e.tvScale) && !(m && (Number(m[1]) > 0 || Number(m[2]) >= 11))) out.push({ path: [], message: `tvScale needs minCore ${TV_SCALE_MIN_CORE} or later` });
   return out;
 }

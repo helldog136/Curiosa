@@ -19,7 +19,7 @@ export async function pageResponse(page: OverlayPageData, request: Request, opts
   const test = testActive(page.testUntil, now);
   // Jamais d'erreur visible dans OBS : si la résolution échoue en bloc, la page reste là, sans éléments.
   const elements = shown.active ? await resolvePage(shown, { lang, defaultLocale: config.defaultLocale }).catch(() => []) : [];
-  const skin: LoadedPayload | null = shown.active ? (opts.forceSkin !== undefined ? await skinPayload(opts.forceSkin || null).catch(() => null) : (await skinForPage(page.look, now)).payload) : null;
+  const skin: LoadedPayload | null = shown.active ? (opts.forceSkin !== undefined ? await skinPayload(opts.forceSkin || null, page.style.background === "opaque").catch(() => null) : (await skinForPage(page.look, now, page.style.background === "opaque")).payload) : null;
   const contextual = page.look.byContext.enabled && !opts.preview;
   const nonce = crypto.randomBytes(16).toString("base64");
   const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host");
@@ -31,7 +31,7 @@ export async function pageResponse(page: OverlayPageData, request: Request, opts
 export async function stateResponse(page: OverlayPageData, now = Date.now(), knownSkin = ""): Promise<Response> {
   const test = testActive(page.testUntil, now);
   // The skin now: key always, the sheet only when it differs from the one the page already wears (it switches after seeing the same key twice).
-  const wears = page.active && (page.look.skin || page.look.byContext.enabled) ? (await skinForPage(page.look, now)).payload : null;
+  const wears = page.active && (page.look.skin || page.look.byContext.enabled) ? (await skinForPage(page.look, now, page.style.background === "opaque")).payload : null;
   const skin = wears ? { key: wears.key, id: wears.id, ...(wears.key !== knownSkin ? { css: wears.css } : {}) } : { key: "" };
   return new Response(JSON.stringify({ rev: page.rev, active: page.active, test, until: test ? page.testUntil : null, now, skin }), {
     status: 200, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store, max-age=0", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff" },
