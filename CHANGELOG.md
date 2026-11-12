@@ -15,8 +15,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Overlays
 
-- **Taille du texte de la page et de chaque élément.** Dans l'éditeur, choisissez Petite, Normale, Grande ou TV (conseillée, 200 %), ou une taille entre 50 et 300 %. Chaque élément peut garder sa propre taille. Normale ne change rien : vos pages actuelles restent exactement comme avant.
-- **(English) Text size for the page and for each element.** In the editor, pick Small, Normal, Large or TV (recommended, 200 %), or a size between 50 and 300 %. Each element can keep its own size. Normal changes nothing: your current pages stay exactly as they were.
+- **Taille du texte de la page et de chaque élément.** Dans l'éditeur, choisissez Petite, Normale, Grande ou TV (conseillée, 200 %), ou une taille entre 50 et 300 %. Chaque élément peut garder sa taille, et Normale ne change rien.
+- **(English) Text size for the page and for each element.** In the editor, pick Small, Normal, Large or TV (recommended, 200 %), or a size between 50 and 300 %. Each element can keep its own size, and Normal changes nothing.
 - **Ça marche pour toutes les extensions, sans mise à jour.** Le cœur agrandit l'élément entier (texte, barres, espaces) sans bouger son cadre. Un skin ne peut pas défaire votre réglage.
 - **(English) It works for every extension, without an update.** The core enlarges the whole element (text, bars, spacing) without moving its frame. A skin cannot undo your setting.
 - **Fond opaque.** À côté de Transparent et Semi-transparent, un fond plein, lisible avec le texte clair comme avec le texte sombre. Un skin garde ses couleurs : son panneau devient plein.
@@ -28,8 +28,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **Text size.** `textScale` (percent, 50 to 300) on the page style and on a page element, absent at the default, so stored pages and rendered output are unchanged. `frameLayout(decl, rect, percent)` divides the element's window by `percent / 100` and scales it up by the same factor.
-- **TV type scale.** New optional manifest key `overlayElements[].tvScale` (`minCore` 0.11.0): the core adds `ov-tv` to the element's address; `--ov-text-xs` to `--ov-text-2xl` are reserved (24, 28, 32, 40, 56, 72 px on a 1080 canvas). Nothing below 24 px on the canvas; a test guards the core's own surfaces. See docs/OVERLAY-ELEMENTS.md.
+- **Text size.** `textScale` (percent, 50 to 300) on the page style and on a page element, absent at the default, so stored pages and rendered output are unchanged. `frameLayout(decl, rect, percent)` shrinks the element's window and scales it up by the same factor.
+- **TV type scale.** New optional manifest key `overlayElements[].tvScale` (`minCore` 0.11.0): the core adds `ov-tv` to the element's address; `--ov-text-xs` to `--ov-text-2xl` are reserved (24, 28, 32, 40, 56, 72 px on a 1080 canvas). Nothing below 24 px on the canvas (see docs/OVERLAY-ELEMENTS.md).
 - **Opaque background.** `background: "opaque"`; elements still receive `ov-surface=soft` and the core sets `--ov-surface` / `--ov-border` on the element's document (a skin gets a solid `--ov-surface` instead). Skin check: `overlay-text-small` warning for `font-size` below 100 %.
 
 ## 0.10.1 — 2026-11-13
