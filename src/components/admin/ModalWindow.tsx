@@ -30,8 +30,11 @@ export const useModalWindow = () => useContext(WindowContext);
  * leaves into the hidden page) and, on closing, returns to the element that opened it. A confirmation box opened above answers Esc by itself (the window stays).
  * With `guard`, closing a window whose fields were edited asks first ("Discard changes?"). On a phone the panel takes the whole screen; never a horizontal scroll.
  * `title` adds a heading in the top bar (the window is then named by it); `footer` is a bar that stays visible at the bottom while the body scrolls.
+ * (core 0.12.0) `secondary` is a second zone of that bar for ONE destructive or unrelated action ("Delete the partner"): it sits at the start of the bar, apart from
+ * the main button (a gap and a rule; stacked above it on a phone), so the two are never mistaken. It comes first in the tab order, as it does on screen, and it is
+ * never focused when the window opens (the focus goes to the window itself). Without `secondary` the bar is exactly what it was.
  */
-export function ModalWindow({ children, label, title, closeLabel, closeHref, onClose, guard, footer, testid = "route-modal", size = "wide" }: {
+export function ModalWindow({ children, label, title, closeLabel, closeHref, onClose, guard, footer, secondary, wrapTitle = false, testid = "route-modal", size = "wide" }: {
   children: React.ReactNode;
   /** Name of the window for screen readers (when there is no `title`). */
   label?: string;
@@ -43,6 +46,10 @@ export function ModalWindow({ children, label, title, closeLabel, closeHref, onC
   onClose: () => void;
   guard?: DiscardGuard;
   footer?: React.ReactNode;
+  /** A destructive (or unrelated) action, shown apart at the start of the footer bar. Needs a `footer` (the main button) to make sense. */
+  secondary?: React.ReactNode;
+  /** (core 0.12.0) Let a long title wrap on several lines instead of ending with "…" (a window whose title names the thing at stake). */
+  wrapTitle?: boolean;
   testid?: string;
   size?: ModalSize;
 }) {
@@ -100,7 +107,7 @@ export function ModalWindow({ children, label, title, closeLabel, closeHref, onC
         className={`modal-panel relative flex h-full w-full ${MODAL_WIDTH[size]} flex-col overflow-y-auto overflow-x-hidden overscroll-contain bg-surface px-4 ${footer ? "" : "pb-8"} outline-none sm:h-auto sm:max-h-full sm:rounded-3xl sm:border sm:border-line sm:px-8 sm:shadow-2xl`}>
         {/* The top bar stays visible while the body scrolls: the "Close" button is never lost, and the content passes under it without hiding it. */}
         <div className={`sticky top-0 z-10 -mx-4 mb-2 flex items-center gap-3 border-b border-line/60 bg-surface px-3 py-2 sm:-mx-8 sm:px-5 ${title ? "justify-between" : "justify-end"}`}>
-          {title && <h2 id={titleId} className="min-w-0 truncate pl-1 text-lg font-semibold sm:pl-0" title={title}>{title}</h2>}
+          {title && <h2 id={titleId} className={`${wrapTitle ? "min-w-0 break-words" : "min-w-0 truncate"} pl-1 text-lg font-semibold sm:pl-0`} title={title}>{title}</h2>}
           {(() => {
             const look = "inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full border border-line bg-surface px-4 text-sm font-medium text-fg shadow-sm transition-colors hover:border-accent hover:text-accent";
             const inner = <><span aria-hidden>✕</span>{closeLabel}</>;
@@ -112,7 +119,14 @@ export function ModalWindow({ children, label, title, closeLabel, closeHref, onC
         <WindowContext.Provider value={controls}>
           <div className="min-w-0 flex-1 pt-3 [overflow-wrap:anywhere]">{children}</div>
           {footer && (
-            <div data-testid={`${testid}-footer`} className="sticky bottom-0 z-10 -mx-4 mt-4 border-t border-line/60 bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-8 sm:px-8">{footer}</div>
+            <div data-testid={`${testid}-footer`} className="sticky bottom-0 z-10 -mx-4 mt-4 border-t border-line/60 bg-surface px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:-mx-8 sm:px-8">
+              {secondary ? (
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-6">
+                  <div data-testid={`${testid}-secondary`} className="border-b border-line/60 pb-3 sm:border-b-0 sm:pb-0 sm:pr-6">{secondary}</div>
+                  <div className="min-w-0 sm:flex-1">{footer}</div>
+                </div>
+              ) : footer}
+            </div>
           )}
         </WindowContext.Provider>
       </div>

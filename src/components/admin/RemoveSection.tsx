@@ -1,5 +1,6 @@
 import type { Translator } from "@/core/i18n/dictionary";
 import { ConfirmButton } from "./ConfirmButton";
+import { HelpTip } from "./HelpTip";
 
 type Action = () => Promise<void>;
 
@@ -13,8 +14,11 @@ export function RemoveChoices({ t, name, keep, erase }: { t: Translator; name: s
   return (
     <div className="grid gap-3 sm:grid-cols-2" data-testid="remove-choices">
       <form action={keep} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4 [&>button]:w-full">
-        <ConfirmButton danger={false} confirmLabel={t("remove.keepYes")} message={t("remove.keepConfirm", { name })}>{t("remove.keep")}</ConfirmButton>
-        <p className="text-sm leading-5 text-muted">{t("remove.keepHelp")}</p>
+        {/* The precision ("kept aside, brought back on reinstall") is in a tooltip, not a sentence on the page (R32). */}
+        <div className="flex items-center gap-1 [&>button]:flex-1">
+          <ConfirmButton danger={false} confirmLabel={t("remove.keepYes")} message={t("remove.keepConfirm", { name })}>{t("remove.keep")}</ConfirmButton>
+          <HelpTip always help={t("remove.keepHelp")} name={t("remove.keep")} />
+        </div>
       </form>
       <form action={erase} className="flex flex-col gap-2 rounded-xl border border-red-500/30 bg-surface p-4 [&>button]:w-full">
         <ConfirmButton dangerConfirm confirmLabel={t("remove.eraseYes")} message={t("remove.eraseConfirm", { name })}>{t("remove.erase")}</ConfirmButton>
