@@ -1,7 +1,7 @@
 {
   "note": "Pièces et régions de la dernière version PUBLIÉE du cœur. Régénérer à chaque publication : npm run skin:official -- --update-baseline (docs/SKINS.md, « Un nouvel élément est-il habillable ? »).",
   "format": 1,
-  "version": "0.6.1",
+  "version": "0.10.0",
   "regions": [
     "backdrop",
     "tray",
@@ -67,9 +67,12 @@
     "socials",
     "entries",
     "module-html",
+    "search",
+    "mark",
     "home-flow",
     "home-cell",
     "cookie-tray",
+    "sound-toggle",
     "footer-text",
     "footer-link",
     "credit",

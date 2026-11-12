@@ -7,6 +7,34 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.10.0 — 2026-11-13
+
+**En bref.** Le site accepte maintenant les fichiers son (MP3, OGG, WAV, M4A, AAC). Vous pouvez faire jouer un son de fond en boucle sur votre site, avec un petit bouton pour que chaque visiteur le coupe.
+
+**In short.** The site now accepts sound files (MP3, OGG, WAV, M4A, AAC). You can play a background sound in a loop on your site, with a small button so every visitor can switch it off.
+
+### Sons
+
+- **Envoyer un son.** Les envois acceptent MP3, OGG, WAV, M4A et AAC, jusqu'à 10 Mo. Le contenu est vérifié, pas seulement l'extension.
+- **(English) Upload a sound.** Uploads accept MP3, OGG, WAV, M4A and AAC, up to 10 MB. The content is checked, not only the extension.
+- **Les extensions peuvent demander un son.** Une extension peut maintenant proposer un réglage ou un champ « son » qui n'accepte que des fichiers son de votre site.
+- **(English) Extensions can ask for a sound.** An extension can now offer a "sound" setting or field that only accepts sound files from your site.
+
+### Son de fond
+
+- **Un son en boucle sur votre site.** Dans Réglages › Son de fond, choisissez un fichier. C'est désactivé par défaut.
+- **(English) A sound in a loop on your site.** In Settings › Background sound, pick a file. It is off by default.
+- **Les visiteurs gardent la main.** Le son démarre au premier clic ou à la première touche (les navigateurs l'exigent), un bouton « Son » le coupe, et ce choix est gardé dans leur navigateur seulement. Le son s'arrête quand l'onglet est caché et continue d'une page à l'autre.
+- **(English) Visitors stay in control.** The sound starts at the first click or key press (browsers require it), a "Sound" button mutes it, and that choice is kept in their browser only. The sound stops when the tab is hidden and goes on from page to page.
+- **Jamais dans l'administration ni dans OBS.** Les pages d'overlay, l'administration et l'impression n'ont ni son ni bouton. Les assistants IA peuvent l'activer ou le régler, avec un son que vous avez déjà envoyé.
+- **(English) Never in the admin or in OBS.** Overlay pages, the admin and printing have no sound and no button. AI assistants can switch it on or adjust it, with a sound you already uploaded.
+
+### Pour les développeurs
+
+- **Audio uploads.** `sniffAudio` checks ogg, mp3, wav, m4a and aac by content and structure; truncated files are refused. `MAX_AUDIO_BYTES` is 10 MB. Sounds are served with `Range` and `nosniff`. `saveUpload(buf, { only: "audio" })` serves sound fields. `media_upload` is unchanged.
+- **Module contract (`minCore` 0.10.0).** Setting type `audio` and `adminForm` field `kind: "audio"`, both limited to `/uploads/<uuid>.<mp3|ogg|wav|m4a|aac>`. `ctx.api.files` handles sounds. See `docs/MODULES.md`.
+- **Background sound.** Settings `sound.*`, `activeSound()`, `SoundPlayer` (pure, tested with a fake audio element), `BackgroundSound` mounted in `src/app/(site)/layout.tsx`, new skin part `sound-toggle`, `site_settings_set` argument `backgroundSound`, `privacy.cookies.sound`. See `docs/BACKGROUND-SOUND.md`.
+
 ## 0.9.0 — 2026-11-12
 
 **En bref.** Les skins d'overlay peuvent maintenant changer la composition des éléments : formes découpées, cadres, décorations, mouvements discrets et polices variées. Les 14 skins du catalogue sont redessinés pour ne plus se ressembler. Les aperçus du catalogue et de la galerie sont animés (alerte, compteur, liste, carte à l'honneur, bandeau).

@@ -32,7 +32,7 @@ export function settingValue(field, mode) {
   const d = resolveDefault(field);
   if (field.type === "secret") return mode === "defaults" ? undefined : CANARY;
   if (mode === "defaults") return field.type === "multichoice" ? (field.defaultValues ?? []) : d;
-  const urlish = field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video";
+  const urlish = field.type === "url" || field.type === "link" || field.type === "image" || field.type === "video" || field.type === "audio";
   if (mode === "hostile") {
     if (field.type === "text" || field.type === "textarea" || urlish) return HOSTILE;
     if (field.type === "color") return `#fff" onmouseover=PROBEATTR x="`;
@@ -56,6 +56,7 @@ export function settingValue(field, mode) {
     case "color": return d ?? "#336699";
     case "image": return d ?? "/uploads/demo.png";
     case "video": return d ?? "/uploads/demo.mp4";
+    case "audio": return d ?? "/uploads/demo.mp3";
     default: return d;
   }
 }

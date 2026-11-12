@@ -100,6 +100,7 @@ la langue courante, ou la valeur par défaut.
 | `period`, `datetime`, `duration` | (cœur 0.6.0, `minCore` 0.6.0) une période (« Du 1er novembre au 30 novembre, chaque année » ; `openEnded` pour un début seul ou une fin seule), une date et une heure, une durée : **un seul champ** chacune, jamais un champ par composant |
 | `color` | couleur `#RRGGBB` ; avec `"default": "theme:accent"` elle **suit le thème du site** tant que l'administrateur n'en choisit pas |
 | `image` | téléversement ou adresse ; l'administrateur peut **recadrer** les images téléversées (voir « Images recadrées » plus bas) |
+| `audio` | (cœur 0.10.0, `"minCore": "0.10.0"`) téléversement d'un son MP3, OGG, WAV, M4A ou AAC (10 Mo au plus), **réservé aux fichiers du site** ; le cœur vérifie le contenu du fichier et l'adresse `/uploads/…` ; écoute dans l'administration |
 | `video` | téléversement d'une vidéo MP4 ou WebM (50 Mo au plus), **réservée aux fichiers du site** (`/uploads/…`) ; vérifiez la valeur avant de l'utiliser, comme le fait le module « Bandeau d'accueil » |
 | `secret` | jamais réaffiché après enregistrement (clé d'API, code…) |
 

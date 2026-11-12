@@ -1,4 +1,4 @@
-// L'entrée « Réglages » : un seul lien dans le menu, des onglets (Nom et logo, Langues, Confidentialité, Recherche, Visibilité dans les IA, E-mail,
+// L'entrée « Réglages » : un seul lien dans le menu, des onglets (Nom et logo, Langues, Confidentialité, Recherche, Son de fond, Visibilité dans les IA, E-mail,
 // Adresse web en mode avancé), les anciennes adresses qui mènent au bon onglet, plus de rappel qui double le menu.
 import test, { after, before } from "node:test";
 import assert from "node:assert/strict";
@@ -45,7 +45,7 @@ const tabLabels = (html) => [...html.matchAll(/<button[^>]*role="tab"[^>]*>([^<]
 test("onglets des réglages en mode simple : sans « Adresse web »", async () => {
   await setMode(false);
   const html = await render("settings/page.tsx");
-  assert.deepEqual(tabLabels(html), ["Nom et logo", "Langues", "Confidentialité", "Recherche", "Visibilité dans les IA", "E-mail"]);
+  assert.deepEqual(tabLabels(html), ["Nom et logo", "Langues", "Confidentialité", "Recherche", "Son de fond", "Visibilité dans les IA", "E-mail"]);
   assert.match(html, /data-tab="ai"/);
   assert.doesNotMatch(html, /data-tab="address"/);
   assert.doesNotMatch(html, /data-testid="to-appearance"|data-testid="to-address"/, "plus de rappel qui double le menu");

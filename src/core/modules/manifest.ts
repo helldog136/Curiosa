@@ -32,7 +32,7 @@ const choiceSource = z.discriminatedUnion("kind", [
 export const settingField = z.object({
   key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,40}$/),
   label: localized,
-  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "choice", "multichoice", "period", "datetime", "duration"]),
+  type: z.enum(["text", "textarea", "url", "link", "number", "boolean", "select", "color", "secret", "image", "video", "audio", "choice", "multichoice", "period", "datetime", "duration"]),
   help: localized.optional(),
   default: z.union([z.string(), z.number(), z.boolean()]).optional(),
   options: z.array(z.object({ value: z.string(), label: localized })).max(50).optional(),

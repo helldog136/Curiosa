@@ -14,6 +14,7 @@ export const SECTIONS = [
   ["forms", "Formulaires (repos, erreur, envoyé)", "Forms (idle, error, sent)", ["form", "form-error", "form-done"]],
   ["navigation", "Pagination", "Pagination", ["pagination"]],
   ["search", "Recherche dans le site (champ, résultats, aucun résultat)", "Site search (field, results, no results)", ["page-search", "page-search-none", "page-search-limited"]],
+  ["sound", "Bouton du son de fond (arrêté, en lecture)", "Background sound button (off, playing)", ["sound"]],
   ["home", "Accueil fluide (morceaux de toutes les tailles)", "Fluid home (pieces of every size)", ["page-home"]],
 ];
 
