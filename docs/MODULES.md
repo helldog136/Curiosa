@@ -409,7 +409,9 @@ sans rien déclarer. Le cœur classe tout seul :
 | **Utiliser** (`use`) | Le panneau propre du module (`adminPanel`) et, pour un overlay, l'adresse à coller dans OBS. C'est ce qu'on ouvre souvent : il s'affiche **en premier**. |
 | **Réglages** (`settings`) | Les réglages `settings` (options, apparence ; les réglages `advanced` n'apparaissent qu'en mode avancé, **repliés** sous « Options avancées »). Sans panneau, c'est l'onglet ouvert à l'arrivée. |
 | **Sources** (`sources`) | « D'où viennent les informations » : les sujets consommés (`consumes`), en mode avancé. |
-| **Général** (`general`) | Nom, description, menu, accès des assistants IA (MCP), langues, tâches ; puis, en bas et à part, la **zone sensible** (données gardées, retirer, tout effacer : chaque bouton demande une confirmation en clair). |
+| **Général** (`general`) | Nom, description, menu, accès des assistants IA (MCP), langues, tâches ; puis, tout en bas, la **zone de danger** : un encadré rouge avec le seul bouton « Retirer le module <nom> ». Il ouvre une fenêtre qui nomme le module, dit ce qui sera perdu (décompte des éléments et fichiers) et demande une case cochée (données gardées) ou le nom écrit (tout effacer). |
+
+**Deux groupes dans la rangée (cœur 0.12.0).** Les onglets du **contenu** (Utiliser, renommé ou non, et les onglets que le module ajoute) viennent en premier. Les onglets du **module lui-même** (Réglages, Sources, Général, Historique) sont à part, à droite : séparateur, fond teinté et pastille « Module » (lue aussi avant chaque onglet par un lecteur d'écran). Ainsi « Général », qui porte le retrait du module, ne ressemble jamais à l'onglet d'un élément en cours de modification. Les onglets ajoutés se placent donc **avant** Réglages ; sans onglet ajouté, l'ordre est celui d'avant. Un module n'a rien à déclarer ; la pastille n'apparaît que s'il y a les deux groupes.
 
 Règles du cœur, identiques partout :
 
@@ -1403,6 +1405,25 @@ async adminPanel(ctx, { query }) {
 ```
 
 Keep the destructive action ("Delete the command") in the row menu (`danger: true`, with `confirm` saying what is lost), separate from the dialog's main button. The form's hidden field named `id` is how the list knows which row to highlight after the save. The test kit (`admin.ergonomics`) counts the fields of such a form against R4 (5 visible fields) like any form, ignores them for the section of the list, and asks for a `cancelHref` (R24).
+
+##### Destructive action in the dialog (`secondaryAction`, `danger`, core 0.12.0)
+
+A window can carry ONE destructive button, apart from the main one, and a form can ask for a red main button. Both are optional and additive.
+
+| Where | Key | Role |
+|---|---|---|
+| `adminForm` (with `presentation: "dialog"`) | `secondaryAction: { label, action, confirm }` | A button at the START of the window footer, separated from the main button by a gap and a rule (stacked above it on a phone). `label` is a verb and its object ("Delete the partner", R3). A click opens a confirmation box showing `confirm` (say what will be lost, R24: "Delete this partner? Their history is lost."), whose red button is NOT the default focus, then posts the SAME fields (so the hidden `id`) to the adminAction `action`. A success closes the window like the main button. Without `presentation: "dialog"` the key is ignored. |
+| `adminForm` | `danger: true` | The main button is solid red: only for a form whose own purpose is to destroy something (a "Remove…" confirmation form), never for an ordinary edit. |
+
+Keyboard and focus: the window opens with its own panel focused (never a button); Tab goes Close, fields, the destructive button, then Cancel and the main button, which is the order on screen; Esc and Close behave as in any window. The kit (`admin.ergonomics`) asks for a `confirm` text and a precise label. **Older cores** ignore both keys and show no destructive button, so keep the same action reachable from the row menu (`danger: true` with `confirm`) if the module must work there; no `minCore` is needed.
+
+```js
+{ type: "adminForm", presentation: "dialog", action: "save", cancelHref: "?", title: "Edit partner", submitLabel: "Save the partner",
+  secondaryAction: { label: "Delete the partner", action: "remove", confirm: "Delete this partner? Their history is lost." },
+  fields: [{ name: "id", kind: "hidden", label: "id", value: partner.id }, { name: "name", label: "Name", value: partner.name, example: "etoile_nord" }] }
+```
+
+Texts: no reassuring or descriptive filler on a page (R32); a precision goes in the "?" tooltip, a warning that prevents a loss stays visible.
 
 ##### Vignette dans une cellule (`image`, cœur 0.6.5)
 

@@ -16,14 +16,14 @@ export function HelpTipProvider({ label, children }: { label: string; children: 
  * Texte seulement (React l'échappe : jamais de HTML), bulle en position fixe (aucun décalage de la mise en page, jamais rognée par un cadre), bornée à 320 px et
  * ramenée dans l'écran, sans minuteur ni bibliothèque. Sans JavaScript, `HelpBelow` affiche le texte sous le champ et ce bouton est masqué.
  */
-export function HelpTip({ help, name }: { help?: string | null; name: string }) {
+export function HelpTip({ help, name, always = false }: { help?: string | null; name: string; /** (core 0.12.0) Show the "?" even for a SHORT precision (a short help normally stays under the field): used where the text must not take any room on the page (R32). */ always?: boolean }) {
   const template = useContext(LabelCtx);
   const id = useId();
   const [state, send] = useReducer(tipReducer, TIP_CLOSED);
   const root = useRef<HTMLSpanElement>(null);
   const button = useRef<HTMLButtonElement>(null);
   const bubble = useRef<HTMLSpanElement>(null);
-  const long = isLongHelp(help);
+  const long = always ? !!help?.trim() : isLongHelp(help);
   const open = long && state.open;
 
   const place = () => {

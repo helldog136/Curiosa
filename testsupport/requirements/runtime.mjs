@@ -148,6 +148,8 @@ const requirements = [
           else if (b.type === "form" && (typeof b.action !== "string" || !Array.isArray(b.fields) || typeof b.submitLabel !== "string" || typeof b.successText !== "string")) out.push(`${whereOf(o)} : un bloc form doit avoir action, fields, submitLabel et successText`);
           else if (b.type === "table" && (!Array.isArray(b.columns) || !Array.isArray(b.rows))) out.push(`${whereOf(o)} : un bloc table doit avoir « columns » et « rows »`);
           else if (b.type === "adminForm" && b.presentation !== undefined && b.presentation !== "dialog") out.push(`${whereOf(o)} : adminForm.presentation must be "dialog" (or absent)`);
+          else if (b.type === "adminForm" && b.danger !== undefined && typeof b.danger !== "boolean") out.push(`${whereOf(o)} : adminForm.danger must be true or false (or absent)`);
+          else if (b.type === "adminForm" && b.secondaryAction !== undefined && (typeof b.secondaryAction?.label !== "string" || typeof b.secondaryAction?.action !== "string" || typeof b.secondaryAction?.confirm !== "string" || b.presentation !== "dialog")) out.push(`${whereOf(o)} : adminForm.secondaryAction needs a label, an action and a confirm text, and presentation: "dialog"`);
           else if (b.type === "table" && (b.rowActions ?? []).some((a) => a?.presentation !== undefined && (a.presentation !== "dialog" || typeof a.href !== "string"))) out.push(`${whereOf(o)} : a rowActions entry with presentation must be "dialog" and have an href (for example "?edit={id}")`);
         });
       };

@@ -32,8 +32,10 @@ export function DialogLink({ href, className, children, role, label, chip }: { h
  * back in history when this window was opened by a click in the page (so "Back" and "Close" agree), otherwise (reload, shared link) it replaces the address by
  * `closeHref`, the list. Edited fields are protected by the discard question.
  */
-export function EditDialog({ title, closeLabel, closeHref, guard, footer, testid = "edit-dialog", children }: {
-  title: string; closeLabel: string; closeHref?: string; guard: DiscardGuard; footer: React.ReactNode; testid?: string; children: React.ReactNode;
+export function EditDialog({ title, closeLabel, closeHref, guard, footer, secondary, testid = "edit-dialog", children }: {
+  title: string; closeLabel: string; closeHref?: string; guard: DiscardGuard; footer: React.ReactNode;
+  /** (core 0.12.0) A destructive action shown apart at the start of the footer (see `ModalWindow`). */
+  secondary?: React.ReactNode; testid?: string; children: React.ReactNode;
 }) {
   const router = useRouter();
   const pathname = usePathname();
@@ -44,5 +46,5 @@ export function EditDialog({ title, closeLabel, closeHref, guard, footer, testid
     const target = (closeHref && softOpenTarget(closeHref, window.location.href)) ?? pathname;
     router.replace(target, { scroll: false });
   };
-  return <ModalWindow size="form" title={title} closeLabel={closeLabel} closeHref={closeHref} guard={guard} footer={footer} testid={testid} onClose={leave}>{children}</ModalWindow>;
+  return <ModalWindow size="form" title={title} closeLabel={closeLabel} closeHref={closeHref} guard={guard} footer={footer} secondary={secondary} testid={testid} onClose={leave}>{children}</ModalWindow>;
 }
