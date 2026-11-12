@@ -272,10 +272,12 @@ test("page de rendu : superposition dans l'ordre, éléments masqués absents, �
   assert.match(demo, /data-live="\/m\/i\/element\/clock\?ov-w=600"/);
 });
 
-test("page de rendu : page inactive = « Cet overlay est désactivé » ; texte échappé ; interrogation sans minuteur serveur", () => {
+test("page de rendu : page inactive = vide en direct, message seulement en mode test ; texte échappé ; interrogation sans minuteur serveur", () => {
   const off = view({ page: pageData({ active: false }), elements: [] });
-  assert.match(off, /Cet overlay est désactivé/); assert.doesNotMatch(off, /<iframe/);
-  assert.match(view({ page: pageData({ active: false }), elements: [], t: makeTranslator("en"), lang: "en" }), /This overlay is turned off/);
+  assert.doesNotMatch(off, /désactivé|class="off"|<iframe/, "live (OBS): nothing to show, nothing shown");
+  const testing = view({ page: pageData({ active: false }), elements: [], test: true });
+  assert.match(testing, /Cet overlay est désactivé/); assert.doesNotMatch(testing, /<iframe/);
+  assert.match(view({ page: pageData({ active: false }), elements: [], t: makeTranslator("en"), lang: "en", test: true }), /This overlay is turned off/);
   const evil = view({ elements: [resolved("ok", { title: '"><script>alert(1)</script>' })] });
   assert.doesNotMatch(evil, /<script>alert/); assert.match(evil, /&lt;script&gt;/);
   assert.match(R.renderPage({ page: pageData({ name: "</title><script>x</script>" }), elements: [], t: makeTranslator("fr"), lang: "fr", test: false, now: 0, nonce: "n", stateUrl: "" }), /&lt;\/title&gt;/);

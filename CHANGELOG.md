@@ -9,12 +9,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## 0.8.2 — 2026-11-12
 
-**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher. La liste « Ajouter un élément » est rangée par nom d'extension, avec une recherche.
+**En bref.** Dans l'onglet « Skin » d'une page d'overlay, « Obtenir d'autres skins » montre maintenant chaque skin avec son aperçu, dans des cartes régulières, avec un champ pour chercher. Une page d'overlay désactivée n'affiche plus rien dans OBS. La liste « Ajouter un élément » est rangée par nom d'extension, avec une recherche.
 
-**In short.** In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field. The "Add an element" list is arranged by extension name, with a search.
+**In short.** A turned-off overlay page now shows nothing at all in OBS. In the "Skin" tab of an overlay page, "Get more skins" now shows each skin with its preview, in regular cards, with a search field. The "Add an element" list is arranged by extension name, with a search.
 
 ### Overlays
 
+- **Une page désactivée n'affiche plus rien.** Dans OBS, elle reste vide et transparente : le message « Cet overlay est désactivé » n'apparaît plus qu'en mode test. Une adresse inconnue ou un overlay absent n'affiche plus de « 404 » non plus.
+- **(English) A turned-off page shows nothing.** In OBS it stays empty and transparent: the "This overlay is turned off" message only shows in test mode. An unknown address or a missing overlay no longer shows a "404" either.
 - **Un aperçu pour chaque skin à obtenir.** Les cartes ont toutes la même hauteur, avec l'aperçu, le nom, une courte phrase et le bouton « Installer » toujours au même endroit. Un champ filtre la liste pendant la frappe.
 - **(English) A preview for every skin to get.** Cards all have the same height, with the preview, the name, a short sentence and the "Install" button always in the same place. A field filters the list as you type.
 - **Les aperçus viennent de votre site.** Chaque image n'est lue qu'au moment où sa carte apparaît, puis gardée sur votre site. Si elle n'est pas disponible, une image neutre la remplace.

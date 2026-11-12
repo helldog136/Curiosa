@@ -164,7 +164,7 @@ async function pageWith(elements, style) {
 
 test("/overlays/page/<secret> : 404 muet si inconnu ou mal formé ; sinon page transparente avec des en-têtes sûrs, sans cookie", async () => {
   const { secret, demoKey } = await pageWith(({ demoKey }) => [place("aaaaaa", demoKey, "clock", { options: { format: "12h", size: 80 } })], { text: "dark", background: "soft", corners: "square" });
-  for (const bad of ["x", "../etc", "A".repeat(32), "A".repeat(31), `${secret}x`]) { const r = await get({ secret: bad, path: `/overlays/page/${bad}` }); assert.equal(r.status, 404, bad); assert.equal(await r.text(), "Not found"); }
+  for (const bad of ["x", "../etc", "A".repeat(32), "A".repeat(31), `${secret}x`]) { const r = await get({ secret: bad, path: `/overlays/page/${bad}` }); assert.equal(r.status, 404, bad); assert.equal(await r.text(), "", "empty body: nothing is shown in OBS"); }
   const r = await get({ secret, path: `/overlays/page/${secret}` });
   assert.equal(r.status, 200);
   const html = await r.text();
@@ -183,11 +183,11 @@ test("/overlays/page/<secret> : 404 muet si inconnu ou mal formé ; sinon page t
   assert.doesNotMatch(html, /<html [^>]*data-test/, "mode test arrêté");
 });
 
-test("page inactive : « Cet overlay est désactivé » (pas de page blanche) ; réactivée, l'état change et la version aussi", async () => {
+test("page inactive : vide et transparente en direct (aucun texte dans OBS) ; réactivée, l'état change et la version aussi", async () => {
   const { page, secret } = await pageWith(({ demoKey }) => [place("aaaaaa", demoKey, "clock")]);
   await S.setActive(page.id, false);
   const html = await (await get({ secret, path: `/overlays/page/${secret}` })).text();
-  assert.match(html, /Cet overlay est désactivé/); assert.doesNotMatch(html, /<iframe/);
+  assert.doesNotMatch(html, /désactivé|turned off|class="off"|<iframe/); assert.match(html, /background:transparent/);
   const state = await (await get({ secret, path: `/overlays/page/${secret}/state` }, StateRoute)).json();
   assert.deepEqual([state.active, state.test, state.rev], [false, false, 2]);
   await S.setActive(page.id, true);
@@ -228,7 +228,7 @@ test("mode test : exactement 30 minutes, vu de la page d'OBS (29 min : encore ac
   const gone = await (await get({ secret, path: statePath }, StateRoute)).json();
   assert.equal(gone.test, false, "31 minutes après le départ : le mode test s'est arrêté tout seul");
   assert.doesNotMatch(await pageHtml(), /<html [^>]*data-test/);
-  // Une page inactive répond « désactivé » sans iframe, même si son mode test court encore.
+  // Une page inactive n'a jamais d'iframe ; le message « désactivé » n'apparaît que pendant le mode test.
   await S.setTest(page.id, "start", Date.now());
   await S.setActive(page.id, false);
   const off = await pageHtml();

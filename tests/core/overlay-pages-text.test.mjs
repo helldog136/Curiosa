@@ -65,3 +65,10 @@ test("sélecteur d'éléments : groupes au nom (traduit) du module, surnom d'ins
   assert.match(page, /group: c\.moduleName, groupId: c\.moduleId/); assert.match(page, /\.size \?\? 0\) > 1 \? c\.instanceLabel : ""/); assert.match(page, /localeCompare\(b\.moduleName, locale\)|a\.moduleName\.localeCompare\(b\.moduleName, locale\)/);
   assert.match(editor, /foldText\(`\$\{a\.group\} \$\{a\.label\} \$\{a\.description\} \$\{a\.hint\}`\)/); assert.match(editor, /<details key=\{id\} open/); assert.match(editor, /s\("ed\.pickClear"\)/);
 });
+
+test("rien à montrer, rien de montré : aucun texte visible en direct dans OBS (page désactivée, adresse inconnue, overlay absent)", () => {
+  assert.match(fs.readFileSync("src/app/overlays/not-found.tsx", "utf8"), /return null;/);
+  const render = fs.readFileSync("src/core/overlays/render.ts", "utf8");
+  assert.match(render, /\$\{i\.test \? `<div class="off"/, "the turned-off message belongs to test mode only");
+  assert.match(fs.readFileSync("src/core/overlays/serve.ts", "utf8"), /notFoundResponse = \(\): Response => new Response\(null,/);
+});
