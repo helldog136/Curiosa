@@ -1,6 +1,7 @@
 import { isHexColor } from "../color";
 import type { SettingField } from "./types";
 import { checkBoundedNumber, checkDateTime, checkDuration, parsePeriod, serializePeriod } from "../adminkit/values";
+import { AUDIO_URL_RE } from "../audioTypes";
 
 /**
  * Valeurs de réglages : fonctions pures (aucune base de données), partagées par l'admin, le serveur et `ctx.setting()`.
@@ -75,7 +76,7 @@ export function readMulti(field: Pick<SettingField, "options" | "defaultValues" 
   return options.filter((v) => chosen.has(v)).slice(0, field.maxChoices ?? options.length);
 }
 
-export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "range" | "select" | "video" | "image" | "url" | "link" | "period" | "datetime" | "duration" };
+export type FieldCheck = { ok: true; value: unknown } | { ok: false; reason: "color" | "number" | "range" | "select" | "video" | "audio" | "image" | "url" | "link" | "period" | "datetime" | "duration" };
 
 /**
  * Valide la saisie (texte déjà « trimé », non vide) d'un réglage selon son type — LA règle commune à l'admin (formulaire des réglages d'une instance)
@@ -96,6 +97,7 @@ export function checkFieldInput(field: Pick<SettingField, "type" | "options" | "
     case "duration": { const c = checkDuration(raw, field); return c.ok ? { ok: true, value: c.value } : { ok: false, reason: c.reason === "range" ? "range" : "duration" }; }
     case "select": return field.options?.some((o) => o.value === raw) ? { ok: true, value: raw } : { ok: false, reason: "select" };
     case "video": return /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "video" };
+    case "audio": return AUDIO_URL_RE.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "audio" };
     case "image": return /^(https?:\/\/|\/uploads\/)/i.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "image" };
     case "url": return /^https?:\/\//i.test(raw) ? { ok: true, value: raw } : { ok: false, reason: "url" };
     case "link": return isValidLink(raw) ? { ok: true, value: raw } : { ok: false, reason: "link" };

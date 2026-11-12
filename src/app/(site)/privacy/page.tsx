@@ -10,6 +10,7 @@ import { siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
 import { languageAlternates, socialMeta } from "@/core/seo";
 import { resolveLook } from "@/core/skins/render";
+import { activeSound } from "@/core/backgroundSound";
 import { Markdown } from "@/components/site/Markdown";
 import { CookieSettingsLink } from "@/components/site/CookieTray";
 
@@ -36,7 +37,8 @@ export default async function PrivacyPage() {
   const extra = (await getSetting<string>("privacy.extra", locale)) ?? (await getSetting<string>("privacy.extra", config.defaultLocale)) ?? "";
   // Le choix clair/sombre du visiteur n'existe (et n'est donc déclaré) que si le skin du site fournit les deux apparences.
   const modeSwitch = (await resolveLook(config)).appearance.modeSwitch;
-  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, modeSwitch, search: config.search.enabled, features, extra, t });
+  const sound = (await activeSound()) !== null;
+  const text = buildPrivacyPolicy({ siteName: config.name, contactEmail: config.contactEmail, statsEnabled: config.statsEnabled, newsToggle: config.newsToggle, modeSwitch, sound, search: config.search.enabled, features, extra, t });
   return (
     <article className="mx-auto max-w-[var(--sk-prose-width-wide,48rem)] space-y-4 py-6">
       <h1 data-skin-part="heading" data-level="1" className="text-3xl font-bold tracking-tight">{t("privacy.title")}</h1>

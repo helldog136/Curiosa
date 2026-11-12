@@ -24,6 +24,8 @@ import { withLocale } from "@/core/links";
 import { Footer } from "@/components/site/Footer";
 import { Header } from "@/components/site/Header";
 import { VisitBeacon } from "@/components/site/VisitBeacon";
+import { BackgroundSound } from "@/components/site/BackgroundSound";
+import { activeSound } from "@/core/backgroundSound";
 import { CodeCopyProvider } from "@/components/site/CodeBlock";
 import { codeCopyLabels } from "@/components/site/codeCopyLabels";
 import { SETUP_HREF } from "@/core/adminLinks";
@@ -89,6 +91,9 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   const tray = trayState({ enabled: config.newsToggle, newsCookie: jar.get(NEWS_COOKIE)?.value, choiceCookie: jar.get(CHOICE_COOKIE)?.value });
   const trayLabels = Object.fromEntries(TRAY_TEXT_KEYS.map((k) => [k, t(`cookies.${k}`)])) as TrayLabels;
 
+  // Son de fond (réglé dans Réglages › Son de fond) : monté ICI, dans le gabarit, pour que la lecture continue d'une page à l'autre. Jamais dans un aperçu de skin.
+  const sound = preview === null ? await activeSound() : null;
+
   return (
     <html lang={locale} dir={RTL_LOCALES.has(locale) ? "rtl" : "ltr"} data-skin={look.composed.skinId} data-accent2={look.composed.hasAccent2 ? "1" : undefined} data-surface={look.composed.hasChosenSurface ? "1" : undefined}>
       <head>
@@ -115,6 +120,10 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           </main>
           <Footer config={localized} locale={locale} />
         </div>
+        {sound && (
+          <BackgroundSound key={`${sound.file}|${sound.volume}|${sound.startMuted}`} src={sound.file} volume={sound.volume} startMuted={sound.startMuted} corner={sound.corner} pages={sound.pages} locales={config.locales}
+            labels={{ label: t("sound.label"), playTitle: t("sound.play"), muteTitle: t("sound.mute"), statusOn: t("sound.statusOn"), statusOff: t("sound.statusOff") }} />
+        )}
         {config.statsEnabled && <VisitBeacon />}
       </body>
     </html>

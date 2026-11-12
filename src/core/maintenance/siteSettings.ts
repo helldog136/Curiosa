@@ -2,6 +2,8 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { UPLOADS_DIR } from "@/core/config";
+import { getSoundConfig, soundFileExists } from "@/core/backgroundSound";
+import { isSoundCorner, isSoundFile, isSoundPages, normalizeVolume, SOUND_CORNERS, SOUND_KEYS, SOUND_PAGES, VOLUME_MAX, VOLUME_MIN } from "@/core/soundConfig";
 import { LOGO_KEYS, type LogoSet } from "@/core/logos";
 import { audit } from "@/core/permissions";
 import { deleteSetting, getSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
@@ -49,6 +51,7 @@ export const SITE_SETTINGS_INPUT = {
     presentation: textProp(`Presentation of the site or of its author per language (Markdown), at most ${MAX_ABOUT} characters each; an empty string removes it.`),
     contactEmail: { type: "string", maxLength: MAX_EMAIL, description: "Public contact e-mail address, for example hello@example.org. An empty string removes it." },
     logos: { type: "object", description: `Logo slots (${LOGO_SLOTS.join(", ")}) set from an image already on the site: an address like /uploads/<name>.png returned by media_upload (or an upload made in the admin). An empty string removes the logo of that slot. A svg is fine for the logos but not for the sharing image.`, additionalProperties: { type: "string" } },
+    backgroundSound: { type: "object", description: `Background sound of the public site (off by default): { enabled?: boolean, file?: "/uploads/<name>.mp3|ogg|wav|m4a|aac" (a sound ALREADY on the site, uploaded by the owner in Admin > Settings > Background sound; "" removes it), volume?: ${VOLUME_MIN}-${VOLUME_MAX}, pages?: ${SOUND_PAGES.join("|")}, corner?: ${SOUND_CORNERS.join("|")}, startMuted?: boolean }. Visitors always keep a mute button. You cannot upload a sound.`, additionalProperties: true },
   },
 } as unknown as JsonSchemaLite;
 
@@ -86,6 +89,7 @@ export async function siteSettingsGet(): Promise<unknown> {
     name: c.name, tagline: c.tagline, presentation: c.presentation, contactEmail: c.contactEmail || null,
     languages: { default: c.config.defaultLocale, enabled: c.config.locales, note: "Languages are changed by the owner in Admin > Settings only." },
     logos: Object.fromEntries(LOGO_SLOTS.map((s) => [s, c.logos[s] || null])) as Record<keyof LogoSet | string, string | null>,
+    backgroundSound: await getSoundConfig(),
     limits: { name: MAX_NAME, tagline: MAX_TAGLINE, presentation: MAX_ABOUT },
   };
 }
@@ -152,13 +156,40 @@ export async function prepareSiteSettings(args: Record<string, unknown>): Promis
     }
   }
 
+  if (args.backgroundSound !== undefined) {
+    const sound = args.backgroundSound;
+    const nowSound = await getSoundConfig();
+    const allowed = ["enabled", "file", "volume", "pages", "corner", "startMuted"];
+    if (!plainObject(sound) || !Object.keys(sound).length) problems.push(`backgroundSound: give an object like {"enabled": true} with keys among ${allowed.join(", ")}`);
+    else {
+      for (const k of Object.keys(sound)) if (!allowed.includes(k)) problems.push(`backgroundSound: unknown key "${redactSecrets(k, 20)}" (keys: ${allowed.join(", ")})`);
+      const want = (key: string, to: unknown, from: unknown) => { if (String(to) !== String(from ?? "")) changes.push({ field: `sound.${key}`, from: String(from ?? ""), fromFp: fp(String(from ?? "")), to: String(to) }); };
+      for (const k of ["enabled", "startMuted"] as const) if (sound[k] !== undefined) { if (typeof sound[k] !== "boolean") problems.push(`backgroundSound.${k}: must be true or false`); else want(k, sound[k], nowSound[k]); }
+      if (sound.file !== undefined) {
+        if (typeof sound.file !== "string") problems.push("backgroundSound.file: must be an address like /uploads/….mp3, or an empty string to remove it");
+        else if (sound.file && !isSoundFile(sound.file)) problems.push("backgroundSound.file: must be a sound already on this site, written like /uploads/0a1b2c3d-….mp3 (mp3, ogg, wav, m4a or aac). Outside addresses are not accepted and an assistant cannot upload a sound");
+        else if (sound.file && !(await soundFileExists(sound.file))) problems.push("backgroundSound.file: this file does not exist on this site. The owner uploads the sound in Admin > Settings > Background sound");
+        else want("file", sound.file, nowSound.file);
+      }
+      if (sound.volume !== undefined) {
+        if (typeof sound.volume !== "number" || !Number.isInteger(sound.volume) || normalizeVolume(sound.volume) !== sound.volume) problems.push(`backgroundSound.volume: a whole number from ${VOLUME_MIN} to ${VOLUME_MAX}`);
+        else want("volume", sound.volume, nowSound.volume);
+      }
+      if (sound.pages !== undefined) { if (!isSoundPages(sound.pages)) problems.push(`backgroundSound.pages: one of ${SOUND_PAGES.join(", ")}`); else want("pages", sound.pages, nowSound.pages); }
+      if (sound.corner !== undefined) { if (!isSoundCorner(sound.corner)) problems.push(`backgroundSound.corner: one of ${SOUND_CORNERS.join(", ")}`); else want("corner", sound.corner, nowSound.corner); }
+      const willEnable = sound.enabled === true || (sound.enabled === undefined && nowSound.enabled);
+      const willFile = sound.file !== undefined ? sound.file : nowSound.file;
+      if (willEnable && !willFile && !problems.length) problems.push("backgroundSound: there is no sound file yet. The owner uploads one in Admin > Settings > Background sound");
+    }
+  }
+
   if (problems.length) throw new McpToolError(`Nothing was saved. ${problems.join(". ")}.`);
-  if (!changes.length) throw new McpToolError(Object.keys(args).length ? "Nothing to change: these values are already in place." : "Give at least one of: name, tagline, presentation, contactEmail, logos.");
+  if (!changes.length) throw new McpToolError(Object.keys(args).length ? "Nothing to change: these values are already in place." : "Give at least one of: name, tagline, presentation, contactEmail, logos, backgroundSound.");
   const names = changes.slice(0, 8).map((c) => `${label(c)}: ${c.from ? short(c.from) : "(empty)"} → ${c.to ? short(c.to) : "(empty)"}`).join("; ") + (changes.length > 8 ? ` (+${changes.length - 8} more)` : "");
   return { site: { changes, names } };
 }
 
-const label = (c: Pick<Change, "field" | "locale">): string => c.field.startsWith("logo.") ? SLOT_TEXT[c.field.slice(5) as Slot] ?? c.field : c.field === "contactEmail" ? "contact e-mail" : `${c.field === "presentation" ? "presentation" : c.field}${c.locale ? ` (${c.locale})` : ""}`;
+const label = (c: Pick<Change, "field" | "locale">): string => c.field.startsWith("sound.") ? `background sound ${c.field.slice(6)}` : c.field.startsWith("logo.") ? SLOT_TEXT[c.field.slice(5) as Slot] ?? c.field : c.field === "contactEmail" ? "contact e-mail" : `${c.field === "presentation" ? "presentation" : c.field}${c.locale ? ` (${c.locale})` : ""}`;
 
 const KEYS: Record<string, string> = { name: "site.name", tagline: "site.tagline", presentation: "site.about" };
 
@@ -166,9 +197,11 @@ const KEYS: Record<string, string> = { name: "site.name", tagline: "site.tagline
 export async function executeSiteSettings(plan: Plan, actorLabel: string): Promise<Outcome> {
   const wanted = plan.site!.changes;
   const now = await current();
+  const soundCfg = await getSoundConfig();
+  const soundNow: Record<string, string> = { enabled: String(soundCfg.enabled), startMuted: String(soundCfg.startMuted), file: soundCfg.file ?? "", volume: String(soundCfg.volume), pages: soundCfg.pages, corner: soundCfg.corner };
   const stale: string[] = [];
   for (const c of wanted) {
-    const here = c.field.startsWith("logo.") ? now.logos[c.field.slice(5) as Slot] ?? "" : c.field === "contactEmail" ? now.contactEmail : ((now as unknown as Record<string, Record<string, string>>)[c.field]?.[c.locale ?? ""] ?? "");
+    const here = c.field.startsWith("sound.") ? soundNow[c.field.slice(6)] ?? "" : c.field.startsWith("logo.") ? now.logos[c.field.slice(5) as Slot] ?? "" : c.field === "contactEmail" ? now.contactEmail : ((now as unknown as Record<string, Record<string, string>>)[c.field]?.[c.locale ?? ""] ?? "");
     if (fp(here) !== c.fromFp) stale.push(label(c));
   }
   if (stale.length) return { ok: false, message: `Not done: ${stale.join(", ")} changed since the request (somebody edited it). Read site_settings_get and ask again.` };
@@ -177,8 +210,13 @@ export async function executeSiteSettings(plan: Plan, actorLabel: string): Promi
     const r = await imageOnSite(c.to);
     if (!r.ok) return { ok: false, message: `Not done: ${label(c)} ${r.why}.` };
   }
+  for (const c of wanted) if (c.field === "sound.file" && c.to && !(await soundFileExists(c.to))) return { ok: false, message: "Not done: the background sound file no longer exists." };
   for (const c of wanted) {
-    if (c.field.startsWith("logo.")) {
+    if (c.field.startsWith("sound.")) {
+      const key = c.field.slice(6) as keyof typeof SOUND_KEYS;
+      const value = key === "enabled" || key === "startMuted" ? c.to === "true" : key === "volume" ? Number(c.to) : c.to;
+      if (c.to === "" ) await deleteSetting(SOUND_KEYS[key]); else await setSetting(SOUND_KEYS[key], value);
+    } else if (c.field.startsWith("logo.")) {
       const key = LOGO_KEYS[c.field.slice(5) as keyof typeof LOGO_KEYS];
       if (c.to) await setSetting(key, c.to); else await deleteSetting(key);
     } else if (c.field === "contactEmail") await setSetting("site.contactEmail", c.to);

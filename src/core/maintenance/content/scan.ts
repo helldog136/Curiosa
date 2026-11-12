@@ -14,7 +14,7 @@ import type { Fix, Group, Item, LinkTask, LinkTotals, Notes, Severity, Stats } f
  * menu, redirections, réglages, fichiers envoyés. Rien n'est modifié et aucun site n'est contacté ici : les liens externes à visiter sont seulement RÉCOLTÉS (voir run.ts et probe.ts).
  */
 /** Nom d'un fichier envoyé (copie de `UPLOAD_NAME_RE` de services/uploads.ts : ne pas l'importer, ce fichier écrit sur le disque et ferait tracer tout le projet à la compilation ; un test garde les deux identiques). */
-export const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|svg)$/;
+export const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|ogg|mp3|wav|m4a|aac|svg)$/;
 
 export const LIMITS = {
   /** Entrées lues au plus (au-delà, le rapport le dit). */

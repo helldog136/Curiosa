@@ -31,7 +31,7 @@ export const PARTS = [
   "tabs", "tab", "pagination", "pagination-link", "mode-switch", "mode-option",
   "brand", "menu-toggle", "nav-list", "nav-link", "submenu", "submenu-toggle", "header-group", "lang-switcher", "socials",
   "entries", "module-html", "search", "mark",
-  "home-flow", "home-cell", "cookie-tray", "footer-text", "footer-link", "credit", "brand-mark", "skip-link",
+  "home-flow", "home-cell", "cookie-tray", "sound-toggle", "footer-text", "footer-link", "credit", "brand-mark", "skip-link",
 ] as const;
 
 /** Décor : seul endroit où l'on peut masquer, estomper ou découper librement (§0.1). */
@@ -241,7 +241,7 @@ export const TINY_FONT_SIZE_KEYWORDS: readonly string[] = ["xx-small", "x-small"
 export const NON_HIDEABLE: readonly string[] = [
   "brand", "nav-link", "nav-list", "submenu", "tools", "lang-switcher", "heading", "prose", "link", "button", "field", "input", "textarea",
   "label", "field-error", "card", "card-body", "list-item", "image", "media", "cover", "avatar", "notice", "stat", "tab", "pagination",
-  "pagination-link", "cookie-tray", "footer-link", "credit", "brand-mark", "skip-link", "mode-switch", "mode-option", "submenu-toggle", "header-group", "entries", "module-html",
+  "pagination-link", "cookie-tray", "sound-toggle", "footer-link", "credit", "brand-mark", "skip-link", "mode-switch", "mode-option", "submenu-toggle", "header-group", "entries", "module-html",
 ];
 
 // ---------------------------------------------------------------------------------------------------------------------

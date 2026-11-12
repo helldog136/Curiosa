@@ -24,6 +24,10 @@ import { saveSettings } from "./actions";
 
 import { saveMail, sendTestMail } from "./mail-actions";
 import { saveSearch } from "./search-actions";
+import { saveSound } from "./sound-actions";
+import { getSoundConfig } from "@/core/backgroundSound";
+import { SoundTest } from "@/components/admin/SoundTest";
+import { SOUND_CORNERS, SOUND_PAGES, VOLUME_DEFAULT, VOLUME_MAX, VOLUME_MIN } from "@/core/soundConfig";
 import Link from "next/link";
 import { I18nStatusCard } from "@/components/admin/I18nStatusCard";
 import { i18nStatus } from "@/core/i18n/status";
@@ -49,6 +53,7 @@ export default async function SettingsPage() {
   const llmsTxt = await isLlmsTxtEnabled();
   const entity = await getSiteEntity();
   const i18n = await i18nStatus();
+  const sound = await getSoundConfig();
 
   // Icône de l'onglet et image de partage : dans la grille en mode avancé, sous « Plus d'images » en mode simple (sans eux le site se débrouille).
   const extraLogos = (
@@ -76,7 +81,7 @@ export default async function SettingsPage() {
         <p className={ui.pageIntro}>{t("settings.intro")}</p>
       </header>
       <LegacyHash map={{ appearance: APPEARANCE_HREF, header: NAVIGATION_HEADER_HREF }} />
-      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, { id: "ai", label: t("settings.ai") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : []), ...(advanced ? [{ id: "address", label: t("settings.address") }] : [])]}>
+      <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, { id: "sound", label: t("settings.sound") }, { id: "ai", label: t("settings.ai") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : []), ...(advanced ? [{ id: "address", label: t("settings.address") }] : [])]}>
       <div data-tab="site languages privacy">
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -228,6 +233,36 @@ export default async function SettingsPage() {
             const kept = searchTypes.filter((x) => !search.exclude.includes(x.key)).length;
             const summary = [where, t("settings.searchPerPageSummary", { n: search.perPage }), searchTypes.length > 0 && kept < searchTypes.length ? t("settings.searchTypesSummary", { n: kept, total: searchTypes.length }) : t("settings.searchAllContent")].join(" · ");
             return <MoreOptions title={t("settings.searchMore")} summary={summary} defaultOpen={search.placement !== "header" || search.perPage !== PER_PAGE_DEFAULT || search.exclude.length > 0}>{fields}</MoreOptions>;
+          })()}
+        </ActionForm>
+      </section>
+
+      <section data-tab="sound" className="space-y-5" data-testid="settings-sound">
+        <p className={ui.help}>{t("settings.soundIntro")}</p>
+        <ActionForm action={saveSound} submitLabel={t("settings.soundSave")} pendingLabel={t("progress.saving")} className="space-y-5">
+          <div className={`${ui.card} space-y-4`}>
+            <SwitchField name="soundEnabled" label={t("settings.soundSwitch")} defaultChecked={sound.enabled} onText={t("settings.soundOn")} offText={t("settings.soundOff")} />
+            <p data-testid="sound-state"><span className={sound.enabled && sound.file ? ui.chipOk : ui.chipWarn}>{t(!sound.enabled ? "settings.soundState.off" : !sound.file ? "settings.soundState.waiting" : `settings.soundState.${sound.pages}`)}</span></p>
+            <ImageField name="soundFile" kind="audio" label={t("settings.soundFile")} defaultValue={sound.file} uploadLabel={t("action.upload")} />
+            <p className={ui.help}>{t(sound.file ? "settings.soundFileHelp" : "settings.soundEmpty")}</p>
+            <SoundTest fileName="soundFile" volumeName="soundVolume" labels={{ listen: t("settings.soundTest"), stop: t("settings.soundTestStop"), none: t("settings.soundTestNone"), failed: t("settings.soundTestFailed") }} />
+          </div>
+          {(() => {
+            const fields = (
+              <>
+                <NumberField name="soundVolume" label={t("settings.soundVolume")} unit={t("settings.soundVolumeUnit")} min={VOLUME_MIN} max={VOLUME_MAX} step={1} emptyValue={VOLUME_DEFAULT}
+                  hint={numberHint(t, { type: "number", min: VOLUME_MIN, max: VOLUME_MAX, step: 1, default: VOLUME_DEFAULT }, t("settings.soundVolumeUnit"))}
+                  defaultValue={sound.volume === VOLUME_DEFAULT ? "" : sound.volume}
+                  invalidText={t("settings.soundVolumeError", { min: VOLUME_MIN, max: VOLUME_MAX, example: VOLUME_DEFAULT })} />
+                <Segmented name="soundPages" label={t("settings.soundPages")} defaultValue={sound.pages} options={SOUND_PAGES.map((v) => ({ value: v, label: t(`settings.soundPages.${v}`) }))} />
+                <Segmented name="soundCorner" label={t("settings.soundCorner")} defaultValue={sound.corner} options={SOUND_CORNERS.map((v) => ({ value: v, label: t(`settings.soundCorner.${v}`) }))} />
+                <SwitchField name="soundStartMuted" label={t("settings.soundMuted")} help={t("settings.soundMutedHelp")} defaultChecked={sound.startMuted} onText={t("settings.soundOn")} offText={t("settings.soundOff")} />
+              </>
+            );
+            const summary = t("settings.soundSummary", { n: sound.volume, pages: t(`settings.soundPages.${sound.pages}`), corner: t(`settings.soundCorner.${sound.corner}`) });
+            const changed = sound.volume !== VOLUME_DEFAULT || sound.pages !== "all" || sound.corner !== "bottom-right" || sound.startMuted;
+            if (advanced) return <div className={`${ui.card} space-y-4`}><h3 className="font-semibold">{t("settings.soundMore")}</h3>{fields}</div>;
+            return <MoreOptions title={t("settings.soundMore")} summary={summary} defaultOpen={changed}>{fields}</MoreOptions>;
           })()}
         </ActionForm>
       </section>

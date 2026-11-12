@@ -16,7 +16,7 @@ const CROPPABLE = /^\/uploads\/[0-9a-f-]{36}\.(png|jpe?g|webp)$/;
  * Une image envoyée se recadre (bouton « Recadrer ») sans jamais être modifiée : la valeur du champ est l'original + son cadrage
  * (`/uploads/xxx.png?c=…`, voir core/imageCrop.ts) ; une valeur sans cadrage est l'image telle quelle, comme avant.
  */
-export function ImageField({ name, label, defaultValue, uploadLabel, kind = "image", svg = false, onValue, required }: { required?: boolean; name: string; label: string; defaultValue?: string | null; uploadLabel: string; kind?: "image" | "video"; /** Accepte aussi le SVG (logos) : nettoyé par le serveur avant d'être enregistré. */ svg?: boolean; /** Appelé à chaque changement de valeur (saisie ou envoi), pour les éditeurs qui gardent l'état eux-mêmes. */ onValue?: (value: string) => void }) {
+export function ImageField({ name, label, defaultValue, uploadLabel, kind = "image", svg = false, onValue, required }: { required?: boolean; name: string; label: string; defaultValue?: string | null; uploadLabel: string; kind?: "image" | "video" | "audio"; /** Accepte aussi le SVG (logos) : nettoyé par le serveur avant d'être enregistré. */ svg?: boolean; /** Appelé à chaque changement de valeur (saisie ou envoi), pour les éditeurs qui gardent l'état eux-mêmes. */ onValue?: (value: string) => void }) {
   const [value, setValue] = useState(defaultValue ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +35,7 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
     const body = new FormData();
     body.set("file", file);
     if (svg) body.set("kind", "logo");
+    if (kind === "audio") body.set("kind", "audio"); // le serveur refuse alors tout ce qui n'est pas un son (type lu dans le contenu)
     try {
       const res = await fetch("/api/admin/upload", { method: "POST", body });
       const json = (await res.json()) as { url?: string; detail?: string };
@@ -53,10 +54,10 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
       <div className="flex flex-wrap items-center gap-3">
         {/* La valeur envoyée (champ caché) = adresse + cadrage ; la personne ne voit et ne modifie que l'adresse. */}
         <input type="hidden" name={name} value={value} />
-        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" ? "/uploads/…" : c(advanced ? "urlPlaceholder" : "urlPlaceholderSimple")} className={`${ui.input} min-w-0 flex-1`} />
+        <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" || kind === "audio" ? "/uploads/…" : c(advanced ? "urlPlaceholder" : "urlPlaceholderSimple")} className={`${ui.input} min-w-0 flex-1`} />
         <label className={`${ui.btn} min-h-11 ${busy ? "pointer-events-none cursor-progress" : "cursor-pointer"}`} aria-busy={busy || undefined}>
           {busy ? <><Spinner />{p("sending")}</> : uploadLabel}
-          <input type="file" disabled={busy} accept={kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
+          <input type="file" disabled={busy} accept={kind === "audio" ? "audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac" : kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />
         </label>
       </div>
       <StorageLine />
@@ -73,6 +74,8 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
       )}
       {error && <p role="alert" className="mt-1 text-xs text-red-600">{error}</p>}
       {value && kind === "video" && <video src={value} muted playsInline preload="metadata" className="mt-2 h-24 rounded-lg border border-line object-cover" />}
+      {/* Écoute native du son choisi : le libellé du champ sert de texte alternatif ; rien n'est téléchargé avant d'appuyer sur lecture. */}
+      {value && kind === "audio" && <audio src={value} controls preload="none" aria-label={label} className="mt-2 w-full max-w-sm" />}
       {value && kind === "image" && (
         // eslint-disable-next-line @next/next/no-img-element
         <img src={value} alt="" className="mt-2 max-h-32 max-w-full rounded-lg border border-line" />

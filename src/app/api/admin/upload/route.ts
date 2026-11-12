@@ -18,7 +18,8 @@ export async function POST(request: Request) {
     const svg = await saveSvgUpload(buf);
     return "url" in svg ? NextResponse.json({ url: svg.url }) : NextResponse.json(svg, { status: 400 });
   }
-  const url = await saveUpload(buf);
+  // Un champ « son » (kind=audio) n'accepte que des sons : le type vient du contenu, jamais du nom ni du type annoncé.
+  const url = await saveUpload(buf, form.get("kind") === "audio" ? { only: "audio" } : {});
   if (!url) return NextResponse.json({ error: "format" }, { status: 400 });
   // Revendiquable ensuite, par cette personne seulement et pour peu de temps, par un module qui a la permission « files » (services/files.ts).
   await recordUpload(url, user.id, buf.length);

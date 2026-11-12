@@ -72,6 +72,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
       emptyValue={f.placeholder} />;
   }
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;
+  if (f.kind === "audio") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" kind="audio" required={f.required} />;
   // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
   if (f.kind === "checkbox") return <Checkbox label={f.label} name={f.name} value="on" defaultChecked={["on", "1", "true"].includes(f.value ?? "")} help={f.help} required={f.required} />;
   if (f.kind === "file") return <FileField f={f} />;
@@ -96,7 +97,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
 
 /** Les champs d'un formulaire : les champs cachés, les champs visibles en grille, puis (0.6.0) les champs `folded` sous « Plus d'options » (ouvert d'office si l'un d'eux a déjà une valeur). */
 function FormFields({ fields, labels }: { fields: AdminField[]; labels?: FormLabels }) {
-  const wide = (f: AdminField) => f.kind === "textarea" || f.kind === "image" || f.kind === "file" || f.kind === "period" || f.kind === "datetime";
+  const wide = (f: AdminField) => f.kind === "textarea" || f.kind === "image" || f.kind === "audio" || f.kind === "file" || f.kind === "period" || f.kind === "datetime";
   const grid = (list: AdminField[]) => (
     <div className="grid gap-4 sm:grid-cols-2">
       {list.map((f) => <div key={f.name} className={wide(f) ? "sm:col-span-2" : ""}><Field f={f} labels={labels} /></div>)}

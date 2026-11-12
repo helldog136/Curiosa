@@ -120,6 +120,8 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
       }
       case "image":
         return <ImageField key={name} name={name} label={label} required={required} defaultValue={str} uploadLabel={t("action.upload")} />;
+      case "audio":
+        return <ImageField key={name} name={name} label={label} required={required} defaultValue={str} uploadLabel={t("action.upload")} kind="audio" />;
       case "video":
         return <ImageField key={name} name={name} label={label} required={required} defaultValue={str} uploadLabel={t("action.upload")} kind="video" />;
       case "url":

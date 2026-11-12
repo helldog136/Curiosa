@@ -27,6 +27,7 @@ const { CoverImage } = await import("@/components/site/CoverImage");
 const { EntryIcon } = await import("@/components/site/EntryIcon");
 const { CopyCode } = await import("@/components/site/CopyCode");
 const { CookieTray } = await import("@/components/site/CookieTray");
+const { SoundToggleView } = await import("@/components/site/BackgroundSound");
 const { ModuleForm } = await import("@/components/site/ModuleForm");
 const { makeTranslator } = await import("@/core/i18n/dictionary");
 const { TRAY_TEXT_KEYS } = await import("@/core/cookieTray");
@@ -157,6 +158,10 @@ async function fragmentsFor(L) {
   const privacyHref = L === "fr" ? "/privacy#cookies" : "/en/privacy#cookies";
   add(`${L}/tray`, await render(h(CookieTray, { labels, privacyHref, initialOpen: true }), pre("t")));
   add(`${L}/tray-closed`, await render(h(CookieTray, { labels, privacyHref, initialOpen: false }), pre("tc")));
+
+  // Bouton du son de fond : arrêté (« Son coupé ») puis en lecture.
+  const soundLabels = { label: t("sound.label"), playTitle: t("sound.play"), muteTitle: t("sound.mute"), statusOn: t("sound.statusOn"), statusOff: t("sound.statusOff") };
+  add(`${L}/sound`, await render(h("div", null, h(SoundToggleView, { view: { playing: false, wanted: true, failed: false }, corner: "bottom-right", labels: soundLabels, status: "" }), h(SoundToggleView, { view: { playing: true, wanted: true, failed: false }, corner: "bottom-left", labels: soundLabels, status: "" })), pre("snd")));
 
   // Blocs de page (Blocks du cœur)
   const hero = { type: "hero", ...T.hero, image: img(2) };

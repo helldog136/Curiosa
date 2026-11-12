@@ -29,6 +29,10 @@ Le bandeau n'existe que si le réglage est actif. Il s'affiche tant que la perso
 
 Quand le skin du site fournit les deux apparences (clair et sombre), l'en-tête propose à la personne qui visite un sélecteur « Automatique / Clair / Sombre ». Si elle choisit « Clair » ou « Sombre », son choix est gardé dans le **stockage local de son navigateur** (clé `curiosa-mode`, valeur `light` ou `dark`). Ce n'est **pas un cookie** : il n'est jamais envoyé au serveur ni à personne, il ne contient aucun identifiant et ne sert qu'à afficher les pages comme la personne qui visite l'a demandé. C'est une préférence d'affichage strictement fonctionnelle, choisie par la personne qui visite elle-même : elle ne demande pas de consentement et **le bandeau de cookies ne change pas**. Sans choix, le site suit le réglage de l'appareil (`prefers-color-scheme`). Le petit script du cœur qui la lit (`/skins/mode.js`, même origine, servi par le cœur, jamais par un skin) ne fait aucune requête. Cette ligne est ajoutée à la page `/privacy` seulement quand le sélecteur existe (skin à deux modes) ; le skin de base, qui n'a qu'un mode, ne le propose pas.
 
+### Le choix « avec ou sans son » du son de fond
+
+Si vous activez un son de fond (Réglages › Son de fond), le petit bouton « Son » garde le choix de la personne qui visite (`on` ou `off`) dans le **stockage local de son navigateur** (clé `curiosa-sound`), **seulement quand elle appuie sur le bouton**. Comme pour le choix clair/sombre : ce n'est pas un cookie, rien n'est envoyé au site ni à personne, aucun identifiant, et c'est une préférence que la personne demande elle-même ; elle ne demande donc pas de consentement et **le bandeau de cookies ne change pas**. La ligne correspondante est ajoutée à la page `/privacy` seulement quand un son de fond est actif. Le fichier son vient du site lui-même (aucun service tiers).
+
 Rien d'autre côté public : pas de cookie publicitaire, pas d'identifiant, pas de service tiers (polices, statistiques, vidéos intégrées…).
 
 L'équipe du site, elle, reçoit un cookie de **session** à la connexion à l'admin (strictement nécessaire).

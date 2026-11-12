@@ -124,7 +124,7 @@ export function fakeCtx(opts = {}) {
   // Un membre protégé par une permission : lisible (ou refusé), et remplaçable par un test (`ctx.api.store = autreStockage`) comme un champ ordinaire.
   const guarded = (permission, make) => { let replaced; let made; return { enumerable: true, configurable: true, get: () => (replaced !== undefined ? replaced : need(permission, (made ??= make()))), set: (v) => { replaced = v; } }; };
   // ── Fichiers (ctx.api.files, cœur 0.2.13) : mêmes règles que services/files.ts, en mémoire. ──
-  const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|svg)$/;
+  const UPLOAD_NAME = /^[0-9a-f-]{36}\.(png|jpg|webp|gif|mp4|webm|ogg|mp3|wav|m4a|aac|svg)$/;
   const CLAIM_WINDOW_MS = 30 * 60_000;
   const limitBytes = filesQuota.bytes ?? 4 * 1024 * 1024 * 1024, limitFiles = filesQuota.files ?? 20_000;
   const fileRows = new Map();
