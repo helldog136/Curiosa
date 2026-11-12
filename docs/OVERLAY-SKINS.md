@@ -118,7 +118,7 @@ export default {
 
 **Overlays > an overlay page > Skin** (the Layout and Skin tabs):
 
-- the **gallery**: the common style and every installed overlay skin with a live sample (a fixed scene drawn by the core, `/admin/overlay-pages/skin-sample/<id>`, no real data); one click on "Use this skin". Skins of the catalogue install from a folded "Get more skins" list;
+- the **gallery**: the common style and every installed overlay skin with a live sample (a fixed scene drawn by the core, `/admin/overlay-pages/skin-sample/<id>`, no real data); one click on "Use this skin". skins of the catalogue are shown in "Get more skins" as regular cards (live search, same height, the Install button always in the same place) with their 640 x 360 preview, read once from the repository when the card comes into view, kept on the site (`data/cache`) and served by the site itself, with a neutral placeholder when it is unavailable;
 - **Skin by situation**: a switch whose text comes from the module ("Skin per game"), off by default, shown only when a module offers a context. When on: a searchable table (live, no button) "value → skin" with an empty state that gives an example, "Add a rule", and "Edit" opening the core dialog: a searchable picker of the values the module has seen (nothing is typed as a key), a skin list and a live preview of the skin. "Everything else uses: <default skin>" says what happens in the other cases.
 
 ## 6. AI tools (MCP)

@@ -5,6 +5,7 @@ import { FieldErrorText, useFieldError } from "./FieldErrors";
 import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
 import { ui } from "./ui";
+import { foldText, queryWords } from "@/core/adminkit/search";
 import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
 import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
@@ -12,7 +13,7 @@ import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } fro
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
 export type ClientOption = { id: string; type: "choice" | "boolean" | "number" | "text"; label: string; help: string; example: string; choices: { value: string; label: string }[]; default: OptionValue };
-export type ClientElement = { key: string; instance: string; element: string; group: string; title: string; label: string; description: string; layout: LayoutDecl; followsStyle: boolean; options: ClientOption[] };
+export type ClientElement = { key: string; instance: string; element: string; group: string; groupId: string; hint: string; title: string; label: string; description: string; layout: LayoutDecl; followsStyle: boolean; options: ClientOption[] };
 export type EditorElement = PageElement & { missing?: boolean };
 type Props = {
   initial: { name: string; width: number; height: number; style: OverlayStyle; elements: EditorElement[] };
@@ -153,11 +154,19 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     return () => document.removeEventListener("keydown", close);
   }, [adding]);
 
+  // Groups by module (already sorted by the server in the person's language), filtered live on group title, element name, description and instance hint.
+  const [pickQuery, setPickQuery] = useState("");
   const groups = useMemo(() => {
-    const m = new Map<string, ClientElement[]>();
-    for (const a of available) m.set(a.group, [...(m.get(a.group) ?? []), a]);
-    return [...m.entries()];
-  }, [available]);
+    const words = queryWords(pickQuery);
+    const m = new Map<string, { title: string; items: ClientElement[]; total: number }>();
+    for (const a of available) {
+      const g = m.get(a.groupId) ?? { title: a.group, items: [], total: 0 };
+      g.total++;
+      if (words.every((w) => foldText(`${a.group} ${a.label} ${a.description} ${a.hint}`).includes(w))) g.items.push(a);
+      m.set(a.groupId, g);
+    }
+    return [...m.entries()].filter(([, g]) => g.items.length > 0);
+  }, [available, pickQuery]);
 
   const nameError = useFieldError("name");
   const resError = useFieldError("resolution");
@@ -223,21 +232,29 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           {full && <p className={ui.help}>{s("ed.full", { max: limits.elements })}</p>}
           {adding && (
             <div role="dialog" aria-label={s("ed.add")} className={`${ui.card} space-y-4`}>
-              {groups.length === 0 && <p className="text-sm text-muted">{s("ed.noneAvailable")}</p>}
-              {groups.map(([group, items]) => (
-                <fieldset key={group} className="space-y-2">
-                  <legend className="text-sm font-semibold">{group}</legend>
-                  <ul className="grid gap-2 sm:grid-cols-2">
-                    {items.map((a) => (
-                      <li key={a.key}>
-                        <button type="button" onClick={() => add(a)} className="flex min-h-11 w-full flex-col items-start rounded-xl border border-line bg-bg px-3 py-2 text-left transition-colors hover:border-accent">
-                          <span className="text-sm font-medium">{a.label}</span>
-                          {a.description && <span className="text-[13px] leading-5 text-muted">{a.description}</span>}
+              {available.length === 0 && <p className="text-sm text-muted">{s("ed.noneAvailable")}</p>}
+              {available.length > 0 && (
+                <div className="relative">
+                  <input type="search" value={pickQuery} onChange={(e) => setPickQuery(e.target.value)} placeholder={s("ed.pickSearch")} aria-label={s("ed.pickSearch")} autoComplete="off" data-testid="picker-search" className={`${ui.input} min-h-11`} />
+                </div>
+              )}
+              {available.length > 0 && groups.length === 0 && (
+                <p role="status" className="flex flex-wrap items-center gap-3 text-sm text-muted">{s("ed.pickNone")}<button type="button" className={ui.btn} onClick={() => setPickQuery("")}>{s("ed.pickClear")}</button></p>
+              )}
+              {groups.map(([id, g]) => (
+                <details key={id} open data-testid="picker-group" className="group space-y-2">
+                  <summary className="flex min-h-11 cursor-pointer items-center gap-2 text-sm font-semibold"><span>{g.title}</span><span className="rounded-full bg-line/60 px-2 py-0.5 text-xs font-medium text-muted">{g.items.length}</span></summary>
+                  <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                    {g.items.map((a) => (
+                      <li key={a.key} className="flex">
+                        <button type="button" onClick={() => add(a)} title={a.description || a.label} className="flex min-h-[5rem] w-full flex-col items-start gap-0.5 rounded-xl border border-line bg-bg px-3 py-2 text-left transition-colors hover:border-accent">
+                          <span className="text-sm font-medium">{a.label}{a.hint && <span className="font-normal text-muted"> · {a.hint}</span>}</span>
+                          {a.description && <span className="line-clamp-2 text-[13px] leading-5 text-muted">{a.description}</span>}
                         </button>
                       </li>
                     ))}
                   </ul>
-                </fieldset>
+                </details>
               ))}
               <button type="button" className={ui.btn} onClick={() => setAdding(false)}>{s("ed.cancel")}</button>
             </div>

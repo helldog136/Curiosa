@@ -100,7 +100,7 @@ export function renderPage(i: RenderInput): string {
   const head = (title: string) => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>${esc(title)}</title>`;
   const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${POLL_SCRIPT}</script>`;
   if (!page.active) {
-    return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(t("overlay.page.disabled"))}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page"><div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>${script}</body></html>`;
+    return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page">${i.test ? `<div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>` : ""}${script}</body></html>`;
   }
   const frames = i.elements.map((r, idx) => {
     const { el } = r;

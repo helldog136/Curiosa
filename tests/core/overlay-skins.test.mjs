@@ -336,3 +336,35 @@ test("kit skin:check : un skin d'overlay est contrôlé (aperçu 640 x 360, lice
   const big = named("epicb"); fs.writeFileSync(path.join(big, "previews/a.webp"), await sharp({ create: { width: 800, height: 600, channels: 3, background: "#223" } }).webp().toBuffer());
   assert.ok((await checkTargets([big], { coreVersion: getCoreVersion() })).skins[0].issues.some((i) => i.code === "kit-preview-size"));
 });
+
+// ── catalogue previews are served by the site itself ─────────────────────────────────────────────────
+test("aperçu d'un skin du catalogue : lu une fois depuis le dépôt, vérifié sur ses octets, gardé sur le site ; repli neutre sinon", async () => {
+  const sharp = (await import("sharp")).default;
+  const { setRawFetch, rawStats } = await import("@/core/modules/rawRead");
+  const P = await import("@/core/overlays/skinPreview");
+  const { clearSkinCatalogueCache } = await import("@/core/skins/catalogue");
+  const { DATA_DIR } = await import("@/core/config");
+  const entry = { id: "epic", name: { fr: "Épique", en: "Epic" }, description: { fr: "d", en: "d" }, repo: "https://github.com/example/skins", subdir: "skins/epic", ref: "epic/v1.0.0", version: "1.0.0", skinContract: 2, requires: { core: "0.8.0" }, preview: "skins/epic/previews/overlay-640.webp" };
+  fs.mkdirSync(path.join(DATA_DIR, "cache"), { recursive: true });
+  fs.writeFileSync(path.join(DATA_DIR, "cache", "skins-index.json"), JSON.stringify({ version: 1, fetchedAt: Date.now(), origin: null, skins: [], overlaySkins: [entry] }));
+  process.env.CURIOSA_SKINS_REPO = "https://github.com/example/no-such-skins-repo";   // unreachable: the last copy received (written above) is what the catalogue gives
+  clearSkinCatalogueCache();
+  const webp = await sharp({ create: { width: 640, height: 360, channels: 3, background: "#123" } }).webp().toBuffer();
+  const asked = [];
+  setRawFetch(async (url) => { asked.push(String(url)); return new Response(String(url).endsWith("overlay-640.webp") ? webp : "nope", { status: 200 }); });
+  try {
+    const before = rawStats.requests;
+    const first = await P.catalogueSkinPreview("epic");
+    assert.equal(first.length, webp.length);
+    assert.deepEqual(asked, ["https://raw.githubusercontent.com/example/skins/epic/v1.0.0/skins/epic/previews/overlay-640.webp"], "one bounded request, pinned on the tag, on the one host");
+    assert.equal((await P.catalogueSkinPreview("epic")).length, webp.length); assert.equal(rawStats.requests - before, 1, "cached on the site: no second request");
+    assert.equal(await P.catalogueSkinPreview("unknown"), null, "only catalogue entries");
+    assert.equal(await P.catalogueSkinPreview("../etc"), null);
+    fs.rmSync(path.join(DATA_DIR, "cache", "overlay-skin-previews"), { recursive: true, force: true });
+    setRawFetch(async () => new Response("<svg onload=alert(1)>", { status: 200 }));
+    assert.equal(await P.catalogueSkinPreview("epic"), null, "not a webp: refused");
+    setRawFetch(async () => { throw new Error("offline"); });
+    assert.equal(await P.catalogueSkinPreview("epic"), null, "offline: null, the page draws a placeholder");
+    assert.match(P.PLACEHOLDER_SVG, /^<svg/); assert.doesNotMatch(P.PLACEHOLDER_SVG.replace(/ xmlns="[^"]+"/, ""), /script|http|url\(|href/);
+  } finally { setRawFetch(null); delete process.env.CURIOSA_SKINS_REPO; clearSkinCatalogueCache(); }
+});

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { OVERLAY_PAGES_HREF, overlayPageHref, overlayPageSkinHref, overlaySkinSampleHref } from "@/core/adminLinks";
+import { OVERLAY_PAGES_HREF, overlayPageHref, overlayPageSkinHref, overlaySkinPreviewHref, overlaySkinSampleHref } from "@/core/adminLinks";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { listContexts, type AvailableContext } from "@/core/overlays/context";
 import { searchText } from "@/core/adminkit/search";
@@ -38,6 +38,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
   const known = new Map(usable.map((s) => [s.id, name(s)]));
   const catalogue = await listCatalogue({ kind: "overlay" }).catch(() => null);
   const toGet = (catalogue?.items ?? []).filter((c) => !c.installed && c.compatible && !c.needsNewerCore);
+  const installedCount = (catalogue?.items ?? []).filter((c) => c.installed).length;
   const editing = first(q.edit);
   const rule = editing && editing !== "new" ? look.byContext.rules.find((r) => r.value === editing) ?? null : null;
   const back = overlayPageSkinHref(id);
@@ -76,19 +77,33 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
           })}
         </ul>
         {usable.length === 0 && <p className={`${ui.help} mt-3`}>{t("ovp.skin.none")}</p>}
-        <details className="mt-4 rounded-xl border border-line p-3" data-testid="skin-get" open={usable.length === 0}>
-          <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium">{t("ovp.skin.get")}</summary>
+        <section className="mt-6 space-y-3" aria-labelledby="skin-get-title" data-testid="skin-get">
+          <h3 id="skin-get-title" className="text-base font-semibold">{t("ovp.skin.get")}</h3>
           {catalogue?.unreachable && <p role="status" className={ui.help}>{t("skins.error.catalogue")}</p>}
           {!catalogue?.unreachable && toGet.length === 0 && <p className={ui.help}>{t("ovp.skin.getNone")}</p>}
-          <ul className="mt-2 divide-y divide-line">
-            {toGet.map((c) => (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 py-2">
-                <span className="min-w-0"><span className="font-medium">{locale === "fr" ? c.name.fr : c.name.en}</span><span className="block text-sm text-muted">{locale === "fr" ? c.description.fr : c.description.en}</span></span>
-                <form action={installOverlaySkinAction.bind(null, id, c.id)}><PendingButton variant="btn">{t("ovp.skin.install")}</PendingButton></form>
-              </li>
-            ))}
-          </ul>
-        </details>
+          {toGet.length > 0 && (
+            <>
+              <LiveSearch scope="skin-get" placeholder={t("ovp.skin.getSearch")} noneLabel={t("search.none")} clearLabel={t("search.clear")} />
+              {installedCount > 0 && <p className={ui.help}>{t("ovp.skin.getInstalled", { n: installedCount })}</p>}
+              <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {toGet.map((c) => {
+                  const cname = locale === "fr" ? c.name.fr : c.name.en, cdesc = locale === "fr" ? c.description.fr : c.description.en;
+                  return (
+                    <li key={c.id} data-live-item="skin-get" data-search={searchText([cname, cdesc, c.tags.join(" ")])} data-testid="skin-get-card" className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line p-3">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={overlaySkinPreviewHref(c.id)} alt={t("ovp.skin.previewOf", { name: cname })} width={640} height={360} loading="lazy" decoding="async" className="aspect-[16/9] w-full rounded-lg border border-line bg-black object-cover" />
+                      <div className="min-w-0">
+                        <p className="truncate font-medium" title={cname}>{cname}</p>
+                        <p className="truncate text-sm text-muted" title={cdesc}>{cdesc}</p>
+                      </div>
+                      <form className="mt-auto" action={installOverlaySkinAction.bind(null, id, c.id)}><PendingButton variant="btn" className="min-h-11">{t("ovp.skin.install")}</PendingButton></form>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </section>
       </Panel>
 
       <Panel title={t("ovp.skin.ctx.title")} help={contexts.length === 0 ? t("ovp.skin.ctx.none") : t("ovp.skin.ctx.help")} testid="skin-context">
