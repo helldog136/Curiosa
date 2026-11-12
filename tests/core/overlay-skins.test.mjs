@@ -376,6 +376,27 @@ test("aperçu d'un skin du catalogue : lu une fois depuis le dépôt, vérifié 
   } finally { setRawFetch(null); delete process.env.CURIOSA_SKINS_REPO; clearSkinCatalogueCache(); }
 });
 
+// ── 0.10.1: an old copy of the catalogue is never held for a quarter of an hour ──────────────────────
+test("catalogue : la dernière copie reçue (dépôt injoignable) n'est retenue que quelques secondes, puis le dépôt est relu", async () => {
+  const { readSkinCatalogue, clearSkinCatalogueCache } = await import("@/core/skins/catalogue");
+  const { DATA_DIR } = await import("@/core/config");
+  const old = { id: "epic", name: "Epic", description: "d", repo: "https://github.com/example/skins", subdir: "skins/epic", ref: "epic/v1.0.0", version: "1.0.0", skinContract: 2, requires: { core: "0.8.0" }, preview: "skins/epic/previews/overlay-640.webp" };
+  fs.mkdirSync(path.join(DATA_DIR, "cache"), { recursive: true });
+  fs.writeFileSync(path.join(DATA_DIR, "cache", "skins-index.json"), JSON.stringify({ version: 1, fetchedAt: 1, origin: null, skins: [], overlaySkins: [old] }));
+  process.env.CURIOSA_SKINS_REPO = "https://github.com/example/no-such-skins-repo";
+  clearSkinCatalogueCache();
+  let t = 1_000_000;
+  try {
+    const a = await readSkinCatalogue({ coreVersion: "0.10.1", now: () => t });
+    assert.equal(a.source, "cache"); assert.equal(a.entries[0].previewAnim, undefined, "the old copy has no animated preview");
+    // the repository answers again with the 1.1.0 entry: after the short delay the new list wins (before 0.10.1 the old copy was kept 15 minutes)
+    fs.writeFileSync(path.join(DATA_DIR, "cache", "skins-index.json"), JSON.stringify({ version: 1, fetchedAt: 2, origin: null, skins: [], overlaySkins: [{ ...old, version: "1.1.0", previewAnim: "skins/epic/previews/overlay-anim.webp" }] }));
+    t += 5_000; assert.equal((await readSkinCatalogue({ coreVersion: "0.10.1", now: () => t })).entries[0].previewAnim, undefined, "still the short-lived memo");
+    t += 20_000; const b = await readSkinCatalogue({ coreVersion: "0.10.1", now: () => t });
+    assert.equal(b.entries[0].previewAnim, "skins/epic/previews/overlay-anim.webp");
+  } finally { delete process.env.CURIOSA_SKINS_REPO; clearSkinCatalogueCache(); }
+});
+
 // ── contract 3: closed presets, layout, structure ────────────────────────────────────────────────────
 test("contrat 3 : formes, cadres, décorations, mouvements et polices sont des NOMS d'une liste fermée, développés par le cœur", () => {
   const ok = C.sanitizeOverlayCss(`[data-ov-part="panel"]{ov-shape:slanted 16px;ov-frame:double #e8a23b;ov-deco:brackets #e8a23b,scanlines;ov-motion:flicker;ov-font:stencil;ov-text:glow #e8a23b;flex-direction:row-reverse;gap:6px;margin:0 0 6px 0;transform:rotate(-1.5deg);text-align:center}

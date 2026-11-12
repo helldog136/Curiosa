@@ -9,6 +9,7 @@ import { listContextValues } from "@/core/overlays/context";
 import { updateLook } from "@/core/overlays/lookService";
 import { LABEL_MAX, VALUE_MAX, upsertRule } from "@/core/overlays/look";
 import { getPage } from "@/core/overlays/store";
+import { clearSkinCatalogueCache } from "@/core/skins/catalogue";
 import * as skins from "@/core/skins/service";
 import type { ActionState } from "@/components/admin/ActionForm";
 import type { SwitchResult } from "@/components/admin/Switch";
@@ -16,6 +17,15 @@ import type { SwitchResult } from "@/components/admin/Switch";
 /** Admin actions of the skin tab. Same rules as the other overlay actions: the admin tier is required first, everything from the form is validated again on the server. */
 const text = (v: unknown, max = 200) => String(v ?? "").slice(0, max);
 const here = (id: string) => overlayPageSkinHref(text(id, 40));
+
+/** (0.10.1) "Refresh the list": reads the skin catalogue again right now (otherwise at most every 15 minutes), previews and animated previews included. */
+export async function refreshSkinCatalogueAction(id: string): Promise<void> {
+  await adminCtx(OVERLAY_NEED);
+  clearSkinCatalogueCache();
+  await skins.listCatalogue({ kind: "overlay", fresh: true }).catch(() => null);
+  revalidatePath(here(id));
+  redirect(`${here(id)}?ok=refreshed`);
+}
 
 export async function setPageSkinAction(id: string, skin: string): Promise<void> {
   const { user, locale, config } = await adminCtx(OVERLAY_NEED);

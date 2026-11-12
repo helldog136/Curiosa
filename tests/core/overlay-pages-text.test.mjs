@@ -76,7 +76,7 @@ test("rien à montrer, rien de montré : aucun texte visible en direct dans OBS 
 test("aperçus animés : budget partagé (6 au plus, visibles seulement), jamais en mouvement réduit, pause possible, scène isolée", () => {
   const c = fs.readFileSync("src/components/admin/OverlaySkin.tsx", "utf8");
   assert.match(c, /const MAX_PLAYING = 6;/); assert.match(c, /IntersectionObserver/); assert.match(c, /prefers-reduced-motion: reduce/); assert.match(c, /document\.hidden/); assert.match(c, /sandbox="allow-scripts"/, "scripts yes, same-origin no");
-  assert.doesNotMatch(c, /allow-same-origin/); assert.match(c, /data-testid="animations-toggle"/);
+  assert.doesNotMatch(c, /allow-same-origin/); assert.match(c, /data-testid="animations-toggle"/); assert.match(c, /data-testid="animations-reduced"/, "reduced motion: a play button, the reason in the \"?\" bubble, no visible sentence");
   const page = fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/skin/page.tsx", "utf8");
   assert.match(page, /<AnimationsToggle/); assert.match(page, /<CatalogueThumb/); assert.doesNotMatch(page, /https?:\/\//, "no third-party image address in the page");
 });
