@@ -7,6 +7,28 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.10.1 — 2026-11-13
+
+**En bref.** Dans l'onglet « Skin » d'une page d'overlay, les aperçus animés des skins à obtenir se lancent maintenant aussi quand votre système demande de réduire les mouvements, si vous le choisissez. Un bouton permet d'actualiser la liste des skins tout de suite.
+
+**In short.** In the "Skin" tab of an overlay page, the animated previews of the skins to get can now also play when your system asks to reduce motion, if you choose so. A button refreshes the list of skins right away.
+
+### Overlays
+
+- **Une note quand les animations sont en pause.** Si votre système demande de réduire les mouvements, les aperçus restent fixes et une phrase explique pourquoi, avec un bouton « Les lancer quand même ». Avant, rien ne l'indiquait.
+- **(English) A note when animations are paused.** If your system asks to reduce motion, previews stay still and a sentence says why, with a "Play them anyway" button. Before, nothing said so.
+- **Jusqu'à six aperçus animés en même temps, sans trou.** Quand une carte quitte l'écran, une autre carte visible prend sa place.
+- **(English) Up to six animated previews at once, no gaps.** When a card leaves the screen, another visible card takes its place.
+- **Actualiser la liste des skins.** Un bouton « Actualiser la liste » relit tout de suite la liste des skins à obtenir. Si la liste affichée est une ancienne version, une phrase le dit.
+- **(English) Refresh the list of skins.** A "Refresh the list" button reads the list of skins to get again right away. If the list shown is an older copy, a sentence says so.
+- **Une ancienne liste ne reste plus un quart d'heure.** Quand la liste ne peut pas être lue, la dernière version reçue n'est gardée que quelques secondes avant un nouvel essai.
+- **(English) An old list no longer stays for a quarter of an hour.** When the list cannot be read, the last version received is only kept a few seconds before trying again.
+
+### Pour les développeurs
+
+- **Skin catalogue memo.** `readSkinCatalogue` keeps a `source: "cache"` result for `FAILED_TTL` (20 s) like an unreachable one; only a repository read is kept 15 minutes. `refreshSkinCatalogueAction` clears the memo and reads again.
+- **Previews.** `AnimationsToggle` takes `reducedNote` and `forceLabel`; `animationsAllowed()` honours a user choice to play despite `prefers-reduced-motion`; a freed animation slot re-runs the waiting previews.
+
 ## 0.10.0 — 2026-11-13
 
 **En bref.** Le site accepte maintenant les fichiers son (MP3, OGG, WAV, M4A, AAC). Vous pouvez faire jouer un son de fond en boucle sur votre site, avec un petit bouton pour que chaque visiteur le coupe.

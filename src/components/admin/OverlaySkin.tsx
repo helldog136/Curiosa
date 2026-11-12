@@ -21,16 +21,31 @@ const SAMPLE_W = 640, SAMPLE_H = 360;
 const MAX_PLAYING = 6;
 const playing = new Set<symbol>();
 let paused = false;
+/** (0.10.1) The person chose to play although the system asks to reduce motion. Explicit choice, for this page only, never stored. */
+let forced = false;
 const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
+/** A slot was freed: the previews that were waiting for one get another chance (0.10.1; before, they stayed still until the next toggle). */
+const slotFreed = () => { if (typeof queueMicrotask === "function") queueMicrotask(emit); };
 const reduced = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-export const animationsAllowed = () => !paused && !reduced() && (typeof document === "undefined" || !document.hidden);
+export const animationsAllowed = () => !paused && (forced || !reduced()) && (typeof document === "undefined" || !document.hidden);
 
-/** The "Pause the animations / Play the animations" button of a gallery: the choice lasts for the page and is not stored. */
-export function AnimationsToggle({ pauseLabel, playLabel }: { pauseLabel: string; playLabel: string }) {
+/**
+ * The "Pause the animations / Play the animations" button of a gallery: the choice lasts for the page and is not stored.
+ * When the system asks to reduce motion, the previews stay still and a note says why, with a button to play them anyway (0.10.1).
+ */
+export function AnimationsToggle({ pauseLabel, playLabel, reducedNote, forceLabel }: { pauseLabel: string; playLabel: string; reducedNote: string; forceLabel: string }) {
   const [p, setP] = useState(false);
+  const [f, setF] = useState(false);
   const rm = useSyncExternalStore(() => () => {}, reduced, () => false);
-  if (rm) return null;
+  if (rm && !f) {
+    return (
+      <div className="flex flex-wrap items-center gap-3" data-testid="animations-reduced">
+        <p role="status" className={ui.help}>{reducedNote}</p>
+        <button type="button" onClick={() => { forced = true; setF(true); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-force">{forceLabel}</button>
+      </div>
+    );
+  }
   return <button type="button" aria-pressed={p} onClick={() => { paused = !p; setP(!p); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-toggle">{p ? playLabel : pauseLabel}</button>;
 }
 
@@ -60,7 +75,7 @@ export function ScaledFrame({ src, title, className = "", animate = true }: { sr
     const sync = () => {
       const want = visible && loaded && animationsAllowed();
       if (want && !playing.has(me) && playing.size < MAX_PLAYING) { playing.add(me); send(true); }
-      else if (!want && playing.has(me)) { playing.delete(me); send(false); }
+      else if (!want && playing.has(me)) { playing.delete(me); send(false); slotFreed(); }
     };
     const io = new IntersectionObserver((entries) => { visible = entries.some((e) => e.isIntersecting); sync(); }, { threshold: 0.4 });
     io.observe(el);
@@ -69,7 +84,7 @@ export function ScaledFrame({ src, title, className = "", animate = true }: { sr
     f?.addEventListener("load", onLoad);
     listeners.add(sync);
     document.addEventListener("visibilitychange", sync);
-    return () => { io.disconnect(); f?.removeEventListener("load", onLoad); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); playing.delete(me); };
+    return () => { io.disconnect(); f?.removeEventListener("load", onLoad); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); if (playing.delete(me)) slotFreed(); };
   }, [animate]);
   return (
     <div ref={box} className={`relative w-full overflow-hidden rounded-lg border border-line bg-black ${className}`} style={{ aspectRatio: `${SAMPLE_W} / ${SAMPLE_H}` }}>
@@ -95,13 +110,13 @@ export function CatalogueThumb({ still, animated, alt, hasAnimation }: { still: 
     const sync = () => {
       const want = visible && animationsAllowed();
       if (want && !playing.has(me) && playing.size < MAX_PLAYING) { playing.add(me); setPlay(true); }
-      else if (!want && playing.has(me)) { playing.delete(me); setPlay(false); }
+      else if (!want && playing.has(me)) { playing.delete(me); setPlay(false); slotFreed(); }
     };
     const io = new IntersectionObserver((entries) => { visible = entries.some((e) => e.isIntersecting); sync(); }, { threshold: 0.5 });
     io.observe(el);
     listeners.add(sync);
     document.addEventListener("visibilitychange", sync);
-    return () => { io.disconnect(); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); playing.delete(me); };
+    return () => { io.disconnect(); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); if (playing.delete(me)) slotFreed(); };
   }, [hasAnimation]);
   return (
     <div ref={box}>
