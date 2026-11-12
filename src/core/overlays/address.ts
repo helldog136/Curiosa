@@ -1,6 +1,6 @@
 import type { OverlayElementDecl } from "./decl";
 import type { OptionValues, OverlayStyle } from "./model";
-import { OPTION_PARAM_PREFIX, PARAM_PREFIX } from "./tokens";
+import { OPTION_PARAM_PREFIX, PARAM_PREFIX, moduleSurface } from "./tokens";
 import type { FrameLayout } from "./layout";
 
 /**
@@ -20,7 +20,9 @@ export function parseAddress(raw: unknown): { path: string; search: URLSearchPar
   try { return { path, search: new URLSearchParams(q === -1 ? "" : url.slice(q + 1)) }; } catch { return null; }
 }
 
-export type AddressInput = { decl: OverlayElementDecl; layout: FrameLayout; style: OverlayStyle; options: OptionValues; lang: string };
+export type AddressInput = { decl: OverlayElementDecl; layout: FrameLayout; style: OverlayStyle; options: OptionValues; lang: string;
+  /** (0.11.0) The `ov-tv` factor (textScale.ts `tvFactor`), given only to an element that declares `tvScale`. */
+  tv?: number };
 
 /** Adresse finale (chemin + paramètres). `demo` : ajoute `ov-demo=1` (contenu d'exemple du mode test, seulement pour un élément qui le déclare). */
 export function finalAddress(base: { path: string; search: URLSearchParams }, i: AddressInput, demo = false): string {
@@ -30,7 +32,8 @@ export function finalAddress(base: { path: string; search: URLSearchParams }, i:
   p.set("ov-h", String(i.layout.iframeH));
   p.set("ov-fit", i.decl.fit);
   p.set("ov-lang", i.lang);
-  if (i.decl.followsStyle) { p.set("ov-text", i.style.text); p.set("ov-surface", i.style.background); p.set("ov-corners", i.style.corners); }
+  if (i.decl.followsStyle) { p.set("ov-text", i.style.text); p.set("ov-surface", moduleSurface(i.style.background)); p.set("ov-corners", i.style.corners); }
+  if (i.decl.tvScale && i.tv !== undefined) p.set("ov-tv", String(i.tv));
   for (const [k, v] of Object.entries(i.options)) p.set(`${OPTION_PARAM_PREFIX}${k}`, typeof v === "boolean" ? (v ? "1" : "0") : String(v));
   if (demo && i.decl.demo) p.set("ov-demo", "1");
   const s = p.toString();

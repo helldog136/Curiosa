@@ -61,25 +61,29 @@ export function constrainRect(d: LayoutDecl, rect: Rect, page: Size, keep: "w" |
 /** Taille et position de l'iframe à l'intérieur du cadre, et échelle à appliquer (transform: scale). */
 export type FrameLayout = { iframeW: number; iframeH: number; scale: number; offsetX: number; offsetY: number; boxW: number; boxH: number };
 
-export function frameLayout(d: LayoutDecl, rect: Pick<Rect, "w" | "h">): FrameLayout {
+export function frameLayout(d: LayoutDecl, rect: Pick<Rect, "w" | "h">, textScale = 100): FrameLayout {
   const w = Math.max(1, rect.w), h = Math.max(1, rect.h);
+  // Text size (0.11.0): the element's window is `k` times smaller and scaled up by `k`, so everything in it grows by `k` while the frame stays put.
+  // At 100 % (or no value) this is exactly the layout of before 0.11.0.
+  const k = Number.isFinite(textScale) && textScale > 0 && textScale !== 100 ? textScale / 100 : 1;
   let iw: number, ih: number, s: number;
   if (d.fit === "scale" && d.size) {
-    iw = d.size.width; ih = d.size.height;
-    s = Math.min(w / iw, h / ih);
+    iw = Math.max(1, Math.round(d.size.width / k)); ih = Math.max(1, Math.round(d.size.height / k));
+    s = k === 1 ? Math.min(w / iw, h / ih) : Math.min(w / d.size.width, h / d.size.height) * k;
   } else if (d.fit === "ratio" && d.referenceHeight && d.ratios) {
     const r = clamp(w / h, d.ratios.min, d.ratios.max);
-    ih = d.referenceHeight; iw = Math.round(ih * r);
+    ih = k === 1 ? d.referenceHeight : Math.max(1, Math.round(d.referenceHeight / k)); iw = Math.round(ih * r);
     s = Math.min(w / iw, h / ih);
   } else {
-    iw = w; ih = h;
+    const vw = w / k, vh = h / k;
+    iw = vw; ih = vh;
     if (d.ratios) {
-      const r = w / h;
-      if (r > d.ratios.max) iw = h * d.ratios.max; else if (r < d.ratios.min) ih = w / d.ratios.min;
+      const r = vw / vh;
+      if (r > d.ratios.max) iw = vh * d.ratios.max; else if (r < d.ratios.min) ih = vw / d.ratios.min;
     }
     iw = Math.round(iw); ih = Math.round(ih);
     if (d.minSize) { iw = Math.max(iw, d.minSize.width); ih = Math.max(ih, d.minSize.height); }
-    s = Math.min(1, w / iw, h / ih);
+    s = Math.min(1, vw / iw, vh / ih) * k;
   }
   s = Math.round(s * 10000) / 10000;
   const boxW = r2(iw * s), boxH = r2(ih * s);

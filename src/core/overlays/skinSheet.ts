@@ -29,8 +29,21 @@ export const ANIM_CSS: Record<string, string> = {
 
 export type SkinPayload = { id: string; version: string; css: string };
 
-export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string }): SkinPayload {
-  const { id, tokens } = input;
+/** The skin's panel colour made solid (the owner chose an opaque background): same colour, alpha 1 when that keeps the text readable, else the colour it was checked over (black under light text, white under dark text). */
+export function solidSurface(surface: string, fg: string | undefined): string {
+  const c = parseColor(surface), f = fg ? parseColor(fg) : null;
+  if (!c || c.a >= 1) return surface;
+  const hex = (k: { r: number; g: number; b: number }) => `#${[k.r, k.g, k.b].map((n) => Math.round(n).toString(16).padStart(2, "0")).join("")}`;
+  const plain = { ...c, a: 1 };
+  if (!f) return hex(plain);
+  if (contrastRatio({ ...f, a: 1 }, plain) >= 4.5) return hex(plain);
+  const light = f.r * 0.299 + f.g * 0.587 + f.b * 0.114 > 140;
+  return hex(composite(c, light ? BLACK : WHITE));
+}
+
+export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean }): SkinPayload {
+  const { id } = input;
+  const tokens = input.opaque && input.tokens["--ov-surface"] ? { ...input.tokens, "--ov-surface": solidSurface(input.tokens["--ov-surface"], input.tokens["--ov-fg"]) } : input.tokens;
   const has = (n: string) => typeof tokens[n] === "string" && tokens[n] !== "";
   const out: string[] = [];
   const known = OV_TOKEN_DEFS.filter((d) => has(d.name));

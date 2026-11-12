@@ -6,6 +6,7 @@ import { newSecret, secretColumns, unsealSecret } from "./secret";
 import { cleanName, type PageValue } from "./pageInput";
 import { parseStyle } from "./tokens";
 import { parseLook, type PageLook } from "./look";
+import { parseTextScale } from "./textScale";
 
 /** Accès à la base des pages d'overlay. Les limites dures (20 pages, 10 actives, 30 éléments) sont appliquées ICI, à l'écriture. Lectures toujours bornées (20 lignes). */
 type Fail = { ok: false; error: "notFound" | "limitPages" | "limitActive" | "name" | "resolution" };
@@ -23,7 +24,8 @@ export function parseElements(raw: string): PageElement[] {
     if (!isPlainObject(e) || typeof e.uid !== "string" || !UID_RE.test(e.uid) || seen.has(e.uid) || typeof e.instance !== "string" || typeof e.element !== "string") continue;
     seen.add(e.uid);
     const n = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : d);
-    out.push({ uid: e.uid, instance: e.instance.slice(0, 40), element: e.element.slice(0, 60), x: n(e.x, 0), y: n(e.y, 0), w: Math.max(1, n(e.w, 100)), h: Math.max(1, n(e.h, 100)), visible: e.visible !== false, options: keepOptions(e.options) });
+    const textScale = parseTextScale(e.textScale);
+    out.push({ uid: e.uid, instance: e.instance.slice(0, 40), element: e.element.slice(0, 60), x: n(e.x, 0), y: n(e.y, 0), w: Math.max(1, n(e.w, 100)), h: Math.max(1, n(e.h, 100)), visible: e.visible !== false, options: keepOptions(e.options), ...(textScale !== null ? { textScale } : {}) });
   }
   return out;
 }

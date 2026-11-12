@@ -23,9 +23,10 @@ export const dynamic = "force-dynamic";
 
 /** Les textes de l'éditeur (ovp.ed.<clé>) : envoyés tels quels au navigateur, qui n'a pas le dictionnaire. */
 const STRINGS = [
-  "name", "resolution", "resolutionOther", "resolutionHelp", "width", "height", "style", "styleHelp", "style.text", "style.text.light", "style.text.dark", "style.background", "style.background.transparent", "style.background.soft",
+  "name", "resolution", "resolutionOther", "resolutionHelp", "width", "height", "style", "styleHelp", "style.text", "style.text.light", "style.text.dark", "style.background", "style.background.transparent", "style.background.soft", "style.background.opaque",
   "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "pickSearch", "pickNone", "pickClear", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "previewScale", "zoom", "zoomFit", "zoomX", "hidden", "gone", "goneHelp", "elements", "empty",
   "visible", "panel", "field.x", "field.y", "field.w", "field.h", "anchor", "anchorHelp", "margin", "front", "back", "up", "down", "options", "moreOptions", "noStyle", "remove", "removed", "added",
+  "textSize.page", "textSize.pageHelp", "textSize.element", "textSize.elementHelp", "textSize.inherit", "textSize.small", "textSize.normal", "textSize.large", "textSize.tv", "textSize.other", "textSize.otherLabel", "textSize.bounds", "textSize.err", "textSize.note",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
 
