@@ -21,7 +21,7 @@ import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
 import { sanitizeOverlayCss } from "../overlays/skinCss";
 import { checkSkinTokens } from "../overlays/skinSheet";
-import { OVERLAY_SKIN_CONTRACT } from "./constants";
+import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3 } from "./constants";
 import { coreSatisfies } from "./semver";
 
 export type ValidateOptions = {
@@ -90,6 +90,8 @@ const README_RE = /^README(\.[a-z]{2})?\.md$/;
 const OWN_LICENSE_RE = /^LICENSE(\.md|\.txt)?$/;
 const SUBDIRS = ["fonts", "images", "previews", "LICENSES"] as const;
 const MAX_TOKENS = 400;
+/** (core 0.9.0) An overlay skin may ship ONE animated preview (`previews/*-anim.webp`, looping 640 x 360): the gallery plays it, the site serves it. */
+export const ANIMATED_PREVIEW_BYTES = 450 * 1024;
 
 /**
  * Jetons dont la valeur a une NATURE connue : elle est aussi contrôlée comme la propriété CSS correspondante, avec les mêmes minimums que la feuille
@@ -411,7 +413,7 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   }
   const sizeOf = (rel: string) => byRel.get(rel)?.size ?? 0;
   if (hasTokens && sizeOf(m.tokens) > FILE_LIMITS.tokensBytes) add("tokens-too-large", { size: kb(sizeOf(m.tokens)), max: kb(FILE_LIMITS.tokensBytes) });
-  for (const p of previews) if (sizeOf(p.file) > FILE_LIMITS.previewBytes) add("file-too-large", { file: p.file, size: kb(sizeOf(p.file)), max: kb(FILE_LIMITS.previewBytes) });
+  for (const p of previews) { const cap = /-anim\.webp$/.test(p.file) ? ANIMATED_PREVIEW_BYTES : FILE_LIMITS.previewBytes; if (sizeOf(p.file) > cap) add("file-too-large", { file: p.file, size: kb(sizeOf(p.file)), max: kb(cap) }); }
   const content = new Map<string, Buffer>();
   const read = (rel: string): Buffer => { let b = content.get(rel); if (!b) { b = fs.readFileSync(byRel.get(rel)!.abs); content.set(rel, b); } return b; };
   for (const p of previews) if (sizeOf(p.file) <= FILE_LIMITS.previewBytes && !hasSignature(p.file, read(p.file))) add("asset-signature", { file: p.file });
@@ -440,6 +442,7 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id);
     for (const i of sheet.issues) add("overlay-css", { detail: `${i.code}${i.detail ? ` ${i.detail}` : ""}${i.line ? ` l.${i.line}` : ""}` });
     css = sheet.css;
+    if (sheet.v3 && m.skinContract < OVERLAY_SKIN_CONTRACT_V3) add("overlay-contract-v3");
   }
   const files: ValidatedFile[] = [];
   const installFiles: { path: string; content: Buffer }[] = [];

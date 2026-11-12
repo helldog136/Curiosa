@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState, startTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useSyncExternalStore, startTransition } from "react";
 import { EditDialog } from "./EditDialog";
 import { PendingButton } from "./PendingButton";
 import { useModalWindow } from "./ModalWindow";
@@ -14,9 +14,33 @@ import type { ActionState } from "./ActionForm";
  */
 const SAMPLE_W = 640, SAMPLE_H = 360;
 
-/** The sample scene (640 x 360) scaled to the width it is given. Decorative: the skin name is written next to it. */
-export function ScaledFrame({ src, title, className = "" }: { src: string; title: string; className?: string }) {
+/**
+ * ANIMATION BUDGET of the previews (core 0.9.0): at most `MAX_PLAYING` previews animate at once, only the ones on screen, none when the person prefers reduced motion,
+ * none while the tab is hidden or when the person paused them with the button. Module level, shared by every preview of the page.
+ */
+const MAX_PLAYING = 6;
+const playing = new Set<symbol>();
+let paused = false;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+const reduced = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
+export const animationsAllowed = () => !paused && !reduced() && (typeof document === "undefined" || !document.hidden);
+
+/** The "Pause the animations / Play the animations" button of a gallery: the choice lasts for the page and is not stored. */
+export function AnimationsToggle({ pauseLabel, playLabel }: { pauseLabel: string; playLabel: string }) {
+  const [p, setP] = useState(false);
+  const rm = useSyncExternalStore(() => () => {}, reduced, () => false);
+  if (rm) return null;
+  return <button type="button" aria-pressed={p} onClick={() => { paused = !p; setP(!p); emit(); }} className={`${ui.btn} min-h-11`} data-testid="animations-toggle">{p ? playLabel : pauseLabel}</button>;
+}
+
+/**
+ * The sample scene (640 x 360) scaled to the width it is given. Decorative: the skin name is written next to it. The scene is in a sandbox WITHOUT same-origin: it runs its own
+ * scripted scenario only when this component says so (message), while the card is on screen and the budget allows.
+ */
+export function ScaledFrame({ src, title, className = "", animate = true }: { src: string; title: string; className?: string; animate?: boolean }) {
   const box = useRef<HTMLDivElement>(null);
+  const frame = useRef<HTMLIFrameElement>(null);
   const [scale, setScale] = useState(0.4);
   useEffect(() => {
     const el = box.current;
@@ -27,10 +51,62 @@ export function ScaledFrame({ src, title, className = "" }: { src: string; title
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !animate) return;
+    const me = Symbol("preview");
+    let visible = false, loaded = false;
+    const send = (on: boolean) => frame.current?.contentWindow?.postMessage({ ov: on ? "play" : "pause" }, "*");
+    const sync = () => {
+      const want = visible && loaded && animationsAllowed();
+      if (want && !playing.has(me) && playing.size < MAX_PLAYING) { playing.add(me); send(true); }
+      else if (!want && playing.has(me)) { playing.delete(me); send(false); }
+    };
+    const io = new IntersectionObserver((entries) => { visible = entries.some((e) => e.isIntersecting); sync(); }, { threshold: 0.4 });
+    io.observe(el);
+    const onLoad = () => { loaded = true; sync(); };
+    const f = frame.current;
+    f?.addEventListener("load", onLoad);
+    listeners.add(sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => { io.disconnect(); f?.removeEventListener("load", onLoad); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); playing.delete(me); };
+  }, [animate]);
   return (
     <div ref={box} className={`relative w-full overflow-hidden rounded-lg border border-line bg-black ${className}`} style={{ aspectRatio: `${SAMPLE_W} / ${SAMPLE_H}` }}>
-      <iframe src={src} title={title} loading="lazy" sandbox="" tabIndex={-1} className="absolute left-0 top-0 border-0"
+      <iframe ref={frame} src={src} title={title} loading="lazy" sandbox="allow-scripts" tabIndex={-1} className="absolute left-0 top-0 border-0"
         style={{ width: SAMPLE_W, height: SAMPLE_H, transform: `scale(${scale})`, transformOrigin: "0 0", pointerEvents: "none" }} />
+    </div>
+  );
+}
+
+/**
+ * Preview of a CATALOGUE skin: the still image first; when the card is on screen and the animation budget allows, the animated image (served by the site, cached like the
+ * still one) replaces it, and the still one comes back when the card leaves the screen, when animations are paused, or if the animated image is not available.
+ */
+export function CatalogueThumb({ still, animated, alt, hasAnimation }: { still: string; animated: string; alt: string; hasAnimation: boolean }) {
+  const box = useRef<HTMLDivElement>(null);
+  const [play, setPlay] = useState(false);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    const el = box.current;
+    if (!el || !hasAnimation) return;
+    const me = Symbol("thumb");
+    let visible = false;
+    const sync = () => {
+      const want = visible && animationsAllowed();
+      if (want && !playing.has(me) && playing.size < MAX_PLAYING) { playing.add(me); setPlay(true); }
+      else if (!want && playing.has(me)) { playing.delete(me); setPlay(false); }
+    };
+    const io = new IntersectionObserver((entries) => { visible = entries.some((e) => e.isIntersecting); sync(); }, { threshold: 0.5 });
+    io.observe(el);
+    listeners.add(sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => { io.disconnect(); listeners.delete(sync); document.removeEventListener("visibilitychange", sync); playing.delete(me); };
+  }, [hasAnimation]);
+  return (
+    <div ref={box}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={play && !failed ? animated : still} alt={alt} width={640} height={360} loading="lazy" decoding="async" onError={() => { if (play) setFailed(true); }} className="aspect-[16/9] w-full rounded-lg border border-line bg-black object-cover" />
     </div>
   );
 }

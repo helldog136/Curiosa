@@ -12,7 +12,7 @@ import { Badge } from "@/components/admin/Badge";
 import { DialogLink } from "@/components/admin/EditDialog";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import { LiveSearch } from "@/components/admin/LiveSearch";
-import { RuleDialog, ScaledFrame } from "@/components/admin/OverlaySkin";
+import { AnimationsToggle, CatalogueThumb, RuleDialog, ScaledFrame } from "@/components/admin/OverlaySkin";
 import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Switch } from "@/components/admin/Switch";
@@ -61,6 +61,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
       </div>
 
       <Panel title={t("ovp.skin.gallery")} help={t("ovp.skin.galleryHelp")} testid="skin-gallery">
+        <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} /></div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[{ id: "", label: t("ovp.skin.common"), text: t("ovp.skin.commonHelp") }, ...usable.map((s) => ({ id: s.id, label: name(s), text: desc(s) }))].map((s) => {
             const on = (look.skin ?? "") === s.id;
@@ -90,8 +91,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
                   const cname = locale === "fr" ? c.name.fr : c.name.en, cdesc = locale === "fr" ? c.description.fr : c.description.en;
                   return (
                     <li key={c.id} data-live-item="skin-get" data-search={searchText([cname, cdesc, c.tags.join(" ")])} data-testid="skin-get-card" className="flex min-w-0 flex-col gap-3 rounded-2xl border border-line p-3">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={overlaySkinPreviewHref(c.id)} alt={t("ovp.skin.previewOf", { name: cname })} width={640} height={360} loading="lazy" decoding="async" className="aspect-[16/9] w-full rounded-lg border border-line bg-black object-cover" />
+                      <CatalogueThumb still={overlaySkinPreviewHref(c.id)} animated={overlaySkinPreviewHref(c.id, true)} hasAnimation={!!c.previewAnim} alt={t("ovp.skin.previewOf", { name: cname })} />
                       <div className="min-w-0">
                         <p className="truncate font-medium" title={cname}>{cname}</p>
                         <p className="truncate text-sm text-muted" title={cdesc}>{cdesc}</p>

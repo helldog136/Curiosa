@@ -1,5 +1,6 @@
 import { parseColor } from "../skins/colorParse";
 import { composite, contrastRatio } from "../skins/readability";
+import { KEYFRAMES } from "./skinPresets";
 import { OV_TOKEN_DEFS } from "./skinTokens";
 
 /**
@@ -42,8 +43,12 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   if (has("--ov-weight-heading")) rule(sel(id, ["title", "name"]), ["font-weight:var(--ov-weight-heading)"]);
   if (has("--ov-heading-transform")) rule(sel(id, ["title", "kind", "badge", "tag", "label"]), ["text-transform:var(--ov-heading-transform)"]);
   if (has("--ov-text-shadow")) rule(sel(id, [...heading, ...bodyParts, "value", "status"]), ["text-shadow:var(--ov-text-shadow)"]);
-  if (has("--ov-muted")) rule(sel(id, mutedParts), ["color:var(--ov-muted)"]);
   if (has("--ov-surface-image")) rule(sel(id, containers), ["background-image:var(--ov-surface-image)"]);
+  // The skin owns the pair text / surface: containers always take the skin's surface and text colour (an element that draws its own background would otherwise
+  // put the skin's text colour on a colour the skin never checked), and the text parts follow the skin's text colour (the muted parts below override).
+  rule(sel(id, containers), ["background-color:var(--ov-surface)", "color:var(--ov-fg)"]);
+  rule(sel(id, ["title", "name", "body", "text", "message", "content", "summary", "value", "stat", "list", "label", "status", "game", "clock"]), ["color:var(--ov-fg)"]);
+  if (has("--ov-muted")) rule(sel(id, mutedParts), ["color:var(--ov-muted)"]);
   const frame: string[] = [];
   if (has("--ov-border-width")) frame.push("border-style:solid", "border-width:var(--ov-border-width)");
   if (has("--ov-shadow")) frame.push("box-shadow:var(--ov-shadow)");
@@ -55,12 +60,16 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   }
   out.push(input.css);
   const anim = tokens["--ov-anim"];
+  let motion = false;
   if (anim && anim !== "none" && ANIM_CSS[anim]) {
     out.push(ANIM_CSS[anim]!);
     const dur = has("--ov-anim-duration") ? "var(--ov-anim-duration)" : "0.6s";
     rule(sel(id, containers), [`animation:ov-${anim} ${dur} ${anim === "glow" ? "ease-in-out 2.4s infinite alternate" : "ease-out both"}`]);
-    out.push(`@media (prefers-reduced-motion:reduce){html[data-ov-skin="${id}"] *{animation:none!important;transition:none!important}}`);
+    motion = true;
   }
+  // Idle motion presets of contract 3 (their rules are already inside `prefers-reduced-motion: no-preference`): the keyframes belong to the core.
+  for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) { out.push(frames); motion = true; }
+  if (motion) out.push(`@media (prefers-reduced-motion:reduce){html[data-ov-skin="${id}"] *,html[data-ov-skin="${id}"] *::before,html[data-ov-skin="${id}"] *::after{animation:none!important;transition:none!important}}`);
   return { id, version: input.version, css: out.filter(Boolean).join("\n") };
 }
 

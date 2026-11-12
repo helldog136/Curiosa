@@ -89,7 +89,7 @@ test("manifeste : absent, illisible, champs manquants, id différent du dossier,
   assert.ok(codes(V.validateSkinFolder(renamed, { coreVersion: TEST_CORE, folderName: "plain-light" })).includes("manifest-id-folder"));
   assert.ok(codes(check(mk({ id: "basic" }))).includes("bad-skin-id"), "basic est réservé");
   assert.ok(codes(V.validateSkinFolder(mk(), { coreVersion: TEST_CORE, expectId: "autre" })).includes("manifest-id-expected"));
-  const newer = check(mk({ patch: (m) => { m.skinContract = 3; } }));
+  const newer = check(mk({ patch: (m) => { m.skinContract = 4; } }));
   assert.deepEqual(codes(newer), ["manifest-contract-newer"]);
   assert.match(newer.issues[0].message.fr, /version plus récente de Curiosa/);
   const young = V.validateSkinFolder(mk(), { coreVersion: "0.3.0", folderName: "plain-light" });
