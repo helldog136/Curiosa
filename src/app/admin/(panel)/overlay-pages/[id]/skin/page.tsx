@@ -10,6 +10,7 @@ import { getPage } from "@/core/overlays/store";
 import { listCatalogue } from "@/core/skins/service";
 import { Badge } from "@/components/admin/Badge";
 import { DialogLink } from "@/components/admin/EditDialog";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { AnimationsToggle, CatalogueThumb, RuleDialog, ScaledFrame } from "@/components/admin/OverlaySkin";
@@ -61,7 +62,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
       </div>
 
       <Panel title={t("ovp.skin.gallery")} help={t("ovp.skin.galleryHelp")} testid="skin-gallery">
-        <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} reducedNote={t("ovp.skin.animReduced")} forceLabel={t("ovp.skin.animForce")} /></div>
+        <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} reducedNote={t("ovp.skin.animReduced")} /></div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {[{ id: "", label: t("ovp.skin.common"), text: t("ovp.skin.commonHelp") }, ...usable.map((s) => ({ id: s.id, label: name(s), text: desc(s) }))].map((s) => {
             const on = (look.skin ?? "") === s.id;
@@ -81,8 +82,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
         <section className="mt-6 space-y-3" aria-labelledby="skin-get-title" data-testid="skin-get">
           <h3 id="skin-get-title" className="text-base font-semibold">{t("ovp.skin.get")}</h3>
           {catalogue?.unreachable && <p role="status" className={ui.help}>{t("skins.error.catalogue")}</p>}
-          {catalogue?.source === "cache" && !catalogue.unreachable && <p role="status" className={ui.help} data-testid="skin-get-old">{t("ovp.skin.getOld")}</p>}
-          <form action={refreshSkinCatalogueAction.bind(null, id)}><PendingButton variant="btn" className="min-h-11" pendingLabel={t("progress.checking")}>{t("ovp.skin.refresh")}</PendingButton></form>
+          <div className="flex items-center gap-1"><form action={refreshSkinCatalogueAction.bind(null, id)}><PendingButton variant="btn" className="min-h-11" pendingLabel={t("progress.checking")}>{t("ovp.skin.refresh")}</PendingButton></form><HelpTip help={t("ovp.skin.refreshHelp")} name={t("ovp.skin.refresh")} /></div>
           {!catalogue?.unreachable && toGet.length === 0 && <p className={ui.help}>{t("ovp.skin.getNone")}</p>}
           {toGet.length > 0 && (
             <>
