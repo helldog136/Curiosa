@@ -120,11 +120,11 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
           </main>
           <Footer config={localized} locale={locale} />
         </div>
+        {config.statsEnabled && <VisitBeacon />}
         {sound && (
           <BackgroundSound key={`${sound.file}|${sound.volume}|${sound.startMuted}`} src={sound.file} volume={sound.volume} startMuted={sound.startMuted} corner={sound.corner} pages={sound.pages} locales={config.locales}
             labels={{ label: t("sound.label"), playTitle: t("sound.play"), muteTitle: t("sound.mute"), statusOn: t("sound.statusOn"), statusOff: t("sound.statusOff") }} />
         )}
-        {config.statsEnabled && <VisitBeacon />}
       </body>
     </html>
   );

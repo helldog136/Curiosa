@@ -6,7 +6,7 @@ import fs from "node:fs";
 const TEMPORARY = [
   {
     why: "restauration d'une sauvegarde d'avant la 0.1.20 : ses modules et instances « éteints » deviennent « désinstallés, données gardées » (plus appelé au démarrage : `upgrade.json` exige la 0.2.0 depuis le retrait de l'entretien)",
-    removeAfter: "0.9.99",   // un fichier de sauvegarde garde son format quelle que soit la version du site : tant qu'une sauvegarde de cette époque peut être restaurée, ce code reste. Échéance à relire quand le format de sauvegarde refusera ces anciennes sauvegardes.
+    removeAfter: "0.19.99",   // (reporté de 0.9.99 à 0.19.99 lors de la 0.10.0 : la restauration d'une sauvegarde d'avant la 0.1.20 reste permise ; supprimer ce code est une décision à part, avec sa migration) un fichier de sauvegarde garde son format quelle que soit la version du site : tant qu'une sauvegarde de cette époque peut être restaurée, ce code reste. Échéance à relire quand le format de sauvegarde refusera ces anciennes sauvegardes.
     files: ["src/core/modules/legacyOff.ts"],
     alsoRemove: ["son appel dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
   },
