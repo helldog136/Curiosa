@@ -81,7 +81,7 @@ export const overlaySkinsToolProvider: McpToolProvider = {
           const [skins, pages] = await Promise.all([listOverlaySkins(), listPages()]);
           return {
             skins: skins.map((s) => ({ id: s.id, name: lang === "fr" ? s.name.fr : s.name.en, description: lang === "fr" ? s.description.fr : s.description.en, tags: s.tags, version: s.version, status: s.status })),
-            pages: pages.map((p) => ({ id: p.id, name: p.name, defaultSkin: p.look.skin, skinPerContext: p.look.byContext.enabled })),
+            pages: pages.map((p) => ({ id: p.id, name: p.name, defaultSkin: p.look.skin, skinPerContext: p.look.byContext.enabled, style: { text: p.style.text, background: p.style.background, corners: p.style.corners }, textScale: p.style.textScale ?? 100 })),
           };
         },
       },

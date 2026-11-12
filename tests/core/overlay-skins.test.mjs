@@ -300,7 +300,7 @@ test("outils IA : lecture, ajout et modification d'une règle avec la validation
   const actor = { name: "assistant" };
   const page = (await S.createPage({ name: "Main", width: 1920, height: 1080 })).page;
   const listed = await tools.overlay_skins_list.call({}, actor);
-  assert.deepEqual(listed.skins.map((s) => s.id).sort(), ["calm", "epic"]); assert.deepEqual(listed.pages, [{ id: page.id, name: "Main", defaultSkin: null, skinPerContext: false }]);
+  assert.deepEqual(listed.skins.map((s) => s.id).sort(), ["calm", "epic"]); assert.deepEqual(listed.pages, [{ id: page.id, name: "Main", defaultSkin: null, skinPerContext: false, style: { text: "light", background: "transparent", corners: "round" }, textScale: 100 }]);
   const view = await tools.overlay_skin_rules_list.call({ page: page.id }, actor);
   assert.deepEqual(view.knownValues.map((v) => v.id), ["a", "b"]); assert.equal(view.availableContexts[0].instance, moodKey);
   await assert.rejects(() => tools.overlay_skin_rules_create.call({ page: page.id, value: "zzz", skin: "epic" }, actor), /not one of the values/);

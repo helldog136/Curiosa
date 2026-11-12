@@ -7,6 +7,8 @@ import { finalAddress, parseAddress } from "./address";
 import { frameLayout, type FrameLayout } from "./layout";
 import type { OverlayPageData, PageElement } from "./model";
 import { checkOptions } from "./options";
+import { moduleSurface } from "./tokens";
+import { effectiveTextScale, tvFactor } from "./textScale";
 
 /**
  * Pour chaque élément VISIBLE d'une page, demande au module (côté serveur, avec ses secrets) l'adresse de son élément. Jamais d'exception : un élément qui ne répond pas,
@@ -35,12 +37,13 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
     const serve = a?.mod.def.overlayElements?.[el.element];
     if (!a || !decl || typeof serve !== "function") return { el, title: `${el.instance} · ${el.element}`, status: "missing", reason: "gone" };
     const title = `${labeler.label(a.instance)} · ${localized(decl.label, opts.lang, opts.defaultLocale)}`;
-    const layout = frameLayout(decl, el);
+    const percent = effectiveTextScale(el.textScale, page.style.textScale);
+    const layout = frameLayout(decl, el, percent);
     // Valeurs enregistrées, contrôlées d'après la déclaration ; une option absente ou devenue invalide prend son défaut.
     const options = checkOptions(decl.options, el.options).values;
     const request: OverlayElementRequest = {
       element: decl.id, fit: decl.fit, width: layout.iframeW, height: layout.iframeH,
-      style: decl.followsStyle ? { text: page.style.text, surface: page.style.background, corners: page.style.corners } : null,
+      style: decl.followsStyle ? { text: page.style.text, surface: moduleSurface(page.style.background), corners: page.style.corners } : null,
       options: { ...options }, lang: opts.lang,
     };
     try {
@@ -50,7 +53,7 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
       if (answer === null || answer === undefined) return { el, title, status: "failed", reason: "empty", layout };
       const base = parseAddress(answer);
       if (!base) return { el, title, status: "failed", reason: "address", layout };
-      const input = { decl, layout, style: page.style, options, lang: opts.lang };
+      const input = { decl, layout, style: page.style, options, lang: opts.lang, ...(decl.tvScale ? { tv: tvFactor(page.height, percent, layout.scale) } : {}) };
       return { el, title, status: "ok", layout, follows: decl.followsStyle, src: finalAddress(base, input), ...(decl.demo ? { demoSrc: finalAddress(base, input, true) } : {}) };
     } catch (error) {
       // Le message d'un module peut contenir une adresse secrète : on ne journalise que sa nature.

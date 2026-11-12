@@ -5,10 +5,12 @@ import { FieldErrorText, useFieldError } from "./FieldErrors";
 import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
 import { ui } from "./ui";
+import { TextSizeField } from "./TextSizeField";
 import { foldText, queryWords } from "@/core/adminkit/search";
 import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
 import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
+import { effectiveTextScale } from "@/core/overlays/textScale";
 import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } from "@/core/overlays/model";
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
@@ -63,6 +65,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
 
   const update = (next: EditorElement[]) => setElements(next as EditorElement[]);
   const titleOf = (e: EditorElement) => byKey.get(catalogKey(e.instance, e.element))?.title ?? `${e.instance} · ${e.element}`;
+  const sizeNote = (e: EditorElement) => { const p = effectiveTextScale(e.textScale, style.textScale); return p === 100 ? "" : ` · ${s("ed.textSize.note", { pct: p })}`; };
 
   // Largeur disponible pour l'aperçu : mesurée, et suivie quand la fenêtre change.
   useEffect(() => {
@@ -74,10 +77,10 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   }, [live]);
   const view = previewScale(avail, page, zoom);
   const labels = useMemo(() => {
-    const placed = placeLabels(elements.map((el) => ({ uid: el.uid, x: el.x * view.scale, y: el.y * view.scale, w: el.w * view.scale, h: el.h * view.scale, text: byKey.get(catalogKey(el.instance, el.element)) ? `${titleOf(el)} · ${el.w}×${el.h} px` : s("ed.gone") })), { width: view.width, height: view.height });
+    const placed = placeLabels(elements.map((el) => ({ uid: el.uid, x: el.x * view.scale, y: el.y * view.scale, w: el.w * view.scale, h: el.h * view.scale, text: byKey.get(catalogKey(el.instance, el.element)) ? `${titleOf(el)} · ${el.w}×${el.h} px${sizeNote(el)}` : s("ed.gone") })), { width: view.width, height: view.height });
     return new Map(placed.map((p) => [p.uid, p]));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elements, view.scale, view.width, view.height, byKey]);
+  }, [elements, view.scale, view.width, view.height, byKey, style.textScale]);
 
   function add(a: ClientElement) {
     const taken = new Set(elements.map((e) => e.uid));
@@ -206,11 +209,13 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           <legend className={ui.label}>{s("ed.style")}</legend>
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))]">
             <StyleSelect label={s("ed.style.text")} value={style.text} onChange={(v) => setStyle({ ...style, text: v as OverlayStyle["text"] })} options={[["light", s("ed.style.text.light")], ["dark", s("ed.style.text.dark")]]} />
-            <StyleSelect label={s("ed.style.background")} value={style.background} onChange={(v) => setStyle({ ...style, background: v as OverlayStyle["background"] })} options={[["transparent", s("ed.style.background.transparent")], ["soft", s("ed.style.background.soft")]]} />
+            <StyleSelect label={s("ed.style.background")} value={style.background} onChange={(v) => setStyle({ ...style, background: v as OverlayStyle["background"] })} options={[["transparent", s("ed.style.background.transparent")], ["soft", s("ed.style.background.soft")], ["opaque", s("ed.style.background.opaque")]]} />
             <StyleSelect label={s("ed.style.corners")} value={style.corners} onChange={(v) => setStyle({ ...style, corners: v as OverlayStyle["corners"] })} options={[["round", s("ed.style.corners.round")], ["square", s("ed.style.corners.square")]]} />
           </div>
           <p className={ui.help}>{s("ed.styleHelp")}</p>
         </fieldset>
+        <TextSizeField testId="text-size-page" legend={s("ed.textSize.page")} help={s("ed.textSize.pageHelp")} value={style.textScale ?? null} inherit={false} errorPath="style.textScale" s={s}
+          onChange={(v) => setStyle((cur) => { const { textScale, ...rest } = cur; void textScale; return v === null || v === 100 ? rest : { ...rest, textScale: v }; })} />
       </section>
 
       <div className="space-y-6">
@@ -283,7 +288,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                     const lab = labels.get(el.uid);
                     const out = lab?.corner === "ot" || lab?.corner === "ob";
                     const inset = isSel && decl ? 12 : 0;   // laisse la poignée du coin libre
-                    const text = gone ? s("ed.gone") : `${titleOf(el)} · ${el.w}×${el.h} px`;
+                    const text = gone ? s("ed.gone") : `${titleOf(el)} · ${el.w}×${el.h} px${sizeNote(el)}`;
                     return (
                       <div key={el.uid} role="button" tabIndex={0} aria-pressed={isSel} title={text}
                         aria-label={`${titleOf(el)} — ${el.w}×${el.h} px${el.visible ? "" : ` (${s("ed.hidden")})`}`}
@@ -378,6 +383,8 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                 <button type="button" className={ui.btn} onClick={() => update(reorder(elements, sel.uid, "down"))}>{s("ed.down")}</button>
               </div>
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={sel.visible} onChange={(e) => update(elements.map((x) => (x.uid === sel.uid ? { ...x, visible: e.target.checked } : x)))} className="h-4 w-4 accent-[var(--v-accent)]" />{s("ed.visible")}</label>
+              <TextSizeField key={sel.uid} testId="text-size-element" legend={s("ed.textSize.element")} help={s("ed.textSize.elementHelp")} value={sel.textScale ?? null} inherit errorPath={`elements.${sel.uid}.textScale`} s={s}
+                onChange={(v) => update(elements.map((x) => { if (x.uid !== sel.uid) return x; const { textScale, ...rest } = x; void textScale; return v === null ? rest : { ...rest, textScale: v }; }))} />
               {selInfo && selInfo.options.length > 0 && <OptionsForm info={selInfo} el={sel} s={s} fold={limits.fold} onChange={(id, v) => update(elements.map((x) => (x.uid === sel.uid ? { ...x, options: { ...x.options, [id]: v } } : x)))} />}
               {selInfo && !selInfo.followsStyle && <p className={ui.help}>{s("ed.noStyle")}</p>}
               <button type="button" className={ui.btnDanger} onClick={() => { const next = removeElement(elements, sel.uid); update(next); setSelected(next.at(-1)?.uid ?? null); setAnnounce(s("ed.removed")); }}>{s("ed.remove")}</button>

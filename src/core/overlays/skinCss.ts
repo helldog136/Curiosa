@@ -13,7 +13,7 @@ import { PRESET_PROPS, MOTION_TIMING, emptyExpansion, expandPreset, layerDecls, 
  * Every selector is RE-WRITTEN from what was understood under `html[data-ov-skin="<id>"]`: nothing is copied as is.
  */
 export type OverlayCssIssue = { code: string; line?: number; detail?: string };
-export type OverlayCssResult = { ok: boolean; css: string; issues: OverlayCssIssue[]; rules: number; /** The sheet uses contract-3 vocabulary (presets or layout properties): the skin must declare `skinContract: 3`. */ v3?: boolean };
+export type OverlayCssResult = { ok: boolean; css: string; issues: OverlayCssIssue[]; rules: number; /** (0.11.0) Number of `font-size` declarations that make text smaller than the element's own (below 100 % / 1em): a warning, because overlays are watched like TV (docs/OVERLAY-SKINS.md). */ shrinks?: number; /** The sheet uses contract-3 vocabulary (presets or layout properties): the skin must declare `skinContract: 3`. */ v3?: boolean };
 
 export const OVERLAY_CSS_LIMITS = { maxBytes: 24 * 1024, maxRules: 90, maxDeclarations: 18, maxSelectors: 8 } as const;
 const NAME = "[a-z][a-z0-9-]{0,30}";
@@ -203,7 +203,7 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
   let root;
   try { root = postcss.parse(source, { from: undefined }); } catch { return { ok: false, css: "", issues: [{ code: "syntax" }], rules: 0 }; }
   const out: string[] = [];
-  let rules = 0, v3 = false;
+  let rules = 0, v3 = false, shrinks = 0;
   for (const node of root.nodes) {
     const line = node.source?.start?.line;
     if (node.type === "comment") continue;
@@ -235,6 +235,7 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
       if (typeof r !== "string") { fail(r.code, d.source?.start?.line, prop); continue; }
       decls.push(`${prop}:${r}`);
       seen.set(prop, r);
+      if (prop === "font-size" && (/%$/.test(r) ? parseFloat(r) < 100 : /em$/.test(r) && parseFloat(r) < 1)) shrinks++;
     }
     // A rule that sets text and background colours together must keep them readable (4.5:1).
     const fg = seen.get("color"), bg = seen.get("background-color") ?? (seen.get("background") && parseColor(seen.get("background")!) ? seen.get("background") : undefined);
@@ -253,5 +254,5 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
     // Idle motion only when the person has not asked for reduced motion.
     if (exp.motion.length) out.push(`@media (prefers-reduced-motion:no-preference){${sel.selectors.join(",")}{animation:${exp.motion.map((m) => `ov-${m} ${MOTION_TIMING[m]}`).join(",")}}}`);
   }
-  return { ok: issues.length === 0, css: issues.length ? "" : out.join("\n"), issues, rules, v3 };
+  return { ok: issues.length === 0, css: issues.length ? "" : out.join("\n"), issues, rules, v3, shrinks };
 }

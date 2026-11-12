@@ -7,6 +7,31 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.11.0 — 2026-11-13
+
+**En bref.** Vous réglez maintenant la taille du texte de vos overlays, pour la page entière et pour chaque élément, avec un choix « TV » pensé pour un stream regardé de loin. Le fond des overlays peut aussi être opaque.
+
+**In short.** You now set the text size of your overlays, for the whole page and for each element, with a "TV" choice made for a stream watched from a distance. The background of overlays can also be opaque.
+
+### Overlays
+
+- **Taille du texte de la page et de chaque élément.** Dans l'éditeur, choisissez Petite, Normale, Grande ou TV (conseillée, 200 %), ou une taille entre 50 et 300 %. Chaque élément peut garder sa propre taille. Normale ne change rien : vos pages actuelles restent exactement comme avant.
+- **(English) Text size for the page and for each element.** In the editor, pick Small, Normal, Large or TV (recommended, 200 %), or a size between 50 and 300 %. Each element can keep its own size. Normal changes nothing: your current pages stay exactly as they were.
+- **Ça marche pour toutes les extensions, sans mise à jour.** Le cœur agrandit l'élément entier (texte, barres, espaces) sans bouger son cadre. Un skin ne peut pas défaire votre réglage.
+- **(English) It works for every extension, without an update.** The core enlarges the whole element (text, bars, spacing) without moving its frame. A skin cannot undo your setting.
+- **Fond opaque.** À côté de Transparent et Semi-transparent, un fond plein, lisible avec le texte clair comme avec le texte sombre. Un skin garde ses couleurs : son panneau devient plein.
+- **(English) Opaque background.** Next to Transparent and Semi-transparent, a solid background that stays readable with light and dark text. A skin keeps its colours: its panel becomes solid.
+- **Un avertissement pour les skins qui réduisent le texte.** À l'installation, un skin dont une règle rend le texte plus petit que celui de l'élément reçoit un avertissement (pas un refus).
+- **(English) A warning for skins that shrink text.** At install, a skin with a rule that makes text smaller than the element's own gets a warning (not a refusal).
+- **Assistants IA.** La liste des pages d'overlay indique le style (texte, fond, coins) et la taille du texte de chaque page.
+- **(English) AI assistants.** The overlay page list states the style (text, background, corners) and the text size of each page.
+
+### Pour les développeurs
+
+- **Text size.** `textScale` (percent, 50 to 300) on the page style and on a page element, absent at the default, so stored pages and rendered output are unchanged. `frameLayout(decl, rect, percent)` divides the element's window by `percent / 100` and scales it up by the same factor.
+- **TV type scale.** New optional manifest key `overlayElements[].tvScale` (`minCore` 0.11.0): the core adds `ov-tv` to the element's address; `--ov-text-xs` to `--ov-text-2xl` are reserved (24, 28, 32, 40, 56, 72 px on a 1080 canvas). Nothing below 24 px on the canvas; a test guards the core's own surfaces. See docs/OVERLAY-ELEMENTS.md.
+- **Opaque background.** `background: "opaque"`; elements still receive `ov-surface=soft` and the core sets `--ov-surface` / `--ov-border` on the element's document (a skin gets a solid `--ov-surface` instead). Skin check: `overlay-text-small` warning for `font-size` below 100 %.
+
 ## 0.10.1 — 2026-11-13
 
 **En bref.** Dans l'onglet « Skin » d'une page d'overlay, les aperçus animés des skins à obtenir peuvent se lancer d'un clic quand votre système demande de réduire les mouvements. Un bouton permet d'actualiser la liste des skins tout de suite.

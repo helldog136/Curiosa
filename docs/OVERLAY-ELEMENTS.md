@@ -57,6 +57,7 @@ The core **refuses** a manifest that does not follow these rules (clear message,
 | `followsStyle` | `true` (default): the element follows the page's common style, **and an overlay skin applies to it**. `false`: it cannot (a 3D scene, for example) and stays as it is; the editor tells the person. |
 | `options` | The options adjustable per element (see below). Twenty at most. |
 | `demo` | `true`: the element can show sample content when the address receives `ov-demo=1` (test mode). |
+| `tvScale` | (0.11.0, `minCore` `0.11.0`) `true`: the element sizes its text with the TV type scale and receives `ov-tv` (see "Text size and TV legibility"). Optional: without it the element is untouched. |
 
 At most **20 elements** per module.
 
@@ -128,6 +129,7 @@ The core **adds to your address** (replacing anything you put) these reserved pa
 | `ov-text`, `ov-surface`, `ov-corners` | The common style (only if `followsStyle` is true). |
 | `opt-<id>` | The value of each option (`1` / `0` for a yes/no). |
 | `ov-demo` | `1` in test mode, for an element that declares `demo`. |
+| `ov-tv` | (0.11.0) The TV factor, only for an element that declares `tvScale`. See "Text size and TV legibility". |
 
 Your page reads these parameters, **validates them** and fills the **whole** window. The position and size settings of your current overlay are **ignored** in an overlay page: the element fills the frame it is given. What the person sets in your module (content, durations, own look) stays with you.
 
@@ -145,6 +147,8 @@ Each overlay page has a **common style** (light or dark text, transparent or sem
 | --- | --- | --- |
 | `ov-text` = `light` / `dark` | `--ov-fg` | `#ffffff` / `#111111` |
 | `ov-surface` = `transparent` / `soft` | `--ov-surface` | `transparent` / `rgba(0,0,0,.55)` (light text) or `rgba(255,255,255,.7)` (dark text) |
+
+Since 0.11.0 the person can also choose an **opaque** background (a solid panel: `#14171c` under light text, `#f7f7f5` under dark text, text contrast about 17:1). **Your element never receives `ov-surface=opaque`**: it receives `soft`, and the core sets `--ov-surface` (and `--ov-border`) to the solid colour on the element's document root and on `data-ov-region="element"`, with `!important`. So an element that draws its panel with `var(--ov-surface, …)` becomes opaque with no change; one that hard-codes the colour from the parameter stays semi-transparent. A skin keeps its own colours: its panel colour becomes solid (same colour, alpha 1, never less readable), and the owner's choice wins over any `background` the skin would restyle through its tokens.
 | `ov-corners` = `round` / `square` | `--ov-radius` | `12px` / `0px` |
 | (derived from the background) | `--ov-border` | `transparent` or a discreet outline |
 
@@ -161,6 +165,40 @@ So **an element needs no change** to follow a skin, as long as it declares `foll
 The core **reserves** the names `--ov-*`, `data-ov-part`, `data-ov-region`, `data-ov-skin` and the `ov-*` parameters. Around each element, the core page emits `data-ov-region="element"` and `data-ov-part="frame"`, `test-frame`, `label`, `empty`.
 
 **Sealing.** An element's page **never** loads the site skin, and you use neither `--sk-*` nor `data-skin-*` on it. An overlay skin never touches the public site, and a site skin never touches an overlay. The common style **does not** reuse the site skin. An element that cannot follow the style (a 3D scene) declares `followsStyle: false`: no skin is injected into it.
+
+## Text size and TV legibility (core 0.11.0)
+
+An overlay is watched **like TV**, on a phone or a television, from a distance. On a 1920x1080 canvas, follow the usual broadcast guidance: body and secondary text at least **28 to 32 px**, titles and labels larger, **nothing below 24 px** (`TV_MIN_TEXT_PX`), strong contrast, no hairline weights, and keep text inside the title-safe margins (about 5 % from each edge). The numbers below are px **on the canvas** (what the person sees), not px of your element's own window.
+
+**What the person sets.** In the overlay editor: a **Text size of the page** (Small 75 %, Normal 100 %, Large 150 %, **TV (recommended)** 200 %, or Other from 50 to 300 %) that every element follows, and per element **Same as the page**, the same sizes, or Other. 100 % is the default and changes nothing. Stored on the page style (`textScale`) and on the element (`textScale`, only when set); nothing is stored at the default, so pages saved before 0.11.0 read and render byte for byte as before.
+
+**How the core applies it (no change needed in your module).** The core shows your element's page in a window that is `100 / percent` times smaller and scales that window up by `percent`: everything inside (text, bars, icons, spacing) grows together, the frame on the canvas does not move, text stays vector text re-drawn at its final size (never a blurred bitmap). Your page simply gets a smaller window (`ov-w`, `ov-h`, `width`, `height`) and must reflow in it, exactly as it does when the frame is made smaller: a `fluid` element reorganises; a `scale` element's natural size is divided too, so the person may need to enlarge its frame; a `ratio` element's reference height is divided. We chose this over a CSS variable alone because it works for **every** element, including old ones and those with fixed `px`; and over `zoom`/`transform` inside the element because the core cannot reach into an element's layout without breaking it. Trade-off: a very small window can crowd a layout that assumed a large one (an element should keep a sensible `minSize`: the core never gives a `fluid` element a window smaller than it, and scales down instead).
+
+**The TV type scale (optional, opt-in).** An element that wants to be TV-sized by default, and to follow the person's text size exactly, declares `"tvScale": true` (and `"minCore": "0.11.0"`). The core then adds `ov-tv` to its address: the factor to multiply a **1080-canvas px** value by to get CSS px in your window (it includes the canvas height, so a 1280x720 canvas stays proportional, the person's text size, and the frame scale). Read it and derive the shared tokens:
+
+```css
+:root {
+  --ov-tv: 1; /* set from the ov-tv parameter, fallback 1 */
+  --ov-text-xs: calc(24px * var(--ov-tv));   /* smallest allowed: captions, credits */
+  --ov-text-sm: calc(28px * var(--ov-tv));   /* secondary text */
+  --ov-text-md: calc(32px * var(--ov-tv));   /* body text */
+  --ov-text-lg: calc(40px * var(--ov-tv));   /* names, labels */
+  --ov-text-xl: calc(56px * var(--ov-tv));   /* titles */
+  --ov-text-2xl: calc(72px * var(--ov-tv));  /* numbers, big counters */
+}
+.caption { font-size: var(--ov-text-xs, 24px); }
+```
+
+```js
+const tv = Number(new URLSearchParams(location.search).get("ov-tv"));
+if (tv > 0 && tv < 20) document.documentElement.style.setProperty("--ov-tv", String(tv));
+```
+
+With `ov-tv` the text on the canvas is exactly the token's px times the person's text size, whatever the frame scale: do **not** also multiply by the frame ratio yourself, and do not use the percentage a second time. The names `--ov-text-xs` to `--ov-text-2xl` are reserved (the steps are `TV_TYPE_SCALE` in `src/core/overlays/textScale.ts`). Without `tvScale`, nothing changes for your element: it keeps its own sizes, and the person's text size still works through the window described above.
+
+**Skins.** A skin cannot change the person's text size (it is applied outside the element's document, to the iframe) and its `font-size` rules stay relative (60 to 160 %). A skin that makes text **smaller** than the element's own gets a warning at install (see [OVERLAY-SKINS.md](OVERLAY-SKINS.md)).
+
+**What already exists.** The core's own overlay surfaces keep to the minimum: a test fails if the core draws viewer-facing text below 24 px (the label of the test frame, an editor aid, is the only exception). In your module, `docs/OVERLAY-ELEMENTS.md` adoption below lists the check.
 
 ## 4. Test mode
 
@@ -219,6 +257,7 @@ Tick before publishing the version of your module that offers elements:
 - [ ] No `--sk-*` nor `data-skin-*` on the element page; no third-party loading; text from elsewhere **escaped**.
 - [ ] Several readers: one cursor per reader, bounded reads, `assertMultiReaders` test written if the element follows a stream.
 - [ ] `demo: true` if the element can show sample content, for test mode.
+- [ ] Text readable on TV: nothing below 24 px **on the canvas** at 100 % (28 to 32 px for body text), or `tvScale: true` with the `--ov-text-*` tokens; the element reflows when its window is smaller (text size 150 to 200 %).
 - [ ] Sound, if any, plays inside the element (OBS control).
 - [ ] `npm run module:check -- <folder>`: the `overlay.elements` requirement passes.
 - [ ] A minor version bump (`1.4.0` → `1.5.0`) and a mention in the module's README.

@@ -157,3 +157,12 @@ They use the same validation as the administration (`overlays/lookService.ts`): 
 ## 7. Backup and upgrades
 
 Overlay pages keep their look (`OverlayPage.look`, one column added by the migration `20261111090000_overlay_skins`, bounded JSON, read without ever throwing) in `data/overlay-pages.json`. Installed skins are in the skin registry (`kind: "overlay"`) and restored like site skins (reinstalled from their repository, the contract decides). The support floor (`upgrade.json`) does not change: the migration only adds a column with a default and no data conversion exists.
+
+## TV legibility, text size and the opaque background (core 0.11.0)
+
+Overlays are watched like TV. Two settings of the **page owner** sit above every skin:
+
+- **Text size** (50 to 300 %, "TV (recommended)" is 200 %). It is applied by the core to the element's frame, outside the element's document: a skin cannot read it, override it or fight it. Skin `font-size` rules remain **relative** to the element's own size (60 to 160 % or 0.6 to 1.6 em), so they follow the owner's size.
+- **Background: Opaque** (next to Transparent and Semi-transparent). The skin keeps its colours, its `--ov-surface` becomes solid (the same colour with alpha 1; if that would make the text less readable, the colour it was checked over: black under light text, white under dark text), so the text contrast of the skin is kept (4.5:1 minimum, see the contrast checks). Without a skin, the core sets the solid panel colour itself (`#14171c` under light text, `#f7f7f5` under dark text). A rule of your sheet that sets its own `background-color` on a part is a decoration of that part and stays; the panel token is what the owner's choice changes.
+
+**Guidance for skins.** On a 1920x1080 canvas nothing should be below 24 px and body text should be 28 to 32 px or more; use strong contrast and no hairline weights (`--ov-weight` 400 or more for body). A `font-size` below 100 % (or 1em) in a rule makes text smaller than the element chose: the check reports a **warning** (`overlay-text-small`), not an error, so published skins keep working; avoid it.

@@ -443,6 +443,7 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     for (const i of sheet.issues) add("overlay-css", { detail: `${i.code}${i.detail ? ` ${i.detail}` : ""}${i.line ? ` l.${i.line}` : ""}` });
     css = sheet.css;
     if (sheet.v3 && m.skinContract < OVERLAY_SKIN_CONTRACT_V3) add("overlay-contract-v3");
+    if (sheet.shrinks) add("overlay-text-small", { count: sheet.shrinks });
   }
   const files: ValidatedFile[] = [];
   const installFiles: { path: string; content: Buffer }[] = [];

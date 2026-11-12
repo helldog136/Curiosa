@@ -25,7 +25,11 @@ export type OptionValue = string | number | boolean;
 export type OptionValues = Record<string, OptionValue>;
 
 /** Style commun (jetons `--ov-*`, voir tokens.ts). */
-export type OverlayStyle = { text: "light" | "dark"; background: "transparent" | "soft"; corners: "round" | "square" };
+export type OverlayStyle = {
+  text: "light" | "dark"; background: "transparent" | "soft" | "opaque"; corners: "round" | "square";
+  /** (0.11.0) Text size of the page in percent (50 to 300), the default of every element. Absent = 100 %: nothing changes (textScale.ts). */
+  textScale?: number;
+};
 export const DEFAULT_STYLE: OverlayStyle = { text: "light", background: "transparent", corners: "round" };
 
 export type PageElement = {
@@ -37,6 +41,8 @@ export type PageElement = {
   x: number; y: number; w: number; h: number;
   visible: boolean;
   options: OptionValues;
+  /** (0.11.0) Text size of this element in percent (50 to 300). Absent = the page's text size (textScale.ts). */
+  textScale?: number;
 };
 
 export type OverlayPageData = {
