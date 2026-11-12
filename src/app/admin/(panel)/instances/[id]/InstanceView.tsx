@@ -31,7 +31,10 @@ import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { KeptData } from "@/components/admin/KeptData";
 import { listRetired } from "@/core/modules/retired";
-import { RemoveSection } from "@/components/admin/RemoveSection";
+import { RemoveWindow } from "@/components/admin/RemoveWindow";
+import { removeWindowLabels } from "@/components/admin/removalLabels";
+import { HelpTip } from "@/components/admin/HelpTip";
+import { instanceRemovalImpact, moduleRemovalImpact } from "@/core/modules/removalImpact";
 import { Checkbox, Select, TextArea, TextField } from "@/components/admin/Field";
 import { ModuleSettings } from "@/components/admin/ModuleSettings";
 import { ui } from "@/components/admin/ui";
@@ -46,7 +49,7 @@ import { choiceAdminView, isChoiceField, viewCountsAsFilled, type ChoiceView } f
 import { FILLED_MARK } from "@/core/modules/choiceValues";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { PageTabs, TabPanel } from "@/components/admin/PageTabs";
-import { HISTORY_TAB, initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
+import { HISTORY_TAB, groupTabs, initialTab, panelTab, planTabs, settingArea, settingTab, visibleTabs } from "@/core/modules/tabs";
 import { JournalView } from "@/components/admin/JournalView";
 import { Panel } from "@/components/admin/Page";
 import { AUDIT_HREF, entriesHref } from "@/core/adminLinks";
@@ -142,7 +145,8 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   }
   // « Historique » (cœur 0.6.0) : ajouté par le cœur à chaque module, en dernier, pour qui a le droit `<module>:history` (Administration par défaut, réglable dans un rôle).
   const canHistory = can(user, `${mod.manifest.id}:history`);
-  const visible = [...visibleTabs(plan, filled), ...(canHistory ? [{ id: HISTORY_TAB, builtin: true, label: undefined }] : [])];
+  // (core 0.12.0) Two groups in the row: what the module shows (Use and its own tabs) first, then the tabs of the module as a whole (Settings, Sources, General, History).
+  const { tabs: visible, split } = groupTabs([...visibleTabs(plan, filled), ...(canHistory ? [{ id: HISTORY_TAB, builtin: true, label: undefined }] : [])]);
   const tabLabel = (tab: (typeof visible)[number]) => (tab.label !== undefined ? L(tab.label) : t(`moduleTabs.${tab.id}`));
   const requested = typeof sp.tab === "string" ? sp.tab : null;
   const toFillTab = manage && missingFields[0] ? settingTab(plan, missingFields[0]) : null;
@@ -267,7 +271,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
             <p className="text-sm text-muted min-[1100px]:col-span-2">{t("instances.address")} : <code className="font-mono">/{instance.basePath}</code></p>
           )}
           {pageKey && (
-            <p className="text-sm text-muted min-[1100px]:col-span-2" data-testid="page-setting-hint">{t(pageOn ? "instances.pageOn" : "instances.pageOff", { setting: pageLabel })}</p>
+            <p className="text-sm text-muted min-[1100px]:col-span-2" data-testid="page-setting-hint">{t(pageOn ? "instances.pageState.on" : "instances.pageState.off")} <HelpTip always help={t(pageOn ? "instances.pageOn" : "instances.pageOff", { setting: pageLabel })} name={t("instances.address")} /></p>
           )}
           {hasPage(mod.manifest) && advanced && (
             <div className="grid gap-4 sm:grid-cols-2 min-[1100px]:col-span-2">
@@ -318,27 +322,23 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     </div>
   );
 
-  // Zone sensible : en bas de Général, dans un encadré à part (jamais dans l'onglet d'usage). Chaque action demande une confirmation en clair.
+  // Danger zone: at the bottom of General, in a red-bordered box of its own (never in a content tab, never next to the data actions). One button opens a
+  // confirmation window that names what is removed and what is lost; nothing is sent from the page itself.
+  const removeName = scope === "module" ? moduleName : labeler.label(instance);
+  const removeImpact = !manage ? { instances: 0, items: 0, files: 0 } : scope === "module" ? await moduleRemovalImpact(instance.moduleId) : await instanceRemovalImpact(instance.id);
   const dangerZone = (
-    <section className="space-y-4 border-t border-line pt-8" data-testid="danger-zone" aria-labelledby="danger-zone-title">
-      <div>
-        <h2 id="danger-zone-title" className="text-lg font-semibold text-red-700"><span aria-hidden>⚠ </span>{t("instances.dangerZone")}</h2>
-        <p className="mt-1 text-sm text-muted">{t("instances.dangerZoneHelp")}</p>
-      </div>
+    <section className="space-y-4 rounded-2xl border-2 border-danger/50 bg-danger/[0.04] p-5 sm:p-6" data-testid="danger-zone" aria-labelledby="danger-zone-title">
+      <h2 id="danger-zone-title" className="text-lg font-semibold text-danger"><span aria-hidden>⚠ </span>{t("instances.dangerZone")}</h2>
       <KeptData t={t} locale={locale} name={moduleName} kept={await listRetired(instance.moduleId)} />
-      {scope === "module" ? (
-        <RemoveSection t={t} title={t("remove.title")} intro={t("remove.introModule", { name: moduleName })} name={moduleName}
-          keep={uninstallModuleAction.bind(null, mod.manifest.id, true)} erase={uninstallModuleAction.bind(null, mod.manifest.id, false)} />
-      ) : (
-        <RemoveSection t={t} title={t("remove.title")} intro={t(advanced ? "remove.introInstance" : "remove.introInstanceSimple", { name: labeler.label(instance) })} name={labeler.label(instance)}
-          keep={deleteInstanceAction.bind(null, instance.id, true)} erase={deleteInstanceAction.bind(null, instance.id, false)} />
-      )}
+      <RemoveWindow labels={removeWindowLabels(t, { scope, name: removeName, impact: removeImpact })} name={removeName}
+        keep={scope === "module" ? uninstallModuleAction.bind(null, mod.manifest.id, true) : deleteInstanceAction.bind(null, instance.id, true)}
+        erase={scope === "module" ? uninstallModuleAction.bind(null, mod.manifest.id, false) : deleteInstanceAction.bind(null, instance.id, false)} />
     </section>
   );
 
   // Onglet « Historique » : ce qui s'est passé dans CE module (liens relatifs : ils restent dans la page ou la fenêtre où l'on est).
   const historyPanel = canHistory && (
-    <Panel title={t("moduleTabs.history")} help={`${t("journal.history.intro", { name: moduleName })} ${t("journal.history.keep")}`} testid="module-history">
+    <Panel title={t("moduleTabs.history")} help={<>{t("journal.history.intro", { name: moduleName })} <HelpTip always help={t("journal.history.keep")} name={t("moduleTabs.history")} /></>} testid="module-history">
       <JournalView t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} sp={{ ...Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : []))), tab: HISTORY_TAB }} path="" prefix="h" moduleId={mod.manifest.id} testid="module-history-list" />
       {can(user, "core:security") && <p className="text-sm"><a href={AUDIT_HREF} className="underline hover:text-accent">{t("journal.history.global")} →</a></p>}
     </Panel>
@@ -388,7 +388,8 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
       </div>
 
       {visible.length > 1 || lead ? (
-        <PageTabs tabs={visible.map((tab) => ({ id: tab.id, label: tabLabel(tab) }))} initial={firstTab} labels={tabsLabels} history={inModal ? "replace" : "push"} surface={inModal ? "modal" : "page"} lead={lead}>
+        <PageTabs tabs={visible.map((tab) => ({ id: tab.id, label: tabLabel(tab), group: tab.group }))} initial={firstTab} labels={tabsLabels} history={inModal ? "replace" : "push"} surface={inModal ? "modal" : "page"} lead={lead}
+          split={split || (!!lead && visible.length > 0)} groupLabel={t("moduleTabs.group")}>
           {visible.map((tab) => <TabPanel key={tab.id} id={tab.id}>{tabContent(tab.id)}</TabPanel>)}
           {/* Place pour la barre « Enregistrer » flottante sous le dernier champ. */}
           <div aria-hidden="true" className="h-12" />

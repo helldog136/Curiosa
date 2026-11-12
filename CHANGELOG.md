@@ -7,6 +7,28 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.12.0 — 2026-11-13
+
+**En bref.** La page d'un module sépare maintenant clairement ce qu'il montre (ses éléments) de ce qui concerne le module lui-même (Réglages, Général, Historique). Retirer un module se fait depuis une zone de danger, au bas de l'onglet Général, avec une fenêtre qui nomme le module et dit ce qui sera perdu.
+
+**In short.** A module's page now clearly separates what it shows (its items) from what concerns the module itself (Settings, General, History). Removing a module is done from a danger zone at the bottom of the General tab, with a window that names the module and says what will be lost.
+
+### Page d'un module
+
+- **Deux groupes d'onglets.** Les onglets du contenu restent à gauche ; Réglages, Général et Historique sont à droite, dans un groupe « Module » teinté. « Général » ne se confond plus avec l'élément que vous modifiez.
+- **(English) Two groups of tabs.** The content tabs stay on the left; Settings, General and History are on the right, in a tinted "Module" group. "General" is no longer mistaken for the item you are editing.
+- **Une zone de danger.** Tout en bas de Général, un encadré rouge porte le seul bouton « Retirer le module … ». Une fenêtre nomme le module, compte ce qui sera perdu et demande une case cochée ou le nom écrit.
+- **(English) A danger zone.** At the very bottom of General, a red box holds the single "Remove the module …" button. A window names the module, counts what will be lost and asks for a ticked box or the typed name.
+- **Moins de phrases.** Les phrases de réassurance et d'explication disparaissent de ces pages ; la précision passe dans une info-bulle « ? ». Les avertissements qui évitent une perte restent visibles.
+- **(English) Fewer sentences.** Reassuring and explanatory sentences are gone from these pages; the precision moves into a "?" tooltip. Warnings that prevent a loss stay visible.
+
+### Pour les développeurs
+
+- **Window slots.** `ModalWindow` and `EditDialog` take `secondary` (one destructive button at the start of the footer, first in tab order, never focused on opening). `PendingButton` has the `dangerSolid` variant. `HelpTip` takes `always` for a short precision.
+- **Module contract (no `minCore`).** `adminForm.secondaryAction: { label, action, confirm }` (with `presentation: "dialog"`) and `adminForm.danger: true`; an older core ignores both. The kit checks `confirm` and the label (R3, R24). See `docs/MODULES.md`.
+- **Tabs.** `groupTabs` (`core/modules/tabs.ts`) puts the tabs a module adds BEFORE Settings; `PageTabs` takes `split` and `groupLabel`. `moduleRemovalImpact` and `instanceRemovalImpact` count items and files for the confirmation window.
+- **Rule R32** of `docs/ERGONOMIE-ADMIN.md`: no reassuring or descriptive filler; a precision goes in a tooltip.
+
 ## 0.11.0 — 2026-11-13
 
 **En bref.** Vous réglez maintenant la taille du texte de vos overlays, pour la page entière et pour chaque élément, avec un choix « TV » pensé pour un stream regardé de loin. Le fond des overlays peut aussi être opaque.

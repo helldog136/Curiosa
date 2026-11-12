@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { startTransition, useActionState, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
 import { PendingButton } from "./PendingButton";
@@ -214,14 +214,29 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
  */
 function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: string; block: FormBlock; labels: FormLabels; dialog: DialogLabels }) {
   const [state, action, pending] = useActionState(runner(instanceId, block.action), null);
+  // (core 0.12.0) The optional destructive button of the footer: the same fields go to ITS action, after a confirmation.
+  const secondary = block.secondaryAction;
+  const [secondState, secondRun, secondPending] = useActionState(runner(instanceId, secondary?.action ?? ""), null);
   const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
   useFieldErrorsDom(formRef, state?.errors, state);
   const title = block.title ?? block.submitLabel;
+  const error = state?.error ?? secondState?.error ?? (secondState?.errors ? Object.values(secondState.errors)[0] : undefined);
   return (
     <EditDialog title={title} closeLabel={dialog.close} closeHref={block.cancelHref} guard={dialog.discard}
-      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} error={state?.error} />}>
+      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} danger={block.danger === true} error={error} />}
+      secondary={secondary ? (
+        <PendingButton type="button" variant="danger" pending={secondPending} testid="edit-dialog-secondary"
+          onClick={async () => {
+            if (!formRef.current) return;
+            // The red button of the box is never the default focus: Enter does not destroy anything by itself.
+            if (!(await askConfirm(secondary.confirm, { confirmLabel: secondary.label, danger: true, focusCancel: true }))) return;
+            const data = new FormData(formRef.current);
+            startTransition(() => secondRun(data));
+          }}>{secondary.label}</PendingButton>
+      ) : undefined}>
       <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
+      {secondary && <DialogOutcome state={secondState} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />}
       <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
         <FormFields fields={block.fields} labels={labels} />
       </form>
@@ -229,8 +244,8 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
   );
 }
 
-/** Footer of the edit dialog: a general error (when it concerns no field), then ONE main button with a specific verb and a discreet "Cancel". */
-function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error }: { formId: string; submitLabel: string; cancel: string; cancelHref?: string; pending: boolean; error?: string }) {
+/** Footer of the edit dialog: a general error (when it concerns no field), then ONE main button with a specific verb and a discreet "Cancel". `danger`: the main button is solid red. */
+function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error, danger = false }: { formId: string; submitLabel: string; cancel: string; cancelHref?: string; pending: boolean; error?: string; danger?: boolean }) {
   const win = useModalWindow();
   return (
     <div className="space-y-2">
@@ -242,7 +257,7 @@ function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error 
             ? <a href={cancelHref} onClick={(e) => { e.preventDefault(); win?.close(); }} className={look} data-testid="edit-dialog-cancel">{cancel}</a>
             : <button type="button" onClick={() => win?.close()} className={look} data-testid="edit-dialog-cancel">{cancel}</button>;
         })()}
-        <PendingButton pending={pending} variant="primary" form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
+        <PendingButton pending={pending} variant={danger ? "dangerSolid" : "primary"} form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
       </div>
     </div>
   );

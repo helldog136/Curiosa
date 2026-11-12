@@ -168,6 +168,17 @@ export type Block =
        * is where the window returns when it closes. A form with a `file` field stays in the page.
        */
       presentation?: "dialog";
+      /**
+       * (core 0.12.0, optional; an older core ignores it) The main button of the form is solid red: use it when saving the form itself destroys something (a
+       * "Remove…" confirmation form). An ordinary edit form keeps the usual button.
+       */
+      danger?: boolean;
+      /**
+       * (core 0.12.0, optional; an older core ignores it, and then shows no such button) With `presentation: "dialog"`: ONE destructive button ("Delete the partner")
+       * shown apart at the start of the window footer, never next to the main button. It posts the same fields (so the hidden `id`) to the adminAction `action`
+       * after a confirmation box that shows `confirm` (say what will be lost, R24) and whose red button is not the default focus. Not for the main task of the window.
+       */
+      secondaryAction?: { label: string; action: string; confirm: string };
     }
   /**
    * Éditeur de GRILLE (panneau d'admin uniquement) : on choisit un pinceau dans la palette puis on peint les cases à la souris ou au doigt ;

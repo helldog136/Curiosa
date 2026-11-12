@@ -132,3 +132,22 @@ export function initialTab(visible: readonly { id: string }[], opts: { requested
   if (has(opts.toFill)) return opts.toFill;
   return visible[0]?.id ?? null;
 }
+
+/**
+ * (core 0.12.0) The two GROUPS of the tab row. "content" = what the module shows and declares itself (the "use" panel, renamed or not, and the tabs it adds);
+ * "module" = what the core adds to EVERY module and that concerns the module as a whole (Settings, Sources, General, History). General holds the removal of
+ * the module, so it must never look like it belongs to an item being edited in a content tab.
+ */
+export type TabGroup = "content" | "module";
+export const tabGroup = (id: string): TabGroup => (id === "use" || !(isBuiltinTab(id) || id === HISTORY_TAB) ? "content" : "module");
+
+/**
+ * The visible tabs in display order: the content tabs first (in the plan order), then the module tabs (Settings, Sources, General, History). Without any added
+ * tab the order is the one of before; with added tabs they now come BEFORE Settings. `split` is true when both groups exist (only then the row draws the separation).
+ */
+export function groupTabs<T extends { id: string }>(visible: readonly T[]): { tabs: (T & { group: TabGroup })[]; split: boolean } {
+  const withGroup = visible.map((t) => ({ ...t, group: tabGroup(t.id) }));
+  const content = withGroup.filter((t) => t.group === "content");
+  const own = withGroup.filter((t) => t.group === "module");
+  return { tabs: [...content, ...own], split: content.length > 0 && own.length > 0 };
+}

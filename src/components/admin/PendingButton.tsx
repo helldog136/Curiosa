@@ -22,6 +22,8 @@ const VARIANTS = {
   btn: `${BASE} border border-line bg-surface font-medium shadow-sm hover:border-accent hover:text-accent`,
   primary: `${BASE} bg-accent px-5 font-semibold text-accent-fg shadow-sm hover:brightness-110`,
   danger: `${BASE} border border-red-500/40 bg-surface font-medium text-red-600 hover:bg-red-500/10`,
+  /** (core 0.12.0) The CONFIRM button of a destructive window: solid red, white text (never the accent colour of an ordinary main button). */
+  dangerSolid: `${BASE} bg-danger px-5 font-semibold text-danger-fg shadow-sm hover:brightness-110 disabled:opacity-50`,
   /** Texte cliquable discret (« Ne plus proposer », « Annuler »…) : sans cadre, mais une cible de 44 px. */
   /** Entrée d'un menu « ⋯ » : pleine largeur, 44 px de haut, alignée à gauche (ordinaire ou rouge pour ce qui efface). */
   menu: "flex min-h-11 w-full items-center justify-start gap-2 px-4 text-left text-sm transition hover:bg-bg disabled:cursor-progress",

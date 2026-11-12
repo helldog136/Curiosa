@@ -7,7 +7,8 @@ import { focusFirstError } from "./FieldErrors";
 import { REVEAL_EVENT } from "./reveal";
 import { errorTabToShow, keyTarget, leaveNeedsConfirm, withTab } from "./pageTabsModel";
 
-export type PageTab = { id: string; label: string };
+/** `group: "module"` (core 0.12.0): a tab of the module as a whole (Settings, General, History). See `groupTabs` in core/modules/tabs.ts. */
+export type PageTab = { id: string; label: string; group?: "content" | "module" };
 export type PageTabsLabels = { modified: string; error: string; leave: string; list: string };
 
 /**
@@ -21,7 +22,7 @@ export type PageTabsLabels = { modified: string; error: string; leave: string; l
  *  - Mobile : la rangée défile horizontalement et reste collée en haut de l'écran (sous la barre du menu) ; l'onglet actif est toujours ramené dans la vue.
  *  - Quitter la page par un lien avec des modifications non enregistrées demande confirmation (la fermeture de l'onglet du navigateur est gardée par ActionForm).
  */
-export function PageTabs({ tabs, initial, labels, history = "push", surface = "page", lead, children }: {
+export function PageTabs({ tabs, initial, labels, history = "push", surface = "page", lead, split, groupLabel, children }: {
   tabs: PageTab[];
   /** Onglet ouvert quand l'adresse n'en demande aucun (choisi par le serveur : voir core/modules/tabs.ts `initialTab`). */
   initial: string;
@@ -31,6 +32,12 @@ export function PageTabs({ tabs, initial, labels, history = "push", surface = "p
   surface?: "page" | "modal";
   /** Lien placé devant les onglets, dans la même rangée (ex. « Contenu » d'un module à contenu : une autre page, pas un onglet). */
   lead?: { href: string; label: string };
+  /**
+   * (core 0.12.0) Draw the tabs of the module itself (`group: "module"`) apart from the content tabs: a separator, a tinted cluster pushed to the end of the row,
+   * and a small "Module" mark (`groupLabel`, also read before each of those tabs by screen readers). Absent or false: one flat row, exactly as before.
+   */
+  split?: boolean;
+  groupLabel?: string;
   children: React.ReactNode;
 }) {
   const known = useCallback((id: string | null | undefined): id is string => !!id && tabs.some((t) => t.id === id), [tabs]);
@@ -196,6 +203,25 @@ export function PageTabs({ tabs, initial, labels, history = "push", surface = "p
   const css = `[data-page-tabs][data-active] [data-tab-panel]{display:none}${tabs.map((t) => `[data-page-tabs][data-active="${t.id}"] [data-tab-panel="${t.id}"]{display:block}`).join("")}`;
   const bleed = surface === "modal" ? "-mx-4 px-4 sm:-mx-8 sm:px-8 bg-surface" : "-mx-6 px-6 md:-mx-10 md:px-10 bg-bg";
 
+  const renderTab = (t: PageTab) => {
+    const on = t.id === active;
+    const mark = marks[t.id];
+    return (
+      <button key={t.id} id={`tab-${t.id}`} type="button" role="tab" aria-selected={on} aria-controls={`tabpanel-${t.id}`} tabIndex={on ? 0 : -1}
+        data-testid={`tab-${t.id}`} data-group={split ? (t.group ?? "content") : undefined} data-dirty={mark?.dirty ? "1" : undefined} data-error={mark?.error ? "1" : undefined}
+        onClick={() => { choose(t.id); toPanelTop(); }}
+        className={`relative flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 text-[15px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-4 ${on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
+        {split && t.group === "module" && <span className="sr-only">{groupLabel}</span>}
+        {t.label}
+        {mark?.error ? (
+          <span data-testid={`tab-${t.id}-error`} className="inline-block h-2 w-2 rounded-full bg-red-600"><span className="sr-only"> ({labels.error})</span></span>
+        ) : mark?.dirty ? (
+          <span data-testid={`tab-${t.id}-dot`} className="inline-block h-2 w-2 rounded-full bg-accent"><span className="sr-only"> ({labels.modified})</span></span>
+        ) : null}
+      </button>
+    );
+  };
+
   return (
     <div ref={root} data-page-tabs="" data-active={active} className="scroll-mt-[calc(var(--tabs-top,0px)+0.5rem)] space-y-6">
       <style>{css}</style>
@@ -210,24 +236,17 @@ export function PageTabs({ tabs, initial, labels, history = "push", surface = "p
             </a>
           )}
           {lead && <span aria-hidden className="my-2.5 w-px shrink-0 bg-line" />}
-          <div role="tablist" aria-label={labels.list} aria-orientation="horizontal" onKeyDown={onKeyDown} className="flex items-stretch gap-1">
-            {tabs.map((t) => {
-              const on = t.id === active;
-              const mark = marks[t.id];
-              return (
-                <button key={t.id} id={`tab-${t.id}`} type="button" role="tab" aria-selected={on} aria-controls={`tabpanel-${t.id}`} tabIndex={on ? 0 : -1}
-                  data-testid={`tab-${t.id}`} data-dirty={mark?.dirty ? "1" : undefined} data-error={mark?.error ? "1" : undefined}
-                  onClick={() => { choose(t.id); toPanelTop(); }}
-                  className={`relative flex min-h-11 shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3.5 text-[15px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-accent sm:px-4 ${on ? "border-accent text-fg" : "border-transparent text-muted hover:text-fg"}`}>
-                  {t.label}
-                  {mark?.error ? (
-                    <span data-testid={`tab-${t.id}-error`} className="inline-block h-2 w-2 rounded-full bg-red-600"><span className="sr-only"> ({labels.error})</span></span>
-                  ) : mark?.dirty ? (
-                    <span data-testid={`tab-${t.id}-dot`} className="inline-block h-2 w-2 rounded-full bg-accent"><span className="sr-only"> ({labels.modified})</span></span>
-                  ) : null}
-                </button>
-              );
-            })}
+          <div role="tablist" aria-label={labels.list} aria-orientation="horizontal" onKeyDown={onKeyDown} className={split ? "flex min-w-full items-stretch gap-1" : "flex items-stretch gap-1"}>
+            {split ? (
+              <>
+                {tabs.filter((t) => t.group !== "module").map(renderTab)}
+                <span aria-hidden data-testid="tabs-separator" className="ml-auto w-px shrink-0 self-stretch" />
+                <div role="presentation" data-testid="tabs-module-group" className="flex shrink-0 items-stretch gap-1 rounded-t-xl border-x border-t border-line/70 bg-line/25 px-1.5">
+                  <span aria-hidden data-testid="tabs-module-mark" className="flex shrink-0 items-center gap-1 pl-2 pr-1 text-xs font-semibold text-muted"><span>⚙</span>{groupLabel}</span>
+                  {tabs.filter((t) => t.group === "module").map(renderTab)}
+                </div>
+              </>
+            ) : tabs.map(renderTab)}
           </div>
         </div>
       </div>
