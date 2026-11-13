@@ -32,6 +32,7 @@ export const RESERVED_PATHS = new Set([
   "llms.txt",
   "icon",
   "favicon.ico",
+  "mcp-icon",
   // Page de confidentialité du cœur (obligatoire, voir core/privacy.ts)
   "privacy",
   // Recherche dans le site (page publique du cœur, voir core/search/) : /search et /<langue>/search

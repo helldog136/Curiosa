@@ -1,5 +1,6 @@
 import { handleMcpRequest, methodNotAllowed } from "@/core/services/mcp/server";
 import { listMcpTools } from "@/core/platform";
+import { mcpServerIcons } from "@/core/siteIcon";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
-  return handleMcpRequest(request, listMcpTools, { token });
+  return handleMcpRequest(request, listMcpTools, { token }, mcpServerIcons);
 }
 
 // La réponse à GET/DELETE ne dépend pas du jeton : elle ne dit rien sur sa validité.

@@ -22,7 +22,7 @@ test("favicon : couleurs invalides → valeurs sûres (jamais de contenu libre d
 test("favicon : l'image envoyée l'emporte, sinon /icon ; câblé dans le site, l'admin et les réglages", () => {
   assert.equal(faviconUrl("/uploads/123e4567-e89b-12d3-a456-426614174000.png"), "/uploads/123e4567-e89b-12d3-a456-426614174000.png");
   assert.equal(faviconUrl(null), "/icon");
-  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /icons: \{ icon: faviconUrl\(pickLogo\(config\.logos, "favicon", false\)\)/);
+  assert.match(fs.readFileSync("src/app/(site)/layout.tsx", "utf8"), /icons: siteIconLinks\(pickLogo\(config\.logos, "favicon", false\)/);
   assert.match(fs.readFileSync("src/app/admin/layout.tsx", "utf8"), /icons: \{ icon: faviconUrl\(/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8"), /name="favicon"/);
   const actions = fs.readFileSync("src/app/admin/(panel)/settings/actions.ts", "utf8");
