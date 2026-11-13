@@ -232,6 +232,12 @@ export type ModuleManifest = {
   family?: "content" | "community" | "connections" | "overlays";
   /** (core 0.7.0) Sidebar section; see manifest.ts. */
   menuGroup?: "content" | "community" | "tools" | "connections";
+  /** (core 0.13.0) Menu path of the entry: "Networks.Twitch" (see menuPath.ts). */
+  adminMenu?: string;
+  /** (core 0.13.0) Order inside the group, 0 to 999 (default 100). */
+  adminMenuOrder?: number;
+  /** (core 0.13.0) Titles of groups the core does not know, by canonical id. */
+  adminMenuLabels?: Record<string, { en?: string; fr?: string }>;
   /**
    * (cœur après 0.6.1) Adresses de retour (OAuth…) enregistrées chez un service tiers : `{ path: "/m/{instance}/oauth/callback", label, where? }`. La page « Adresse du site » de l'administration
    * les met dans la liste de contrôle d'un changement de domaine, avec l'ancienne et la nouvelle adresse à copier. Un cœur plus ancien ignore la clé. Voir modules/addressDecl.ts.

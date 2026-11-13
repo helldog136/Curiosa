@@ -68,13 +68,13 @@ test("Connections is a collapsed group (open on its own pages, state kept in the
   assert.match(layout, /<NavGroup id="connections" title=\{t\("nav\.connections"\)\}/);
   assert.match(layout, /openByDefault=\{false\}/);
   assert.match(layout, /menu\.connections\.length > 0/, "an empty Connections group is not shown");
-  assert.match(layout, /\(\[id, items\]\) => items\.length > 0 && \(/, "an empty section is not shown");
+  assert.match(layout, /\(items\.length > 0 \|\| extra\) && \(/, "an empty section is not shown (a section extended by a module path is)");
   assert.ok(!layout.includes("menu.community.items") && !layout.includes("collapsible"), "no sub-groups inside Community any more");
 });
 
 test("pages of an unpinned instance stay under Extensions, whatever section they would have had", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /const shown = new Set\(\[\.\.\.menu\.content, \.\.\.menu\.community, \.\.\.menu\.tools, \.\.\.menu\.connections\]\)/);
+  assert.match(layout, /const shown = new Set\(\[\.\.\.menu\.content, \.\.\.menu\.community, \.\.\.menu\.tools, \.\.\.menu\.connections, \.\.\.treeItems\]\)/);
   assert.match(layout, /nav\.filter\(\(m\) => !shown\.has\(m\)\)/);
 });
 

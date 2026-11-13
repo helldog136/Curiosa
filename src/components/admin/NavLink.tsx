@@ -6,11 +6,11 @@ import { isCurrent } from "./navCurrent";
 import { BADGE } from "./Badge";
 
 /** Lien du menu d'admin ; celui de la page ouverte est mis en évidence (et signalé aux lecteurs d'écran par aria-current). */
-export function NavLink({ href, children, external, exact, also = [], badge = 0, badgeLabel, status }: { href: string; children: React.ReactNode; external?: boolean; exact?: boolean; /** Autres adresses (chemin, requête permise) qui font aussi de ce lien le lien « courant » (pages liées sous une même entrée de menu). */ also?: string[]; badge?: number; badgeLabel?: string; /** Une pastille d'état écrite (couleur ET texte, jamais la couleur seule) à la place du nombre : « À jour ». */ status?: { label: string; tone: BadgeTone; hint?: string } }) {
+export function NavLink({ href, children, external, exact, also = [], badge = 0, badgeLabel, status, touch }: { /** (0.13.0) 44 px tall (entries of the module tree). */ touch?: boolean; href: string; children: React.ReactNode; external?: boolean; exact?: boolean; /** Autres adresses (chemin, requête permise) qui font aussi de ce lien le lien « courant » (pages liées sous une même entrée de menu). */ also?: string[]; badge?: number; badgeLabel?: string; /** Une pastille d'état écrite (couleur ET texte, jamais la couleur seule) à la place du nombre : « À jour ». */ status?: { label: string; tone: BadgeTone; hint?: string } }) {
   const path = usePathname();
   const search = useSearchParams();
   const here = !external && isCurrent(href, path, search, { exact, also });
-  const cls = "block rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent";
+  const cls = `${touch ? "flex min-h-11 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" : "block"} rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent`;
   return (
     <a href={href} aria-current={here ? "page" : undefined} className={`${cls} ${here ? "bg-accent/10 font-semibold text-accent" : ""}`} {...(external ? { target: "_blank", rel: "noopener" } : {})}>
       <span className="flex items-center justify-between gap-2">

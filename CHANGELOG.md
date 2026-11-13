@@ -7,6 +7,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.13.0 — 2026-11-13
+
+**En bref.** Le menu de l'administration range maintenant les extensions par thème : un groupe « Réseaux » avec un sous-groupe par réseau (Twitch, Discord, YouTube…), au lieu de les éparpiller. Chaque extension dit elle-même où elle se range.
+
+**In short.** The admin menu now sorts extensions by theme: a "Networks" group with one sub-group per network (Twitch, Discord, YouTube…), instead of scattering them. Each extension says itself where it belongs.
+
+### Menu de l'administration
+
+- **Un groupe « Réseaux », un sous-groupe par réseau.** Le bot, la chaîne, les raids et les alertes Twitch se retrouvent au même endroit, la connexion en premier. Un groupe n'apparaît que s'il contient quelque chose.
+- **(English) A "Networks" group, one sub-group per network.** The Twitch bot, channel, raids and alerts are in one place, the connection first. A group only shows when it holds something.
+- **Le groupe de la page ouverte s'ouvre tout seul.** Les autres restent repliés, et votre dernier choix est retenu. Les titres et les lignes font au moins 44 px de haut.
+- **(English) The group of the open page opens by itself.** The others stay folded, and your last choice is remembered. Titles and rows are at least 44 px tall.
+- **Rien ne change sans extension à jour.** Une extension qui ne dit rien garde sa place actuelle (Outils, Connexions…). Les groupes apparaissent quand les extensions sont mises à jour.
+- **(English) Nothing changes until extensions are updated.** An extension that says nothing keeps its current place (Tools, Connections…). Groups appear as extensions are updated.
+
+### Pour les développeurs
+
+- **Menu path.** New optional manifest keys, ignored by an older core (no `minCore`): `adminMenu` (`"Networks.Twitch"`, 1 to 3 segments, any language or case, resolved to one group), `adminMenuOrder` and `adminMenuLabels`. A module with a path is pinned to the menu by default (`docs/MODULES.md`, "Menu path").
+- **Tree.** `core/modules/menuPath.ts` (`parseMenuPath`, `buildMenuTree`, `KNOWN_GROUPS` with EN and FR titles and icons) and `components/admin/MenuTreeNav.tsx`; `NavGroup` and `NavLink` take `tree` / `touch` (44 px, focus outline, `aria-expanded`). Roots that are one of the four sections extend that section; other roots are groups placed before Connections.
+
 ## 0.12.0 — 2026-11-13
 
 **En bref.** La page d'un module sépare maintenant clairement ce qu'il montre (ses éléments) de ce qui concerne le module lui-même (Réglages, Général, Historique). Retirer un module se fait depuis une zone de danger, au bas de l'onglet Général, avec une fenêtre qui nomme le module et dit ce qui sera perdu.

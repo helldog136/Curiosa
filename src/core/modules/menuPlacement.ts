@@ -1,3 +1,4 @@
+import { parseMenuPath } from "./menuPath";
 import { missingSettings, type FillField } from "./missingSettings";
 
 // Rangement des instances dans le menu de l'admin : « épinglée au menu » (placement « menu ») ou « seulement dans Extensions » (les autres valeurs). Logique pure (ni base ni React), testée telle quelle.
@@ -32,6 +33,8 @@ export type PlacementManifest = {
   family?: string;
   /** (0.7.0) Where the module sits in the sidebar: `content`, `community`, `tools` or `connections`. Optional; it wins over `family` and over the type rule, and changes nothing else (not the pinning default). */
   menuGroup?: string;
+  /** (0.13.0) Menu path declared by the module ("Networks.Twitch"): the module is in the menu by default and sits in that group (see menuPath.ts). */
+  adminMenu?: string;
 };
 
 /**
@@ -68,6 +71,7 @@ export function isOverlayManifest(m: Pick<PlacementManifest, "type" | "permissio
  * 3. les autres (widget, outil…) : des données à gérer (actions MCP, service offert ou service de stockage requis) → menu ; sinon rien à entretenir → Intégrations.
  */
 export function defaultPlacement(m: PlacementManifest): Placement {
+  if (parseMenuPath(m.adminMenu)) return "menu";   // (0.13.0) the module says where it sits in the menu: it is pinned by default (the person's own choice still wins)
   const declared = declaredFamily(m);
   if (declared) return declared === "overlays" ? "overlays" : declared === "connections" ? "integrations" : "menu";   // (0.2.14) le module le dit : sa déclaration prime
   if (isOverlayManifest(m)) return "overlays";
@@ -131,7 +135,7 @@ export function defaultSection(m: Pick<PlacementManifest, "type" | "content" | "
   return m.content || m.type === "content" ? "content" : "community";
 }
 
-export type MenuEntry = { id: string; type: string; section: MenuSectionId; placement: Placement; error: boolean; badge: number; content: boolean };
+export type MenuEntry = { /** (0.13.0) Declared menu path: the entry leaves its section for that group (see menuPath.ts). */ menuPath?: unknown; id: string; type: string; section: MenuSectionId; placement: Placement; error: boolean; badge: number; content: boolean };
 export type MenuLayout<T extends MenuEntry> = {
   /** Pinned instances of each section, in the order they came. An empty section is not shown. */
   content: T[];
@@ -147,7 +151,7 @@ export type MenuLayout<T extends MenuEntry> = {
  * The others live in Extensions only, and their badges add up in `unpinnedBadge` so nothing is hidden.
  */
 export function buildMenuLayout<T extends MenuEntry>(items: readonly T[]): MenuLayout<T> {
-  const pinned = items.filter((i) => !i.error && isPinned(i.placement));
+  const pinned = items.filter((i) => !i.error && isPinned(i.placement) && !i.menuPath);
   const of = (id: MenuSectionId) => pinned.filter((i) => i.section === id);
   const unpinnedBadge = items.reduce((n, i) => n + (!isPinned(i.placement) && !i.error ? i.badge : 0), 0);
   return { content: of("content"), community: of("community"), tools: of("tools"), connections: of("connections"), unpinnedBadge };

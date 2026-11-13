@@ -5,6 +5,7 @@ import { groupIssues } from "./groups";
 import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
+import { parseMenuPath } from "./menuPath";
 import { socialSpecSchema } from "../socialSpec";
 import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
@@ -279,6 +280,12 @@ export const manifestSchema = z.object({
   family: z.enum(["content", "community", "connections", "overlays"]).optional(),
   /** (core 0.7.0, no `minCore` to declare) Where the module sits in the admin sidebar and in the Extensions list: "content", "community", "tools" or "connections". Wins over `family` and over the type rule; changes nothing else (not the pinning default). A separate key, not a new `family` value, so that an older core ignores it instead of refusing the manifest. Absent: the usual rule. */
   menuGroup: z.enum(["content", "community", "tools", "connections"]).optional(),
+  /** (core 0.13.0, no `minCore` to declare) Where the module's entry sits in the admin sidebar: a dot-separated path of groups, 1 to 3 segments ("Networks.Twitch"). Words in English or French, or ids, in any case and with or without accents: the core resolves them to one canonical group. A module with a path is in the menu by default. An older core ignores the key. */
+  adminMenu: z.string().min(1).max(120).refine((v) => parseMenuPath(v) !== null, { message: "adminMenu: 1 to 3 segments separated by dots, none empty, not starting with Site, Administration or Account" }).optional(),
+  /** (core 0.13.0) Position of the entry inside its group (0 to 999, default 100): the lower comes first; at equal value connectors come first, then alphabetical. */
+  adminMenuOrder: z.number().int().min(0).max(999).optional(),
+  /** (core 0.13.0) Titles of the groups of the path, by canonical id, for a group the core does not know: `{ "shop": { "en": "Shop", "fr": "Boutique" } }`. */
+  adminMenuLabels: z.record(z.string().regex(/^[a-z0-9][a-z0-9-]{0,23}$/), z.object({ en: z.string().min(1).max(40).optional(), fr: z.string().min(1).max(40).optional() })).refine((o) => Object.keys(o).length <= 6, { message: "adminMenuLabels: 6 groups at most" }).optional(),
   sections: z
     .array(z.object({ id: z.string().regex(/^[a-z][a-z0-9-]{0,30}$/), label: localized, options: z.array(settingField).max(10).optional(), size: z.enum(["small", "medium", "large", "full"]).optional() }))
     .max(20)
