@@ -5,6 +5,7 @@ import { getInstanceLabeler } from "./labels";
 import { effectiveType } from "./manifest";
 import { platformOf } from "./platform";
 import { getInstalledModules } from "./registry";
+import { parseMenuPath, type GroupLabels, type MenuSegment } from "./menuPath";
 import { defaultPlacement, defaultSection, parsePlacement, placementSettingKey, placementsFor, resolvePlacement, type MenuEntry, type Placement } from "./menuPlacement";
 
 export type AdminNavItem = MenuEntry & {
@@ -22,6 +23,14 @@ export type AdminNavItem = MenuEntry & {
   placements: Placement[];
   /** Le module sait servir une source navigateur OBS (page /overlays/<clé>). */
   overlay: boolean;
+  /** (0.13.0) Menu path declared by the module (`adminMenu`), canonical; null = the entry keeps its section. */
+  menuPath: MenuSegment[] | null;
+  /** (0.13.0) `adminMenuOrder`, 0 to 999 (default 100). */
+  menuOrder: number;
+  /** (0.13.0) A connector or connection (type integration): first in its group. */
+  connector: boolean;
+  /** (0.13.0) `adminMenuLabels` of the module. */
+  groupLabels: GroupLabels;
 };
 
 /** Pastille d'une instance : la valeur du hook `adminBadge` du module (0 sans hook, ou en cas d'erreur). */
@@ -68,6 +77,10 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       platform: platformOf(mod.manifest),
       placements: placementsFor(mod.manifest),
       overlay: !!mod.def.overlay,
+      menuPath: parseMenuPath(mod.manifest.adminMenu),
+      menuOrder: mod.manifest.adminMenuOrder ?? 100,
+      connector: effectiveType(mod.manifest) === "integration",
+      groupLabels: mod.manifest.adminMenuLabels ?? {},
       badge: !error ? await badgeOf(mod, instance, locale) : 0,
     });
   }

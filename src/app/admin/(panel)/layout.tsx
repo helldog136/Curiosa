@@ -11,6 +11,8 @@ import { legacyUpkeepSummary } from "@/core/modules/legacyUpkeep";
 import { LegacyBanner } from "@/components/admin/LegacyBanner";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
+import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
+import { buildMenuTree, nodeEntries } from "@/core/modules/menuPath";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
@@ -48,10 +50,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const upkeep = can(user, "core:updates") ? await legacyUpkeepSummary() : null;
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
+  // (0.13.0) Entries whose module declares a menu path (`adminMenu`) leave their section for their own groups; without any, `tree` is empty and the sidebar is unchanged.
+  const tree = buildMenuTree(nav, locale);
+  const treeItems = [...Object.values(tree.sections).flatMap((n) => (n ? nodeEntries(n) : [])), ...tree.groups.flatMap(nodeEntries)];
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
   const entryHref = (m: (typeof nav)[number]) => (m.content ? entriesHref(m.key) : instanceHref(m.id));
   const entryAlso = (m: (typeof nav)[number]) => (m.content ? [instanceHref(m.id)] : []);
   const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
+  const treeTargets = (m: (typeof nav)[number]) => [entryHref(m), ...entryAlso(m)];
+  const treeEntryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
+  const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={treeEntryLink} badgeLabel={t("nav.badge.todo")} />);
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
   const toSetUp = [...(statuses?.values() ?? [])].filter((s) => s.state === "setup" || s.state === "error").length;
@@ -60,7 +68,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const setupList = nav.flatMap((m) => { const s = statuses?.get(m.id); return s?.state === "setup" && s.missing.length > 0 ? [`${m.name} (${s.missing.map(shortLabel).join(", ")})`] : []; });
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
-  const shown = new Set([...menu.content, ...menu.community, ...menu.tools, ...menu.connections]);
+  const shown = new Set([...menu.content, ...menu.community, ...menu.tools, ...menu.connections, ...treeItems]);
   const unpinnedPages = nav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
@@ -84,16 +92,28 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
           <div className="mt-4"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
-          {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => items.length > 0 && (
-            <div key={id} data-testid={`nav-section-${id}`}>
-              <p className={group}>{t(`nav.${id}`)}</p>
-              {items.map(entryLink)}
+          {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => {
+            const extra = tree.sections[id];
+            return (items.length > 0 || extra) && (
+              <div key={id} data-testid={`nav-section-${id}`}>
+                <p className={group}>{t(`nav.${id}`)}</p>
+                {items.map(entryLink)}
+                {extra?.entries.map(treeEntryLink)}
+                {extra && treeNodes(extra.children)}
+              </div>
+            );
+          })}
+          {tree.groups.length > 0 && (
+            <div className="mt-6" data-testid="nav-tree">
+              {treeNodes(tree.groups)}
             </div>
-          ))}
-          {menu.connections.length > 0 && (
+          )}
+          {(menu.connections.length > 0 || tree.sections.connections) && (
             <div className="mt-6" data-testid="nav-section-connections">
-              <NavGroup id="connections" title={t("nav.connections")} targets={menu.connections.flatMap((m) => [entryHref(m), ...entryAlso(m)])} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0)} badgeLabel={t("nav.badge.todo")}>
+              <NavGroup id="connections" title={t("nav.connections")} targets={[...menu.connections.flatMap(treeTargets), ...(tree.sections.connections ? nodeEntries(tree.sections.connections).flatMap(treeTargets) : [])]} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0) + (tree.sections.connections?.badge ?? 0)} badgeLabel={t("nav.badge.todo")}>
                 {menu.connections.map(entryLink)}
+                {tree.sections.connections?.entries.map(treeEntryLink)}
+                {tree.sections.connections && treeNodes(tree.sections.connections.children)}
               </NavGroup>
             </div>
           )}
