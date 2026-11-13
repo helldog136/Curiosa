@@ -986,6 +986,55 @@ Le cœur accepte maintenant les **sons** envoyés par l'administration (`/api/ad
 - **Test** : `fakeCtx({ permissions: ["files"], uploads: [...] })` accepte les noms de sons ; `testsupport` donne `/uploads/demo.mp3` comme valeur d'exemple d'un réglage `audio`.
 - Un cœur plus ancien ne connaît pas `audio` : exigez `"minCore": "0.10.0"`.
 
+### Gallery field (`kind: "gallery"`, core 0.14.0)
+
+One control for an ordered list of files sent to the site: a photo set, a list of alert pictures, sounds. It exists for `adminForm` (in the page and in an edit dialog); module settings keep their single `image` / `video` / `audio` types. Declare `"minCore": "0.14.0"`: an older core shows a plain text field holding the JSON below.
+
+```js
+{ name: "pictures", label: "Pictures", kind: "gallery", accept: ["image", "video"], max: 12, itemLabel: true,
+  value: JSON.stringify(saved.map((src) => ({ src }))) }
+```
+
+| Key | Role |
+|---|---|
+| `accept` | A subset of `["image", "video", "audio"]`. Images only when absent. Images are PNG, JPEG, WebP, GIF; videos MP4, WebM; sounds MP3, OGG, WAV, M4A, AAC. The kind is read from the BYTES of every file (like single uploads); a file of another kind is refused with an error under its tile. Size caps are the single-upload ones: 5 MB an image, 50 MB a video, 10 MB a sound. |
+| `max` | Items, 12 by default, 60 at most. When reached, the "Add files" tile is replaced by "Maximum reached". |
+| `min` | Items, 0 by default. `required: true` means at least one. |
+| `itemLabel` | `true`: an optional caption field (120 characters) under every item. Off by default. |
+| `library` | `[{ label, value, kind }]`: files ALREADY on the site (`value` is `/uploads/<uuid>.<ext>`, of an accepted kind). A "Choose from the site" button opens a list with a search box (accents and case ignored, first 100 matches); picking adds items without any upload. At most 500 entries are read. |
+| `value` | The items already saved, as the JSON text below (an array of strings or of `{ src, label }` is read too). |
+
+**What the person sees.** A grid of tiles (picture, video poster with a play mark, sound icon) with the name under it and an "Add files" tile that opens the picker with several files at once; files can also be dropped on the field. Every tile has a remove button and two move buttons (towards the start, towards the end), each 44 px, each with a name for screen readers; a move is announced ("Photo 2 moved to position 1 of 3") and the focus stays on the moved item. Every file shows its own progress while it travels (three at a time, in the order picked) and, if it fails, its own error under the tile with an example ("…Choose a PNG, JPEG, WebP or GIF image, for example photo.png"); a connection failure offers "Try again". Saving waits while a file is still sending. The grid wraps on a phone (two tiles per row at 390 px). The field counts as ONE field for the budget R4.
+
+**What the module receives.** `values[name]` is a JSON text, rebuilt by the core from what the form posted:
+
+```json
+[{"src":"/uploads/0b1e4d6c-5f0e-4f6a-9a53-1c6b0f0e7a11.png","label":"Opening night"},{"src":"/uploads/-other.mp4"}]
+```
+
+`label` is present only when written. The core has already checked, before the action runs: valid JSON list, every `src` matches `^/uploads/[0-9a-f-]{36}\.(png|jpg|webp|gif)$` (video: `mp4|webm`, sound: `mp3|ogg|wav|m4a|aac`) AND is of an accepted kind (no outside address, no `?c=` crop, no other folder), duplicates removed, `min` and `max` respected. A failure comes back as an error under the field and the action does not run. The form also posts `<name>__gallery` (the rules to re-check); the core removes it from `values`. That check only covers forms that post the marker, so an action must still treat `values` as untrusted: `ctx.api.files.claim` refuses anything that is not an upload this person just sent.
+
+**Keeping and releasing files** (permission `files`, see "Fichiers envoyés"): diff the old and the new list, claim what is new, release what was removed.
+
+```js
+async savePictures(ctx, values) {
+  const next = JSON.parse(values.pictures);                     // already checked by the core
+  const row = await ctx.api.store.getByKey("alerts", "main");
+  const old = row?.data.items ?? [];
+  const keep = new Set(next.map((i) => i.src));
+  for (const item of next) {
+    if (old.some((o) => o.src === item.src)) continue;          // already ours
+    const claim = await ctx.api.files.claim(item.src);          // new upload (or picked from the library: owns() is then true)
+    if (!claim.ok && !(await ctx.api.files.owns(item.src))) return { errors: { pictures: ctx.t("pictures.notKept") } };
+  }
+  for (const o of old) if (!keep.has(o.src)) await ctx.api.files.remove(o.src);   // released (idempotent; not-yours is ignored)
+  if (row) await ctx.api.store.update(row.id, { items: next }); else await ctx.api.store.add("alerts", { items: next }, { key: "main" });
+  return { ok: ctx.t("saved") };
+}
+```
+
+Uploading goes through `/api/admin/upload` with the declared kinds (`kind=gallery&accept=image,video`): the server refuses any other kind even if the browser was bypassed, and answers `format` or `size` which the tile turns into a message. A file that is not claimed stays unowned (forgotten from the registry after 30 minutes, like any upload). When the action belongs to ANOTHER module (a service), see "Keeping an uploaded file through a service". Tests: `fakeCtx({ permissions: ["files"], uploads: [...] })`; the kit checks the options (`blocks.valid`) and counts the field once (R4).
+
 ### Champ fichier (`kind: "file"`) dans un `adminForm`
 
 (Cœur 0.2.0.) `{ name: "list", label: "Fichier CSV", kind: "file", accept: ".csv,.txt", maxBytes: 1048576, required: true }`. Le formulaire est envoyé à une **route dédiée du cœur**
@@ -1192,6 +1241,8 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 - **Quand choisir quoi.** *Une donnée, un propriétaire* (un carnet de contacts : `contact.store`) → service classique, l'admin choisit un maître. *Chaque instance parle de sa propre chose* (une chaîne Twitch par instance, un compte par instance : `twitch.live`) → `each: true`, et le consommateur appelle `callAll` pour tout agréger (« en direct sur chaîne A et sur chaîne B ») au lieu de n'en voir qu'une. Dans le doute : si deux instances répondent des choses **différentes et toutes vraies**, c'est `each`.
 - Le `ctx` reçu par la méthode est celui de l'instance **fournisseur** : elle écrit dans **son** stockage, jamais dans celui de l'appelant.
 - **Appeler un service avec les droits de la personne connectée : `asCaller` (cœur 0.2.4, `minCore: "0.2.4"` pour compter dessus).** Par défaut, un service appelé par un autre module n'a aucun droit (`ctx.can` y est toujours faux). Pour une écriture qui doit rester réservée à une personne précise (par exemple « créer une catégorie »), le **fournisseur** (propriétaire de la donnée) liste la méthode dans son manifeste, `"offers": [{ "service": "contact.book", "callerRights": ["createCategory"] }]` (dix noms au plus ; un cœur plus ancien ignore la clé), puis vérifie lui-même son droit avec `ctx.can("categories.create")` comme pour le `create` d'un `choice`. Le **consommateur** le demande à chaque appel : `ctx.api.services.call("contact.book", "createCategory", { label }, { asCaller: true })`. Le fournisseur reçoit alors `ctx.can` pour **la personne qui vient de cliquer**, et seulement si les quatre conditions sont réunies : (1) l'appel est fait dans une `adminAction` (ou l'action d'un champ fichier) déclenchée par cette personne ; (2) `{ asCaller: true }` est passé ; (3) la méthode est listée dans `callerRights` du fournisseur ; (4) la personne a le droit **du fournisseur** (relu en base, le droit d'un autre module ne vaut rien ; la personne propriétaire du site les a tous). Dans un panneau (`adminPanel`, même ouvert par le rôle Administration), une route, un overlay, une tâche, un service ou le MCP, `asCaller` est ignoré : l'appel est ordinaire et le fournisseur répond « denied ». Chaque appel qui porte des droits est consigné au journal d'audit (`module.<instance>.asCaller`, cible `service.méthode`, jamais les arguments). Sur un cœur plus ancien l'option est ignorée : traitez « denied » comme « demandez à la personne de le faire dans le module propriétaire ».
+
+  **Keeping an uploaded file through a service (core 0.14.0, `minCore: "0.14.0"` to rely on it).** `ctx.api.files.claim` needs the person who uploaded the file, and a service method runs in the provider's own context, where that person is unknown (`no-person`). The same four conditions above now ALSO carry the person to the provider's `ctx.api.files.claim` (and the actor of its `remove` in the audit log), and nothing else: the provider keeps declaring `"callerRights": ["saveAlertImages"]` for the method, the consumer calls `ctx.api.services.call("alert.overlay", "saveAlertImages", { files }, { asCaller: true })` from its admin action, and the provider's method calls `ctx.api.files.claim(url)` as usual (it needs the `files` permission itself; the file then belongs to the PROVIDER's instance). `services/files.ts` still checks that the person is the one who uploaded the file, within 30 minutes, on an unowned file. Not carried: an undeclared method, a panel, a route, a task, a service called by another service, the MCP, a replica of the provider (only the master answers a call that carries the person), and any call without `asCaller: true`. A provider must still check its own right with `ctx.can`, and revalidate the addresses it keeps. On an older core `claim` answers `no-person`: tell the person to upload the file in the module that owns it.
 
 #### Dire ses services dans l'index du catalogue
 
@@ -1441,6 +1492,44 @@ Keyboard and focus: the window opens with its own panel focused (never a button)
 ```
 
 Texts: no reassuring or descriptive filler on a page (R32); a precision goes in the "?" tooltip, a warning that prevents a loss stays visible.
+
+##### Extra buttons (`extraActions`, core 0.14.0)
+
+A form (in a window footer or in the page) can carry up to two NON-destructive buttons next to the main one: "Test the alert", "Preview". Optional and additive; an older core ignores the key and shows no such button, so keep the module usable without it.
+
+| Where | Key | Role |
+|---|---|---|
+| `adminForm` | `extraActions: [{ label, action }]` | Each button posts the SAME fields (the hidden `id`, the gallery, everything typed) to the adminAction `action`, with the same checks as the main button. Nothing closes and nothing resets: the answer shows next to the buttons (`ok` as a status, `error` as an alert, `errors` under the fields, the first field in error takes the focus) and what was typed stays. In a dialog the buttons sit between "Cancel" and the main button (stacked above "Cancel" on a phone); they show their pending state. `label` is a verb and its object (R3); the main button stays the only primary one. |
+
+A normal second submit button inside the form body would not work in a dialog (the form posts to ONE action, and a success closes the window): use `extraActions`. A destructive action stays in `secondaryAction`. The kit (`admin.ergonomics`) refuses a vague label (R3) or the label of the main button.
+
+```js
+{ type: "adminForm", presentation: "dialog", action: "save", cancelHref: "?", title: "Edit the alert", submitLabel: "Save the alert",
+  extraActions: [{ label: "Test the alert", action: "test" }],
+  fields: [{ name: "id", kind: "hidden", label: "id", value: alert.id }, { name: "pictures", label: "Pictures", kind: "gallery", accept: ["image"], value: alert.pictures }] }
+```
+
+##### Panel that refreshes itself (`refreshWhile`), secondary submit button (`submitStyle`), status pill (core 0.14.0)
+
+Three additive keys for admin panels. An older core ignores each of them (no `minCore` needed): the panel then does not refresh itself, the button is the usual one, and the pill keeps its old look.
+
+| Where | Key | Role |
+|---|---|---|
+| panel block | `{ type: "refreshWhile", pending: true, everySeconds: 3 }` | While something is pending (a check running, a connection waiting), the panel **refreshes itself softly**: the server renders `adminPanel` again and the page updates in place (no page reload, no flicker; an open window and what was typed stay). Every `everySeconds` (2 to 30, default 3) for the first 30 seconds, then every 10 seconds until 3 minutes have passed, then it **stops by itself** and shows "Automatic update stopped" with a "Check again" button (44 px). Paused while the tab is hidden; refreshes once when it comes back. A polite status line ("Updating automatically") tells screen readers; its dot pulses only when motion is allowed. **The module decides when it is final**: return the block only while `pending` is true (`pending: false`, or no block, ends it). The 3 minutes are counted by the page and survive the refreshes themselves, so it never loops forever. Admin panel of an instance only; ignored on public pages and in the entry editor. Make `adminPanel` cheap: it runs at every refresh. |
+| `adminForm` | `submitStyle: "secondary"` | The submit button is outlined instead of filled, for a form whose action is not the page's main task ("Check now"). Keep ONE filled button per page or window (R3). In a dialog it applies to the footer button. |
+| table cell `{ text, badge }` | (always) | A status pill is **one line**: never wrapped into a round blob, at least 24 px tall with even padding; a text longer than the cell is cut with "…" and the full text is the tooltip (`title`, or the text itself). Same in the card layout under 640 px (checked at 390 px). |
+
+```js
+async adminPanel(ctx) {
+  const check = await ctx.api.store.getByKey("checks", "last");
+  const waiting = check?.data.state === "running";
+  return [
+    ...(waiting ? [{ type: "refreshWhile", pending: true, everySeconds: 3 }] : []),
+    { type: "adminForm", action: "check", submitLabel: "Check now", submitStyle: "secondary", fields: [] },
+    { type: "table", columns: ["Connection", "State"], rows: [["Channel", { text: waiting ? "Checking" : "Connected", badge: waiting ? "warn" : "ok" }]] },
+  ];
+},
+```
 
 ##### Vignette dans une cellule (`image`, cœur 0.6.5)
 
@@ -1850,7 +1939,7 @@ async deletePhoto(ctx, { id }) {
 | `reason` | veut dire |
 |---|---|
 | `no-permission` | le module n'a pas déclaré `files` |
-| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier |
+| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier. Dans une méthode de service, seulement si l'appel porte ses droits (`asCaller` + `callerRights`, cœur 0.14.0 : voir « Dépendances entre modules ») |
 | `invalid` | pas une adresse d'envoi du cœur (`/uploads/<uuid>.<ext>`, ou le nom seul) : tout autre chemin, `..`, adresse externe… est refusé |
 | `unknown` | le cœur n'a pas reçu ce fichier récemment (ancien envoi d'avant la 0.2.13, logo, couverture d'un autre écran, adresse inventée) |
 | `not-uploader` | le fichier a été envoyé par quelqu'un d'autre |

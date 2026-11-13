@@ -17,6 +17,7 @@ import {
   readBodyBounded, readTextFile, sanitizeFilename, streamGenerator, type DownloadEnd, type DownloadLimits,
 } from "./adminTransfer";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
+import { checkGalleryValues } from "@/core/gallery";
 import type { AdminActionResult, ModuleContext, ModuleDefinition } from "./types";
 import { ADMIN_HREF, instanceHref, isAdminPath } from "@/core/adminLinks";
 
@@ -199,6 +200,10 @@ export async function actionHandler(request: Request, p: { instance: string; act
     values[field] = read.text;
     totalBytes += file.size;
   }
+
+  // Champs galerie du formulaire (cœur 0.14.0) : relus et réécrits en forme canonique avant le module, comme pour une action serveur ordinaire.
+  const galleryProblems = checkGalleryValues(values);
+  if (Object.keys(galleryProblems).length) return Response.json({ ok: false, errors: Object.fromEntries(Object.entries(galleryProblems).map(([n, g]) => [n, t(g.key, g.vars)])) }, { headers: NO_STORE });
 
   let result: AdminActionResult;
   try {

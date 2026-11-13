@@ -160,7 +160,7 @@ function CellView({ cell, cut, pictured, instanceId, entry, id, labels, parts }:
     return <span>{cell.text || (cell.sw.on ? cell.sw.onText ?? labels.on : cell.sw.offText ?? labels.off)}</span>;
   }
   const body = cell.badge
-    ? <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${BADGE[cell.badge]}`}>{cell.text}</span>
+    ? <span data-badge="" title={cell.title ?? cell.text} className={`inline-flex min-h-6 max-w-full min-w-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-medium leading-5 ${BADGE[cell.badge]}`}><span className="min-w-0 truncate">{cell.text}</span></span>
     : cell.href ? <a href={safeHref(cell.href)} className="underline-offset-2 hover:text-accent hover:underline">{cell.text}</a> : cell.text;
   const text = cut ? <span className="block truncate" title={cell.title ?? cell.text}>{body}</span> : cell.title ? <span title={cell.title}>{body}</span> : <>{body}</>;
   if (!pictured) return text;

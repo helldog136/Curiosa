@@ -119,6 +119,7 @@ export function argsFromSchema(input, mode = "benign") {
   return out;
 }
 
+const GALLERY_SAMPLE = JSON.stringify([{ src: "/uploads/00000000-0000-4000-8000-000000000001.png", label: "Demo" }]);
 const HONEYPOTS = new Set(["website", "hp", "honeypot", "_honey", "trap", "_gotcha"]);
 function fieldNames(m, route, forms) {
   const fromForms = forms.filter((f) => f.action === route || String(f.action).endsWith(`/${route}`)).flatMap((f) => f.fields.map((x) => x.name));
@@ -241,7 +242,10 @@ export async function runScenario(m, scenario) {
         const fn = typeof entry === "function" ? entry : entry?.run; // forme { right, run } (cœur 0.2.0)
         if (typeof fn !== "function") continue;
         const names = adminFieldNames.length ? adminFieldNames : [...new Set([...m.code.matchAll(/\bvalues(?:\.([A-Za-z_]\w*)|\[\s*["']([\w-]+)["']\s*\])/g)].map((x) => x[1] ?? x[2]))];
-        await record("adminAction", name, () => fn(ctx, Object.fromEntries((names.length ? names : ["id", "name"]).map((n) => [n, hostile ? HOSTILE : n === "id" ? "r1" : "demo"]))));
+        // A `gallery` field receives the text the core would give (canonical JSON of upload addresses); in the hostile run, a hostile text that is not even a list.
+        const kindOf = new Map(forms.flatMap((f) => f.fields.map((x) => [x.name, x.kind])));
+        const sample = (n) => (hostile ? HOSTILE : kindOf.get(n) === "gallery" ? GALLERY_SAMPLE : n === "id" ? "r1" : "demo");
+        await record("adminAction", name, () => fn(ctx, Object.fromEntries((names.length ? names : ["id", "name"]).map((n) => [n, sample(n)]))));
       }
     }
     if (!scenario.skipActions) {

@@ -432,7 +432,7 @@ test("une action de module qui ne finit jamais est abandonnée (délai borné)",
 test("types et blocs : ajouts additifs (kind file, accept, maxBytes, bloc download, adminDownloads), sans toucher à l'existant", () => {
   const blocks = fs.readFileSync("src/core/blocks.ts", "utf8");
   assert.match(blocks, /"checkbox"[\s\S]{0,400}"file"/);
-  assert.match(blocks, /accept\?: string;/);
+  assert.match(blocks, /accept\?: string( \| \("image" \| "video" \| "audio"\)\[\])?;/);
   assert.match(blocks, /maxBytes\?: number;/);
   assert.match(blocks, /type: "download"; name: string; label: string; params\?: Record<string, string>/);
   const types = fs.readFileSync("src/core/modules/types.ts", "utf8");

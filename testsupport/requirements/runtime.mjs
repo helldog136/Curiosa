@@ -6,8 +6,28 @@ import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
 import { NET_RULES_LEVEL, compareVersions, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "entryContent", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "entryContent", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download", "refreshWhile"];
 export { KNOWN_BLOCKS };
+
+/** (core 0.14.0) What the core needs from the `gallery` fields of an `adminForm`: the options it reads, and the one address shape per kind. The kit stays standalone: same rules as src/core/gallery.ts. */
+const GALLERY_URL = { image: /^\/uploads\/[0-9a-f-]{36}\.(png|jpg|webp|gif)$/, video: /^\/uploads\/[0-9a-f-]{36}\.(mp4|webm)$/, audio: /^\/uploads\/[0-9a-f-]{36}\.(mp3|ogg|wav|m4a|aac)$/ };
+export function galleryProblems(form) {
+  const out = [];
+  for (const f of form?.fields ?? []) {
+    if (f?.kind !== "gallery") continue;
+    const at = `field "${f.name}" (gallery)`;
+    if (f.accept !== undefined && (!Array.isArray(f.accept) || !f.accept.length || f.accept.some((k) => !Object.hasOwn(GALLERY_URL, k)))) out.push(`${at}: accept must be a list taken from "image", "video", "audio"`);
+    if (f.max !== undefined && !(Number.isInteger(f.max) && f.max >= 1 && f.max <= 60)) out.push(`${at}: max must be a whole number from 1 to 60`);
+    if (f.min !== undefined && !(Number.isInteger(f.min) && f.min >= 0 && f.min <= (Number.isInteger(f.max) ? f.max : 12))) out.push(`${at}: min must be a whole number from 0 up to max`);
+    if (f.library !== undefined && (!Array.isArray(f.library) || f.library.some((c) => typeof c?.label !== "string" || !c.label || !GALLERY_URL[c?.kind]?.test(String(c?.value))))) out.push(`${at}: library entries need a label, a kind and an address /uploads/<id>.<ext> of that kind`);
+    if (f.value !== undefined && f.value !== "") {
+      let list = null;
+      try { list = JSON.parse(f.value); } catch { /* shown below */ }
+      if (!Array.isArray(list) || list.some((x) => !GALLERY_URL[["image", "video", "audio"].find((k) => GALLERY_URL[k].test(String(x?.src ?? x)))])) out.push(`${at}: value must be the JSON list of the saved items, [{ "src": "/uploads/<id>.<ext>" }]`);
+    }
+  }
+  return out;
+}
 
 // ── Lecture des sorties ─────────────────────────────────────────────────────────────────────────────────────────────
 const inTag = (s, i) => s.lastIndexOf("<", i) > s.lastIndexOf(">", i);
@@ -150,6 +170,10 @@ const requirements = [
           else if (b.type === "adminForm" && b.presentation !== undefined && b.presentation !== "dialog") out.push(`${whereOf(o)} : adminForm.presentation must be "dialog" (or absent)`);
           else if (b.type === "adminForm" && b.danger !== undefined && typeof b.danger !== "boolean") out.push(`${whereOf(o)} : adminForm.danger must be true or false (or absent)`);
           else if (b.type === "adminForm" && b.secondaryAction !== undefined && (typeof b.secondaryAction?.label !== "string" || typeof b.secondaryAction?.action !== "string" || typeof b.secondaryAction?.confirm !== "string" || b.presentation !== "dialog")) out.push(`${whereOf(o)} : adminForm.secondaryAction needs a label, an action and a confirm text, and presentation: "dialog"`);
+          else if (b.type === "adminForm" && b.submitStyle !== undefined && b.submitStyle !== "secondary") out.push(`${whereOf(o)} : adminForm.submitStyle must be "secondary" (or absent)`);
+          else if (b.type === "refreshWhile" && (typeof b.pending !== "boolean" || (b.everySeconds !== undefined && !(Number.isInteger(b.everySeconds) && b.everySeconds >= 2 && b.everySeconds <= 30)))) out.push(`${whereOf(o)} : refreshWhile needs pending (true or false) and, if given, everySeconds as a whole number from 2 to 30`);
+          else if (b.type === "adminForm" && b.extraActions !== undefined && (!Array.isArray(b.extraActions) || b.extraActions.length > 2 || b.extraActions.some((a) => typeof a?.label !== "string" || typeof a?.action !== "string"))) out.push(`${whereOf(o)} : adminForm.extraActions must be a list of two entries at most, each with a label and an action`);
+          else if (b.type === "adminForm" && galleryProblems(b).length) out.push(`${whereOf(o)} : ${galleryProblems(b)[0]}`);
           else if (b.type === "table" && (b.rowActions ?? []).some((a) => a?.presentation !== undefined && (a.presentation !== "dialog" || typeof a.href !== "string"))) out.push(`${whereOf(o)} : a rowActions entry with presentation must be "dialog" and have an href (for example "?edit={id}")`);
         });
       };

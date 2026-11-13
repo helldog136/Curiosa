@@ -53,6 +53,11 @@ const NET_PAGE_MARGIN_MS = 500;
 /** La personne dont l'action d'administration s'exécute, quand le cœur accepte qu'elle porte ses droits (voir context.ts) ; `null` partout ailleurs. */
 export type CallerRef = {
   person: AdminUser | null;
+  /**
+   * (core 0.14.0) The person whose upload a SERVICE method may keep with `ctx.api.files.claim`: set by the core ONLY on the provider side of a service call that carried the
+   * caller's rights (`asCaller` + the method listed in `callerRights`, see dependencies.ts). It opens nothing else: no `ctx.can`, no journal identity.
+   */
+  uploader?: AdminUser | null;
   /** Journal central : nom du jeton d'un assistant IA qui appelle une action MCP du module (n'ouvre AUCUN droit : voir `asAssistant` dans context.ts). */
   assistant?: string | null;
 };
@@ -132,15 +137,16 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       },
     },
     store: createStore(instance.id),
-    // Sans la permission « files » : rien n'est revendiqué ni supprimé (jamais d'erreur levée). La revendication exige la personne de l'action d'administration en cours (caller).
+    // Sans la permission « files » : rien n'est revendiqué ni supprimé (jamais d'erreur levée). La revendication exige la personne de l'action d'administration en cours (caller), ou celle dont une méthode de service listée dans `callerRights` porte les droits (caller.uploader, cœur 0.14.0).
     files: {
       claim: async (url) => {
         if (!filesAllowed) return { ok: false, reason: "no-permission" };
-        try { return await claimFile(fileOwner, caller?.person ? { id: caller.person.id, email: caller.person.email } : null, url); } catch { return { ok: false, reason: "unknown" }; }
+        const who = caller?.person ?? caller?.uploader ?? null;
+        try { return await claimFile(fileOwner, who ? { id: who.id, email: who.email } : null, url); } catch { return { ok: false, reason: "unknown" }; }
       },
       remove: async (url) => {
         if (!filesAllowed) return { ok: false, reason: "no-permission" };
-        try { return await removeFile(fileOwner, caller?.person?.email ?? `module:${instance.key}`, url); } catch { return { ok: false, reason: "failed" }; }
+        try { return await removeFile(fileOwner, caller?.person?.email ?? caller?.uploader?.email ?? `module:${instance.key}`, url); } catch { return { ok: false, reason: "failed" }; }
       },
       owns: async (url) => { try { return filesAllowed && (await ownsFile(fileOwner, url)); } catch { return false; } },
       usage: async () => {

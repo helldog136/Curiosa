@@ -25,9 +25,21 @@ export type AdminField = {
      * `datetime` date et heure en un champ, reçues comme `2026-11-30T18:30` (ou `2026-11-30` si `optionalTime` et l'heure est vide),
      * `duration` nombre et unité, reçus comme un nombre entier de SECONDES (`min` et `max` en secondes).
      */
-    | "switch" | "segmented" | "period" | "datetime" | "duration";
-  /** `kind: "file"` : types acceptés (comme l'attribut HTML `accept`, par exemple « .csv,.txt »). Le cœur n'accepte de toute façon que du texte (csv, tsv, txt, json, vcf). */
-  accept?: string;
+    | "switch" | "segmented" | "period" | "datetime" | "duration"
+    /**
+     * (core 0.14.0, `minCore` 0.14.0; an older core shows a text field) A GALLERY: an ordered list of files sent to the site, one control for the whole list (R6). A grid of items
+     * (picture, video poster or sound icon with its name), an "Add files" tile that opens the picker with several files at once (drag and drop too), a remove button on
+     * every item, reordering with move buttons (keyboard), an optional caption per item. Options: `accept` (`["image", "video", "audio"]`, a subset; images only by default),
+     * `max` (items, 12 by default, 60 at most), `min` (0 by default), `itemLabel` (a caption field per item), `library` (items already on the site to pick from).
+     * `value`: the items already saved, as the JSON text the module receives. The module receives `values[name]` = `[{"src":"/uploads/<uuid>.<ext>","label":"…"}, …]`,
+     * rebuilt and checked by the core (shape, kinds, `max`, `min`, no outside address). See docs/MODULES.md, "Gallery field".
+     */
+    | "gallery";
+  /**
+   * `kind: "file"` : types acceptés (comme l'attribut HTML `accept`, par exemple « .csv,.txt »). Le cœur n'accepte de toute façon que du texte (csv, tsv, txt, json, vcf).
+   * `kind: "gallery"` (0.14.0) : la liste des genres de fichiers acceptés, un sous-ensemble de `["image", "video", "audio"]` (images seulement si absent).
+   */
+  accept?: string | ("image" | "video" | "audio")[];
   /** `kind: "file"` : taille maximale en octets (5 242 880 au plus, valeur par défaut). */
   maxBytes?: number;
   value?: string;
@@ -38,7 +50,7 @@ export type AdminField = {
   example?: string;
   /** (0.6.0) Texte grisé dans un champ vide (la valeur utilisée quand il reste vide : « 30 »). */
   placeholder?: string;
-  /** (0.6.0) `number` (et `duration`, en secondes) : bornes et pas ; le champ n'accepte que cela. Le module revérifie toujours dans son action. */
+  /** (0.6.0) `number` (et `duration`, en secondes) : bornes et pas ; le champ n'accepte que cela. Le module revérifie toujours dans son action. `kind: "gallery"` (0.14.0) : nombre minimum (0) et maximum (12, 60 au plus) d'éléments. */
   min?: number;
   max?: number;
   step?: number;
@@ -48,6 +60,13 @@ export type AdminField = {
   optionalTime?: boolean;
   /** (cœur 0.6.4) `period` : une seule date suffit (début seul : `2026-12-01/`, fin seule : `/2026-12-24`). Désactivé par défaut : sans lui, le module reçoit toujours `MM-JJ/MM-JJ` ou `AAAA-MM-JJ/AAAA-MM-JJ`. Un cœur plus ancien ignore la clé. */
   openEnded?: boolean;
+  /** (core 0.14.0) `kind: "gallery"`: a caption field under every item (120 characters at most, optional). Off by default. */
+  itemLabel?: boolean;
+  /**
+   * (core 0.14.0) `kind: "gallery"`: files already on the site that the person can pick besides sending new ones: `{ label, value, kind }` with `value` an address `/uploads/<uuid>.<ext>`
+   * of an accepted kind. A search box filters them. At most 500 entries are read. Picking one adds the item; the module still decides what it keeps (`ctx.api.files.owns`).
+   */
+  library?: { label: string; value: string; kind: "image" | "video" | "audio" }[];
   /** (0.6.0) Champ rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Il ne compte plus dans le budget de champs visibles. */
   folded?: boolean;
 };
@@ -162,6 +181,11 @@ export type Block =
       /** Lien « Annuler » (par exemple retour à la liste après une modification). Avec `presentation: "dialog"` : l'adresse où l'on revient quand la fenêtre se ferme. */
       cancelHref?: string;
       /**
+       * (core 0.14.0, optional; an older core ignores it and shows the usual main button) `"secondary"`: the submit button of the form looks like a secondary button
+       * (outlined, not filled) for a form whose action is not the page's main task ("Check now"). Not for the one main button of a window.
+       */
+      submitStyle?: "secondary";
+      /**
        * (next core release, optional; an older core ignores it and shows the form in the page, as before) `"dialog"`: the form is shown in a window above the admin interface
        * (title, scrolling body, sticky footer with the single main button; "Esc" and the "Close" button close it, and ask before discarding edits). The module keeps
        * returning the form only when the address asks for it (`?edit=…`, `?new=1`): the address IS the open state, so a reload, "Back" and a shared link work. `cancelHref`
@@ -179,6 +203,13 @@ export type Block =
        * after a confirmation box that shows `confirm` (say what will be lost, R24) and whose red button is not the default focus. Not for the main task of the window.
        */
       secondaryAction?: { label: string; action: string; confirm: string };
+      /**
+       * (core 0.14.0, optional; an older core ignores it and shows no such button) Up to two NON-destructive buttons next to the main one, in a window footer or under a form in
+       * the page: "Test the alert", "Preview". Each posts the SAME fields (so the hidden `id`) to the adminAction `action`. Nothing is closed or reset: the answer shows beside the
+       * buttons (`ok` as a status, `error` as an alert, `errors` under the fields) and what was typed stays. `label` is a precise verb and its object (R3). A destructive action
+       * belongs in `secondaryAction`, not here.
+       */
+      extraActions?: { label: string; action: string }[];
     }
   /**
    * Éditeur de GRILLE (panneau d'admin uniquement) : on choisit un pinceau dans la palette puis on peint les cases à la souris ou au doigt ;
@@ -237,7 +268,14 @@ export type Block =
    * les autres lisent « Demandez au propriétaire du site d'installer un module qui <reason> ». Rien n'est montré si un fournisseur actif existe.
    * `reason` : fin de phrase, mots simples (« affiche vos prochains lives »). Un cœur plus ancien ignore ce bloc.
    */
-  | { type: "suggestInstall"; service: string; min?: number; reason: string };
+  | { type: "suggestInstall"; service: string; min?: number; reason: string }
+  /**
+   * (core 0.14.0, admin panel only, ignored elsewhere; an older core ignores the block and the panel simply does not refresh itself) While `pending` is true the panel
+   * REFRESHES ITSELF softly (the server renders `adminPanel` again, no page reload: an open window and what was typed stay): every `everySeconds` (3 by default, 2 to 30)
+   * for 30 seconds, then every 10 seconds until 3 minutes have passed, then it stops by itself and offers "Check again". Paused while the tab is hidden. A polite status line
+   * says it is waiting. Return the block only while something is pending: once the module says the state is final it stops returning it, and the refreshing stops.
+   */
+  | { type: "refreshWhile"; pending: boolean; everySeconds?: number };
 
 /**
  * Emplacements où un module peut ajouter des blocs. La page d'accueil n'en a

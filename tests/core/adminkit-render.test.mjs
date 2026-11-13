@@ -223,8 +223,8 @@ test("tableau enrichi : recherche, pastilles avec leur nombre, colonne d'origine
   assert.match(out, /type="search"/);
   assert.match(out, /aria-label="Rechercher"/);
   assert.match(out, />Tout</); assert.match(out, />Les vôtres<span[^>]*>2</); assert.match(out, />Partenaires<span[^>]*>1</);
-  assert.match(out, /rounded-full px-2\.5 py-0\.5 text-xs font-medium bg-accent\/10[^>]*>Les vôtres/, "pastille colorée");
-  assert.match(out, /bg-sky-500\/15[^>]*>Partenaires/);
+  assert.match(out, /rounded-full px-2\.5 py-0\.5 text-xs font-medium leading-5 bg-accent\/10[^>]*><span class="min-w-0 truncate">Les vôtres/, "pastille colorée");
+  assert.match(out, /bg-sky-500\/15[^>]*><span class="min-w-0 truncate">Partenaires/);
   assert.equal((out.match(/role="switch"/g) ?? []).length, 3);
   assert.match(out, /aria-label="Commande !merci active"/);
   assert.equal((out.match(/data-testid="row-menu"/g) ?? []).length, 3, "un menu « ⋯ » par ligne");
