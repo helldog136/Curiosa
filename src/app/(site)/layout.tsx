@@ -2,7 +2,7 @@ import { pickLogo } from "@/core/logos";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
-import { faviconUrl } from "@/core/favicon";
+import { siteIconLinks } from "@/core/favicon";
 import { resolveLook } from "@/core/skins/render";
 import { PREVIEW_HEADER, verifyPreview } from "@/core/skins/previewToken";
 import { getAuthSecret } from "@/core/secret";
@@ -57,7 +57,7 @@ export async function generateMetadata(): Promise<Metadata> {
     metadataBase: new URL(siteUrl),
     title: { default: config.name, template: `%s | ${config.name}` },
     description: config.tagline || undefined,
-    icons: { icon: faviconUrl(pickLogo(config.logos, "favicon", false)), ...(pickLogo(config.logos, "favicon", false) ? { apple: pickLogo(config.logos, "favicon", false)! } : {}) },
+    icons: siteIconLinks(pickLogo(config.logos, "favicon", false), pickLogo(config.logos, "icon", false)),
     alternates: { canonical: alt.canonical, ...(alt.languages ? { languages: alt.languages } : {}) },
     ...socialMeta({ siteName: config.name, title: config.name, description: config.tagline || undefined, image: share, url: alt.canonical, locale }),
   };

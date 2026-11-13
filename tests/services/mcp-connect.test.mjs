@@ -80,9 +80,9 @@ test("transport : requêtes invalides, lot vide, erreurs JSON-RPC, ping, version
   assert.equal(await code({ jsonrpc: "2.0", id: 1, method: "n'existe/pas" }), -32601);
   assert.equal((await viaHeader(token, "{pas du json")).status, 400);
   assert.deepEqual((await parse(await viaHeader(token, { jsonrpc: "2.0", id: "a", method: "ping" }))), { jsonrpc: "2.0", id: "a", result: {} }, "l'id (même texte) est repris tel quel");
-  for (const v of ["2025-06-18", "2025-03-26", "2024-11-05"]) assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: v } }))).result.protocolVersion, v);
-  assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2099-01-01" } }))).result.protocolVersion, "2025-06-18", "version inconnue : on propose la nôtre");
-  assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize" }))).result.protocolVersion, "2025-06-18");
+  for (const v of ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"]) assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: v } }))).result.protocolVersion, v);
+  assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2099-01-01" } }))).result.protocolVersion, "2025-11-25", "version inconnue : on propose la nôtre");
+  assert.equal((await parse(await viaHeader(token, { jsonrpc: "2.0", id: 1, method: "initialize" }))).result.protocolVersion, "2025-11-25");
 });
 
 test("transport : lot accepté (réponses groupées, notifications omises), erreur interne masquée", async () => {

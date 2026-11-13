@@ -102,7 +102,7 @@ test("serveur MCP : initialize négocie la version, ping, méthode inconnue", as
   const token = await T.createToken("a", "read", "o");
   const init = (await call(token, [], { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2025-03-26" } })).json;
   assert.equal(init.result.protocolVersion, "2025-03-26");
-  assert.equal((await call(token, [], { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999" } })).json.result.protocolVersion, "2025-06-18");
+  assert.equal((await call(token, [], { jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "1999" } })).json.result.protocolVersion, "2025-11-25");
   assert.deepEqual((await call(token, [], { jsonrpc: "2.0", id: 2, method: "ping" })).json.result, {});
   assert.equal((await call(token, [], { jsonrpc: "2.0", id: 3, method: "nope" })).json.error.code, -32601);
 });

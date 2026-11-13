@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.13.1 — 2026-11-13
+
+**En bref.** L'icône de votre site s'affiche maintenant correctement dans les listes de connexions de votre assistant IA et pour tous les outils qui la demandent à l'adresse habituelle. Avant, chaque site pouvait y montrer l'icône d'un autre.
+
+**In short.** Your site's icon now shows correctly in your AI assistant's list of connections and for every tool that asks for it at the usual address. Before, a site could show another site's icon there.
+
+### Icône du site
+
+- **Une icône qui se charge.** L'adresse habituelle de l'icône (/favicon.ico) renvoyait vers une adresse interne du serveur, inutilisable de l'extérieur : les navigateurs et les assistants se rabattaient sur l'icône du domaine principal. Elle répond maintenant directement avec l'image de votre site.
+- **(English) An icon that loads.** The usual icon address (/favicon.ico) redirected to an internal server address that nobody outside could use, so browsers and assistants fell back to the main domain's icon. It now answers directly with your site's image.
+- **L'icône dans votre assistant IA.** La connexion annonce maintenant l'icône de votre site à l'assistant. Après la mise à jour, reconnectez (ou retirez puis ajoutez) la connexion : l'assistant garde l'ancienne icône en mémoire.
+- **(English) The icon in your AI assistant.** The connection now announces your site's icon to the assistant. After the update, reconnect (or remove then add) the connection: the assistant keeps the old icon in memory.
+- **Onglet et écran d'accueil.** L'icône de l'onglet précise son format, et l'icône de l'écran d'accueil du téléphone n'est plus un SVG, que les téléphones ignorent.
+- **(English) Tab and home screen.** The tab icon states its format, and the phone home-screen icon is no longer an SVG, which phones ignore.
+
+### Pour les développeurs
+
+- **`core/publicOrigin.ts`**: `publicOrigin(headers, siteUrl)` (SITE_URL, else forwarded host and proto, never an internal host) and `relativeLocation`. The `?vl=default` redirect of `proxy.ts` and `/admin/bug-report` now answer path-only `Location`.
+- **`core/siteIcon.ts`**: `loadSiteIcon`, `iconResponse`, `mcpIcons`. New route `/mcp-icon` (reserved path); `/favicon.ico`, `/icon` and `/mcp-icon` answer with `ETag`, `Vary: Host` and CORS `*`.
+- **MCP**: `serverInfo.icons` (absolute https, same origin, MCP 2025-11-25); `2025-11-25` added to the accepted protocol versions. See `docs/MAINTENANCE-IA.md`.
+
 ## 0.13.0 — 2026-11-13
 
 **En bref.** Le menu de l'administration range maintenant les extensions par thème : un groupe « Réseaux » avec un sous-groupe par réseau (Twitch, Discord, YouTube…), au lieu de les éparpiller. Chaque extension dit elle-même où elle se range.
@@ -26,6 +47,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Menu path.** New optional manifest keys, ignored by an older core (no `minCore`): `adminMenu` (`"Networks.Twitch"`, 1 to 3 segments, any language or case, resolved to one group), `adminMenuOrder` and `adminMenuLabels`. A module with a path is pinned to the menu by default (`docs/MODULES.md`, "Menu path").
 - **Tree.** `core/modules/menuPath.ts` (`parseMenuPath`, `buildMenuTree`, `KNOWN_GROUPS` with EN and FR titles and icons) and `components/admin/MenuTreeNav.tsx`; `NavGroup` and `NavLink` take `tree` / `touch` (44 px, focus outline, `aria-expanded`). Roots that are one of the four sections extend that section; other roots are groups placed before Connections.
+
 
 ## 0.12.0 — 2026-11-13
 

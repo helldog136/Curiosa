@@ -5,6 +5,7 @@ import { TIMED_OUT, withDeadline } from "@/core/deadline";
 import { isRedirectEnded } from "@/core/redirectGate";
 import { geolocationOpen, policyValue } from "@/core/permissionsPolicy";
 import { PREVIEW_HEADER, PREVIEW_PARAM, PREVIEW_TOKEN_RE } from "@/core/skins/previewToken";
+import { relativeLocation } from "@/core/publicOrigin";
 import { legacyConfig, legacyRedirectTarget, requestHost } from "@/core/siteAddress";
 
 const LOCALE_HEADER = "x-curiosa-locale";
@@ -92,7 +93,8 @@ export async function proxy(request: NextRequest) {
   if (searchParams.get("vl") === "default") {
     const clean = request.nextUrl.clone();
     clean.searchParams.delete("vl");
-    const res = NextResponse.redirect(clean);
+    // Path-only Location: an absolute one would carry the INTERNAL origin behind the reverse proxy (https://localhost:300x/...).
+    const res = new NextResponse(null, { status: 307, headers: { Location: relativeLocation(`${clean.pathname}${clean.search}`) } });
     res.cookies.set(COOKIE, "default", { path: "/", maxAge: 60 * 60 * 24 * 365, sameSite: "lax" });
     return res;
   }
