@@ -4,6 +4,7 @@ export { AdminBlockForm, RowActionButton } from "../admin/AdminBlocks";
 export { DialogLink } from "../admin/EditDialog";
 export { GridEditor } from "../admin/GridEditor";
 export { SuggestInstall } from "../admin/SuggestInstall";
+export { RefreshWhile } from "../admin/RefreshWhile";
 export { AdminTable } from "../admin/AdminTable";
 
 export type AdminKit = typeof import("./adminKit");

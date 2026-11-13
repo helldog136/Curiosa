@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { currentUser, isMember } from "@/core/permissions";
 import { looksLikeSvg, saveSvgUpload } from "@/core/logoUpload";
 import { recordUpload } from "@/core/services/files";
-import { MAX_VIDEO_BYTES, saveUpload } from "@/core/services/uploads";
+import { MAX_VIDEO_BYTES, saveUpload, uploadProblem } from "@/core/services/uploads";
+import { galleryAccept } from "@/core/gallery";
 
 export async function POST(request: Request) {
   const user = await currentUser();
@@ -19,8 +20,11 @@ export async function POST(request: Request) {
     return "url" in svg ? NextResponse.json({ url: svg.url }) : NextResponse.json(svg, { status: 400 });
   }
   // Un champ « son » (kind=audio) n'accepte que des sons : le type vient du contenu, jamais du nom ni du type annoncé.
-  const url = await saveUpload(buf, form.get("kind") === "audio" ? { only: "audio" } : {});
-  if (!url) return NextResponse.json({ error: "format" }, { status: 400 });
+  // Un champ « galerie » (kind=gallery, accept=image,video,audio) n'accepte que les genres que le module a déclarés : lus dans le contenu, jamais dans le nom.
+  const kind = form.get("kind");
+  const opts = kind === "audio" ? { only: "audio" as const } : kind === "gallery" ? { only: galleryAccept(String(form.get("accept") ?? "")) } : {};
+  const url = await saveUpload(buf, opts);
+  if (!url) return NextResponse.json({ error: opts.only ? uploadProblem(buf, opts) ?? "format" : "format" }, { status: 400 });
   // Revendiquable ensuite, par cette personne seulement et pour peu de temps, par un module qui a la permission « files » (services/files.ts).
   await recordUpload(url, user.id, buf.length);
   return NextResponse.json({ url });

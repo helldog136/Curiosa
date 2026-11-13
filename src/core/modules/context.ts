@@ -91,7 +91,10 @@ export function asAssistant<T extends ModuleContext>(ctx: T, tokenName: string):
  * Le même contexte, pour une personne qui regarde l'administration (`adminPanel`, `adminActions`, `entryPanels`) : `ctx.can("email.view")` vérifie
  * « <ce module>:email.view » pour elle (relue en base à cette requête). Le préfixe est imposé : un module ne teste jamais le droit d'un autre.
  */
-export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null, opts: { carryRights?: boolean } = {}): T {
+export function forViewer<T extends ModuleContext>(ctx: T, viewer: AdminUser | null, opts: { carryRights?: boolean; carryUploads?: boolean } = {}): T {
+  // `carryUploads` (core 0.14.0): ONLY dependencies.ts passes it, on the provider side of a service call that carried the caller's rights (`asCaller` + `callerRights`).
+  // `ctx.api.files.claim` of that provider may then keep a file the SAME person just uploaded (the uploader is still checked by services/files.ts). Nothing else is carried.
+  if (opts.carryUploads === true && viewer) { const c = CALLERS.get(ctx); if (c) c.uploader = viewer; }
   // `carryRights` : SEULEMENT pour l'exécution d'une `adminAction` par la personne qui l'a déclenchée (jamais un panneau, jamais un service).
   // Les appels `ctx.api.services.call(…, { asCaller: true })` de cette action portent alors ses droits jusqu'au fournisseur (voir dependencies.ts).
   if (opts.carryRights === true) { const c = CALLERS.get(ctx); if (c) c.person = viewer; }

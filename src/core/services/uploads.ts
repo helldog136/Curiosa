@@ -3,14 +3,12 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { UPLOADS_DIR } from "@/core/config";
 import { AUDIO_URL_RE } from "@/core/audioTypes";
+import { MAX_AUDIO_BYTES, MAX_UPLOAD_BYTES, MAX_VIDEO_BYTES } from "@/core/uploadLimits";
 
 export { AUDIO_URL_RE };
 
-export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
-/** Vidéos : plus lourdes (le serveur web devant le site doit accepter autant : `client_max_body_size 60m` sous nginx). */
-export const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-/** Sons : 10 Mo au plus (core 0.10.0) — environ dix minutes de MP3 à 128 kbit/s ; une boucle de fond ou un son d'alerte tient dans bien moins. Documenté dans docs/MODULES.md. */
-export const MAX_AUDIO_BYTES = 10 * 1024 * 1024;
+// Plafonds (images 5 Mo, sons 10 Mo, vidéos 50 Mo : le serveur web devant le site doit accepter 60 Mo, `client_max_body_size 60m` sous nginx) : voir uploadLimits.ts, sans code serveur.
+export { MAX_UPLOAD_BYTES, MAX_VIDEO_BYTES, MAX_AUDIO_BYTES };
 
 const TYPES: Record<string, { ext: string; mime: string }> = {
   png: { ext: "png", mime: "image/png" },
@@ -168,15 +166,31 @@ export async function storeUpload(content: Buffer | string, ext: keyof typeof TY
   return `/uploads/${name}`;
 }
 
+/** Les genres de contenu qu'un envoi peut être : le champ « galerie » en choisit un sous-ensemble (`only`). */
+export type UploadKind = "image" | "video" | "audio";
+
+/** Pourquoi un envoi est refusé : `format` (contenu non reconnu ou d'un genre non voulu) ou `size` (reconnu, mais trop lourd pour son genre). */
+export function uploadProblem(buf: Buffer, opts: { only?: "audio" | readonly UploadKind[] } = {}): "format" | "size" | null {
+  const allow = allowed(opts.only);
+  const image = allow.has("image") ? sniffImage(buf) : null;
+  const audio = image || !allow.has("audio") ? null : sniffAudio(buf);
+  const video = image || audio || !allow.has("video") ? null : sniffVideo(buf);
+  if (!image && !audio && !video) return "format";
+  return buf.length > (image ? MAX_UPLOAD_BYTES : audio ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES) ? "size" : null;
+}
+const allowed = (only: "audio" | readonly UploadKind[] | undefined): Set<UploadKind> => new Set(only === undefined ? ["image", "audio", "video"] : only === "audio" ? ["audio"] : only);
+
 /**
  * Enregistre un envoi dont le contenu est reconnu (image, son ou vidéo). `only: "audio"` : seuls les sons passent (champs et réglages « audio » : un champ son ne
- * reçoit jamais une image ni une vidéo, même si le navigateur a été contourné).
+ * reçoit jamais une image ni une vidéo, même si le navigateur a été contourné). `only: ["image", "video"]` (champ « galerie », cœur 0.14.0) : seulement ces genres.
  */
-export async function saveUpload(buf: Buffer, opts: { only?: "audio" } = {}): Promise<string | null> {
-  const image = opts.only === "audio" ? null : sniffImage(buf);
-  const audio = image ? null : sniffAudio(buf);
-  const kind = image ?? audio ?? (opts.only === "audio" ? null : sniffVideo(buf));
-  if (!kind || buf.length > (image ? MAX_UPLOAD_BYTES : audio ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES)) return null;
+export async function saveUpload(buf: Buffer, opts: { only?: "audio" | readonly UploadKind[] } = {}): Promise<string | null> {
+  if (uploadProblem(buf, opts) !== null) return null;
+  const allow = allowed(opts.only);
+  const image = allow.has("image") ? sniffImage(buf) : null;
+  const audio = image || !allow.has("audio") ? null : sniffAudio(buf);
+  const kind = image ?? audio ?? sniffVideo(buf);
+  if (!kind) return null;
   await fs.mkdir(UPLOADS_DIR, { recursive: true });
   const name = `${crypto.randomUUID()}.${TYPES[kind]!.ext}`;
   await fs.writeFile(path.join(UPLOADS_DIR, name), buf);

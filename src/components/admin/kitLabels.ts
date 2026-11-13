@@ -6,6 +6,13 @@ import type { FormLabels } from "./AdminBlocks";
 import type { TableLabels } from "./TableView";
 import { periodLabels } from "./periodLabels";
 
+/** The `gallery.*` texts the gallery field needs, with their `{vars}` left for the field to fill. */
+const GALLERY_KEYS = [
+  "add", "empty", "count", "full", "item", "remove", "earlier", "later", "moved", "removed", "added", "caption", "captionFor", "sending", "retry", "drop",
+  "name.image", "name.video", "name.audio", "kind.image", "kind.video", "kind.audio", "types.image", "types.video", "types.audio", "example.image", "example.video", "example.audio",
+  "added.one", "error.limit.one", "library", "libSearch", "libNone", "libClear", "libAdd", "libTaken", "libMore", "libClose", "busy", "error.type", "error.size", "error.network", "error.limit",
+].map((k) => `gallery.${k}`);
+
 /** Les textes (traduits côté serveur) du bloc `table` enrichi. */
 export function tableLabels(t: Translator): TableLabels {
   return {
@@ -39,6 +46,7 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     datetime: { date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") },
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
     hints, invalid, fold,
+    ...(block.fields.some((f) => f.kind === "gallery") ? { gallery: Object.fromEntries(GALLERY_KEYS.map((k) => [k, t(k)])) } : {}),
     dialog: { close: t("modal.close"), cancel: t("editDialog.cancel"), saved: t("action.saved"), discard: { message: t("editDialog.message"), discard: t("editDialog.discard"), keep: t("editDialog.keep") } },
   };
 }

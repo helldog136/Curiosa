@@ -141,7 +141,7 @@ assertAdminPageErgonomics(blocks, { errors: ["Écrivez un nombre entier, par exe
 | Règle | Ce qui est mesuré sur les blocs |
 |---|---|
 | R3 | un bouton d'envoi qui s'appelle « OK », « Valider », « Soumettre », « Envoyer »… (un verbe précis est attendu) |
-| R4 | au plus 5 champs visibles par formulaire (\`adminForm\`), 7 par section (entre deux \`heading\`) ; les champs \`hidden\` et ceux marqués \`advanced\` / \`folded\` ne comptent pas |
+| R4 | au plus 5 champs visibles par formulaire (\`adminForm\`), 7 par section (entre deux \`heading\`) ; les champs \`hidden\` et ceux marqués \`advanced\` / \`folded\` ne comptent pas ; un champ \`gallery\` (liste de fichiers) compte pour UN seul champ |
 | R9, R10 | mots du code et libellés trop longs dans les champs des formulaires |
 | R14 | une colonne dont toutes les cellules sont identiques dans un tableau de plus de 5 lignes (une colonne d'interrupteurs, cellule \`switch\`, n'en est jamais une) ; une pastille \`badge\` identique sur toutes les lignes est un titre, pas une étiquette |
 | R15 | un tableau de plus de 10 lignes sans champ de recherche (un \`<input type="search">\` dans un bloc \`html\`, un champ \`q\` / \`search\` / « Rechercher » dans un \`adminForm\`, ou \`searchable: true\` sur le tableau) |

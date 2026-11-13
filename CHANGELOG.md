@@ -7,6 +7,35 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.14.0 — 2026-11-13
+
+**En bref.** Les extensions peuvent maintenant proposer un champ « plusieurs fichiers » : on ajoute des photos, des vidéos ou des sons d'un coup, on les retire et on les remet dans l'ordre. Un bouton « Tester » peut aussi se placer à côté du bouton d'enregistrement.
+
+**In short.** Extensions can now offer a "several files" field: you add photos, videos or sounds in one go, remove them and put them in order. A "Test" button can also sit next to the save button.
+
+### Plusieurs fichiers dans un formulaire
+
+- **Une grille de fichiers.** Vous choisissez ou déposez plusieurs fichiers à la fois ; chacun montre sa progression et, s'il est refusé, la raison juste dessous. Chaque élément se retire et se déplace d'un bouton, au clavier aussi.
+- **(English) A grid of files.** You pick or drop several files at once; each shows its progress and, if refused, the reason right below. Every item can be removed and moved with a button, with the keyboard too.
+- **Un bouton « Tester ».** Une extension peut ajouter un bouton à côté de « Enregistrer » pour essayer sans fermer la fenêtre ni perdre ce que vous avez saisi.
+- **(English) A "Test" button.** An extension can add a button next to "Save" to try things without closing the window or losing what you typed.
+- **Garder un fichier envoyé depuis une autre extension.** Quand une extension confie à une autre l'enregistrement d'un fichier que vous venez d'envoyer, l'autre peut maintenant le garder, à condition d'avoir été prévue pour cela.
+- **(English) Keeping an uploaded file through another extension.** When one extension hands a file you just uploaded to another one, the other can now keep it, provided it was built for that.
+
+- **Une page qui se met à jour toute seule.** Quand une extension attend une réponse (une vérification en cours), sa page se rafraîchit d'elle-même, sans recharger, puis s'arrête au bout de trois minutes avec un bouton « Vérifier de nouveau ».
+- **(English) A page that updates itself.** When an extension is waiting for an answer (a check in progress), its page refreshes itself without reloading, then stops after three minutes with a "Check again" button.
+- **Des boutons moins pressants et des pastilles propres.** Une action secondaire peut s'afficher en bouton discret, et les pastilles d'état restent sur une seule ligne, coupées par « … » si elles sont trop longues.
+- **(English) Quieter buttons and tidy pills.** A secondary action can show as a discreet button, and status pills stay on one line, cut with "…" when too long.
+
+### Pour les développeurs
+
+- **`kind: "gallery"`** in `adminForm` (also in a dialog): `accept`, `max` (12, 60 at most), `min`, `itemLabel`, `library`. Declare `minCore` 0.14.0. See `docs/MODULES.md`.
+- **Gallery value**: the action receives `values[name]` as the JSON `[{ "src": "/uploads/<uuid>.<ext>", "label"? }]`, rebuilt and checked by the core (kinds, count, no outside address).
+- **`adminForm.extraActions`** (two at most, `{ label, action }`): non-destructive buttons that post the same fields to their own action; the window stays open.
+- **`files.claim` through a service**: a method listed in `offers[].callerRights` and called with `{ asCaller: true }` may now claim the file the same person uploaded.
+- **`refreshWhile`** block (`{ pending, everySeconds? }`): soft self-refresh of an admin panel, 3 s then 10 s, 3 minutes at most, then "Check again". **`adminForm.submitStyle: "secondary"`**: outlined submit button. `{ text, badge }` cells are single-line pills (ellipsis, tooltip).
+- **Test kit**: `blocks.valid` checks the gallery options and `extraActions`; a gallery counts as one field (R4); new `minCore` entry.
+
 ## 0.13.1 — 2026-11-13
 
 **En bref.** L'icône de votre site s'affiche maintenant correctement dans les listes de connexions de votre assistant IA et pour tous les outils qui la demandent à l'adresse habituelle. Avant, chaque site pouvait y montrer l'icône d'un autre.

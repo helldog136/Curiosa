@@ -12,6 +12,7 @@ import type { AdminActionHandler } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { PERIOD_MARK, periodErrorKey } from "@/core/adminkit/values";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
+import { checkGalleryValues } from "@/core/gallery";
 import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
 /** Le gestionnaire d'une `adminAction` SI cette personne peut l'exécuter (voir `decideAdminAction`), sinon null (refus noté au journal) ; `undefined` : pas d'action de ce nom. */
@@ -46,6 +47,8 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
     if (key) periodErrors[name] = t(key);
     delete values[k];
   }
+  // Champs galerie (cœur 0.14.0) : la liste est relue ICI (forme, genres acceptés, maximum, minimum, aucune adresse extérieure) et réécrite en forme canonique avant le module.
+  for (const [field, problem] of Object.entries(checkGalleryValues(values))) periodErrors[field] = t(problem.key, problem.vars);
   if (Object.keys(periodErrors).length) return { errors: periodErrors };
 
   let result;

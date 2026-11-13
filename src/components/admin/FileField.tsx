@@ -8,7 +8,7 @@ export function FileField({ f }: { f: AdminField }) {
   return (
     <div>
       <FieldLabel id={`f_${f.name}`} className={ui.label} help={f.help} text={f.label}>{f.label}</FieldLabel>
-      <input id={`f_${f.name}`} name={f.name} type="file" accept={f.accept} required={f.required} className={ui.input} />
+      <input id={`f_${f.name}`} name={f.name} type="file" accept={typeof f.accept === "string" ? f.accept : undefined} required={f.required} className={ui.input} />
       <HelpBelow help={f.help} className={ui.help} />
     </div>
   );
