@@ -7,6 +7,8 @@ import { authenticate, authenticateByUrl, isMcpEnabled, rateLimited, type Authed
 import type { McpTool } from "./types";
 
 /** The source of the tools. `hint.name`: the tool being called, so that a source can avoid computing tools that cannot be it (see platform.ts). */
+/** The icons announced at `initialize` (`serverInfo.icons`, MCP 2025-11-25), given by the composition: the mechanism knows nothing of logos or of the public address. */
+export type ServerIcons = (request: Request) => Promise<unknown[]>;
 export type ListTools = (hint?: { name?: string }) => Promise<McpTool[]>;
 import { McpToolError } from "./validate";
 
@@ -22,7 +24,7 @@ import { McpToolError } from "./validate";
  * que son plafond (lecture/écriture) ET ses accès action par action autorisent (access.ts) ; une erreur interne n'est jamais renvoyée à l'agent (seules les erreurs
  * `McpToolError` ou marquées `expose: true` le sont) ; toute écriture est consignée dans l'audit.
  */
-const SUPPORTED_VERSIONS = ["2025-06-18", "2025-03-26", "2024-11-05"];
+const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const MAX_BODY = 1_000_000;
 /** Only one call may be bigger: `media_upload` (an image of 3 MB sent as base64). Everything else stays at 1 MB. */
 const MAX_BODY_MEDIA = 4_300_000;
@@ -38,7 +40,7 @@ const rpcResult = (id: RpcRequest["id"], result: unknown) => ({ jsonrpc: "2.0", 
 /** Ce que ce jeton voit : plafond (lecture/écriture) ET accès accordé action par action. Recalculé à chaque requête. */
 const visible = (tools: McpTool[], token: AuthedToken) => tools.filter((t) => canUse(t, token));
 
-async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools): Promise<unknown | null> {
+async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools, icons: unknown[]): Promise<unknown | null> {
   if (!rpc || typeof rpc !== "object" || Array.isArray(rpc) || rpc.jsonrpc !== "2.0") return rpcError(null, -32600, "Invalid Request.");
   // Une réponse du client à une requête du serveur (nous n'en envoyons jamais) : acceptée, sans réponse.
   if (rpc.method === undefined && ("result" in rpc || "error" in rpc)) return null;
@@ -52,7 +54,8 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools)
       return rpcResult(rpc.id, {
         protocolVersion: SUPPORTED_VERSIONS.includes(asked) ? asked : SUPPORTED_VERSIONS[0],
         capabilities: { tools: { listChanged: false } },
-        serverInfo: { name: config.name, title: config.name, version: "1.0.0" },
+        // `icons` (MCP 2025-11-25): ABSOLUTE https addresses on the exact public host of THIS site (clients accept only the server's own origin, without redirect).
+        serverInfo: { name: config.name, title: config.name, version: "1.0.0", ...(icons.length > 0 ? { icons } : {}) },
         instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change). To set up the identity of the site: upload images with media_upload (base64, alternative text required, 3 MB), then use site_settings_get and site_settings_set (name, tagline, presentation per language, contact e-mail, logos); changing settings follows the owner's approval setting.",
       });
     }
@@ -92,9 +95,9 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools)
   }
 }
 
-async function safeHandle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools): Promise<unknown | null> {
+async function safeHandle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools, icons: unknown[]): Promise<unknown | null> {
   try {
-    return await handle(rpc, token, listTools);
+    return await handle(rpc, token, listTools, icons);
   } catch (error) {
     console.error("[mcp] internal error:", error);
     return rpcError(rpc?.id ?? null, -32603, "Internal error.");
@@ -111,21 +114,22 @@ export function methodNotAllowed(): Response {
  * `viaUrl` : l'adresse secrète `/api/mcp/<jeton>` ; sinon le jeton vient de l'en-tête `Authorization: Bearer`.
  * Le jeton n'est ni journalisé ni renvoyé : en cas d'échec par adresse, la réponse est la même pour tout.
  */
-export async function handleMcpRequest(request: Request, listTools: ListTools, viaUrl?: { token: string }): Promise<Response> {
+export async function handleMcpRequest(request: Request, listTools: ListTools, viaUrl?: { token: string }, serverIcons?: ServerIcons): Promise<Response> {
   if (!(await isMcpEnabled())) return json(rpcError(null, -32000, "MCP is disabled on this site."), 503);
   if (viaUrl) {
     const token = await authenticateByUrl(viaUrl.token);
     if (!token) return json(rpcError(null, -32001, "Not found."), 404);
-    return run(request, token, listTools);
+    return run(request, token, listTools, serverIcons);
   }
   const token = await authenticate(request.headers.get("authorization"));
   if (!token) return json(rpcError(null, -32001, "Missing or invalid token."), 401, { "WWW-Authenticate": "Bearer" });
-  return run(request, token, listTools);
+  return run(request, token, listTools, serverIcons);
 }
 
-async function run(request: Request, token: AuthedToken, listTools: ListTools): Promise<Response> {
+async function run(request: Request, token: AuthedToken, listTools: ListTools, serverIcons?: ServerIcons): Promise<Response> {
   if (rateLimited(token.id)) return json(rpcError(null, -32002, "Too many requests."), 429);
 
+  const icons = await serverIcons?.(request).catch(() => []) ?? [];
   const raw = await request.text();
   if (raw.length > MAX_BODY_MEDIA) return json(rpcError(null, -32600, "Request too large."), 413);
   let body: unknown;
@@ -138,7 +142,7 @@ async function run(request: Request, token: AuthedToken, listTools: ListTools): 
   if (raw.length > MAX_BODY && !(!Array.isArray(body) && (body as RpcRequest)?.method === "tools/call" && (body as RpcRequest).params?.name === "media_upload")) return json(rpcError(null, -32600, "Request too large."), 413);
   const batch = Array.isArray(body);
   if (batch && (body as unknown[]).length === 0) return json(rpcError(null, -32600, "Invalid Request."), 400);
-  const responses = (await Promise.all(((batch ? body : [body]) as RpcRequest[]).slice(0, 20).map((r) => safeHandle(r, token, listTools)))).filter((r) => r !== null);
+  const responses = (await Promise.all(((batch ? body : [body]) as RpcRequest[]).slice(0, 20).map((r) => safeHandle(r, token, listTools, icons)))).filter((r) => r !== null);
   // Que des notifications ou des réponses de client : « accepté », sans corps.
   if (responses.length === 0) return new Response(null, { status: 202, headers: MCP_HEADERS });
   return json(batch ? responses : responses[0]);
