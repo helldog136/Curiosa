@@ -168,12 +168,12 @@ const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof
  * Exécute la méthode d'un service chez un fournisseur. Pour une page publique, le fournisseur a un temps imparti (voir budget.ts) : sans réponse, `ModuleStalled`
  * est levée (le journal a déjà nommé le fournisseur une fois ; les appelants la traitent comme un échec, sans rien écrire de plus).
  */
-const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string, viewer?: AdminUser | null) => {
+const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string, viewer?: AdminUser | null, carryUploads = false) => {
   const fn = p.mod.def.services?.[service]?.[method];
   if (!fn) return undefined;
   // `viewer` : appel fait pour une personne de l'administration (création à la volée d'un `choice`) : `ctx.can` du fournisseur vérifie SES droits à elle.
   const base = await buildContext(p.mod, p.instance, locale);
-  const ctx = viewer !== undefined ? forViewer(base, viewer) : base;
+  const ctx = viewer !== undefined ? forViewer(base, viewer, { carryUploads }) : base;
   const unit = { kind: "service" as const, moduleId: p.mod.manifest.id, instanceKey: p.instance.key, name: `${service}.${method}` };
   const value = await boxedInner(unit, () => fn(ctx, args));
   if (value === STALLED) throw new ModuleStalled(unit);
@@ -209,14 +209,18 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   if (!hasMethod(master, service, method)) return { outcome: { ok: false, reason: "no_method" }, master };
   // Les droits de la personne qui a cliqué (`asCaller`) : seulement si le FOURNISSEUR a listé cette méthode dans `callerRights`, et pour une personne
   // (`caller` n'est rempli que par l'exécution d'une adminAction, voir context.ts). Le fournisseur vérifie ensuite SON droit avec `ctx.can`. Consigné.
+  // La même condition porte aussi la personne jusqu'à `ctx.api.files.claim` du fournisseur (`carryUploads`, cœur 0.14.0) : jamais pour une méthode non listée, un appel anonyme ou un
+  // contexte du cœur (`viewer` fourni). Les répliques n'en reçoivent pas : le maître garde le fichier, une réplique répondrait « taken ».
+  let carryUploads = false;
   if (caller && viewer === undefined && callerMethodsOf(master, service).includes(method)) {
     viewer = caller;
+    carryUploads = true;
     const { audit } = await import("../permissions");
     await audit(caller.email, `module.${consumer.instance.key}.asCaller`, `${service}.${method}`);
   }
   let value: unknown;
   try {
-    value = await runOn(master, service, method, args, locale, viewer);
+    value = await runOn(master, service, method, args, locale, viewer, carryUploads);
   } catch (error) {
     if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
     return { outcome: { ok: false, reason: "failed" }, master };

@@ -8,6 +8,8 @@ import { useRouter } from "next/navigation";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
 import { FileField } from "./FileField";
+import { GalleryField, type GalleryLabels } from "./GalleryField";
+import { galleryLibrary } from "@/core/gallery";
 import { ui } from "./ui";
 import { Checkbox, FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
@@ -39,6 +41,29 @@ const runner = (instanceId: string, action: string, entry?: EntryScope): ((prev:
 
 type FormBlock = Extract<Block, { type: "adminForm" }>;
 
+/** What a non-destructive extra button of the form (`extraActions`, core 0.14.0) answered: shown beside the buttons; nothing is closed or reset. */
+type ExtraResult = { ok?: string; error?: string; errors?: Record<string, string> } | null;
+
+/** One extra button: posts the SAME fields to its own adminAction, keeps the window open and reports the answer to the form. */
+function ExtraActionButton({ label, run, formRef, onResult, index }: { label: string; run: (prev: ActionState, formData: FormData) => Promise<ActionState>; formRef: React.RefObject<HTMLFormElement | null>; onResult: (r: ExtraResult) => void; index: number }) {
+  const [state, formAction, pending] = useActionState(run, null);
+  useEffect(() => { if (state) onResult(state); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
+  return (
+    <PendingButton type="button" variant="btn" pending={pending} testid={`form-extra-${index}`}
+      onClick={() => { if (formRef.current) { const data = new FormData(formRef.current); startTransition(() => formAction(data)); } }}>{label}</PendingButton>
+  );
+}
+/** The extra buttons of a form (two at most, valid label and action only). */
+const extraOf = (block: FormBlock) => (Array.isArray(block.extraActions) ? block.extraActions : []).filter((a) => a && typeof a.label === "string" && a.label && typeof a.action === "string" && a.action).slice(0, 2);
+/** The answer of an extra button: a success as a status, an error as an alert (the errors of fields go under the fields). */
+function ExtraStatus({ result }: { result: ExtraResult }) {
+  const problem = result?.error ?? (result?.errors ? Object.values(result.errors)[0] : undefined);
+  if (problem) return <p role="alert" data-testid="form-extra-result" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{problem}</p>;
+  if (result?.ok) return <p role="status" data-testid="form-extra-result" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{result.ok}</p>;
+  return null;
+}
+
 /**
  * Textes des contrôles de la 0.6.0 (déjà traduits par le serveur) et ce que le serveur a calculé pour chaque champ : l'indication d'un nombre borné (`hints`) et le
  * résumé du groupe replié « Plus d'options » (`fold`). Absents (autre appelant) : les nouveaux contrôles se rabattent sur un champ texte.
@@ -52,6 +77,8 @@ export type FormLabels = {
   fold?: { summary: string; count: number };
   /** Texts of the edit dialog (`presentation: "dialog"`); absent: the form stays in the page. */
   dialog?: DialogLabels;
+  /** (core 0.14.0) Texts of the `gallery` field (the `gallery.*` keys); present only when the form has one. Absent: the field falls back to a text field. */
+  gallery?: GalleryLabels;
 };
 
 /** Texts of the edit dialog, already translated by the server. */
@@ -71,6 +98,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
     return <NumberField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} step={f.step} unit={f.unit} required={f.required} help={f.help} hint={labels?.hints?.[f.name]} invalidText={labels?.invalid?.[f.name]} example={example}
       emptyValue={f.placeholder} />;
   }
+  if (f.kind === "gallery" && labels?.gallery) return <GalleryField name={f.name} label={f.label} defaultValue={f.value} accept={f.accept} max={f.max} min={f.min} itemLabel={f.itemLabel === true} library={galleryLibrary(f.library, f.accept)} required={f.required} help={f.help} example={example} labels={labels.gallery} />;
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;
   if (f.kind === "audio") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" kind="audio" required={f.required} />;
   // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
@@ -78,7 +106,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
   if (f.kind === "file") return <FileField f={f} />;
   const common = { id: `f_${f.name}`, name: f.name, required: f.required, defaultValue: f.value ?? "", className: ui.input, ...(example ? { "aria-describedby": `ex-${f.name}` } : {}) };
   // Un nouveau genre de champ sur un cœur qui ne le connaît pas (autre appelant) : un champ texte.
-  const kind = f.kind === "segmented" || f.kind === "period" || f.kind === "datetime" || f.kind === "duration" ? "text" : f.kind;
+  const kind = f.kind === "segmented" || f.kind === "period" || f.kind === "datetime" || f.kind === "duration" || f.kind === "gallery" ? "text" : f.kind;
   return (
     <div>
       <FieldLabel id={common.id} className={ui.label} help={f.help} text={f.label}>{f.label}</FieldLabel>
@@ -97,7 +125,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
 
 /** Les champs d'un formulaire : les champs cachés, les champs visibles en grille, puis (0.6.0) les champs `folded` sous « Plus d'options » (ouvert d'office si l'un d'eux a déjà une valeur). */
 function FormFields({ fields, labels }: { fields: AdminField[]; labels?: FormLabels }) {
-  const wide = (f: AdminField) => f.kind === "textarea" || f.kind === "image" || f.kind === "audio" || f.kind === "file" || f.kind === "period" || f.kind === "datetime";
+  const wide = (f: AdminField) => f.kind === "textarea" || f.kind === "image" || f.kind === "audio" || f.kind === "gallery" || f.kind === "file" || f.kind === "period" || f.kind === "datetime";
   const grid = (list: AdminField[]) => (
     <div className="grid gap-4 sm:grid-cols-2">
       {list.map((f) => <div key={f.name} className={wide(f) ? "sm:col-span-2" : ""}><Field f={f} labels={labels} /></div>)}
@@ -139,7 +167,7 @@ function FileBlockForm({ instanceId, block, labels, form }: { instanceId: string
       const file = data.get(f.name);
       if (file instanceof File && file.size > max) { setState({ errors: { [f.name]: labels.tooBig.replace("{max}", mbOf(max)) } }); return; }
       data.set(`$max_${f.name}`, String(max));
-      if (f.accept) data.set(`$accept_${f.name}`, f.accept.slice(0, 200));
+      if (typeof f.accept === "string" && f.accept) data.set(`$accept_${f.name}`, f.accept.slice(0, 200));
     }
     setPending(true);
     setState({ ok: labels.sending });
@@ -168,7 +196,7 @@ function FileBlockForm({ instanceId, block, labels, form }: { instanceId: string
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <div className="flex items-center gap-3">
-        <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
+        <PendingButton pending={pending} variant={block.submitStyle === "secondary" ? "btn" : "primary"}>{block.submitLabel}</PendingButton>
         {block.cancelHref && <a href={block.cancelHref} className={ui.btn} aria-label={c("cancel")}>↩</a>}
       </div>
     </form>
@@ -187,7 +215,9 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
   const [state, action, pending] = useActionState(runner(instanceId, block.action, entry), null);
   const formRef = useRef<HTMLFormElement>(null);
   const c = useCropLabels();
+  const [extra, setExtra] = useState<ExtraResult>(null);
   useFieldErrorsDom(formRef, state?.errors, state);
+  useFieldErrorsDom(formRef, extra?.errors, extra);
   // Une erreur garde ce qui a été tapé (pour le corriger). Un formulaire qui CRÉE quelque chose se vide après un succès ; un formulaire de modification (lien « annuler ») garde ses valeurs.
   useEffect(() => {
     if (!state?.ok || !formRef.current) return;
@@ -199,8 +229,10 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
       <FormFields fields={block.fields} labels={labels} />
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
-      <div className="flex items-center gap-3">
-        <PendingButton pending={pending} variant="primary">{block.submitLabel}</PendingButton>
+      <ExtraStatus result={extra} />
+      <div className="flex flex-wrap items-center gap-3">
+        <PendingButton pending={pending} variant={block.submitStyle === "secondary" ? "btn" : "primary"}>{block.submitLabel}</PendingButton>
+        {extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action, entry)} formRef={formRef} onResult={setExtra} />)}
         {block.cancelHref && <a href={block.cancelHref} className={ui.btn} aria-label={c("cancel")}>↩</a>}
       </div>
     </form>
@@ -219,12 +251,15 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
   const [secondState, secondRun, secondPending] = useActionState(runner(instanceId, secondary?.action ?? ""), null);
   const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
+  const [extra, setExtra] = useState<ExtraResult>(null);
   useFieldErrorsDom(formRef, state?.errors, state);
+  useFieldErrorsDom(formRef, extra?.errors, extra);
   const title = block.title ?? block.submitLabel;
   const error = state?.error ?? secondState?.error ?? (secondState?.errors ? Object.values(secondState.errors)[0] : undefined);
   return (
     <EditDialog title={title} closeLabel={dialog.close} closeHref={block.cancelHref} guard={dialog.discard}
-      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} danger={block.danger === true} error={error} />}
+      footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} danger={block.danger === true} secondaryStyle={block.submitStyle === "secondary"} error={error}
+        status={<ExtraStatus result={extra} />} extras={extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action)} formRef={formRef} onResult={setExtra} />)} />}
       secondary={secondary ? (
         <PendingButton type="button" variant="danger" pending={secondPending} testid="edit-dialog-secondary"
           onClick={async () => {
@@ -245,11 +280,12 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
 }
 
 /** Footer of the edit dialog: a general error (when it concerns no field), then ONE main button with a specific verb and a discreet "Cancel". `danger`: the main button is solid red. */
-function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error, danger = false }: { formId: string; submitLabel: string; cancel: string; cancelHref?: string; pending: boolean; error?: string; danger?: boolean }) {
+function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error, danger = false, secondaryStyle = false, status, extras }: { formId: string; submitLabel: string; cancel: string; cancelHref?: string; pending: boolean; error?: string; danger?: boolean; /** (core 0.14.0) `submitStyle: "secondary"`: the submit button is outlined. */ secondaryStyle?: boolean; /** The answer of an extra button. */ status?: React.ReactNode; /** (core 0.14.0) The non-destructive extra buttons, between "Cancel" and the main button. */ extras?: React.ReactNode }) {
   const win = useModalWindow();
   return (
     <div className="space-y-2">
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{error}</p>}
+      {status}
       <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3">
         {(() => {
           const look = "inline-flex min-h-11 items-center justify-center rounded-xl px-4 text-sm text-muted underline-offset-2 hover:text-fg hover:underline";
@@ -257,7 +293,8 @@ function DialogFooter({ formId, submitLabel, cancel, cancelHref, pending, error,
             ? <a href={cancelHref} onClick={(e) => { e.preventDefault(); win?.close(); }} className={look} data-testid="edit-dialog-cancel">{cancel}</a>
             : <button type="button" onClick={() => win?.close()} className={look} data-testid="edit-dialog-cancel">{cancel}</button>;
         })()}
-        <PendingButton pending={pending} variant={danger ? "dangerSolid" : "primary"} form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
+        {extras}
+        <PendingButton pending={pending} variant={danger ? "dangerSolid" : secondaryStyle ? "btn" : "primary"} form={formId} testid="edit-dialog-submit">{submitLabel}</PendingButton>
       </div>
     </div>
   );

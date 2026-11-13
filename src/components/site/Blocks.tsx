@@ -60,7 +60,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
   const out: React.ReactNode[] = [];
   // The admin components come from `kit`, given by the admin pages only (see adminKit.ts). Each use below sits in a branch that needs an admin panel (`adminInstanceId`),
   // which only those pages set, so the names are defined whenever they are reached.
-  const { AdminBlockForm, RowActionButton, DialogLink, GridEditor, SuggestInstall } = kit ?? ({} as AdminKit);
+  const { AdminBlockForm, RowActionButton, DialogLink, GridEditor, SuggestInstall, RefreshWhile } = kit ?? ({} as AdminKit);
   // Admin pages get the table with its row buttons and switches; public pages get the same view without them (search, pills, pages, badges).
   const Table = kit?.AdminTable ?? TableView;
   // An edit dialog (`presentation: "dialog"`) comes last: opening it does not shift the position (so the identity and the state, search and filter) of the list under it.
@@ -319,6 +319,13 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
       case "suggestInstall":
         // Panneau d'admin d'une instance seulement (jamais sur le site public, ni dans une section de l'éditeur d'entrée).
         if (panelInstanceId && !entryScope) out.push(<SuggestInstall key={i} instanceId={panelInstanceId} service={block.service} min={block.min} reason={block.reason} locale={locale} />);
+        break;
+      case "refreshWhile":
+        // Panneau d'admin d'une instance seulement (cœur 0.14.0) : rafraîchit le panneau tant que le module dit qu'une chose est en attente.
+        if (RefreshWhile && panelInstanceId && !entryScope && block.pending === true) {
+          const t = makeTranslator(locale);
+          out.push(<RefreshWhile key={i} everySeconds={typeof block.everySeconds === "number" ? block.everySeconds : undefined} labels={{ waiting: t("refresh.waiting"), stopped: t("refresh.stopped"), again: t("refresh.again") }} />);
+        }
         break;
       case "head":
         break;

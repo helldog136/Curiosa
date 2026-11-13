@@ -63,6 +63,27 @@ export function useFieldErrorsDom(form: RefObject<HTMLElement | null>, errors: F
       const found = (root as HTMLFormElement).elements?.namedItem?.(key) ?? root.querySelector(`[name="${CSS.escape(key)}"]`);
       // Le champ période affiche lui-même son erreur (sous la ligne des dates) : on ne la double pas.
       if (found && !(found instanceof RadioNodeList) && (found as HTMLElement).closest("[data-period-field]")) continue;
+      // Galerie : le message va sous la grille, le focus sur la tuile « Ajouter » ; l'erreur s'efface dès que la liste change.
+      const gallery = found && !(found instanceof RadioNodeList) ? (found as HTMLElement).closest<HTMLElement>("[data-gallery]") : null;
+      if (gallery) {
+        const target = gallery.querySelector<HTMLElement>("[data-gallery-focus]") ?? gallery.querySelector<HTMLElement>("button");
+        const frame = gallery.querySelector<HTMLElement>("[data-gallery-grid]")?.parentElement ?? gallery;
+        const id = `err-${key.replace(/[^A-Za-z0-9_-]/g, "_")}`;
+        const p = document.createElement("p");
+        p.id = id; p.setAttribute("data-field-error", "");
+        p.className = "mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700";
+        const icon = document.createElement("span"); icon.setAttribute("aria-hidden", "true"); icon.textContent = ICON;
+        const text = document.createElement("span"); text.className = "min-w-0 [overflow-wrap:anywhere]"; text.textContent = message;
+        p.append(icon, text);
+        frame.after(p);
+        frame.classList.add(ERROR_BORDER);
+        target?.setAttribute("aria-invalid", "true");
+        target?.setAttribute("aria-describedby", id);
+        const clear = () => { p.remove(); frame.classList.remove(ERROR_BORDER); target?.removeAttribute("aria-invalid"); target?.removeAttribute("aria-describedby"); gallery.removeEventListener("input", clear); };
+        gallery.addEventListener("input", clear);
+        undo.push(clear);
+        continue;
+      }
       let el = found instanceof RadioNodeList ? (found[0] as HTMLElement | undefined) : (found as HTMLElement | null);
       // Valeur portée par un champ caché (image, choix parmi…) : le message va sous la saisie visible du même réglage.
       if (el && (el as HTMLInputElement).type === "hidden") el = el.closest("[data-setting], [data-choice]")?.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, select') ?? null;
