@@ -21,6 +21,7 @@ import { callService, callServiceAll, providersOf, serviceAvailable } from "./de
 import { visitorFingerprint } from "./visitorFingerprint";
 import { privacyDeclarations } from "./privacyDeclarations";
 import { getActiveInstances, getModule, type ActiveInstance } from "./registry";
+import { pendingSetUps, setUpFor } from "./setUp";
 import { eventsOf } from "@/core/journal/events";
 import { writeModuleLog, type JournalActor } from "@/core/journal/write";
 import type { ModuleApi } from "./types";
@@ -73,6 +74,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
   const rawgAllowed = permissions.includes("rawg");
   const privacyAllowed = permissions.includes("privacy");
   const filesAllowed = permissions.includes("files");
+  const setUpAllowed = permissions.includes("instances.setup");
   const fileOwner: FileOwner = { moduleId: instance.moduleId, instanceId: instance.id, instanceKey: instance.key };
   /**
    * L'instance appelante, pour un appel de service. Une instance mise à l'écart (migration échouée) ne tourne pas, SAUF pendant sa propre
@@ -196,6 +198,9 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
           .filter((i) => !module || i.moduleId === module)
           .map((i) => ({ id: i.id, key: i.key, module: i.moduleId, basePath: i.basePath, name: pickName(i, loc ?? config.defaultLocale, config.defaultLocale), adminPath: instanceHref(i.id) }));
       },
+      // Cœur 0.15.0, permission « instances.setup » (voir setUp.ts). Sans elle : rien à proposer, et `setUp` refuse. `caller.person` n'existe que dans une adminAction.
+      pending: async (opts) => (setUpAllowed ? pendingSetUps(instance.moduleId, opts?.locale ?? locale) : []),
+      setUp: async (moduleId) => (setUpAllowed ? setUpFor({ moduleId: instance.moduleId, instanceKey: instance.key }, caller?.person ?? null, moduleId) : { ok: false, reason: "no-permission" }),
     },
     entries: {
       async list({ instance: key, locale: loc, limit } = {}) {

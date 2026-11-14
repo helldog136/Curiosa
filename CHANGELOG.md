@@ -7,6 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.15.0 — 2026-11-14
+
+**En bref.** Une extension peut maintenant vous proposer un bouton pour mettre en place, d'un clic, une autre extension déjà installée dont elle a besoin, au lieu de vous envoyer sur la page des extensions.
+
+**In short.** An extension can now offer a button that sets up, in one click, another extension that is already installed and that it needs, instead of sending you to the extensions page.
+
+### Mettre en place d'un clic
+
+- **Un bouton à la place d'un parcours.** Quand une extension a besoin d'une autre qui est installée mais pas encore mise en place, elle peut afficher un bouton qui fait la même chose que « Mettre en place » de la page des extensions. Seule une personne administratrice peut le faire, et l'action est notée au journal.
+- **(English) A button instead of a detour.** When an extension needs another one that is installed but not set up yet, it can show a button that does the same as "Set up" on the extensions page. Only an administrator can do it, and the action is written to the log.
+- **Rien n'est installé sans vous.** Ce bouton ne télécharge ni ne met à jour aucun code : une extension absente ou trop ancienne reste un geste de votre part (page des extensions).
+- **(English) Nothing is installed behind your back.** The button never downloads or updates code: a missing or too old extension stays your decision (extensions page).
+
+### Pour les développeurs
+
+- **Permission `instances.setup`** (declare `minCore` 0.15.0; an older core refuses the manifest). It shows to the administrator before installing.
+- **`ctx.api.instances.pending({ locale? })`**: installed modules without an instance that offer a service you declare in `requires`. **`ctx.api.instances.setUp(moduleId)`**: creates their default instance (same functions as the "Set up" button). Only from an `adminAction` clicked by an administrator, only for a declared service, never a second instance, never installs code. Logged as `instance.setup`.
+- **Test kit**: `fakeCtx({ requires, installedModules })` refuses what the core refuses; new `minCore` entry for the permission.
+
 ## 0.14.0 — 2026-11-13
 
 **En bref.** Les extensions peuvent maintenant proposer un champ « plusieurs fichiers » : on ajoute des photos, des vidéos ou des sons d'un coup, on les retire et on les remet dans l'ordre. Un bouton « Tester » peut aussi se placer à côté du bouton d'enregistrement.

@@ -285,7 +285,7 @@ export type ModuleManifest = {
   /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation" | "files")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation" | "files" | "instances.setup")[];
 };
 
 export type EntrySummary = {
@@ -400,6 +400,17 @@ export type ModuleApi = {
   instances: {
     /** `id` et `adminPath` (« /admin/instances/<id> ») : pour renvoyer l'administrateur vers les réglages d'une instance d'un autre module. */
     list(opts?: { locale?: string; module?: string }): Promise<{ id: string; key: string; module: string; basePath: string | null; name: string; adminPath: string }[]>;
+    /**
+     * (core 0.15.0, permission "instances.setup"; without it: `[]`) Installed modules that offer a service you declare in `requires` and have NO instance yet (so they provide
+     * nothing): what `setUp` can fix. Read only, never throws.
+     */
+    pending?(opts?: { locale?: string }): Promise<{ module: string; name: string; services: string[] }[]>;
+    /**
+     * (core 0.15.0, permission "instances.setup") Creates the default instance of one of the modules `pending` lists, like the "Set up" button of the extensions page. Only from an
+     * `adminAction` clicked by an administrator (`no-person` / `denied` elsewhere), only for an installed module that offers a service you declare, only when it has no instance
+     * (`present` otherwise). Logged as `instance.setup`. It never installs or updates code. `reason`: `no-permission`, `no-person`, `denied`, `undeclared`, `not-installed`, `failed`.
+     */
+    setUp?(moduleId: string): Promise<{ ok: true; state: "created" | "restored" | "present" } | { ok: false; reason: "no-permission" | "no-person" | "denied" | "undeclared" | "not-installed" | "failed" }>;
   };
   /**
    * Ce que les modules actifs déclarent collecter (`privacy` de leur manifeste), en lecture seule (cœur 0.2.6 ; permission « privacy »).
