@@ -31,6 +31,8 @@ function usesBareTimezone(code) {
  * est un fichier du dépôt de modules, pas d'un module. `advice: true` : conseil (exigence `compat.minCoreAdvice`) au lieu de `compat.minCore`.
  */
 export const FEATURES = [
+  // Cœur 0.15.0. La permission « instances.setup » : un cœur plus ancien refuse le manifeste (permission inconnue).
+  { since: "0.15.0", label: "la permission « instances.setup » (ctx.api.instances.pending et setUp : mettre en place un module installé)", test: (m, man) => (man.permissions ?? []).includes("instances.setup") || /\bapi\s*\??\.\s*instances\s*\??\.\s*setUp\b/.test(stripComments(m.code)) },
   // Cœur 0.14.0. Un champ « gallery » : un cœur plus ancien le montre comme un champ texte (la liste en JSON), inutilisable. `extraActions` est ignoré sans dommage : pas de minCore à exiger.
   { since: "0.14.0", label: "un champ de formulaire « gallery » (liste de fichiers envoyés)", test: (m) => /\bkind\s*:\s*["']gallery["']/.test(stripComments(m.code)) },
   // Cœur 0.6.4. `openEnded` : un cœur plus ancien refuse toute valeur ouverte et ne propose que deux dates. `ctx.timezone` : absent d'un cœur plus ancien, et l'oublier change

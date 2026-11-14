@@ -71,14 +71,19 @@ export function fakeCtx(opts = {}) {
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
     uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {},
     logEvents = [], actor: logActor = "module",
-    timezone = "UTC",
+    timezone = "UTC", requires = [], installedModules = {},
   } = opts;
   // Fuseau du site : mêmes règles que le cœur (core/siteTime.ts) : un nom IANA que la plateforme connaît, sinon celui de la machine, sinon « UTC ».
   const validZone = (tz) => { if (typeof tz !== "string" || tz.length < 1 || tz.length > 64 || !/^[A-Za-z0-9_+\-/]+$/.test(tz)) return false; try { new Intl.DateTimeFormat("en-US", { timeZone: tz }); return true; } catch { return false; } };
   const siteZone = validZone(timezone) ? timezone : (() => { try { const tz = Intl.DateTimeFormat().resolvedOptions().timeZone; return validZone(tz) ? tz : "UTC"; } catch { return "UTC"; } })();
   const rows = new Map();
   let seq = 0;
-  const calls = { topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [] };
+  // (cœur 0.15.0) `ctx.api.instances.pending/setUp` : mêmes règles que le cœur (setUp.ts), en mémoire. `requires` = les services déclarés par le module ([{ service, min?, optional? }] ou noms) ;
+  // `installedModules` = { id: { name, offers: [{ service, version? }], instances: n } } : les modules installés du site simulé. Par défaut rien n'est déclaré ni installé : tout est refusé.
+  const needsList = requires.map((r) => (typeof r === "string" ? { service: r, min: 1 } : { service: r.service, min: r.min ?? 1 }));
+  const setUpNeeds = (m) => needsList.filter((n) => (m.offers ?? []).some((o) => o.service === n.service && (o.version ?? 1) >= n.min));
+  const setUpOffers = () => (allowed && !allowed.has("instances.setup") ? [] : Object.entries(installedModules).filter(([id, m]) => id !== moduleId && !m.instances && setUpNeeds(m).length).map(([id, m]) => ({ module: id, name: m.name ?? id, services: setUpNeeds(m).map((n) => n.service) })));
+  const calls = { setUps: [], topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -294,7 +299,22 @@ export function fakeCtx(opts = {}) {
         calls.adminTheme.push(o ?? {});
         return { css: scheme === "auto" ? `${pick.light}@media (prefers-color-scheme: dark){${pick.dark}}` : pick[scheme], scheme, wordmark: { html: '<a class="cur-wordmark" data-curiosa-wordmark="" href="https://github.com/helldog136/Curiosa" rel="noopener">Curiosa</a>', css: ".cur-wordmark{font-style:italic;font-weight:600}" } };
       },
-      instances: { list: async () => instances },
+      instances: {
+        list: async () => instances,
+        pending: async () => setUpOffers(),
+        setUp: async (id) => {
+          calls.setUps.push(id);
+          if (allowed && !allowed.has("instances.setup")) { calls.denied.push("instances.setup"); return { ok: false, reason: "no-permission" }; }
+          if (!person) return { ok: false, reason: "no-person" };
+          if (person.role !== undefined && person.role !== "admin" && person.role !== "owner") return { ok: false, reason: "denied" };
+          const target = typeof id === "string" ? installedModules[id] : undefined;
+          if (!target) return { ok: false, reason: "not-installed" };
+          if (!setUpNeeds(target).length || id === moduleId) return { ok: false, reason: "undeclared" };
+          if (target.instances > 0) return { ok: true, state: "present" };
+          target.instances = 1; target.setUpBy = key;
+          return { ok: true, state: "created" };
+        },
+      },
       entries: { list: async (o) => { calls.entries.push(o); return entries; } },
     }, {
       // Ces trois capacités demandent une permission : sans elle, le simple fait d'y toucher échoue (voir l'option `permissions`).
