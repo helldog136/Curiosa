@@ -362,7 +362,7 @@ export const manifestSchema = z.object({
    * marche comme avant : aucun `minCore` n'est exigé. Voir core/dashboard/spec.ts et docs/CREATE-A-MODULE.md (« Tableau de bord »).
    */
   dashboard: dashboardSchema.optional(),
-  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files"])).default([]),
+  permissions: z.array(z.enum(["slots", "routes", "storage", "filters", "sections", "pages", "topics", "overlay", "mcp", "admin", "mail", "rawg", "privacy", "visitor.geolocation", "files", "instances.setup"])).default([]),
   /**
    * (0.4.0) Pièces d'APPARENCE que les skins peuvent restyler, et jetons de style propres au module (préfixe `--sk-m-<module>-`). Apparence seulement : jamais de contenu ni de
    * masquage (docs/SKINS.md §0, §8). Un cœur plus ancien ignore la clé : un module qui la déclare indique `minCore: "0.4.0"`.
