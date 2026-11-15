@@ -7,6 +7,28 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.18.0 — 2026-11-16
+
+**En bref.** Votre assistant IA peut envoyer une vidéo, un GIF, une image ou un son qu'il a fabriqué, par exemple pour une alerte de follow ou de raid. Seulement si une extension le propose et si vous lui en donnez le droit.
+
+**In short.** Your AI assistant can send a video, a GIF, a picture or a sound it made, for example for a follow or raid alert. Only when an extension offers it and you grant the right.
+
+### Des fichiers envoyés par votre assistant
+
+- **Rien ne change sans vous.** Le droit d'envoyer un fichier est désactivé par défaut. Vous le cochez outil par outil, dans Assistants IA, pour l'extension qui le propose.
+- **(English) Nothing changes without you.** The right to send a file is off by default. You tick it tool by tool, in AI assistants, for the extension that offers it.
+- **Chaque fichier est vérifié.** Le site lit le contenu du fichier, pas son nom : une vidéo webm ou mp4 lisible partout, 30 secondes et 1920 × 1080 au plus, 25 Mo au plus ; une image 5 Mo, un son 10 Mo. Un fichier qui cache autre chose derrière la vidéo est refusé.
+- **(English) Every file is checked.** The site reads the content of the file, not its name: a webm or mp4 video that plays everywhere, 30 seconds and 1920 × 1080 at most, 25 MB at most; a picture 5 MB, a sound 10 MB. A file that hides something else behind the video is refused.
+- **Tout est noté et limité.** Chaque envoi est écrit dans le journal avec le nom de l'assistant. Les assistants envoient 30 fichiers ou 250 Mo par jour au plus, tous ensemble.
+- **(English) Everything is logged and limited.** Every upload is written in the journal with the name of the assistant. Assistants send 30 files or 250 MB per day at most, all together.
+
+### Pour les développeurs
+
+- **`ctx.api.files.upload`** (`begin`, `chunk`, `finish`, `cancel`) in an MCP action that declares `"uploads": true` (needs the `files` permission; refused on a read-only or default-on action). Anywhere else it answers `not-allowed`. An older core strips the key and has no `upload`: test `typeof ctx.api.files.upload`.
+- **Two ways to send the bytes**: a one-time address `PUT /api/assistant-upload/<upload>.<secret>[?offset=n]` (8 MB per request) or base64 pieces of 700 000 bytes through the action. `finish` checks sha256, kind and container (`src/core/mediaProbe.ts`), stores the file owned by the instance (with size, duration and `alpha` for a transparent WebM); replaying it returns the same file.
+- **Limits**: staging outside `/uploads` for 30 minutes, 3 uploads open per access and 10 per site, one "content" slot of the access per upload, 30 files / 250 MB per 24 hours for all assistants, the module quota. Journal: `file.upload` with the access name.
+- **Test kit**: `fakeCtx({ assistantUploads: {} })` gives the same `files.upload` with the same check of the bytes (`checkAssistantFile`), and `ctx.putUpload()` plays the one-time address. See `docs/MODULES.md`, "Files an assistant sends".
+
 ## 0.17.0 — 2026-11-15
 
 **En bref.** Les éléments d'overlay restent lisibles sur n'importe quelle vidéo. Chaque élément a un onglet « Apparence » : lisibilité, texte clair ou sombre, fond, opacité, contour du texte et coins. Les alertes, dont le texte blanc était posé à nu sur la vidéo, ont maintenant un fond.

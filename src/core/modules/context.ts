@@ -81,9 +81,11 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
 }
 
 /** Journal central : ce contexte sert l'appel d'un assistant IA (action MCP du module) ; ses lignes porteront « assistant ». Aucun droit n'est ouvert. */
-export function asAssistant<T extends ModuleContext>(ctx: T, tokenName: string): T {
+export function asAssistant<T extends ModuleContext>(ctx: T, tokenName: string, uploads?: { tokenId?: string }): T {
   const c = CALLERS.get(ctx);
   if (c) c.assistant = String(tokenName).slice(0, 80);
+  // (core 0.18.0) Only for an action that declares `"uploads": true` (mcpProvider.ts): opens ctx.api.files.upload for THIS access, nothing else.
+  if (c && uploads?.tokenId) c.uploadsFor = { tokenId: uploads.tokenId, tokenName: String(tokenName).slice(0, 80) };
   return ctx;
 }
 

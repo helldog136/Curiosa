@@ -59,7 +59,7 @@ export const moduleActionProvider: McpToolProvider = {
           input: decl.input ?? { type: "object" },
           source: instance.key,
           instanceId: instance.id,
-          call: async (args, actor) => handler(asAssistant(await buildContext(mod, instance, config.defaultLocale), actor.name), validateArgs(decl.input, args), actor),
+          call: async (args, actor) => handler(asAssistant(await buildContext(mod, instance, config.defaultLocale), actor.name, decl.uploads === true ? { tokenId: actor.tokenId } : undefined), validateArgs(decl.input, args), actor),
           moduleId: mod.manifest.id,
         });
       }
