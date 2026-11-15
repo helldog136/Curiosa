@@ -3,6 +3,7 @@ import type { ResolvedElement } from "./resolve";
 import type { OverlayPageData } from "./model";
 import { OV_PARTS, ownerSurfaceCss, tokensCss } from "./tokens";
 import type { LoadedPayload } from "./skinLoad";
+import { appliedLook, lookCss } from "./appearance";
 
 /**
  * PAGE PUBLIQUE d'une page d'overlay (`/overlays/page/<secret>`), fabriquée ici en texte : une page nue, transparente, sans le moindre habillage du site, sans cookie,
@@ -75,6 +76,14 @@ if(C.state)setTimeout(tick,gap)})();`;
 const OWNER_SCRIPT = (css: string): string => `(function(){var css=${JSON.stringify(css).replace(/</g, "\\u003c")},SH=new WeakMap();function ap(f){try{var d=f.contentDocument,w=f.contentWindow;if(!d||!w||!d.documentElement||!w.CSSStyleSheet||d.adoptedStyleSheets===undefined)return;var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-owner","1")}catch(e){}}
 var f=document.querySelectorAll("iframe[data-follows]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
 
+/**
+ * (0.17.0) Appearance kit: adopts the sheet of each element that has one (appearance.ts) into its frame, marks the frame's root `data-ov-look`, then shows
+ * the frame (it waits hidden, so OBS never shows the element without its background for a moment). A frame that cannot be reached is shown anyway after 3 s.
+ * Emitted only when at least one element has a look: other pages are unchanged byte for byte.
+ */
+const LOOK_SCRIPT = (sheets: readonly string[]): string => `(function(){var L=${jsonForScript(sheets)},SH=new WeakMap();function ap(f){try{var css=L[+f.getAttribute("data-look")],d=f.contentDocument,w=f.contentWindow;if(css&&d&&w&&d.documentElement&&w.CSSStyleSheet&&d.adoptedStyleSheets!==undefined&&d.location.href!=="about:blank"){var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-look","1")}}catch(e){}f.style.opacity="1"}
+var f=document.querySelectorAll("iframe[data-look]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});setTimeout(function(){fr.style.opacity="1"},3000);try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
+
 const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, "");
 
 export type RenderInput = {
@@ -106,19 +115,24 @@ export function renderPage(i: RenderInput): string {
   if (!page.active) {
     return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page">${i.test ? `<div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>` : ""}${script}</body></html>`;
   }
+  const pageSide = { style: page.style, skin: !!(i.skin || page.look?.skin || page.look?.byContext?.enabled) };
+  const sheets: string[] = [];
   const frames = i.elements.map((r, idx) => {
     const { el } = r;
+    const applied = r.status === "ok" ? appliedLook(el.style, pageSide, !!r.follows) : null;
+    const look = applied ? sheets.push(lookCss(applied)) - 1 : -1;
     const label = `${r.title} · ${el.w}×${el.h} px`;
     const note = r.status === "ok" ? "" : ` <em>— ${esc(t(r.status === "missing" ? "overlay.page.gone" : `overlay.page.failed.${r.reason ?? "error"}`))}</em>`;
     // En direct, un élément manquant ou en échec reste un cadre VIDE et silencieux ; le détail n'est que dans le cadre de test.
     const iframe = r.status === "ok" && r.layout
-      ? `<iframe title="${esc(r.title)}" src="${esc(i.test && r.demoSrc ? r.demoSrc : r.src)}" data-live="${esc(r.src)}"${r.demoSrc ? ` data-demo="${esc(r.demoSrc)}"` : ""} sandbox="${FRAME_SANDBOX}" allow="autoplay" referrerpolicy="no-referrer" loading="eager" tabindex="-1"${r.follows ? ' data-follows="1"' : ""} style="${i.skin && r.follows ? "opacity:0;transition:opacity .2s;" : ""}left:${r.layout.offsetX}px;top:${r.layout.offsetY}px;width:${r.layout.iframeW}px;height:${r.layout.iframeH}px;transform:scale(${r.layout.scale})"></iframe>`
+      ? `<iframe title="${esc(r.title)}" src="${esc(i.test && r.demoSrc ? r.demoSrc : r.src)}" data-live="${esc(r.src)}"${r.demoSrc ? ` data-demo="${esc(r.demoSrc)}"` : ""} sandbox="${FRAME_SANDBOX}" allow="autoplay" referrerpolicy="no-referrer" loading="eager" tabindex="-1"${r.follows ? ' data-follows="1"' : ""}${look >= 0 ? ` data-look="${look}"` : ""} style="${(i.skin && r.follows) || look >= 0 ? "opacity:0;transition:opacity .2s;" : ""}left:${r.layout.offsetX}px;top:${r.layout.offsetY}px;width:${r.layout.iframeW}px;height:${r.layout.iframeH}px;transform:scale(${r.layout.scale})"></iframe>`
       : "";
     return `<div class="el" data-ov-region="element" data-ov-part="${r.status === "ok" ? "frame" : "empty"}" data-uid="${esc(el.uid)}" style="left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;z-index:${idx + 1}">${iframe}<div class="tf" data-ov-part="test-frame" style="--tc:hsl(${hue(idx)} 85% 62%)"><span class="lb" data-ov-part="label">${esc(label)}${note}</span></div></div>`;
   }).join("");
   void OV_PARTS;
+  const looks = sheets.length ? `<script nonce="${i.nonce}">${LOOK_SCRIPT(sheets)}</script>` : "";
   const own = page.style.background === "opaque" && i.elements.some((r) => r.status === "ok" && r.follows) ? `<script nonce="${i.nonce}">${OWNER_SCRIPT(ownerSurfaceCss(page.style))}</script>` : "";
-  return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"${i.test ? ' data-test="1"' : ""}><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page"><div class="stage" style="width:${page.width}px;height:${page.height}px">${frames}</div>${script}${own}</body></html>`;
+  return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"${i.test ? ' data-test="1"' : ""}><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page"><div class="stage" style="width:${page.width}px;height:${page.height}px">${frames}</div>${script}${own}${looks}</body></html>`;
 }
 
 /** Ensemble des chemins d'iframes à autoriser (pour la politique de sécurité). */

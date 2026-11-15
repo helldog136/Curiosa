@@ -1,4 +1,5 @@
 import { anchorRect, constrainRect, defaultRect, rescaleRect, type Anchor, type LayoutDecl, type Rect } from "./layout";
+import type { ElementStyle } from "./appearance";
 import { MAX_ELEMENTS_PER_PAGE, MIN_SIDE, MAX_SIDE, UID_RE, type OptionValue, type PageElement } from "./model";
 
 /**
@@ -17,10 +18,15 @@ export function newUid(taken: ReadonlySet<string>, random: () => number = Math.r
   }
 }
 
-export function addElement(list: readonly PageElement[], page: { width: number; height: number }, pick: { instance: string; element: string; decl: LayoutDecl; defaults: Record<string, OptionValue> }, uid: string): PageElement[] {
+export function addElement(list: readonly PageElement[], page: { width: number; height: number }, pick: { instance: string; element: string; decl: LayoutDecl; defaults: Record<string, OptionValue>; /** (0.17.0) The look a new element starts with ("Readable everywhere" for an element that follows the style). */ style?: ElementStyle }, uid: string): PageElement[] {
   if (list.length >= MAX_ELEMENTS_PER_PAGE) return [...list];
   const r = defaultRect(pick.decl, page, list.length);
-  return [...list, { uid, instance: pick.instance, element: pick.element, ...r, visible: true, options: { ...pick.defaults } }];
+  return [...list, { uid, instance: pick.instance, element: pick.element, ...r, visible: true, options: { ...pick.defaults }, ...(pick.style ? { style: { ...pick.style } } : {}) }];
+}
+
+/** (0.17.0) Sets the look of one element (null: follows the page again). */
+export function setLook(list: readonly PageElement[], uid: string, style: ElementStyle | null): PageElement[] {
+  return list.map((e) => { if (e.uid !== uid) return e; const { style: _old, ...rest } = e; void _old; return style && Object.keys(style).length ? { ...rest, style } : rest; });
 }
 
 export const removeElement = (list: readonly PageElement[], uid: string): PageElement[] => list.filter((e) => e.uid !== uid);

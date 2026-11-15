@@ -3,13 +3,14 @@ import { constrainRect, type Rect } from "./layout";
 import { checkOptions, keepOptions, type OptionCheck } from "./options";
 import { parseStyle } from "./tokens";
 import { checkTextScale } from "./textScale";
+import { checkElementStyle } from "./appearance";
 
 /**
  * Validation d'une page d'overlay reçue de l'éditeur (ou d'un import) : le navigateur n'est jamais cru sur parole. Pur : le catalogue des éléments disponibles
  * (modules actifs) et la page déjà enregistrée sont donnés en paramètres. Les cadres sont ramenés à ce que chaque comportement permet (mêmes fonctions que l'éditeur) ;
  * un élément dont le module a disparu et qui figurait déjà dans la page est conservé tel quel (cadre vide), jamais refusé.
  */
-export type Issue = { path: string; code: "textScale" | "name" | "resolution" | "tooMany" | "uid" | "duplicateUid" | "unknown" | "format" | "option"; option?: OptionCheck & { ok: false } };
+export type Issue = { path: string; code: "textScale" | "appearance" | "name" | "resolution" | "tooMany" | "uid" | "duplicateUid" | "unknown" | "format" | "option"; option?: OptionCheck & { ok: false } };
 export type PageValue = { name: string; width: number; height: number; style: OverlayStyle; elements: PageElement[] };
 
 export function cleanName(raw: unknown): string {
@@ -47,7 +48,9 @@ export function validatePageInput(raw: unknown, ctx: { catalog: Catalog; previou
     const rect: Rect = { x: num(item.x, 0), y: num(item.y, 0), w: num(item.w, 100), h: num(item.h, 100) };
     const scale = checkTextScale(item.textScale);
     if (!scale.ok) issues.push({ path: `elements.${uid}.textScale`, code: "textScale" });
-    const own = scale.ok && scale.value !== null ? { textScale: scale.value } : {};
+    const look = checkElementStyle(item.style);
+    if (!look.ok) issues.push({ path: `elements.${uid}.style.${look.field}`, code: "appearance" });
+    const own = { ...(scale.ok && scale.value !== null ? { textScale: scale.value } : {}), ...(look.ok && look.value ? { style: look.value } : {}) };
     if (entry) {
       const { values, errors } = checkOptions(entry.decl.options, item.options);
       for (const [id, e] of Object.entries(errors)) issues.push({ path: `elements.${uid}.options.${id}`, code: "option", option: e });

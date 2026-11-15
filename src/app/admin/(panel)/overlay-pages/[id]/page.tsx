@@ -27,6 +27,10 @@ const STRINGS = [
   "style.corners", "style.corners.round", "style.corners.square", "preview", "add", "pickSearch", "pickNone", "pickClear", "backToEdit", "live", "liveHelp", "count", "full", "noneAvailable", "cancel", "canvasHelp", "previewScale", "zoom", "zoomFit", "zoomX", "hidden", "gone", "goneHelp", "elements", "empty",
   "visible", "panel", "field.x", "field.y", "field.w", "field.h", "anchor", "anchorHelp", "margin", "front", "back", "up", "down", "options", "moreOptions", "noStyle", "remove", "removed", "added",
   "textSize.page", "textSize.pageHelp", "textSize.element", "textSize.elementHelp", "textSize.inherit", "textSize.small", "textSize.normal", "textSize.large", "textSize.tv", "textSize.other", "textSize.otherLabel", "textSize.bounds", "textSize.err", "textSize.note",
+  "tab.label", "tab.place", "tab.look", "tab.options", "look.preset", "look.presetHelp", "look.preset.readable", "look.preset.discreet", "look.preset.bare", "look.preset.page", "look.custom", "look.auto",
+  "look.autoNotice", "look.autoNotice.one", "look.autoNoticeHelp", "look.text", "look.text.auto", "look.text.light", "look.text.dark", "look.more", "look.background", "look.background.none", "look.background.soft",
+  "look.background.solid", "look.background.glass", "look.opacity", "look.opacityBounds", "look.opacityErr", "look.color", "look.colorReset", "look.outline", "look.outlineHelp", "look.outline.none", "look.outline.thin",
+  "look.outline.thick", "look.corners", "look.corners.page", "look.corners.round", "look.corners.square", "look.warn", "look.fix",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
 
@@ -102,6 +106,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
           limits={{ elements: MAX_ELEMENTS_PER_PAGE, fold: OPTIONS_FOLDED_AFTER, minSide: MIN_SIDE, maxSide: MAX_SIDE }}
           previewSrc={overlayPagePreviewHref(page.id)}
           strings={strings}
+          pageSkin={!!(page.look.skin || page.look.byContext.enabled)}
         />
       </ActionForm>
     </div>
