@@ -20,7 +20,7 @@ const manifest = (id, type = "social") => ({
   settings: [{ key: "profile", type: "text", label: { fr: "Adresse de votre profil", en: "Your profile address" } }],
 });
 const code = (id) => `export default { exports: { "social.link": (ctx) => { const v = String(ctx.setting("profile") ?? "").trim(); const m = new RegExp("^(?:https://${id}\\\\.example/)?([a-z0-9]+)$").exec(v); return m ? [{ label: "${id} · " + m[1], url: "https://${id}.example/" + m[1], icon: "${id}" }] : []; } } };`;
-async function install(id, type) { assert.equal((await installModule(makeRepo({ "module.json": manifest(id, type), "index.mjs": code(id) }).url, { dependencies: false })).ok, true); }
+async function install(id, type) { assert.equal((await installModule(makeRepo({ "module.json": manifest(id, type), "index.mjs": code(id) }).url, { firstInstance: false, dependencies: false })).ok, true); }
 async function login(role = "owner") {
   const u = await db.prisma.user.create({ data: { email: `${role}@example.org`, name: "Adam", role, passwordHash: "x" } });
   globalThis.curiosaTestSession = { user: { id: u.id, sv: 0 } };

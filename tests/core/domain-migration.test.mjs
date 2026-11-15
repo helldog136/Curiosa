@@ -36,7 +36,7 @@ const manifest = (id, over = {}) => ({
   ...over,
 });
 async function withModule(id, over = {}) {
-  assert.equal((await installModule(makeRepo({ "module.json": manifest(id, over), "index.mjs": "export default {};" }).url, { dependencies: false })).ok, true);
+  assert.equal((await installModule(makeRepo({ "module.json": manifest(id, over), "index.mjs": "export default {};" }).url, { firstInstance: false, dependencies: false })).ok, true);
   const mod = await R.getModule(id);
   const inst = await createInstance(prisma, { manifest: mod.manifest, names: L(id) });
   return inst;

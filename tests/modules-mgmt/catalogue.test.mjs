@@ -69,7 +69,7 @@ test("index reconnu : entrées invalides écartées (identifiant, dépôt non ht
 
 test("installation d'un module du catalogue : cloné à l'étiquette épinglée, actif, source git", async () => {
   await cat.fixtures(["demo-planner"]);
-  assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-planner")), { ok: true, id: "demo-planner" });
+  assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-planner", { firstInstance: false })), { ok: true, id: "demo-planner" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo-planner" } });
   assert.deepEqual([row.source, row.enabled, row.repoUrl, row.subdir], ["git", true, cat.https, "modules/demo-planner"]);
   assert.ok(row.commit);
@@ -79,18 +79,18 @@ test("installation d'un module du catalogue : cloné à l'étiquette épinglée,
 
 test("installation d'un module du catalogue : refus si déjà installé ou inconnu ; catalogue injoignable → erreur, rien d'installé", async () => {
   await cat.fixtures(["demo-planner"]);
-  await installFromCatalogue("demo-planner");
-  assert.equal((await installFromCatalogue("demo-planner")).error, "modules.error.exists");
-  assert.equal((await installFromCatalogue("inconnu")).error, "modules.error.notfound");
-  assert.equal((await installFromCatalogue("../../etc")).error, "modules.error.notfound", "pas d'évasion de chemin");
+  await installFromCatalogue("demo-planner", { firstInstance: false });
+  assert.equal((await installFromCatalogue("demo-planner", { firstInstance: false })).error, "modules.error.exists");
+  assert.equal((await installFromCatalogue("inconnu", { firstInstance: false })).error, "modules.error.notfound");
+  assert.equal((await installFromCatalogue("../../etc", { firstInstance: false })).error, "modules.error.notfound", "pas d'évasion de chemin");
   await cat.down({ forget: true });
-  assert.equal((await installFromCatalogue("demo-sponsors")).ok, false);
+  assert.equal((await installFromCatalogue("demo-sponsors", { firstInstance: false })).ok, false);
   assert.equal(await db.prisma.module.findUnique({ where: { id: "demo-sponsors" } }), null);
 });
 
 test("module du catalogue : mise à jour quand le catalogue publie une version, désinstallation complète", async () => {
   await cat.add("demo-banner", { manifest: { version: "1.0.0" } });
-  await installFromCatalogue("demo-banner");
+  await installFromCatalogue("demo-banner", { firstInstance: false });
   assert.equal((await checkForUpdate("demo-banner")).available, false, "à jour au départ");
   await cat.add("demo-banner", { manifest: { version: "1.1.0" }, marker: "v2" });
   const check = await checkForUpdate("demo-banner");
@@ -118,9 +118,9 @@ test("origine d'un module : catalogue (dépôt reconnu à l'adresse annoncée), 
 
 test("dépôt personnel : installable (non vérifié) ; un dépôt reconnu ne peut pas servir un autre module que celui annoncé", async () => {
   const repo = makeRepo({ "module.json": base({ id: "perso" }) });
-  assert.equal((await installModule(repo.url, { expectId: "attendu" })).error, "modules.error.idmismatch");
+  assert.equal((await installModule(repo.url, { firstInstance: false, expectId: "attendu" })).error, "modules.error.idmismatch");
   assert.equal(await db.prisma.module.findUnique({ where: { id: "perso" } }), null, "rien d'installé");
-  assert.deepEqual(withoutI18nNote(await installModule(repo.url, { expectId: "perso" })), { ok: true, id: "perso" });
+  assert.deepEqual(withoutI18nNote(await installModule(repo.url, { firstInstance: false, expectId: "perso" })), { ok: true, id: "perso" });
 });
 
 test("installation depuis le catalogue : inconnu, incompatible → refus ; listé → installé", async () => {
@@ -129,8 +129,8 @@ test("installation depuis le catalogue : inconnu, incompatible → refus ; list�
   const realFetch = globalThis.fetch;
   globalThis.fetch = indexOf([{ id: "ancien", name: "A", description: "", repo: "https://github.com/x/ancien", apiVersion: 1 }]);
   try {
-    assert.equal((await installFromCatalogue("nexiste-pas")).error, "modules.error.notfound");
-    assert.equal((await installFromCatalogue("ancien")).error, "modules.error.incompatible");
-    assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-sponsors")), { ok: true, id: "demo-sponsors" });
+    assert.equal((await installFromCatalogue("nexiste-pas", { firstInstance: false })).error, "modules.error.notfound");
+    assert.equal((await installFromCatalogue("ancien", { firstInstance: false })).error, "modules.error.incompatible");
+    assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-sponsors", { firstInstance: false })), { ok: true, id: "demo-sponsors" });
   } finally { globalThis.fetch = realFetch; }
 });

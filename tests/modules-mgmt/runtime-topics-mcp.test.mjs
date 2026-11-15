@@ -68,8 +68,8 @@ const CONSUMER = {
 };
 
 async function setup() {
-  await installModule(makeRepo(PROVIDER).url);
-  await installModule(makeRepo(CONSUMER).url);
+  await installModule(makeRepo(PROVIDER).url, { firstInstance: false });
+  await installModule(makeRepo(CONSUMER).url, { firstInstance: false });
 
 
   const mk = async (id, nickname) => {
@@ -191,7 +191,7 @@ test("sujets : un consommateur ne peut collecter que ce qu'il a déclaré", asyn
 
 test("sujets : un fournisseur en panne n'empêche pas les autres d'alimenter le consommateur", async () => {
   const { c } = await setup();
-  await installModule(makeRepo({ "module.json": base({ id: "cass", name: "Cassé", provides: [{ topic: "demo.item" }], main: "index.mjs" }), "index.mjs": `export default { exports: { "demo.item": () => { throw new Error("panne"); } } };` }).url);
+  await installModule(makeRepo({ "module.json": base({ id: "cass", name: "Cassé", provides: [{ topic: "demo.item" }], main: "index.mjs" }), "index.mjs": `export default { exports: { "demo.item": () => { throw new Error("panne"); } } };` }).url, { firstInstance: false });
 
   const mod = await R.getModule("cass");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { en: "Cassé" } });

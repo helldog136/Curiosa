@@ -40,8 +40,8 @@ const provider = (id) => ({ "module.json": base({ id, name: id, provides: [{ top
 const CONSUMER = { "module.json": base({ id: "plan", name: "Plan", consumes: [{ topic: "calendar.event", label: "Évènements", schema: EVENT }], main: "index.mjs" }), "index.mjs": "export default {};" };
 
 async function setup(...providers) {
-  for (const id of providers) { await installModule(makeRepo(provider(id)).url);await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, names: { en: id } }); }
-  await installModule(makeRepo(CONSUMER).url);
+  for (const id of providers) { await installModule(makeRepo(provider(id)).url, { firstInstance: false });await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, names: { en: id } }); }
+  await installModule(makeRepo(CONSUMER).url, { firstInstance: false });
   await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { en: "Plan" } });
   return (await R.getActiveInstances()).find((a) => a.mod.manifest.id === "plan");
 }

@@ -54,7 +54,7 @@ function publish(over = {}, id = "planning") {
 async function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = true } = {}) {
   const repo = makeRepo({ "module.json": manifest({ id, ...m }), ...Object.fromEntries(Object.entries(files).map(([n, c]) => [n, c])) });
   repos.set(id, repo);
-  assert.equal((await I.installModule(repo.url)).ok, true);
+  assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
   if (!enabled) await db.prisma.module.update({ where: { id }, data: { enabled } });
   return row(id);
 }
@@ -137,7 +137,7 @@ test("un fichier secondaire modifié est rechargé avec le reste : plus aucun re
 
 test("module git en sous-dossier : code identique, puis différent sous le même numéro ; commit et empreinte git suivent", async () => {
   const repo = makeRepo({ "carnet/module.json": manifest({ id: "carnet" }), "carnet/index.mjs": code("v1"), "autre/x.txt": "x" });
-  assert.equal((await I.installModule(`${repo.url}#:carnet`)).ok, true);
+  assert.equal((await I.installModule(`${repo.url}#:carnet`, { firstInstance: false })).ok, true);
   const first = await row("carnet");
   const same = await X.reinstallModule("carnet");
   assert.equal(same.ok, true); assert.equal(same.changed, false);
@@ -165,7 +165,7 @@ test("module git en sous-dossier : code identique, puis différent sous le même
 
 test("module git à la racine d'un dépôt : le dossier garde son .git", async () => {
   const repo = makeRepo({ "module.json": manifest({ id: "racine" }), "index.mjs": code("v1") });
-  assert.equal((await I.installModule(repo.url)).ok, true);
+  assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
   fs.writeFileSync(path.join(installed("racine"), "index.mjs"), code("vieux"));
   const r = await X.reinstallModule("racine");
   assert.equal(r.ok, true); assert.equal(r.changed, true);
@@ -207,7 +207,7 @@ test("refus : inconnu, sans source, mise à jour du site en cours, autre identif
 
 test("refus : le dépôt sert un autre module que celui installé", async () => {
   const repo = makeRepo({ "module.json": manifest({ id: "carnet" }), "index.mjs": code("v1") });
-  await I.installModule(repo.url);
+  await I.installModule(repo.url, { firstInstance: false });
   const hash = X.fingerprintDir(installed("carnet")).hash;
   fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(manifest({ id: "intrus" })));
   repo.g("commit", "-qam", "autre id");
@@ -242,7 +242,7 @@ test("échec en cours d'échange : retour arrière complet (fichiers et base), l
 
 test("échec d'écriture de la base après l'échange : les fichiers et la ligne du module reviennent", async () => {
   const repo = makeRepo({ "module.json": manifest({ id: "carnet", version: "1.0.0" }), "index.mjs": code("v1") });
-  await I.installModule(repo.url);
+  await I.installModule(repo.url, { firstInstance: false });
   fs.writeFileSync(path.join(installed("carnet"), "index.mjs"), code("vieux"));
   const hash = X.fingerprintDir(installed("carnet")).hash;
   const real = db.prisma.module.update;

@@ -26,6 +26,14 @@ export async function register() {
   } catch (error) {
     console.error("[modules] recovery failed:", (error as Error)?.message);
   }
+  // Modules déjà installés sans aucune copie (0.16.0) : une première instance, une seule fois, pour la classe sûre seulement (firstInstances.ts). Ne lève jamais.
+  try {
+    const { runFirstInstances } = await import("@/core/modules/firstInstances");
+    const r = await runFirstInstances();
+    if (r.created.length) console.log(`[modules] first instance created at startup: ${r.created.join(", ")}`);
+  } catch (error) {
+    console.error("[modules] first-instance pass failed:", (error as Error)?.message);
+  }
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();
