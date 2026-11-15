@@ -25,7 +25,7 @@ export default { tasks: {
 } };`;
 async function setup() {
   const repo = makeRepo({ "module.json": { apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" }, "index.mjs": CODE });
-  assert.equal((await installModule(repo.url)).ok, true);
+  assert.equal((await installModule(repo.url, { firstInstance: false })).ok, true);
 
   return createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
 }

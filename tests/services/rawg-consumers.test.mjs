@@ -49,7 +49,7 @@ else {
     await cat.add(id, { manifest, files: readTree(dir), entry: { offers: manifest.offers?.map((o) => ({ service: o.service, version: o.version ?? 1 })) } });
   };
   const install = async (id) => {
-    const r = await I.installFromCatalogue(id);
+    const r = await I.installFromCatalogue(id, { firstInstance: false });
     assert.equal(r.ok, true, `${id} : ${r.error}`);
     await ensureDefaultInstance(id);
   };

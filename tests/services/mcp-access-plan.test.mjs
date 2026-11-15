@@ -155,6 +155,8 @@ test("module_install {modules}: ONE request the owner approves as a whole; the o
   assert.equal(done.ok, true, done.message);
   assert.deepEqual((await db.prisma.module.findMany()).map((m) => m.id).sort(), ["atelier", "carnet", "journal"]);
   assert.deepEqual((await db.prisma.moduleInstance.findMany()).map((i) => i.moduleId).sort(), ["atelier", "carnet", "journal"]);
+  // One first instance per module, created by the install itself (not twice by a second step), each logged once.
+  assert.equal((await db.prisma.auditLog.findMany({ where: { action: "instance.create" } })).length, 2, "the two modules asked for; the one brought along is logged as installed automatically");
   assert.equal((await Q.getRequest(r.requestId)).status, "done");
 });
 

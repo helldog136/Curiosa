@@ -43,7 +43,7 @@ async function snapshot() {
 /** Un site à jour : un module du catalogue installé, une instance, un réglage, une donnée. */
 async function currentSite() {
   await cat.add("carnet", { manifest: { version: "1.0.0" }, marker: "v1" });
-  assert.equal((await I.installFromCatalogue("carnet")).ok, true);
+  assert.equal((await I.installFromCatalogue("carnet", { firstInstance: false })).ok, true);
   const inst = await createInstance(prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "Carnet", names: { fr: "Carnet" } });
   await setSetting(`instance.${inst.id}.titre`, "Mon carnet");
   await prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "items", data: JSON.stringify({ t: "x" }) } });

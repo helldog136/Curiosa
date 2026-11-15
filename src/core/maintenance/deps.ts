@@ -51,7 +51,7 @@ export type MaintenanceDeps = {
   /** Le module.json d'un module du catalogue, lu SANS l'installer (clone superficiel, 10 min de cache, comme la fiche de l'admin). Lève si le dépôt est refusé ou injoignable. */
   preview(entry: Pick<CatalogueEntry, "repo" | "ref" | "subdir">): Promise<ModulePreview | null>;
   /** Installe un module du catalogue (jamais d'une source non vérifiée : `confirmExtra` n'est jamais passé), avec les fournisseurs qui lui manquent. */
-  installFromCatalogue(id: string): Promise<InstallResult>;
+  installFromCatalogue(id: string, opts?: { instanceKey?: string }): Promise<InstallResult>;
   /** Borne dure (ms) des lectures réseau du catalogue : au-delà, la réponse dit « injoignable pour l'instant ». */
   catalogTimeoutMs: number;
   /** How long a tool call waits for a long action before answering "started" (ms; never more than 20 s, see background.ts). */
@@ -79,7 +79,7 @@ export const realDeps = (): MaintenanceDeps => ({
     const target = targetOf(entry);
     return target ? getModulePreview(target) : null;
   },
-  installFromCatalogue: (id) => installFromCatalogue(id),
+  installFromCatalogue: (id, opts) => installFromCatalogue(id, opts),
   catalogTimeoutMs: 20_000,
   quickWaitMs: 8_000,
   checkTimeoutMs: 5_000,

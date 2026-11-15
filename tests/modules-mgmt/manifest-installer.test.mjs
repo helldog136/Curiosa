@@ -126,7 +126,7 @@ const SIMPLE = (over = {}) => ({ "module.json": base({ main: "index.mjs", ...ove
 
 test("installation : installé = actif, il n'y a pas d'état intermédiaire", async () => {
   const repo = makeRepo(SIMPLE());
-  const r = withoutI18nNote(await installModule(repo.url));
+  const r = withoutI18nNote(await installModule(repo.url, { firstInstance: false }));
   assert.deepEqual(r, { ok: true, id: "demo" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo" } });
   assert.equal(row.enabled, true);
@@ -137,7 +137,7 @@ test("installation : installé = actif, il n'y a pas d'état intermédiaire", as
 });
 
 test("installation : charge réellement le code, la désinstallation le retire des modules chargés", async () => {
-  await installModule(makeRepo(SIMPLE()).url);
+  await installModule(makeRepo(SIMPLE()).url, { firstInstance: false });
   const mod = (await R.getInstalledModules()).find((m) => m.manifest.id === "demo");
   assert.ok(mod);
   assert.equal(typeof mod.def.sections.hello, "function");
@@ -149,12 +149,12 @@ test("installation : charge réellement le code, la désinstallation le retire d
 
 test("installation : refus d'un module déjà installé, sans manifeste ou invalide", async () => {
   const repo = makeRepo(SIMPLE());
-  assert.equal((await installModule(repo.url)).ok, true);
-  assert.equal((await installModule(repo.url)).error, "modules.error.exists");
-  assert.equal((await installModule(makeRepo({ "readme.md": "x" }).url)).error, "modules.error.nomanifest");
-  const bad = await installModule(makeRepo({ "module.json": base({ id: "autre", version: "x" }) }).url);
+  assert.equal((await installModule(repo.url, { firstInstance: false })).ok, true);
+  assert.equal((await installModule(repo.url, { firstInstance: false })).error, "modules.error.exists");
+  assert.equal((await installModule(makeRepo({ "readme.md": "x" }).url, { firstInstance: false })).error, "modules.error.nomanifest");
+  const bad = await installModule(makeRepo({ "module.json": base({ id: "autre", version: "x" }) }).url, { firstInstance: false });
   assert.ok(!bad.ok); assert.match(bad.error, /^module\.json:/);
-  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "sansmain", main: "absent.mjs" }) }).url)).error, "modules.error.nomain");
+  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "sansmain", main: "absent.mjs" }) }).url, { firstInstance: false })).error, "modules.error.nomain");
 });
 
 test("installation : un module contenant un lien symbolique est refusé, rien n'est laissé sur le disque", async () => {
@@ -162,14 +162,14 @@ test("installation : un module contenant un lien symbolique est refusé, rien n'
   fs.symlinkSync("/etc/passwd", path.join(repo.dir, "passwd"));
   repo.g("add", "-A"); repo.g("commit", "-q", "-m", "link");
   const log = console.error; console.error = () => {};
-  try { assert.equal((await installModule(repo.url)).ok, false); } finally { console.error = log; }
+  try { assert.equal((await installModule(repo.url, { firstInstance: false })).ok, false); } finally { console.error = log; }
   assert.equal(fs.existsSync(path.join(MODULES_DIR, "lien")), false);
   assert.equal(await db.prisma.module.findUnique({ where: { id: "lien" } }), null);
 });
 
 test("installation : un dépôt introuvable échoue proprement", async () => {
   const log = console.error; console.error = () => {};
-  try { assert.equal((await installModule("file:///n/existe/pas")).error, "modules.error.clone"); } finally { console.error = log; }
+  try { assert.equal((await installModule("file:///n/existe/pas", { firstInstance: false })).error, "modules.error.clone"); } finally { console.error = log; }
 });
 
 test("installation : une référence (branche) est respectée", async () => {
@@ -177,13 +177,13 @@ test("installation : une référence (branche) est respectée", async () => {
   repo.g("checkout", "-q", "-b", "dev");
   fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(base({ id: "branche", main: "index.mjs", version: "2.0.0" })));
   repo.g("commit", "-qam", "dev");
-  assert.equal((await installModule(repo.url + "#dev")).ok, true);
+  assert.equal((await installModule(repo.url + "#dev", { firstInstance: false })).ok, true);
   assert.equal((await db.prisma.module.findUnique({ where: { id: "branche" } })).version, "2.0.0");
 });
 
 test("mises à jour : détection d'un nouveau commit puis application", async () => {
   const repo = makeRepo(SIMPLE());
-  await installModule(repo.url);
+  await installModule(repo.url, { firstInstance: false });
   assert.equal((await checkForUpdate("demo")).available, false);
   fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(base({ main: "index.mjs", version: "1.1.0" })));
   repo.g("commit", "-qam", "v1.1");
@@ -199,7 +199,7 @@ test("mises à jour : détection d'un nouveau commit puis application", async ()
 });
 
 test("désinstallation : supprime fichiers, instances, réglages et données du module, rien d'autre", async () => {
-  await installModule(makeRepo(SIMPLE()).url);
+  await installModule(makeRepo(SIMPLE()).url, { firstInstance: false });
 
   const inst = await db.prisma.moduleInstance.create({ data: { moduleId: "demo", key: "demo", basePath: "demo" } });
   await db.prisma.setting.create({ data: { key: `instance.${inst.id}.x`, locale: "", value: "1" } });
@@ -218,8 +218,8 @@ test("désinstallation : supprime fichiers, instances, réglages et données du 
 test("registre : un module cassé est ignoré sans casser les autres", async () => {
   await db.fixture("blog");
   // Un module qui ne se charge pas n'est plus installé (contrôle de chargement) : il casse APRÈS coup (fichier abîmé sur le disque).
-  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "throw new Error('boum');" }).url)).error, "modules.error.loadCheck");
-  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "export default {};" }).url)).ok, true);
+  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "throw new Error('boum');" }).url, { firstInstance: false })).error, "modules.error.loadCheck");
+  assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "export default {};" }).url, { firstInstance: false })).ok, true);
   fs.writeFileSync(path.join(R.moduleDir("casse"), "index.mjs"), "throw new Error('boum');");
   R.forgetModule("casse");
   await db.prisma.module.update({ where: { id: "casse" }, data: { enabled: true } });
