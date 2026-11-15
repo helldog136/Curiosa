@@ -7,6 +7,41 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.17.0 — 2026-11-15
+
+**En bref.** Les éléments d'overlay restent lisibles sur n'importe quelle vidéo. Chaque élément a un onglet « Apparence » : lisibilité, texte clair ou sombre, fond, opacité, contour du texte et coins. Les alertes, dont le texte blanc était posé à nu sur la vidéo, ont maintenant un fond.
+
+**In short.** Overlay elements stay readable on any video. Each element has an "Appearance" tab: readability, light or dark text, background, opacity, text outline and corners. Alerts, whose white text sat bare on the video, now have a background.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Seuls les éléments illisibles changent.** Sur une page d'overlay au fond « Transparent » et sans skin, un élément qui suit le style commun et que vous n'avez pas réglé reçoit « Lisible partout » : un fond sombre à 85 % et un contour fin autour du texte. C'est le cas des alertes.
+- **(English) Only unreadable elements change.** On an overlay page with a "Transparent" background and no skin, an element that follows the common style and that you have not set gets "Readable everywhere": a dark background at 85 % and a thin outline around the text. Alerts are such an element.
+- **Le reste ne bouge pas.** Une page au fond « Semi-transparent » ou « Opaque », une page avec un skin et un élément qui garde sa propre apparence (le labyrinthe) s'affichent exactement comme avant. L'éditeur indique combien d'éléments ont reçu un fond.
+- **(English) Everything else stays.** A page with a "Semi-transparent" or "Opaque" background, a page with a skin, and an element that keeps its own look (the maze) show exactly as before. The editor tells you how many elements got a background.
+- **Revenir à un élément sans fond.** Dans l'onglet « Apparence » de l'élément, choisissez « Sans fond, texte détouré ». Le texte garde un contour pour rester lisible.
+- **(English) Going back to no background.** In the element's "Appearance" tab, choose "No background, outlined text". The text keeps an outline so it stays readable.
+
+### L'apparence de chaque élément
+
+- **Trois onglets par élément.** « Place » (position, taille, taille du texte), « Apparence » et « Options » (les réglages propres à l'extension).
+- **(English) Three tabs per element.** "Place" (position, size, text size), "Appearance" and "Options" (the settings of the extension itself).
+- **Deux choix suffisent.** « Lisibilité » propose Lisible partout, Discret, Sans fond, texte détouré, ou Comme la page ; « Texte », Auto (la couleur la plus lisible), Clair ou Sombre. Le fond, son opacité et sa couleur, le contour du texte et les coins sont sous « Plus d'options ».
+- **(English) Two choices are enough.** "Readability": Readable everywhere, Discreet, No background with outlined text, or Like the page. "Text": Auto, Light or Dark; Auto picks the most readable colour on the background. The background, its opacity and colour, the text outline and the corners are under "More options".
+- **Un nouvel élément est lisible d'office.** Un élément que vous ajoutez démarre en « Lisible partout ».
+- **(English) A new element is readable from the start.** An element you add starts in "Readable everywhere".
+- **Un avertissement, jamais un blocage.** Si vos choix rendent le texte difficile à lire sur une vidéo claire, l'élément affiche « Peu lisible sur une vidéo claire » avec un bouton « Corriger ». Sous 65 % d'opacité, un contour du texte est toujours ajouté.
+- **(English) A warning, never a block.** If your choices make the text hard to read over a bright video, the element shows "Hard to read over a bright video" with a "Fix" button. Under 65 % opacity, a text outline is always added.
+
+### Pour les développeurs
+
+- **Appearance kit** (`src/core/overlays/appearance.ts`, pure): `elements[].style = { preset?, text?, background?, opacity?, color?, outline?, corners? }`, only what is set is stored. `lookCss()` compiles the sheet the public page adopts into the element frame (tokens `!important` on `html, html *`, containers and text parts mapped like skins), never on the frame nor `html`/`body`.
+- **Priority**: module fallback < skin < page style < element style. No module change needed; see `docs/OVERLAY-ELEMENTS.md`, "Appearance kit of each element".
+- **Exactly which elements change on existing pages**: an element with `followsStyle: true`, no `style`, on a page whose `style.background` is `transparent` and with no skin (`look.skin` null and skin per context off). Every other page renders byte for byte as with 0.16.0 (test `overlay-appearance.test.mjs` against hashes of the 0.16.0 output).
+- **Readability**: worst case over pure white and pure black. White on black needs 54 % for 4.5:1 and 65 % for 7:1: under 65 % the outline is forced. `readabilityOf()` (editor warning below 4.5:1 without outline), `accentFor()` (an accent kept at 3:1 or more; not yet applied to module accents).
+- **Going back to an older core**: it displays the page as before 0.17.0, but the next save there drops the `style` of each element.
+- Validation: `elements.<uid>.style.<field>` errors (`ovp.err.lookOpacity`, `lookColor`, `lookChoice`). No MCP tool added in this version.
+
 ## 0.16.0 — 2026-11-15
 
 **En bref.** Une extension installée a tout de suite sa première copie : plus de « Mettre en place » à cliquer pour qu'un élément d'overlay apparaisse. Les extensions déjà installées sans copie en reçoivent une, dans un cas précis seulement.

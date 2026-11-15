@@ -1,0 +1,29 @@
+{
+ "_about": "SHA-256 of renderPage() output of core 0.16.0 for the fixture pages built in tests/core/overlay-appearance.test.mjs (buildFixture). Generated once from the 0.16.0 code; never regenerate from a newer core.",
+ "hashes": {
+  "transparent-light-plain-live": "02fc094274e3ce4e2e0d8679872c4d034ff060166c66561299bc3a2f22a4dd80",
+  "transparent-light-plain-test": "0407bbe86f23e9666bb353ebf52c7e4adc35edb92706dab5828b36e347a36f27",
+  "transparent-light-skin-live": "1b4484b02c8116bbab474bf843fdc57bbfe99ae69b0369e0c7a6692f6a3d8012",
+  "transparent-light-skin-test": "59df0c21880aae451e68a541f2b13f760be1fbdd3189ecd59d1ab7ce75040c4b",
+  "transparent-dark-plain-live": "0e09ff282b042366f4d97d5094c4274af3aa3981a826652c171d3ffe604999ca",
+  "transparent-dark-plain-test": "24cc329463aa86b3568020375495a413c7df9cebebca7fc8dca1deefa2c38656",
+  "transparent-dark-skin-live": "531cd4d8d1cca887f0bbf1e24981453d72d55dd2c8ea80dee53466b992c043fc",
+  "transparent-dark-skin-test": "48796b8a67e485bab4332990dc09c8a4306b04608029fd016436c757f2e8bbbd",
+  "soft-light-plain-live": "60d48254a1893c20c3e8069d01aae297c52a78fc9bc128bb06127aec1db436ce",
+  "soft-light-plain-test": "b1adef0dc48b29093a1b8c3403451e101b47b4d878448a0dfb918ebcaa2be593",
+  "soft-light-skin-live": "94f8cbc3dd8cd049519cfc60046764d16052b19972d112a36960641b8a93f5b1",
+  "soft-light-skin-test": "3469356030003f653bad21c45d00238199f138780c75a54035b720ee83fd5f9d",
+  "soft-dark-plain-live": "1c1d3c74b68af41332d724b76d7bcdd3fd903e99b612fdc0ca18a1d065aca919",
+  "soft-dark-plain-test": "f2a4108270151e0e4162c6cf80e3499ff334b199b09cbc2f28fd82e7c6698b32",
+  "soft-dark-skin-live": "15e215614e5d1a77ef5e33f568b5609c2c78b7a46260f8c50841651c58d95053",
+  "soft-dark-skin-test": "3da7db0cfb1607dfb4c94e4e6898e109fa281f7267d591b6e6092f27052dbcbb",
+  "opaque-light-plain-live": "d3727b7688d4f05d87c37e811be541bdde018d79e096b6ab8090fadd413772dd",
+  "opaque-light-plain-test": "59446055049cfa6cab7a8ce786c422ce918713a7bde019f848c2a66cf14c23ef",
+  "opaque-light-skin-live": "4a97027c21d6764c92f0ca7d69dfcbacfc23d7ffc93620679c4d265fedc540bb",
+  "opaque-light-skin-test": "c0c3c70f29a28dd8af3f9869111cd986eb7f1573a810d5d018ba5d1d9ae2574c",
+  "opaque-dark-plain-live": "056083b92c27e976f900e75a0ed1359a3747f107c01da53efbf89447666b848b",
+  "opaque-dark-plain-test": "34dc87fe0ead77bf912073d060ff7d4631a7cdae887df9b8931db45c02ed422d",
+  "opaque-dark-skin-live": "a0b056eb1fd334e26b5146295bbe0e2c0f03f68047abb4bfa011726b5871a768",
+  "opaque-dark-skin-test": "d15befe367b2ed9887271acd0509b625625a9c00956ebe6e4d26a184f4632374"
+ }
+}

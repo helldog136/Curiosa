@@ -1,5 +1,6 @@
 import type { OverlayElementDecl } from "./decl";
 import type { PageLook } from "./look";
+import type { ElementStyle } from "./appearance";
 
 /**
  * PAGES D'OVERLAY (0.5.0) : types et bornes dures. Pur, sans base ni Next : testé directement.
@@ -43,6 +44,8 @@ export type PageElement = {
   options: OptionValues;
   /** (0.11.0) Text size of this element in percent (50 to 300). Absent = the page's text size (textScale.ts). */
   textScale?: number;
+  /** (0.17.0) Appearance kit of this element (appearance.ts). Absent = follows the page (with the readability fix of a transparent page without skin). */
+  style?: ElementStyle;
 };
 
 export type OverlayPageData = {
