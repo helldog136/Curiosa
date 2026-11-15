@@ -13,6 +13,7 @@ import { qrSvg } from "@/core/services/qr";
 import { relayedCandidates, relayedConfigured, relayedCover } from "@/core/services/rawgRelay";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
+import { beginUpload, cancelUpload, finishUpload, uploadChunk } from "@/core/services/assistantUploads";
 import { claimFile, filesUsage, FILES_QUOTA_BYTES, FILES_QUOTA_COUNT, ownsFile, removeFile, type FileOwner } from "@/core/services/files";
 import { collect, collectPage } from "@/core/services/topics";
 import { getSiteConfig } from "@/core/settings";
@@ -61,6 +62,11 @@ export type CallerRef = {
   uploader?: AdminUser | null;
   /** Journal central : nom du jeton d'un assistant IA qui appelle une action MCP du module (n'ouvre AUCUN droit : voir `asAssistant` dans context.ts). */
   assistant?: string | null;
+  /**
+   * (core 0.18.0) Set by the core ONLY for an MCP call of an action that declares `"uploads": true` (mcpProvider.ts): the access (token) that calls. It opens
+   * `ctx.api.files.upload` and nothing else (no `ctx.can`, no claim of a person's upload).
+   */
+  uploadsFor?: { tokenId: string; tokenName: string } | null;
 };
 
 /** Qui agit, DÉDUIT par le cœur (jamais fourni par le module) : la personne connectée, un assistant IA ou, sinon, le module lui-même (le « système » est réservé aux écritures du cœur). */
@@ -155,6 +161,21 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
         if (!filesAllowed) return { files: 0, bytes: 0, limitFiles: 0, limitBytes: 0 };
         try { return await filesUsage(instance.moduleId); } catch { return { files: 0, bytes: 0, limitFiles: FILES_QUOTA_COUNT, limitBytes: FILES_QUOTA_BYTES }; }
       },
+      // (core 0.18.0) A file sent by an AI assistant: only in an MCP action that declares `"uploads": true`, for the access that calls (services/assistantUploads.ts).
+      upload: (() => {
+        const refuse = { ok: false as const, reason: "not-allowed" as const, message: "Uploading is not possible here: only a tool of this module that declares uploads, called by an assistant the owner allowed." };
+        const gate = <I, R>(run: (who: { tokenId: string; tokenName: string }, input: I) => Promise<R>) => async (input: I): Promise<R | typeof refuse> => {
+          const who = caller?.uploadsFor;
+          if (!filesAllowed || !who) return refuse;
+          try { return await run(who, (input ?? {}) as I); } catch (error) { console.error("[files.upload]", error); return { ok: false, reason: "failed", message: "The upload failed on the site. Try again; if it fails again, tell the owner." } as unknown as R; }
+        };
+        return {
+          begin: gate((who, input: Parameters<typeof beginUpload>[2]) => beginUpload(who, fileOwner, input)),
+          chunk: gate((who, input: Parameters<typeof uploadChunk>[2]) => uploadChunk(who, fileOwner, input)),
+          finish: gate((who, input: Parameters<typeof finishUpload>[2]) => finishUpload(who, fileOwner, input)),
+          cancel: gate((who, input: Parameters<typeof cancelUpload>[2]) => cancelUpload(who, fileOwner, input)),
+        };
+      })() as ModuleApi["files"]["upload"],
     },
     mail: { configured: isMailConfigured, send: (message) => sendMail(message, instance.key) },
     // DÉPRÉCIÉ depuis la 0.3.0 (voir services/rawgRelay.ts). Les jaquettes sont le service `game.cover` du module « Jaquettes de jeux » : les anciens modules (permission « rawg »)

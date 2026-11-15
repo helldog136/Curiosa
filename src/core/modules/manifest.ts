@@ -260,7 +260,7 @@ export const manifestSchema = z.object({
     title: localized,
     help: localized.optional(),
   })).max(5).optional(),
-  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
+  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), uploads: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !a.uploads || (!a.readOnly && a.default !== true), "an action that receives uploads (uploads: true) writes: it cannot be read-only nor enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   /**
    * (core after 0.6.6) Per-language overlay for the few texts that older cores read as a plain English string: `{ "fr": { "mcp.<tool>": "..." } }` translates the
    * description of an MCP tool. Every other text is already `{ "en": "...", "fr": "..." }`. Additive: an older core ignores the key (the English string is used).
@@ -415,6 +415,8 @@ export const manifestSchema = z.object({
     if (!hasPage(m)) ctx.addIssue({ code: "custom", path: ["pageSetting"], message: "pageSetting needs a module with a public page (page: true)" });
   }
   const tools = new Set((m.mcp ?? []).map((t) => t.name));
+  // (core 0.18.0) An assistant upload is kept by the module (ctx.api.files.upload): it needs the "files" permission, like files.claim.
+  if ((m.mcp ?? []).some((t) => t.uploads) && !m.permissions.includes("files")) ctx.addIssue({ code: "custom", path: ["mcp"], message: "an action with uploads: true needs the \"files\" permission" });
   for (const [lang, table] of Object.entries(m.i18n ?? {})) for (const key of Object.keys(table)) if (!tools.has(key.slice(4))) ctx.addIssue({ code: "custom", path: ["i18n", lang, key], message: `"${key}" does not match any tool of "mcp"` });
   if (m.sitemapFromPage && !hasPage(m)) ctx.addIssue({ code: "custom", path: ["sitemapFromPage"], message: "sitemapFromPage needs a module with a public page (page: true)" });
   for (const issue of previewIssues(m.previews)) ctx.addIssue({ code: "custom", path: ["previews", ...issue.path], message: issue.message });
