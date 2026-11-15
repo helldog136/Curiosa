@@ -47,7 +47,7 @@ async function autoNicknames(moduleId: string, name: string): Promise<{ forExist
 export async function addNetwork(moduleId: string): Promise<void> {
   const { user, config } = await adminCtx({ right: "core:modules.install" });
   if (!(await getModule(moduleId))) {
-    const installed = await installFromCatalogue(moduleId);
+    const installed = await installFromCatalogue(moduleId, { firstInstance: false });
     if (!installed.ok) redirect(withQuery(SOCIAL_HREF, { error: installed.error }));
     await audit(user.email, "module.install", moduleId);
   }
@@ -75,7 +75,7 @@ export async function addNetworkWithProfile(moduleId: string, address: string): 
   const raw = typeof address === "string" ? address.trim() : "";
   if (!raw || raw.length > 300 || typeof moduleId !== "string" || !/^[a-z][a-z0-9-]{1,39}$/.test(moduleId)) return { ok: false, error: t("error.generic") };
   if (!(await getModule(moduleId))) {
-    const installed = await installFromCatalogue(moduleId);
+    const installed = await installFromCatalogue(moduleId, { firstInstance: false });
     if (!installed.ok) return { ok: false, error: installed.error.startsWith("modules.error.") ? t(installed.error, { service: "" }) : t("error.generic") };
     await audit(user.email, "module.install", moduleId);
   }

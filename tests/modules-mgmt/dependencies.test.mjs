@@ -24,7 +24,7 @@ const provider = (id, code) => makeRepo({
 });
 const consumer = (id = "cons", requires = [{ service: SERVICE }]) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", requires }, "index.mjs": "export default {};" });
 // Sans cascade : ces tests vérifient l'activation et les appels de service ; la résolution à l'installation est dans dependencies-v2.test.mjs.
-const install = async (repo, id) => { assert.equal((await installModule(repo.url, { dependencies: false })).ok, true); return id; };
+const install = async (repo, id) => { assert.equal((await installModule(repo.url, { firstInstance: false, dependencies: false })).ok, true); return id; };
 const instance = async (id, key) => createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: key, names: { fr: key } });
 const active = async (id) => (await R.getActiveInstances()).find((a) => a.mod.manifest.id === id);
 

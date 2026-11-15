@@ -55,7 +55,7 @@ const consumerV2 = `export default { migrations: { 2: async (ctx) => {
 test("fournisseur trop ancien : il est mis à jour AVANT que le consommateur migre (la migration voit déjà la version 2)", async () => {
   await pub("prov", { offers: [{ service: SVC }] }, provider(1));
   await pub("cons", { requires: [{ service: SVC }], permissions: ["storage"] });
-  assert.equal((await I.installFromCatalogue("cons")).ok, true);
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).ok, true);
   const inst = await instance("cons");
   await pub("prov", { version: "1.1.0", offers: [{ service: SVC, version: 2 }] }, provider(2, `onlyV2: async () => "fresh"`));
   await pub("cons", { version: "1.1.0", dataVersion: 2, requires: [{ service: SVC, min: 2 }], permissions: ["storage"] }, consumerV2);
@@ -71,7 +71,7 @@ test("fournisseur trop ancien : il est mis à jour AVANT que le consommateur mig
 
 test("fournisseur absent et introuvable : module laissé dans son ancienne version, données intactes, aucune migration", async () => {
   await pub("cons", { permissions: ["storage"] });
-  assert.equal((await I.installFromCatalogue("cons")).ok, true);
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).ok, true);
   const inst = await instance("cons");
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "notes", data: JSON.stringify({ keep: true }) } });
   await pub("cons", { version: "1.1.0", dataVersion: 2, requires: [{ service: SVC, min: 2 }], permissions: ["storage"] }, consumerV2);
@@ -86,7 +86,7 @@ test("fournisseur absent et introuvable : module laissé dans son ancienne versi
 
 test("une migration qui échoue APRÈS l'installation du fournisseur : fournisseur conservé, instance à l'écart, « Réessayer » réussit", async () => {
   await pub("cons", { permissions: ["storage"] });
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("cons", { firstInstance: false });
   const inst = await instance("cons");
   await pub("prov", { offers: [{ service: SVC, version: 2 }] }, provider(2, `onlyV2: async () => { throw new Error("pas encore"); }`));
   await pub("cons", { version: "1.1.0", dataVersion: 2, requires: [{ service: SVC, min: 2 }], permissions: ["storage"] }, consumerV2);
@@ -108,7 +108,7 @@ test("une migration qui échoue APRÈS l'installation du fournisseur : fournisse
 
 test("échec en cours de route (un maillon de la cascade casse) : tout est défait, le module garde son ancienne version", async () => {
   await pub("cons");
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("cons", { firstInstance: false });
   await pub("p1", { offers: [{ service: SVC }], requires: [{ service: SVC2 }] });
   await pub("p2", { offers: [{ service: SVC2 }] }, "export default {};", { entry: { subdir: "modules/absent" } });   // dossier qui n'existe pas : le maillon échoue
   await pub("cons", { version: "1.1.0", dataVersion: 2, requires: [{ service: SVC }] }, consumerV2);
@@ -123,7 +123,7 @@ test("échec en cours de route (un maillon de la cascade casse) : tout est défa
 test("cycle pendant une mise à jour : refus propre, aucun des deux modules ne change de version, aucune boucle", async () => {
   await pub("ma", { offers: [{ service: SVC }] });
   await pub("mb", { offers: [{ service: SVC2 }] });
-  await I.installFromCatalogue("ma"); await I.installFromCatalogue("mb");
+  await I.installFromCatalogue("ma", { firstInstance: false }); await I.installFromCatalogue("mb", { firstInstance: false });
   await instance("mb");   // « ma » n'a pas d'instance : il ne fournit rien tant qu'il n'en a pas
   await pub("ma", { version: "1.1.0", offers: [{ service: SVC, version: 2 }], requires: [{ service: SVC2, min: 2 }] });
   await pub("mb", { version: "1.1.0", offers: [{ service: SVC2, version: 2 }], requires: [{ service: SVC, min: 2 }] });
@@ -140,7 +140,7 @@ test("versions sautées : les besoins d'une version intermédiaire sont mis en p
   const man = (version, extra = {}) => JSON.stringify({ apiVersion: 2, id: "jump", name: "Jump", version, main: "index.mjs", permissions: ["storage"], ...extra });
   const repo = makeRepo({ "module.json": man("1.0.0"), "index.mjs": "export default {};" });
   repo.g("tag", "v1.0.0");
-  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { dependencies: false })).ok, true);
+  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { firstInstance: false, dependencies: false })).ok, true);
   const inst = await instance("jump");
   // 1.1.0 : migration 2 qui appelle le service (besoin ajouté par CETTE version) ; 1.2.0 : plus rien à migrer.
   fs.writeFileSync(path.join(repo.dir, "module.json"), man("1.1.0", { dataVersion: 2, requires: [{ service: SVC, min: 2 }] }));
@@ -169,7 +169,7 @@ test("orderForUpdate : chaîne, cycle, modules indépendants, besoins facultatif
 test("« Tout mettre à jour » : le fournisseur passe avant son consommateur, même demandé après lui", async () => {
   await pub("prov", { offers: [{ service: SVC }] }, provider(1));
   await pub("cons", { requires: [{ service: SVC }], permissions: ["storage"] });
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("cons", { firstInstance: false });
   const inst = await instance("cons");
   await pub("prov", { version: "1.1.0", offers: [{ service: SVC, version: 2 }] }, provider(2, `onlyV2: async () => "bulk"`));
   await pub("cons", { version: "1.1.0", dataVersion: 2, requires: [{ service: SVC, min: 2 }], permissions: ["storage"] }, consumerV2);
@@ -196,7 +196,7 @@ test("facultatif : manifeste et index le gardent (true seulement) ; il ne manque
   assert.deepEqual([plan.steps, plan.problems], [[], []]);
   const view = await View.viewPlan("cons", [{ service: SVC, min: 1, optional: true }], await View.buildNames("fr", "fr"));
   assert.deepEqual([view.lines, view.optional.map((o) => [o.service, o.present])], [[], [[SVC, false]]], "« Fonctionne mieux avec… (facultatif) »");
-  const r = await I.installFromCatalogue("cons");
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, undefined], "aucune cascade");
   assert.deepEqual(await allModules(), ["cons"], "le fournisseur facultatif n'est JAMAIS installé d'office");
   assert.deepEqual(await Dep.requirementGaps((await R.getModule("cons")).manifest), [], "jamais « Il manque »");
@@ -206,12 +206,12 @@ test("facultatif : désinstaller son fournisseur est permis ; celui d'un besoin 
   await pub("prov", { offers: [{ service: SVC }] }, provider(1));
   await pub("soft", { requires: [{ service: SVC, optional: true }] });
   await pub("hard", { requires: [{ service: SVC }] });
-  await I.installFromCatalogue("prov"); await instance("prov");
-  await I.installFromCatalogue("soft"); await instance("soft");
+  await I.installFromCatalogue("prov", { firstInstance: false }); await instance("prov");
+  await I.installFromCatalogue("soft", { firstInstance: false }); await instance("soft");
   assert.deepEqual(await Dep.callService(await active("soft"), SVC, "ping", {}), { ok: true, value: "v1" }, "l'appel est permis tant qu'un fournisseur existe");
   assert.deepEqual(await Dep.dependentsOf("prov"), []);
   assert.deepEqual(await Dep.lossesIfStopped("prov"), []);
-  await I.installFromCatalogue("hard");
+  await I.installFromCatalogue("hard", { firstInstance: false });
   assert.deepEqual(await Dep.dependentsOf("prov"), ["hard"]);
   assert.equal((await I.uninstallModule("prov", { keepData: false })).error, "modules.error.requiredBy");
   assert.equal((await I.uninstallModule("hard", { keepData: false })).ok, true);
@@ -227,7 +227,7 @@ test("providers : ordre de création, maître signalé, [] si non déclaré ; ca
   await pub("pb", { offers: [{ service: SVC }], permissions: ["storage"] }, writer("b"));
   await pub("other", { offers: [{ service: SVC2 }] }, `export default { services: { "${SVC2}": { ping: async () => "x" } } };`);
   await pub("cons", { requires: [{ service: SVC }] });
-  for (const id of ["pb", "pa", "other", "cons"]) await I.installFromCatalogue(id, { dependencies: false });
+  for (const id of ["pb", "pa", "other", "cons"]) await I.installFromCatalogue(id, { firstInstance: false, dependencies: false });
   const b = await instance("pb", "second"); await new Promise((r) => setTimeout(r, 5));
   const a = await instance("pa", "first");
   const o = await instance("other");
@@ -256,7 +256,7 @@ test("providers / call via ctx.api : service each sans provider → première in
   const each = `export default { services: { "${SVC}": { ping: async (ctx) => ctx.instance.key } } };`;
   await pub("chan", { instances: "multiple", offers: [{ service: SVC, each: true }] }, each);
   await pub("cons", { requires: [{ service: SVC }] });
-  await I.installFromCatalogue("chan", { dependencies: false }); await I.installFromCatalogue("cons", { dependencies: false });
+  await I.installFromCatalogue("chan", { firstInstance: false, dependencies: false }); await I.installFromCatalogue("cons", { firstInstance: false, dependencies: false });
   const one = await instance("chan", "one"); await new Promise((r) => setTimeout(r, 5));
   const two = await instance("chan", "two");
   const c = await instance("cons");
@@ -292,11 +292,11 @@ test("origine : official / extra ; l'officiel classé d'abord ; une entrée extr
     assert.deepEqual(ranked.map((c) => c.id), ["off", "xprov"], "l'officiel avant l'extra, même placé après dans la liste");
     const plan = await Plan.planDependencies("cons", [{ service: SVC, min: 1 }]);
     assert.deepEqual(plan.problems.map((p) => [p.reason, p.module]), [["extra", "xprov"]]);
-    const r = await I.installFromCatalogue("cons");
+    const r = await I.installFromCatalogue("cons", { firstInstance: false });
     assert.deepEqual([r.ok, r.missing.map((m) => [m.reason, m.module])], [false, [["extra", "xprov"]]]);
     assert.deepEqual(await allModules(), [], "rien d'installé");
-    assert.equal((await I.installFromCatalogue("xprov")).error, "modules.error.extraConfirm", "installation directe : confirmation exigée");
-    assert.equal((await I.installFromCatalogue("xprov", { confirmExtra: true })).ok, true, "le propriétaire a confirmé");
-    assert.equal((await I.installFromCatalogue("cons")).ok, true, "installé à la main, il sert ensuite de fournisseur");
+    assert.equal((await I.installFromCatalogue("xprov", { firstInstance: false })).error, "modules.error.extraConfirm", "installation directe : confirmation exigée");
+    assert.equal((await I.installFromCatalogue("xprov", { firstInstance: false, confirmExtra: true })).ok, true, "le propriétaire a confirmé");
+    assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).ok, true, "installé à la main, il sert ensuite de fournisseur");
   } finally { restore(); }
 });

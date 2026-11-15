@@ -64,8 +64,8 @@ const MODULE_B = {
 };
 
 async function setup() {
-  await installModule(makeRepo(MODULE_B).url);
-  await installModule(makeRepo(MODULE_A).url);
+  await installModule(makeRepo(MODULE_B).url, { firstInstance: false });
+  await installModule(makeRepo(MODULE_A).url, { firstInstance: false });
   const mk = async (id, nickname) => { const mod = await R.getModule(id); return createInstance(db.prisma, { manifest: mod.manifest, nickname, names: { en: nickname } }); };
   // L'installation de A a déjà posé une instance de B (« pb », le fournisseur dont A dépend) ; on en ajoute une seconde. « pb » est la plus ancienne : c'est elle que `call` interroge.
   await mk("pb", "b2");

@@ -117,7 +117,7 @@ const FEED_PROVIDER = {
 };
 
 test("flux : un module peut proposer des éléments (sujet feed.item), validés — adresses dangereuses et éléments invalides écartés", async () => {
-  await installModule(makeRepo(FEED_PROVIDER).url);
+  await installModule(makeRepo(FEED_PROVIDER).url, { firstInstance: false });
 
   const mod = await R.getModule("agenda");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { en: "Agenda" } });
@@ -132,7 +132,7 @@ test("flux : un module peut proposer des éléments (sujet feed.item), validés 
 });
 
 test("flux : un module fournisseur en panne ne casse pas le flux", async () => {
-  await installModule(makeRepo({ ...FEED_PROVIDER, "index.mjs": `export default { exports: { "feed.item": () => { throw new Error("panne"); } } };` }).url);
+  await installModule(makeRepo({ ...FEED_PROVIDER, "index.mjs": `export default { exports: { "feed.item": () => { throw new Error("panne"); } } };` }).url, { firstInstance: false });
 
   const mod = await R.getModule("agenda");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { en: "Agenda" } });
@@ -149,7 +149,7 @@ const AGENDA = (items) => ({
   "index.mjs": `export default { exports: { "feed.item": () => ${JSON.stringify(items)} } };`,
 });
 async function agenda(items) {
-  await installModule(makeRepo(AGENDA(items)).url);
+  await installModule(makeRepo(AGENDA(items)).url, { firstInstance: false });
 
   await createInstance(db.prisma, { manifest: (await R.getModule("agenda")).manifest, names: { en: "Agenda" } });
 }

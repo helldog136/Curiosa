@@ -5,7 +5,9 @@ import { getModule } from "./registry";
 import { restoreModuleInstances, retireInstance } from "./retired";
 
 /**
- * INSTANCE PAR DÉFAUT d'un fournisseur apporté par la cascade : un module sans instance ne fournit rien. On fait en sorte qu'il y en ait une qui tourne.
+ * INSTANCE PAR DÉFAUT : un module sans instance ne fournit rien et n'affiche rien (pas d'élément d'overlay, pas de page). Elle est créée à CHAQUE installation (voir `installModule`,
+ * 0.16.0 : « installé » veut dire « une première copie existe »), pour un fournisseur apporté par la cascade, et par la reprise des modules déjà installés sans copie (firstInstances.ts).
+ * Le crochet `onInstanceCreate` du module tourne comme pour toute instance neuve ; aucune connexion ni abonnement n'est ouvert par le cœur.
  *   - déjà une instance : rien à faire ;
  *   - des données gardées d'une désinstallation précédente : elles reviennent telles quelles (rien n'est créé) ;
  *   - sinon on en crée une, avec les réglages par défaut du module (single comme multiple ; la première n'a pas besoin de surnom).
@@ -16,23 +18,23 @@ export type EnsureOutcome = { kind: "present" } | { kind: "created"; instanceId:
 /** Une seule demande à la fois par module : « compter puis créer » ne supporte pas deux appels simultanés (installation en arrière-plan de la reprise RAWG + cascade de dépendance, par exemple) : le second verrait « aucune instance » et échouerait sur la clé déjà prise. */
 const inFlight = new Map<string, Promise<unknown>>();
 
-export function ensureDefaultInstance(moduleId: string): Promise<EnsureOutcome | null> {
+export function ensureDefaultInstance(moduleId: string, opts: { key?: string } = {}): Promise<EnsureOutcome | null> {
   const previous = inFlight.get(moduleId) ?? Promise.resolve();
-  const run = previous.catch(() => {}).then(() => ensureOnce(moduleId));
+  const run = previous.catch(() => {}).then(() => ensureOnce(moduleId, opts));
   const tail = run.catch(() => {});
   inFlight.set(moduleId, tail);
   void tail.then(() => { if (inFlight.get(moduleId) === tail) inFlight.delete(moduleId); });
   return run;
 }
 
-async function ensureOnce(moduleId: string): Promise<EnsureOutcome | null> {
+async function ensureOnce(moduleId: string, opts: { key?: string }): Promise<EnsureOutcome | null> {
   const mod = await getModule(moduleId);
   if (!mod) return null;
   if ((await prisma.moduleInstance.count({ where: { moduleId } })) > 0) return { kind: "present" };
   const kept = await restoreModuleInstances(moduleId);
   if (kept.restored.length) return { kind: "restored", instanceIds: kept.restored.map((r) => r.id) };
   const { locales } = await getSiteConfig();
-  const created = await createInstance(prisma, { manifest: mod.manifest, names: defaultNames(mod.manifest, locales) });
+  const created = await createInstance(prisma, { manifest: mod.manifest, ...(opts.key ? { key: opts.key } : {}), names: defaultNames(mod.manifest, locales) });
   await runInstanceCreateHook(created.id);
   return { kind: "created", instanceId: created.id };
 }

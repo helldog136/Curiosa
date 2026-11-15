@@ -13,7 +13,7 @@ const { ensureDefaultInstance } = await import("@/core/modules/defaultInstance")
 
 test("ensureDefaultInstance : appels simultanés = une seule instance, aucune erreur", async () => {
   await cat.add("race-mod", { manifest: { name: { fr: "Course", en: "Race" }, description: { fr: "d", en: "d" }, instances: "multiple", settings: [], permissions: [] }, files: { "index.mjs": "export default {};" } });
-  assert.equal((await I.installFromCatalogue("race-mod", { dependencies: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("race-mod", { firstInstance: false, dependencies: false })).ok, true);
   const results = await Promise.all(Array.from({ length: 6 }, () => ensureDefaultInstance("race-mod")));
   assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "race-mod" } }), 1);
   assert.equal(results.filter((r) => r?.kind === "created").length, 1);

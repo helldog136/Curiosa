@@ -59,7 +59,7 @@ async function setupPlan({ body = STANDARD, v2 = {}, enabled = true, direct = fa
   const manifestV2 = planManifest("1.1.0", 2, v2);
   const repo = makeRepo({ "module.json": direct ? manifestV2 : planManifest("1.0.0"), "index.mjs": direct ? migration(body) : "export default {};" });
   repo.g("tag", "v1.0.0");
-  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { dependencies: false })).ok, true);
+  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { firstInstance: false, dependencies: false })).ok, true);
   if (enabled) await db.prisma.module.update({ where: { id: "plan" }, data: { enabled: true } });
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { fr: "Plan" } });
   for (const [k, v] of Object.entries(settings)) await setSetting(`instance.${inst.id}.${k}`, v);
@@ -74,7 +74,7 @@ async function setupPlan({ body = STANDARD, v2 = {}, enabled = true, direct = fa
 }
 async function installAgenda(over = {}, { enabled = true } = {}) {
   const repo = makeRepo({ "module.json": agendaManifest(over), "index.mjs": "export default {};" });
-  assert.equal((await I.installModule(repo.url)).ok, true);
+  assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
   if (enabled)  return repo;
 }
 const agendaInstances = () => db.prisma.moduleInstance.findMany({ where: { moduleId: "agenda" }, orderBy: { key: "asc" } });
@@ -231,7 +231,7 @@ test("module non déclaré dans seeds : refus ; module sans seeds : refus ; clé
   await fresh();
   await installAgenda();
   const repo = makeRepo({ "module.json": planManifest("1.0.0"), "index.mjs": "export default {};" }); repo.g("tag", "v1.0.0");
-  await I.installModule(`${repo.url}#v1.0.0`);
+  await I.installModule(`${repo.url}#v1.0.0`, { firstInstance: false });
   await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { fr: "Plan" } });
   fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify({ ...planManifest("1.1.0", 2), seeds: undefined }));
   fs.writeFileSync(path.join(repo.dir, "index.mjs"), migration(`await ctx.seedInstance("agenda", { nickname: "A", seedKey: "k", settings: {} });`));

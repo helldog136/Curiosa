@@ -122,7 +122,7 @@ test("index du catalogue : offers / requires en liste de services (texte ou obje
 test("versions : un fournisseur trop ancien ne satisfait pas ; message dédié ; la mise à jour du fournisseur lève le blocage", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC, min: 2 }] });
-  const refused = await I.installFromCatalogue("cons");
+  const refused = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.equal(refused.ok, false);
   assert.deepEqual(refused.missing.map((m) => [m.service, m.min, m.have, m.reason]), [[SVC, 2, 1, "old"]]);
   assert.deepEqual(await allModules(), [], "rien d'installé");
@@ -132,7 +132,7 @@ test("versions : un fournisseur trop ancien ne satisfait pas ; message dédié ;
 
   // Le fournisseur évolue (version 2 de l'interface) : le blocage est levé.
   bundled("prov", { version: "1.1.0", offers: [{ service: SVC, version: 2 }] });
-  const ok = await I.installFromCatalogue("cons");
+  const ok = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([ok.ok, ok.provided], [true, ["prov"]]);
   assert.deepEqual(await Dep.requirementGaps((await R.getModule("cons")).manifest), []);
 });
@@ -140,7 +140,7 @@ test("versions : un fournisseur trop ancien ne satisfait pas ; message dédié ;
 test("versions : un consommateur qui exige la version 2 d'un service : mise à jour refusée tant que personne ne l'offre, puis le fournisseur est mis à jour AVANT lui", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  assert.equal((await I.installFromCatalogue("cons")).ok, true);
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).ok, true);
   await createInstance(db.prisma, { manifest: (await R.getModule("cons")).manifest, names: { fr: "c" } });
   assert.equal((await Dep.callService(await active("cons"), SVC, "add", {})).ok, true, "min par défaut 1");
   // le consommateur monte son exigence sans que le catalogue propose mieux : la mise à jour est refusée, rien ne change
@@ -164,7 +164,7 @@ test("versions : un consommateur qui exige la version 2 d'un service : mise à j
 test("installer un consommateur installe le fournisseur du catalogue, l'active et lui donne son instance (multiple)", async () => {
   bundled("prov", { instances: "multiple", offers: [{ service: SVC, label: { fr: "Carnet" } }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  const r = await I.installFromCatalogue("cons");
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
   assert.deepEqual([(await row("prov")).enabled, (await row("cons")).enabled], [true, true], "installé = actif");
   const mine = await insts("prov");
@@ -181,8 +181,8 @@ test("fournisseur 'single' : une seule instance, jamais deux", async () => {
   bundled("prov", { instances: "single", offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
   bundled("cons2", { requires: [{ service: SVC }] });
-  assert.equal((await I.installFromCatalogue("cons")).ok, true);
-  assert.equal((await I.installFromCatalogue("cons2")).ok, true, "le second consommateur trouve déjà le fournisseur actif");
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("cons2", { firstInstance: false })).ok, true, "le second consommateur trouve déjà le fournisseur actif");
   assert.equal((await insts("prov")).length, 1);
   assert.deepEqual((await Auto.readAuto()).prov.for, ["cons"], "marqué pour le premier seulement : le second n'a rien apporté");
 });
@@ -191,8 +191,8 @@ test("mise en place : fournisseur installé sans instance → instance créée ;
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
   // 1) installé, désactivé, aucune instance
-  assert.equal((await I.installFromCatalogue("prov", { dependencies: false })).ok, true);
-  assert.equal((await I.installFromCatalogue("cons", { dependencies: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("prov", { firstInstance: false, dependencies: false })).ok, true);
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false, dependencies: false })).ok, true);
   let r = await I.repairRequirements("cons");
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
   assert.deepEqual([(await row("prov")).enabled, (await insts("prov")).length], [true, 1]);
@@ -212,9 +212,9 @@ test("mise en place : fournisseur installé sans instance → instance créée ;
 test("un module installé À LA MAIN n'est jamais marqué automatique ; un module déjà actif avec instance ne change pas", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  await I.installFromCatalogue("prov", { dependencies: false });
+  await I.installFromCatalogue("prov", { firstInstance: false, dependencies: false });
   await createInstance(db.prisma, { manifest: (await R.getModule("prov")).manifest, names: { fr: "carnet" } });
-  assert.equal((await I.installFromCatalogue("cons")).provided, undefined);
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).provided, undefined);
   assert.deepEqual(await Auto.readAuto(), {});
   assert.equal((await insts("prov")).length, 1);
 });
@@ -232,7 +232,7 @@ test("catalogue reconnu : l'index annonce offers/requires → le fournisseur est
   const view = await View.viewPlan("cons", [{ service: SVC, min: 1 }], names);
   assert.deepEqual(view.lines.map((l) => [l.id, l.action]), [["rprov", "install"]]);
   assert.equal(view.adds, true);
-  const r = await I.installFromCatalogue("cons");
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["rprov"]]);
   assert.deepEqual([(await row("rprov")).source, (await row("rprov")).enabled, (await insts("rprov")).length], ["git", true, 1]);
   assert.deepEqual((await Auto.readAuto()).rprov.module, true);
@@ -242,7 +242,7 @@ test("catalogue reconnu : le consommateur lui-même vient d'un dépôt reconnu, 
   bundled("prov", { offers: [{ service: SVC }] });
   const cons = remote("rcons", { requires: [{ service: SVC }] }, { announce: false });
   setIndex(cons.entry);
-  const r = await I.installFromCatalogue("rcons");
+  const r = await I.installFromCatalogue("rcons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
   assert.deepEqual(await allModules(), ["prov", "rcons"]);
 });
@@ -250,7 +250,7 @@ test("catalogue reconnu : le consommateur lui-même vient d'un dépôt reconnu, 
 test("dépôt personnel : son installation résout aussi ses besoins (fournisseur du catalogue), jamais l'inverse", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   const perso = makeRepo({ "module.json": manifestOf("perso", { requires: [{ service: SVC }] }), "index.mjs": "export default {};" });
-  const r = await I.installModule(perso.url);
+  const r = await I.installModule(perso.url, { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
   assert.deepEqual([(await row("prov")).enabled, (await row("perso")).enabled], [true, true]);
 });
@@ -270,8 +270,8 @@ test("choix du fournisseur : un module déjà installé d'abord, puis le premier
 test("deux fournisseurs déjà actifs : rien n'est choisi ni installé (le mécanisme maître/répliques décide)", async () => {
   bundled("prov-a", { offers: [{ service: SVC }] }); bundled("prov-b", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  for (const id of ["prov-a", "prov-b"]) { await I.installFromCatalogue(id, { dependencies: false });await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: id, names: { fr: id } }); }
-  const r = await I.installFromCatalogue("cons");
+  for (const id of ["prov-a", "prov-b"]) { await I.installFromCatalogue(id, { firstInstance: false, dependencies: false });await createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: id, names: { fr: id } }); }
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, undefined]);
   assert.equal((await Dep.duplicateServices()).length, 1, "le doublon reste à arbitrer par l'admin");
 });
@@ -281,7 +281,7 @@ test("deux fournisseurs déjà actifs : rien n'est choisi ni installé (le méca
 test("cycle : deux modules qui se demandent l'un l'autre → refus clair, rien d'installé", async () => {
   bundled("ca", { offers: [{ service: SVC }], requires: [{ service: SVC2 }] });
   bundled("cb", { offers: [{ service: SVC2 }], requires: [{ service: SVC }] });
-  const r = await I.installFromCatalogue("ca");
+  const r = await I.installFromCatalogue("ca", { firstInstance: false });
   assert.equal(r.ok, false);
   assert.deepEqual(r.missing.map((m) => [m.reason, m.chain]), [["cycle", ["ca", "cb", "ca"]]]);
   assert.deepEqual(await allModules(), []);
@@ -293,13 +293,13 @@ test("profondeur : trois fournisseurs enchaînés passent, quatre sont refusés 
     for (let i = 0; i <= n; i++) bundled(`m${i}`, { offers: [{ service: `chain.s${i}` }], ...(i < n ? { requires: [{ service: `chain.s${i + 1}` }] } : {}) });
   };
   chain(3);   // m0 → m1 → m2 → m3 : trois fournisseurs
-  const ok = await I.installFromCatalogue("m0");
+  const ok = await I.installFromCatalogue("m0", { firstInstance: false });
   assert.equal(ok.ok, true);
   assert.deepEqual(await allModules(), ["m0", "m1", "m2", "m3"]);
   assert.deepEqual([(await row("m3")).enabled, (await insts("m3")).length], [true, 1], "chaque maillon actif a son instance");
   await db.reset(); listed.clear(); publishIndex();
   chain(4);
-  const refused = await I.installFromCatalogue("m0");
+  const refused = await I.installFromCatalogue("m0", { firstInstance: false });
   assert.equal(refused.ok, false);
   assert.equal(refused.missing[0].reason, "depth");
   assert.deepEqual(await allModules(), []);
@@ -311,7 +311,7 @@ test("échec au milieu de la chaîne : rien n'est laissé à moitié, le message
   const bad = remote("p2", { offers: [{ service: SVC2 }] }, { files: { "module.json": manifestOf("autre-id", { offers: [{ service: SVC2 }] }) } });
   setIndex(bad.entry);
   bundled("cons", { requires: [{ service: SVC }] });
-  const r = await quiet(() => I.installFromCatalogue("cons"));
+  const r = await quiet(() => I.installFromCatalogue("cons", { firstInstance: false }));
   assert.equal(r.ok, false);
   assert.equal(r.error, "modules.error.requires");
   const failed = r.missing[0];
@@ -329,9 +329,9 @@ test("un candidat qui ment (l'index annonce un service que le manifeste n'offre 
   bundled("cons", { requires: [{ service: SVC }] });
   setIndex(liar.entry);
   // le livré passe avant le reconnu : le menteur n'est jamais essayé
-  assert.equal((await I.installFromCatalogue("cons")).provided[0], "honnete");
+  assert.equal((await I.installFromCatalogue("cons", { firstInstance: false })).provided[0], "honnete");
   await db.reset(); listed.delete("honnete"); publishIndex();
-  const r = await I.installFromCatalogue("cons");
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.equal(r.ok, false);
   assert.equal(r.missing[0].error, "modules.error.serviceMismatch");
   assert.deepEqual(await allModules(), []);
@@ -339,7 +339,7 @@ test("un candidat qui ment (l'index annonce un service que le manifeste n'offre 
 
 test("rien n'est disponible : refus avec le service manquant (aucun module installé)", async () => {
   bundled("cons", { requires: [{ service: SVC, label: { fr: "Carnet" } }] });
-  const r = await I.installFromCatalogue("cons");
+  const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.error, r.detail, r.missing[0].reason], [false, "modules.error.requires", SVC, "none"]);
   assert.deepEqual(await allModules(), []);
   const view = await View.viewPlan("cons", [{ service: SVC, min: 1 }], await View.buildNames("fr", "fr"));
@@ -351,7 +351,7 @@ test("rien n'est disponible : refus avec le service manquant (aucun module insta
 test("refus de désinstaller : les modules qui en dépendent, par leur nom, et ce qu'ils perdraient", async () => {
   bundled("prov", { name: "Contacts", offers: [{ service: SVC, label: { fr: "le carnet de contacts" } }] });
   bundled("cons", { name: "Partenariats", requires: [{ service: SVC }] });
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("cons", { firstInstance: false });
   const un = await I.uninstallModule("prov", { keepData: false });
   assert.deepEqual([un.ok, un.error], [false, "modules.error.requiredBy"]);
   const names = await View.buildNames("fr", "fr");
@@ -382,7 +382,7 @@ test("messages : phrases lisibles, transport d'adresse validé (entrée d'URL no
 test("nettoyage : proposé quand plus personne ne dépend, jamais appliqué tout seul ; données → avertissement ; « garder » retire la marque", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual(await Auto.cleanupSuggestions(), [], "encore utilisé");
 
   assert.deepEqual(await Auto.cleanupSuggestions(), [], "un consommateur éteint mais installé peut être rallumé : pas de proposition");
@@ -410,8 +410,8 @@ test("nettoyage : désinstaller un module marqué retire sa marque ; un module i
   bundled("prov", { offers: [{ service: SVC }] });
   bundled("cons", { requires: [{ service: SVC }] });
   bundled("manuel", { offers: [{ service: SVC2 }] });
-  await I.installFromCatalogue("manuel");
-  await I.installFromCatalogue("cons");
+  await I.installFromCatalogue("manuel", { firstInstance: false });
+  await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual(await Auto.cleanupSuggestions(), [], "tant que le consommateur est installé");
   assert.equal((await I.uninstallModule("cons", { keepData: false })).ok, true);
   assert.deepEqual((await Auto.cleanupSuggestions()).map((c) => c.id), ["prov"]);
@@ -427,7 +427,7 @@ const publish = (repo, id, version, extra) => { fs.writeFileSync(path.join(repo.
 test("mise à jour qui ajoute un requires : le fournisseur disponible est installé d'office (avec son instance)", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   const repo = gitModule("gcons");
-  assert.equal((await I.installModule(repo.url)).ok, true);
+  assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
   publish(repo, "gcons", "1.1.0", { requires: [{ service: SVC }] });
   const r = await I.updateModule("gcons");
   assert.deepEqual([r.ok, r.provided, r.missing], [true, ["prov"], undefined]);
@@ -437,7 +437,7 @@ test("mise à jour qui ajoute un requires : le fournisseur disponible est instal
 
 test("mise à jour qui ajoute un requires IMPOSSIBLE à satisfaire : refusée proprement, ancienne version et données intactes, le module tourne toujours", async () => {
   const repo = gitModule("gcons");
-  await I.installModule(repo.url);
+  await I.installModule(repo.url, { firstInstance: false });
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("gcons")).manifest, names: { fr: "g" } });
   await db.prisma.moduleRecord.create({ data: { instanceId: inst.id, collection: "notes", data: JSON.stringify({ n: 1 }) } });
   publish(repo, "gcons", "1.1.0", { requires: [{ service: SVC }] });
@@ -454,7 +454,7 @@ test("mise à jour qui ajoute un requires IMPOSSIBLE à satisfaire : refusée pr
 test("« Tout mettre à jour » : un module dont le besoin est introuvable échoue seul, les autres passent", async () => {
   bundled("prov", { offers: [{ service: SVC }] });
   const a = gitModule("g-a"); const b = gitModule("g-b"); const c = gitModule("g-c");
-  for (const [repo] of [[a], [b], [c]]) { await I.installModule(repo.url);}
+  for (const [repo] of [[a], [b], [c]]) { await I.installModule(repo.url, { firstInstance: false });}
   publish(a, "g-a", "1.1.0", { requires: [{ service: "introuvable.service" }] });   // impossible
   publish(b, "g-b", "1.1.0", { requires: [{ service: SVC }] });                      // possible
   publish(c, "g-c", "1.1.0");                                                         // simple
@@ -479,8 +479,8 @@ const fakeBackup = (modules) => ({
 });
 const bm = (id, enabled = true) => ({ id, source: "bundled", origin: "catalogue", name: id, version: "1.0.0", enabled, repoUrl: null, ref: null, commit: null });
 const spyInstallers = (calls) => ({
-  fromCatalogue: async (id) => { calls.push(id); return I.installFromCatalogue(id, { dependencies: false }); },
-  fromRepo: async (url) => I.installModule(url, { dependencies: false }),
+  fromCatalogue: async (id) => { calls.push(id); return I.installFromCatalogue(id, { firstInstance: false, dependencies: false }); },
+  fromRepo: async (url) => I.installModule(url, { firstInstance: false, dependencies: false }),
 });
 
 test("restauration : les modules sont réinstallés dans l'ordre des dépendances (fournisseurs d'abord)", async () => {
@@ -537,7 +537,7 @@ test("restauration : ordre topologique stable, cycles et inconnus gardent leur p
 
 test("anciens modules sans dépendance et manifestes existants : mêmes comportements qu'avant", async () => {
   bundled("simple");
-  assert.deepEqual(withoutI18nNote(await I.installFromCatalogue("simple")), { ok: true, id: "simple" });
+  assert.deepEqual(withoutI18nNote(await I.installFromCatalogue("simple", { firstInstance: false })), { ok: true, id: "simple" });
   assert.deepEqual(await Auto.readAuto(), {});
   assert.deepEqual((await Plan.planDependencies("simple", [])).steps, []);
 });

@@ -172,7 +172,7 @@ La fiche montre aussi la `description` de votre manifeste et votre déclaration 
 1. Dans l'administration de votre site, ouvrez le menu de gauche et cliquez sur **« Afficher les réglages avancés »** (l'installation depuis une adresse n'existe que là), puis ouvrez **Extensions → Catalogue**.
 2. Ouvrez **Installer un dépôt personnel (non vérifié)**, collez cette adresse et cliquez sur **Voir le README avant d'installer** :
    `https://github.com/<vous>/<depot>#v1.0.0`
-3. Lisez ce que le module demande, cochez la case « Je comprends… », cliquez sur **Installer sur mon site**, puis sur **Mettre en place** et remplissez les réglages.
+3. Lisez ce que le module demande, cochez la case « Je comprends… », cliquez sur **Installer sur mon site** : la première copie du module est créée avec ses réglages par défaut (cœur 0.16.0 ; avant, il fallait cliquer sur **Mettre en place**). Ouvrez ensuite **Réglages** pour remplir ce qui manque.
 
 Pour le mettre à jour plus tard : **Extensions → Vitrine → Chercher une mise à jour**.
 ```
@@ -208,7 +208,7 @@ Votre module fonctionne **sans** être au catalogue. Le catalogue officiel (le d
 - [ ] `version` du manifeste = l'étiquette que vous allez poser ; `README.md` à jour (réglages, permissions, services contactés, vie privée).
 - [ ] Aucun service tiers chargé chez la personne qui visite sans son action ; `privacy` à jour.
 - [ ] Changement majeur ? Notes de version écrites. Forme des données changée ? `dataVersion` et migration.
-- [ ] Essayé sur un site d'essai : installer, mettre en place, voir la page, mettre à jour depuis l'étiquette précédente.
+- [ ] Essayé sur un site d'essai : installer (la première instance doit exister toute seule), voir la page, mettre à jour depuis l'étiquette précédente.
 
 ## English summary
 

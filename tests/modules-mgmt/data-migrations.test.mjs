@@ -37,7 +37,7 @@ function repoV1() {
   return repo;
 }
 async function installV1(repo) {
-  assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
+  assert.equal((await installModule(`${repo.url}#v1.0.0`, { firstInstance: false })).ok, true);
 
 }
 async function instance(nickname, notes = [{ name: "Alice", text: "un" }, { name: "Bob", text: "deux" }]) {

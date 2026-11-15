@@ -246,7 +246,7 @@ const FEED_PROVIDER = {
 };
 
 test("éléments proposés par des modules (feed.item) : cherchés par titre et résumé ; futurs et adresses dangereuses écartés ; un module en panne ne gêne pas", async () => {
-  await installModule(makeRepo(FEED_PROVIDER).url);
+  await installModule(makeRepo(FEED_PROVIDER).url, { firstInstance: false });
   const mod = await R.getModule("agenda");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { fr: "Agenda", en: "Agenda" } });
   const a = await blog("Actus"); await publish(a.id, "Compte rendu du concert");
@@ -270,7 +270,7 @@ const MIXED_PROVIDER = {
 };
 
 test("classement dans le service : le contenu du site (entrées, adresse relative) avant les externes plus récents ; pages, compteur et page 2 cohérents", async () => {
-  await installModule(makeRepo(MIXED_PROVIDER).url);
+  await installModule(makeRepo(MIXED_PROVIDER).url, { firstInstance: false });
   const mod = await R.getModule("agenda");
   await createInstance(db.prisma, { manifest: mod.manifest, names: { fr: "Agenda", en: "Agenda" } });
   const a = await blog("Actus");
