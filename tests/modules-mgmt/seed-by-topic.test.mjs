@@ -46,7 +46,7 @@ const MIGRATION = `export default { migrations: { 2: async (ctx) => {
 async function setupPlan({ over = {}, migration = MIGRATION } = {}) {
   const repo = makeRepo({ "module.json": planManifest("1.0.0", false), "index.mjs": "export default {};" });
   repo.g("tag", "v1.0.0");
-  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { dependencies: false })).ok, true);
+  assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { firstInstance: false, dependencies: false })).ok, true);
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { fr: "Plan" } });
   await setSetting(`instance.${inst.id}.icsUrl`, URL1);
   await setSetting(`instance.${inst.id}.title`, "Mon planning");
@@ -67,7 +67,7 @@ test("manifeste : seeds accepté avec `consumes` seul ; refusé sans `requires` 
 
 test("cible déjà installée et fournisseuse du sujet consommé : instance semée, ancien réglage effacé, rien n'est dit « installé automatiquement »", async () => {
   const repo = makeRepo({ "module.json": agendaManifest(), "index.mjs": "export default {};" });
-  assert.equal((await I.installModule(repo.url)).ok, true);
+  assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
   const { inst, update } = await setupPlan();
   const result = await update();
   assert.equal(result.ok, true);

@@ -73,7 +73,7 @@ test("retirer un dépôt : il disparaît de la liste, les modules déjà install
   await S.addSource(repo.url);
   const [src] = await S.listSources();
   const mod = (await S.discoverModules(src)).find((m) => m.id === "rss");
-  assert.equal((await I.installModule(S.sourceAddress(src, mod))).ok, true);
+  assert.equal((await I.installModule(S.sourceAddress(src, mod), { firstInstance: false })).ok, true);
   await S.removeSource(src.url);
   assert.deepEqual(await S.listSources(), []);
   assert.ok(await db.prisma.module.findUnique({ where: { id: "rss" } }));
@@ -86,7 +86,7 @@ test("installer depuis un dépôt ajouté : un seul module, désactivé, « pers
   const list = await S.discoverModules(src);
   const rss = list.find((m) => m.id === "rss");
   assert.equal(S.sourceAddress(src, rss), `${repo.url}#:modules/rss`);
-  assert.deepEqual(withoutI18nNote(await I.installModule(S.sourceAddress(src, rss))), { ok: true, id: "rss" });
+  assert.deepEqual(withoutI18nNote(await I.installModule(S.sourceAddress(src, rss), { firstInstance: false })), { ok: true, id: "rss" });
   const row = await db.prisma.module.findUnique({ where: { id: "rss" } });
   assert.deepEqual([row.enabled, row.subdir, row.source], [true, "modules/rss", "git"]);
   assert.equal(await db.prisma.module.findUnique({ where: { id: "agenda" } }), null, "les autres modules du dépôt ne sont pas installés");

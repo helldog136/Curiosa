@@ -119,7 +119,7 @@ test("génération : l'annulation d'une migration l'augmente, une migration réu
   const repo = makeRepo({ "module.json": manifest("1.0.0"), "index.mjs": "export default {};" });
   repo.g("tag", "v1.0.0");
   const release = (v, dv, src) => { fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(manifest(v, dv))); fs.writeFileSync(path.join(repo.dir, "index.mjs"), src); repo.g("commit", "-qam", v); repo.g("tag", `v${v}`); };
-  assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
+  assert.equal((await installModule(`${repo.url}#v1.0.0`, { firstInstance: false })).ok, true);
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "C", names: { fr: "C" } });
   const s = S.createStore(inst.id);
   await s.add("notes", { t: "a" });
@@ -136,7 +136,7 @@ test("génération : l'annulation d'une migration l'augmente, une migration réu
 test("génération : la reprise de données gardées l'augmente", async () => {
   const manifest = { apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" };
   const repo = makeRepo({ "module.json": manifest, "index.mjs": "export default {};" }); repo.g("tag", "v1.0.0");
-  assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
+  assert.equal((await installModule(`${repo.url}#v1.0.0`, { firstInstance: false })).ok, true);
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "C", names: { fr: "C" } });
   const s = S.createStore(inst.id);
   const id = await s.add("notes", { t: "a" }, { key: "k" });
@@ -215,7 +215,7 @@ test("migration après copie de lot récente : pas de copie pre-migration ; sans
   const manifest = (v, dv) => ({ apiVersion: 2, id: "carnet", name: "Carnet", version: v, main: "index.mjs", ...(dv ? { dataVersion: dv } : {}) });
   const repo = makeRepo({ "module.json": manifest("1.0.0"), "index.mjs": "export default {};" }); repo.g("tag", "v1.0.0");
   const release = (v, dv) => { fs.writeFileSync(path.join(repo.dir, "module.json"), JSON.stringify(manifest(v, dv))); fs.writeFileSync(path.join(repo.dir, "index.mjs"), "export default { migrations: { 2: async () => {}, 3: async () => {} } };"); repo.g("commit", "-qam", v); repo.g("tag", `v${v}`); };
-  assert.equal((await installModule(`${repo.url}#v1.0.0`)).ok, true);
+  assert.equal((await installModule(`${repo.url}#v1.0.0`, { firstInstance: false })).ok, true);
   await createInstance(db.prisma, { manifest: (await R.getModule("carnet")).manifest, nickname: "C", names: { fr: "C" } });
   await F.bulkUpdateCopy(undefined, Date.now());
   release("1.1.0", 2); await updateModule("carnet");

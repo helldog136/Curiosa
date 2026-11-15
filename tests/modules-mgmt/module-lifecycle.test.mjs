@@ -122,7 +122,7 @@ test("migration des éteints (pur) : un module éteint part avec toutes ses inst
 
 test("garder mes données : plus rien de vivant (site, API, MCP, menu), tout rangé ; installé = actif", async () => {
   await publish("journal");
-  assert.equal((await I.installFromCatalogue("journal")).ok, true);
+  assert.equal((await I.installFromCatalogue("journal", { firstInstance: false })).ok, true);
   assert.equal((await prisma.module.findUnique({ where: { id: "journal" } })).enabled, true, "installé = actif, pas d'état intermédiaire");
   const { inst } = await richInstance("journal");
   assert.equal((await R.getActiveInstances()).length, 1);
@@ -145,13 +145,13 @@ test("garder mes données : plus rien de vivant (site, API, MCP, menu), tout ran
 
 test("réinstaller le même module retrouve TOUT à l'identique : mêmes identifiants, traductions, entrées, réglages, stockage", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   const { inst } = await richInstance("journal");
   const before = await snapshot(inst.id);
   await I.uninstallModule("journal", { keepData: true });
   assert.deepEqual(await liveCounts(), NOTHING);
 
-  const r = await I.installFromCatalogue("journal");
+  const r = await I.installFromCatalogue("journal", { firstInstance: false });
   assert.deepEqual([r.ok, r.restored], [true, [inst.key]]);
   const after = await snapshot(inst.id);
   assert.deepEqual(after, before, "exactement les mêmes lignes (identifiants et dates compris)");
@@ -163,7 +163,7 @@ test("réinstaller le même module retrouve TOUT à l'identique : mêmes identif
 
 test("tout effacer : plus rien nulle part, y compris des données rangées auparavant ; irréversible", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   await richInstance("journal", "Un");
   await I.uninstallModule("journal", { keepData: true });
   await I.installFromCatalogue("journal", { restoreKept: false });
@@ -173,13 +173,13 @@ test("tout effacer : plus rien nulle part, y compris des données rangées aupar
   assert.equal((await I.uninstallModule("journal", { keepData: false })).ok, true);
   assert.deepEqual(await liveCounts(), NOTHING);
   assert.deepEqual(await Ret.listRetired(), [], "« tout effacer » efface aussi ce qui avait été gardé");
-  assert.equal((await I.installFromCatalogue("journal")).restored, undefined, "rien à retrouver");
+  assert.equal((await I.installFromCatalogue("journal", { firstInstance: false })).restored, undefined, "rien à retrouver");
 });
 
 test("désinstaller est refusé tant qu'un autre module a besoin d'un service que celui-ci fournit ; rien n'est rangé ni effacé", async () => {
   await cat.add("fourn", { manifest: manifestOf("fourn", { offers: [{ service: "demo.svc" }] }), files: { "index.mjs": "export default {};" }, entry: { offers: [{ service: "demo.svc", version: 1 }] } });
   await cat.add("conso", { manifest: manifestOf("conso", { requires: [{ service: "demo.svc" }] }), files: { "index.mjs": "export default {};" }, entry: { needs: [{ service: "demo.svc", min: 1 }] } });
-  assert.equal((await I.installFromCatalogue("conso")).ok, true);
+  assert.equal((await I.installFromCatalogue("conso", { firstInstance: false })).ok, true);
   await richInstance("fourn", "Carnet");
   for (const keepData of [true, false]) {
     const r = await I.uninstallModule("fourn", { keepData });
@@ -192,7 +192,7 @@ test("désinstaller est refusé tant qu'un autre module a besoin d'un service qu
 
 test("une instance seule : « garder » la range, « effacer » la supprime ; le module reste installé", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   const a = await richInstance("journal", "Un");
   const b = await richInstance("journal", "Deux");
   assert.equal(await removeInstance(a.inst.id, { keepData: true }), true);
@@ -211,7 +211,7 @@ test("une instance seule : « garder » la range, « effacer » la supprime ; le
 
 test("module à instance unique : ses données gardées ne reviennent pas par-dessus une instance existante (elles restent rangées, intactes)", async () => {
   await publish("solo", { instances: "single" });
-  await I.installFromCatalogue("solo");
+  await I.installFromCatalogue("solo", { firstInstance: false });
   const a = await richInstance("solo", "Premier");
   await removeInstance(a.inst.id, { keepData: true });
   const mod = await R.getModule("solo");
@@ -226,7 +226,7 @@ test("module à instance unique : ses données gardées ne reviennent pas par-de
 
 test("adresse ou identifiant pris entre-temps : l'instance revient avec une adresse libre, rien n'est écrasé", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   const a = await richInstance("journal", "Journal");
   const before = a.inst;
   await I.uninstallModule("journal", { keepData: true });
@@ -242,7 +242,7 @@ test("adresse ou identifiant pris entre-temps : l'instance revient avec une adre
 
 test("le cœur ne rend jamais un bloc illisible : il reste rangé tel quel", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   const a = await richInstance("journal");
   await removeInstance(a.inst.id, { keepData: true });
   await prisma.retiredInstance.update({ where: { id: a.inst.id }, data: { payload: "{ pas du json" } });
@@ -256,7 +256,7 @@ test("le cœur ne rend jamais un bloc illisible : il reste rangé tel quel", asy
 
 test("une cascade qui échoue ne perd JAMAIS des données gardées : les instances retrouvées sont rangées de nouveau", async () => {
   await cat.add("fourn", { manifest: manifestOf("fourn", { offers: [{ service: "demo.svc" }] }), files: { "index.mjs": "export default {};" } });
-  await I.installFromCatalogue("fourn");
+  await I.installFromCatalogue("fourn", { firstInstance: false });
   const a = await richInstance("fourn", "Carnet");
   await I.uninstallModule("fourn", { keepData: true });
   await I.installFromCatalogue("fourn", { dependencies: false, restoreKept: false });
@@ -275,7 +275,7 @@ test("la règle de nettoyage des dépendances s'applique à la désinstallation 
   const Auto = await import("@/core/modules/autoInstalled");
   await cat.add("fourn", { manifest: manifestOf("fourn", { offers: [{ service: "demo.svc" }] }), files: { "index.mjs": "export default {};" }, entry: { offers: [{ service: "demo.svc", version: 1 }] } });
   await cat.add("conso", { manifest: manifestOf("conso", { requires: [{ service: "demo.svc" }], content: undefined, mcp: undefined }), files: { "index.mjs": "export default {};" }, entry: { needs: [{ service: "demo.svc", min: 1 }] } });
-  const r = await I.installFromCatalogue("conso");
+  const r = await I.installFromCatalogue("conso", { firstInstance: false });
   assert.deepEqual(r.provided, ["fourn"]);
   assert.deepEqual(await Auto.cleanupSuggestions(), [], "encore utilisé");
   assert.equal((await I.uninstallModule("conso", { keepData: true })).ok, true);
@@ -289,7 +289,7 @@ test("la règle de nettoyage des dépendances s'applique à la désinstallation 
 
 test("migration des éteints : module éteint = désinstallé, données gardées ; instance éteinte d'un module allumé = retirée, données gardées ; idempotent", async () => {
   await publish("eteint"); await publish("allume");
-  await I.installFromCatalogue("eteint"); await I.installFromCatalogue("allume");
+  await I.installFromCatalogue("eteint", { firstInstance: false }); await I.installFromCatalogue("allume", { firstInstance: false });
   const e1 = await richInstance("eteint", "E1");
   const keep = await richInstance("allume", "Gardée");
   const off = await richInstance("allume", "Éteinte");
@@ -309,7 +309,7 @@ test("migration des éteints : module éteint = désinstallé, données gardées
   // rien n'est perdu : en réinstallant, tout revient
   const before = await snapshot(e1.inst.id);
   void before;
-  const r = await I.installFromCatalogue("eteint");
+  const r = await I.installFromCatalogue("eteint", { firstInstance: false });
   assert.deepEqual(r.restored, [e1.inst.key]);
   assert.equal((await prisma.entry.count({ where: { instanceId: e1.inst.id } })), 1);
   assert.equal((await Ret.restoreInstance(off.inst.id)).ok, true);
@@ -329,7 +329,7 @@ test("code temporaire : la migration des éteints est signalée dans son fichier
 
 test("la sauvegarde contient les données gardées ; restaurée, elles sont de nouveau là (et toujours inertes)", async () => {
   await publish("journal");
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   const a = await richInstance("journal");
   await I.uninstallModule("journal", { keepData: true });
   await prisma.user.create({ data: { id: "u1", email: "o@x.org", name: "O", role: "owner", passwordHash: "h" } });
@@ -349,7 +349,7 @@ test("la sauvegarde contient les données gardées ; restaurée, elles sont de n
   assert.deepEqual((await Ret.listRetired()).map((k) => [k.id, k.entryCount, k.recordCount]), [[a.inst.id, 1, 1]]);
   assert.deepEqual(await liveCounts(), NOTHING, "restaurées, elles restent rangées : rien de vivant");
   // et elles se retrouvent comme avant
-  await I.installFromCatalogue("journal");
+  await I.installFromCatalogue("journal", { firstInstance: false });
   assert.equal((await snapshot(a.inst.id)).entries.length, 1);
 });
 
@@ -425,7 +425,7 @@ test("interface : deux boutons de retrait, chacun avec SA confirmation ; aucun i
 
 test("la jonction avec le contexte d'un module : ctx.api.instances ne voit rien d'un module retiré", async () => {
   await publish("journal"); await publish("autre");
-  await I.installFromCatalogue("journal"); await I.installFromCatalogue("autre");
+  await I.installFromCatalogue("journal", { firstInstance: false }); await I.installFromCatalogue("autre", { firstInstance: false });
   await richInstance("journal"); const o = await richInstance("autre", "Autre");
   await I.uninstallModule("journal", { keepData: true });
   const mod = await R.getModule("autre");

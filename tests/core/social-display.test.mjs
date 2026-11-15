@@ -46,7 +46,7 @@ const manifest = (id, over = {}) => ({
 // Un faux réseau : n'accepte que `https://<id>.example/<nom>` ou un nom seul, comme les vrais modules.
 const code = (id) => `export default { exports: { "social.link": (ctx) => { const v = String(ctx.setting("profile") ?? "").trim(); const m = new RegExp("^(?:https://${id}\\\\.example/)?([a-z0-9]+)$").exec(v); return m ? [{ label: "${id} · " + m[1], url: "https://${id}.example/" + m[1], icon: "${id}" }] : []; } } };`;
 async function network(id, profile, nickname) {
-  if (!(await R.getModule(id))) assert.equal((await installModule(makeRepo({ "module.json": manifest(id), "index.mjs": code(id) }).url, { dependencies: false })).ok, true);
+  if (!(await R.getModule(id))) assert.equal((await installModule(makeRepo({ "module.json": manifest(id), "index.mjs": code(id) }).url, { firstInstance: false, dependencies: false })).ok, true);
   const mod = await R.getModule(id);
   const inst = await createInstance(db.prisma, { manifest: mod.manifest, nickname, names: { fr: nickname ?? id, en: nickname ?? id } });
   if (profile) await setSetting(`instance.${inst.id}.profile`, profile);
@@ -111,7 +111,7 @@ test("réglages d'un réseau : une adresse reconnue est enregistrée et le messa
 test("réglages d'un réseau : un module qui n'est pas un réseau social n'est pas concerné (même clé « profile »)", async () => {
   await admin("admin");
   const m = manifest("autre", { type: undefined, provides: [], settings: [{ key: "profile", type: "text", label: "Profil" }] });
-  assert.equal((await installModule(makeRepo({ "module.json": m, "index.mjs": "export default {};" }).url, { dependencies: false })).ok, true);
+  assert.equal((await installModule(makeRepo({ "module.json": m, "index.mjs": "export default {};" }).url, { firstInstance: false, dependencies: false })).ok, true);
   const mod = await R.getModule("autre");
   const inst = await createInstance(db.prisma, { manifest: mod.manifest, nickname: undefined, names: { fr: "Autre" } });
   const { saveInstanceSettings } = await import("@/app/admin/(panel)/instances/actions");

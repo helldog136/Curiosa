@@ -127,6 +127,7 @@ export async function installSuggested(user: AdminUser | null, input: { instance
     // Installé pour FOURNIR le service : sans instance il ne fournirait rien (ses données gardées, s'il y en a, sont déjà revenues).
     await ensureDefaultInstance(moduleId).catch((error) => console.error("[modules] default instance failed:", (error as Error)?.message));
     for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
+    if (result.instance) await audit(user.email, "instance.create", result.instance.key, { module: moduleId, instance: result.instance.key });
     await audit(user.email, "module.install.suggested", `${moduleId} ${service} ${entry.origin}`);
   }
   return result;

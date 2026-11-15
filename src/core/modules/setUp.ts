@@ -17,6 +17,7 @@ import { localized } from "./types";
  *   - PERMISSIONNÉ : seulement depuis une `adminAction` déclenchée par une personne de rôle administrateur (jamais un panneau, une route, une tâche, un service ni le MCP) ;
  *   - JOURNALISÉ : `instance.setup`, cible « <module> <état> », rattaché à l'instance appelante ; la personne est celle qui a cliqué ;
  *   - JAMAIS : installer ou mettre à jour du code (c'est un geste du propriétaire : bloc `suggestInstall`, page des extensions), créer une deuxième instance, supprimer quoi que ce soit.
+ * Depuis la 0.16.0 une installation crée déjà la première instance (`installModule`) : `pending` ne liste plus que ce que la personne a retiré, ou ce qui n'a pas pu être créé. Le bouton reste valable pour ces cas.
  * Le cœur n'importe aucun module : il ne connaît que des manifestes.
  */
 export type SetUpOffer = { module: string; name: string; /** The services you declare in `requires` that this module offers (version high enough). */ services: string[] };

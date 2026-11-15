@@ -18,6 +18,7 @@ import { dependentsOf } from "./dependencies";
 import { eraseOwnedFiles } from "../services/files";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
 import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
+import { ensureDefaultInstance } from "./defaultInstance";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
@@ -63,6 +64,10 @@ export type InstallResult = {
   missing?: Missing[];
   /** Réussite avec une remarque (jamais un refus) : voir staticImports.ts. */
   warnings?: LoadWarning[];
+  /** Installation : la première instance créée (réglages par défaut). Absente si des données gardées sont revenues ou si l'appelant crée la sienne. */
+  instance?: { id: string; key: string };
+  /** Installation réussie, mais la première instance n'a pas pu être créée : le module reste sans copie, « Mettre en place » la crée. */
+  instanceFailed?: true;
 } | { ok: false; error: string; /** Erreur « modules.error.loadCheck » : raison courte (anglais, sans chemin) pour le journal et l'assistant ; JAMAIS à montrer telle quelle à la personne propriétaire. */ loadError?: string; /** Le contrôle de chargement a refusé la nouvelle version ET l'ancienne a été remise : le module tourne comme avant. */ rolledBack?: boolean; /** Détail structuré de ce qui manque (service, version, cause) quand l'erreur est « modules.error.requires ». */ missing?: Missing[]; /** Précision lisible (ex. les services manquants). */ detail?: string; /** Erreur « modules.error.core » : version du cœur que le module demande (voir compat.ts). */ needsCore?: string };
 
 /** Le module demande un cœur plus récent que celui-ci : on refuse d'entrer ou de monter de version (jamais de désactiver un module déjà là). */
@@ -233,6 +238,12 @@ export async function installModule(input: string, opts: {
   expectId?: string;
   /** false : ne pas installer les fournisseurs (restauration, cascade elle-même). */ dependencies?: boolean;
   /** false : ne pas remettre les données gardées (restauration d'une sauvegarde, graine, cascade : elles ont leur propre chemin). */ restoreKept?: boolean;
+  /**
+   * Créer la PREMIÈRE instance (réglages par défaut) une fois le module installé : « installé » veut dire « une première copie existe ». Par défaut oui, sauf quand `restoreKept` est
+   * `false` (ces appelants ont leur propre chemin : cascade, graine, assistant de départ, restauration). `false` explicite : l'appelant crée lui-même la sienne (un réseau avec surnom).
+   */
+  firstInstance?: boolean;
+  /** Clé de la première instance (sinon celle du module, ou la première libre). */ instanceKey?: string;
 } = {}): Promise<InstallResult> {
   const parsed = parseRepoUrl(input);
   if (!parsed.ok) return parsed;
@@ -305,9 +316,24 @@ export async function installModule(input: string, opts: {
     if (deps) await commitJournal(deps);
     opStep("data");
     const kept = opts.restoreKept === false ? null : await restoreModuleInstances(m.id);
+    // La première copie : si des données gardées sont revenues elle existe déjà ; sinon on la crée (jamais d'échec de l'installation pour cela : le bouton « Mettre en place » reste).
+    let first: { id: string; key: string } | null = null;
+    let firstFailed = false;
+    if (opts.firstInstance ?? opts.restoreKept !== false) {
+      try {
+        const made = await ensureDefaultInstance(m.id, opts.instanceKey ? { key: opts.instanceKey } : {});
+        if (made?.kind === "created") {
+          const row = await prisma.moduleInstance.findUnique({ where: { id: made.instanceId }, select: { id: true, key: true } });
+          if (row) first = row;
+        } else if (!made) firstFailed = true;
+      } catch (error) {
+        firstFailed = true;
+        console.error(`[modules] first instance of ${m.id} failed:`, (error as Error)?.message);
+      }
+    }
     const warnings = loadWarnings(moduleDir(m.id), m.id);
     return {
-      ok: true, id: m.id, ...(warnings.length ? { warnings } : {}), ...(deps?.provided.length ? { provided: deps.provided } : {}),
+      ok: true, id: m.id, ...(first ? { instance: first } : {}), ...(firstFailed ? { instanceFailed: true as const } : {}), ...(warnings.length ? { warnings } : {}), ...(deps?.provided.length ? { provided: deps.provided } : {}),
       ...(kept?.restored.length ? { restored: kept.restored.map((r) => r.key) } : {}), ...(kept?.migrations.length ? { migrations: kept.migrations } : {}),
     };
   } catch (error) {
@@ -901,7 +927,7 @@ export async function purgeModule(id: string): Promise<void> {
  * Une entrée de l'index supplémentaire (`origin: "extra"`) exige `confirmExtra: true`, passé SEULEMENT par une action du propriétaire après
  * l'avertissement « Ce module n'est pas vérifié par le catalogue officiel » : jamais par une cascade, une graine, une tâche ou le MCP.
  */
-export async function installFromCatalogue(id: string, opts: { dependencies?: boolean; restoreKept?: boolean; confirmExtra?: boolean } = {}): Promise<InstallResult> {
+export async function installFromCatalogue(id: string, opts: { dependencies?: boolean; restoreKept?: boolean; confirmExtra?: boolean; firstInstance?: boolean; instanceKey?: string } = {}): Promise<InstallResult> {
   const entry = await findCatalogueEntry(id);
   if (!entry) return { ok: false, error: "modules.error.notfound" };
   if (!entry.compatible) return { ok: false, error: "modules.error.incompatible" };

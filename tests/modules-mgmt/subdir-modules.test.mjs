@@ -46,7 +46,7 @@ test("adresse : dépôt#étiquette:dossier, dépôt#:dossier ; dossiers dangereu
 
 test("installation d'un module d'un dépôt qui en regroupe plusieurs : seul son dossier est copié, le module est identifié par son manifeste", async () => {
   const repo = monorepo();
-  const r = withoutI18nNote(await I.installModule(`${repo.url}#:alpha`, { expectId: "alpha" }));
+  const r = withoutI18nNote(await I.installModule(`${repo.url}#:alpha`, { firstInstance: false, expectId: "alpha" }));
   assert.deepEqual(r, { ok: true, id: "alpha" });
   const files = fs.readdirSync(moduleDir("alpha")).sort();
   assert.deepEqual(files, ["README.md", "index.mjs", "module.json"], "pas de .git, pas le dossier d'un autre module");
@@ -58,28 +58,28 @@ test("installation d'un module d'un dépôt qui en regroupe plusieurs : seul son
   assert.equal(row.commit, repo.commit);
   assert.equal(row.enabled, true, "installé = actif");
   // Le second module du même dépôt s'installe séparément.
-  assert.equal((await I.installModule(`${repo.url}#:beta`)).ok, true);
+  assert.equal((await I.installModule(`${repo.url}#:beta`, { firstInstance: false })).ok, true);
   assert.equal((await mod("beta")).subdir, "beta");
 });
 
 test("dossier absent, sans manifeste, ou sortant du dépôt (lien symbolique) : refusé avec un message précis", async () => {
   const repo = monorepo();
-  assert.deepEqual(await I.installModule(`${repo.url}#:inconnu`), { ok: false, error: "modules.error.nosubdir" });
+  assert.deepEqual(await I.installModule(`${repo.url}#:inconnu`, { firstInstance: false }), { ok: false, error: "modules.error.nosubdir" });
   fs.mkdirSync(path.join(repo.dir, "vide")); fs.writeFileSync(path.join(repo.dir, "vide/x.txt"), "x"); repo.g("add", "-A"); repo.g("commit", "-qm", "vide");
-  assert.deepEqual(await I.installModule(`${repo.url}#:vide`), { ok: false, error: "modules.error.nosubdir" });
+  assert.deepEqual(await I.installModule(`${repo.url}#:vide`, { firstInstance: false }), { ok: false, error: "modules.error.nosubdir" });
   const outside = makeTempDir("dehors-", { in: path.dirname(repo.dir) });
   fs.writeFileSync(path.join(outside, "module.json"), JSON.stringify(manifest("evil")));
   fs.symlinkSync(outside, path.join(repo.dir, "piege")); repo.g("add", "-A"); repo.g("commit", "-qm", "piege");
-  assert.equal((await I.installModule(`${repo.url}#:piege`)).ok, false, "un dossier qui pointe hors du dépôt n'est jamais lu");
+  assert.equal((await I.installModule(`${repo.url}#:piege`, { firstInstance: false })).ok, false, "un dossier qui pointe hors du dépôt n'est jamais lu");
   assert.equal(await db.prisma.module.count(), 0);
   // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé.
-  assert.deepEqual(await I.installModule(`${repo.url}#:alpha`, { expectId: "beta" }), { ok: false, error: "modules.error.idmismatch" });
+  assert.deepEqual(await I.installModule(`${repo.url}#:alpha`, { firstInstance: false, expectId: "beta" }), { ok: false, error: "modules.error.idmismatch" });
 });
 
 test("mise à jour : proposée seulement quand CE module change (pas quand un autre module du dépôt évolue) ; appliquée sans toucher aux autres", async () => {
   const repo = monorepo();
-  await I.installModule(`${repo.url}#:alpha`);
-  await I.installModule(`${repo.url}#:beta`);
+  await I.installModule(`${repo.url}#:alpha`, { firstInstance: false });
+  await I.installModule(`${repo.url}#:beta`, { firstInstance: false });
   assert.equal((await I.checkForUpdate("alpha")).available, false);
   repo.change("beta/index.mjs", code("b2"), "beta évolue");
   assert.equal((await I.checkForUpdate("alpha")).available, false, "alpha n'a pas changé");
@@ -101,7 +101,7 @@ test("mise à jour : proposée seulement quand CE module change (pas quand un au
 
 test("mise à jour : une version invalide est refusée et l'ancienne reste en place, intacte", async () => {
   const repo = monorepo();
-  await I.installModule(`${repo.url}#:alpha`);
+  await I.installModule(`${repo.url}#:alpha`, { firstInstance: false });
   const before = fs.readFileSync(path.join(moduleDir("alpha"), "index.mjs"), "utf8");
   repo.change("alpha/module.json", JSON.stringify(manifest("autre-id", "2.0.0")), "identifiant changé");
   const r = await I.updateModule("alpha");
@@ -114,7 +114,7 @@ test("mise à jour : une version invalide est refusée et l'ancienne reste en pl
 
 test("épinglé sur un commit (module personnel) : jamais de mise à jour ; sur une étiquette : l'étiquette est suivie", async () => {
   const repo = monorepo();
-  await I.installModule(`${repo.url}#${repo.commit}:alpha`);
+  await I.installModule(`${repo.url}#${repo.commit}:alpha`, { firstInstance: false });
   repo.change("alpha/module.json", JSON.stringify(manifest("alpha", "1.2.0")), "suite");
   assert.equal((await I.checkForUpdate("alpha")).available, false);
   assert.equal((await I.updateModule("alpha")).error, "modules.error.pinned");

@@ -28,7 +28,7 @@ const CODE = `export default { services: { "${SVC}": {
 } } };`;
 const provider = (id, offer = { service: SVC, each: true }, code = CODE) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", offers: [offer] }, "index.mjs": code });
 const consumer = (id = "cons", requires = [{ service: SVC }]) => makeRepo({ "module.json": { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", requires }, "index.mjs": "export default {};" });
-const install = async (repo) => assert.equal((await installModule(repo.url, { dependencies: false })).ok, true);
+const install = async (repo) => assert.equal((await installModule(repo.url, { firstInstance: false, dependencies: false })).ok, true);
 const instance = async (id, key) => createInstance(db.prisma, { manifest: (await R.getModule(id)).manifest, nickname: key, names: { fr: `Nom ${key}` } });
 const active = async (id) => (await R.getActiveInstances()).find((a) => a.mod.manifest.id === id);
 

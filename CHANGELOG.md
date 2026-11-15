@@ -7,6 +7,33 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.16.0 — 2026-11-15
+
+**En bref.** Une extension installée a tout de suite sa première copie : plus de « Mettre en place » à cliquer pour qu'un élément d'overlay apparaisse. Les extensions déjà installées sans copie en reçoivent une, dans un cas précis seulement.
+
+**In short.** An installed extension gets its first copy right away: no "Set up" to click before an overlay element shows up. Extensions already installed without a copy get one, in one precise case only.
+
+### La première copie, à l'installation
+
+- **Installer suffit.** Que vous installiez depuis la page « Ajouter », depuis la fiche d'une extension, depuis un dépôt personnel ou par votre assistant IA, l'extension arrive avec sa première copie et ses réglages par défaut. Si elle a besoin d'un réglage pour fonctionner, elle le dit dans sa page, elle n'est pas absente.
+- **(English) Installing is enough.** Whether you install from the "Add" page, from an extension's sheet, from a personal repository or through your AI assistant, the extension arrives with its first copy and default settings. If it needs a setting to work, its own page says so; it is not missing.
+- **Vos données gardées reviennent à la place.** Si vous aviez retiré l'extension en gardant ses données, c'est cette copie qui revient, pas une neuve. Une copie que vous retirez ensuite n'est jamais recréée toute seule : « Mettre en place » reste disponible pour la remettre.
+- **(English) Your kept data comes back instead.** If you removed the extension and kept its data, that copy comes back, not a new one. A copy you remove afterwards is never recreated on its own: "Set up" stays available to put it back.
+
+### Extensions déjà installées sans copie
+
+- **Une reprise, une seule fois.** Au premier démarrage de cette version, le cœur crée la première copie des extensions installées sans copie qui affichent quelque chose à l'écran du direct (un élément d'overlay) ou qui fournissent un service qu'une autre extension utilise. Chaque création est notée au journal.
+- **(English) One pass, once.** At the first start of this version, the core creates the first copy of extensions installed without a copy that show something on the live screen (an overlay element) or provide a service another extension uses. Each creation is written to the log.
+- **Ce qui n'est pas touché.** Une extension qui a une page publique, une tâche de fond, une action à la création, des données gardées, ou dont vous aviez retiré la copie reste telle quelle : rien d'autre qu'une copie locale n'est créé, aucune connexion n'est ouverte, aucun bot ne rejoint un salon.
+- **(English) What is left alone.** An extension with a public page, a background task, an action on creation, kept data, or whose copy you removed stays as it is: nothing but a local copy is created, no connection is opened, no bot joins a chat.
+
+### Pour les développeurs
+
+- **`installModule` / `installFromCatalogue`** create the first instance (`ensureDefaultInstance`) unless `restoreKept: false` (own path: backup restore, seed target, first-start wizard, cascade) or `firstInstance: false`. New option `instanceKey`. Result: `instance: { id, key }`, or `instanceFailed: true` (the install is kept, `instances.setUp` / "Set up" still work).
+- **No new manifest key.** A fresh instance must therefore be harmless: no network call, subscription or bot join in `onInstanceCreate` until settings are filled in.
+- **One-time pass** `runFirstInstances()` (`src/core/modules/firstInstances.ts`, setting `core.firstInstances.v1`, audit `instance.create` by `system`). Safe class: no instance, no kept data, no logged removal, hard needs already met, no page, no task, no `onInstanceCreate`, and an overlay element or a service another installed module declares. See `docs/MODULES.md`, "La première instance".
+- `ctx.api.instances.pending` therefore lists only what was removed by hand or could not be created.
+
 ## 0.15.0 — 2026-11-14
 
 **En bref.** Une extension peut maintenant vous proposer un bouton pour mettre en place, d'un clic, une autre extension déjà installée dont elle a besoin, au lieu de vous envoyer sur la page des extensions.

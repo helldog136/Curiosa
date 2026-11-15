@@ -9,6 +9,7 @@ import { installFromCatalogue, installModule } from "@/core/modules/installer";
 import { forgetModulesReport } from "@/core/modules/updateStatus";
 import { addSource, clearSourcesCache, removeSource } from "@/core/modules/sources";
 import { audit } from "@/core/permissions";
+import { auditInstall } from "@/core/modules/installAudit";
 import { buildNames } from "@/core/modules/dependencyView";
 import { describeMissingList } from "@/core/modules/dependencyMessages";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
@@ -33,8 +34,7 @@ export async function installFromCatalogueAction(id: string): Promise<void> {
   const result = await installFromCatalogue(id);
   forgetModulesReport();
   if (!result.ok) redirect(`${EXTENSIONS_ADD_HREF}?error=${encodeURIComponent(result.error)}`);
-  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
-  await audit(user.email, "module.install", id);
+  await auditInstall(user.email, id, result);
   redirect(await afterInstall(id, result.restored, locale, config.defaultLocale, user.email));
 }
 
@@ -54,8 +54,7 @@ export async function installModuleAction(id: string, opId?: string): Promise<{ 
     }
     return { ok: false, error: t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
   }
-  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
-  await audit(user.email, "module.install", id);
+  await auditInstall(user.email, id, result);
   if (result.restored?.length) await audit(user.email, "module.restore", id);
   revalidatePath(EXTENSIONS_HREF);
   return { ok: true, restored: result.restored?.length ?? 0 };
@@ -74,8 +73,7 @@ export async function installExtraAction(_prev: ActionState, formData: FormData)
   const result = run.result;
   forgetModulesReport();
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error, { services: result.detail ?? "", modules: result.detail ?? "" }) };
-  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
-  await audit(user.email, "module.install", id);
+  await auditInstall(user.email, id, result);
   redirect(await afterInstall(id, result.restored, locale, config.defaultLocale, user.email));
 }
 
@@ -89,8 +87,7 @@ export async function installCustomAction(_prev: ActionState, formData: FormData
   const result = run.result;
   forgetModulesReport();
   if (!result.ok) return { error: result.missing?.length ? describeMissingList(result.missing, t, await buildNames(locale, config.defaultLocale)).join(" ") : t(result.error) };
-  for (const provided of result.provided ?? []) await audit(user.email, "module.install.auto", provided);
-  await audit(user.email, "module.install.custom", result.id);
+  await auditInstall(user.email, result.id, result, "module.install.custom");
   redirect(await afterInstall(result.id, result.restored, locale, config.defaultLocale, user.email));
 }
 

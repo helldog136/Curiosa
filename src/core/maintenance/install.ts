@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
-import { createInstance, defaultNames, KEY_RE, runInstanceCreateHook } from "@/core/instanceService";
+import { KEY_RE } from "@/core/instanceService";
+import { ensureDefaultInstance } from "@/core/modules/defaultInstance";
 import { describeIncompat, getCoreVersion, requirementOf } from "@/core/modules/compat";
 import { duplicateServices } from "@/core/modules/dependencies";
 import { planDependencies, type PlanProblem } from "@/core/modules/dependencyPlan";
@@ -102,7 +103,7 @@ const INSTALL_REASONS: Record<string, string> = {
 
 export async function executeInstall(plan: Plan, actorLabel: string): Promise<Outcome> {
   const id = plan.module!;
-  const result = await deps.installFromCatalogue(id);
+  const result = await deps.installFromCatalogue(id, plan.instanceKey ? { instanceKey: plan.instanceKey } : undefined);
   if (!result.ok) {
     const why = INSTALL_REASONS[result.error] ?? "the installation failed";
     const detail = result.missing?.length ? ` Missing: ${result.missing.map((m) => `${m.service} (${m.reason})`).join(", ")}.` : result.loadError ? ` Cause: ${redactSecrets(result.loadError, 200)}.` : result.detail ? ` (${redactSecrets(result.detail, 80)})` : "";
@@ -113,26 +114,29 @@ export async function executeInstall(plan: Plan, actorLabel: string): Promise<Ou
   await audit("module.install", id);
   if (result.restored?.length) await audit("module.restore", id);
 
-  // La première instance (comme le fait « Ajouter » dans l'admin juste après l'installation) : réglages par défaut, ou les données retrouvées.
+  // La première instance : l'installation la crée elle-même (réglages par défaut, ou les données retrouvées). Filet idempotent si ce n'est pas arrivé (échec, doublure de test).
   let instanceKey: string | null = null;
   let instanceNote = "";
   try {
-    const mod = await getModule(id);
-    if (!mod) throw new Error("not loaded");
-    if ((await prisma.moduleInstance.count({ where: { moduleId: id } })) === 0) {
-      const { locales } = await getSiteConfig();
-      const created = await createInstance(prisma, { manifest: mod.manifest, ...(plan.instanceKey ? { key: plan.instanceKey } : {}), names: defaultNames(mod.manifest, locales) });
-      await runInstanceCreateHook(created.id);
-      await audit("instance.create", created.key);
-      instanceKey = created.key;
-    } else {
-      instanceNote = " Its data kept from an earlier removal came back as it was.";
-      instanceKey = (await prisma.moduleInstance.findFirst({ where: { moduleId: id }, orderBy: { createdAt: "asc" } }))?.key ?? null;
+    if (result.instance) {
+      await audit("instance.create", result.instance.key);
+      instanceKey = result.instance.key;
+    } else if ((await prisma.moduleInstance.count({ where: { moduleId: id } })) === 0) {
+      const made = await ensureDefaultInstance(id, plan.instanceKey ? { key: plan.instanceKey } : {});
+      if (made?.kind === "created") {
+        instanceKey = (await prisma.moduleInstance.findUnique({ where: { id: made.instanceId }, select: { key: true } }))?.key ?? null;
+        if (instanceKey) await audit("instance.create", instanceKey);
+      }
+    }
+    if (!instanceKey) {
+      const first = await prisma.moduleInstance.findFirst({ where: { moduleId: id }, orderBy: { createdAt: "asc" } });
+      instanceKey = first?.key ?? null;
+      if (first && result.restored?.length) instanceNote = " Its data kept from an earlier removal came back as it was.";
     }
   } catch (error) {
     console.error("[maintenance] first instance failed:", (error as Error)?.message);
-    instanceNote = " The module is installed but its first instance could not be created: the owner can add it in Admin > Extensions.";
   }
+  if (!instanceKey) instanceNote = " The module is installed but its first instance could not be created: the owner can set it up in Admin > Extensions.";
 
   // Ce qu'il reste à régler (noms seulement) : pour que l'IA enchaîne avec maintenance_module_settings.
   let toFill: string[] = [];
