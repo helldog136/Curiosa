@@ -73,6 +73,11 @@ Use the same word for the same thing everywhere.
 | main language | langue principale | the language visitors see first |
 | draft | brouillon | not published yet |
 | redirect | redirection | a short address that leads elsewhere |
+| readability | lisibilité | how well the text of an overlay element reads over any video |
+| Readable everywhere | Lisible partout | the readability preset with a solid background (85 %) and a thin text outline |
+| Discreet | Discret | the readability preset with a light background (55 %) and a thin text outline |
+| No background, outlined text | Sans fond, texte détouré | the readability preset with no background and a thick text outline |
+| text outline | contour du texte | a dark (or light) edge drawn around letters so they stay readable |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 

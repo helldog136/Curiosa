@@ -166,6 +166,16 @@ The core **reserves** the names `--ov-*`, `data-ov-part`, `data-ov-region`, `dat
 
 **Sealing.** An element's page **never** loads the site skin, and you use neither `--sk-*` nor `data-skin-*` on it. An overlay skin never touches the public site, and a site skin never touches an overlay. The common style **does not** reuse the site skin. An element that cannot follow the style (a 3D scene) declares `followsStyle: false`: no skin is injected into it.
 
+**Appearance kit of each element (core 0.17.0).** In the editor, every element that follows the style has an **Appearance** tab: *Readability* (Readable everywhere · Discreet · No background, outlined text · Like the page), *Text* (Auto · Light · Dark) and, folded under *More options*, the background (None · Subtle · Solid · Glass), its opacity (0 to 100 %) and colour, the text outline (None · Thin · Thick) and the corners. **Nothing changes in your module.** The core compiles the choice into a small sheet that it adopts into your element's page (the same mechanism as skins and "Opaque") and marks the root `html[data-ov-look]`. The sheet:
+
+1. forces `--ov-fg`, `--ov-muted`, `--ov-surface`, `--ov-border`, `--ov-text-shadow` (and `--ov-radius` when corners are chosen) on **every node** (`html, html *`, `!important`), so it also beats a token your page writes inline on a stage;
+2. gives the containers (`panel`, `card`, `bubble`, `quote`) `background-color: var(--ov-surface)` and the text parts (`title`, `name`, `body`, `text`, `message`, `detail`, `content`, `summary`, `value`, `stat`, `list`, `label`, `status`, `game`, `clock`) `color: var(--ov-fg)`;
+3. draws the text outline as an inherited `text-shadow` (4 directions and a blur), and on **all** text when the background is under 65 %.
+
+Its selector carries an id-level specificity, so the element setting wins over a skin and over "Opaque". Priority, from the weakest: your fallback, the skin, the page style, the element setting. **The core never paints the element's frame nor `html`/`body`**: a panel you hide when idle stays invisible. What stays yours: hide your containers when there is nothing to show (`hidden`), mark them with the part names above, and never hard-code a text or background colour.
+
+Readability rules (`src/core/overlays/appearance.ts`): the worst case is the background composited over a pure white and a pure black video. White text over black needs 54 % for 4.5:1 and 65 % for 7:1, so under 65 % an outline is always drawn; *Auto* picks light or dark text by the best worst-case contrast; the editor shows "Hard to read over a bright video" with a *Fix* button below 4.5:1 without outline (never blocking). **Readability fix**: an element that follows the style, on a page with a transparent background and no skin, and without its own setting, gets *Readable everywhere* automatically (before 0.17.0 its text sat bare on the video). New elements start in *Readable everywhere*. Stored as `elements[].style` (only what is set; absent = like the page).
+
 ## Text size and TV legibility (core 0.11.0)
 
 An overlay is watched **like TV**, on a phone or a television, from a distance. On a 1920x1080 canvas, follow the usual broadcast guidance: body and secondary text at least **28 to 32 px**, titles and labels larger, **nothing below 24 px** (`TV_MIN_TEXT_PX`), strong contrast, no hairline weights, and keep text inside the title-safe margins (about 5 % from each edge). The numbers below are px **on the canvas** (what the person sees), not px of your element's own window.
@@ -253,7 +263,7 @@ Tick before publishing the version of your module that offers elements:
 - [ ] `index.mjs`: one `overlayElements.<id>` function per declared element, and the reverse. It answers a site path, or `null`.
 - [ ] The element page **fills the whole window** (`ov-w` × `ov-h`), ignores the placement settings of the module's overlay, and stays readable at every allowed size.
 - [ ] The received options (`opt-<id>`) are **validated**; an unknown value is ignored without error, an empty state is shown properly.
-- [ ] Style: `--ov-*` tokens with a fallback, `data-ov-part` attributes using the shared part names, **no** hard-coded class for text colour or background; otherwise `followsStyle: false`.
+- [ ] Style: `--ov-*` tokens with a fallback, `data-ov-part` attributes using the shared part names, **no** hard-coded class for text colour or background; otherwise `followsStyle: false`. Your own tokens on `:root` or on the `data-ov-region="element"` node (a skin and "Opaque" reach only those; the 0.17.0 appearance kit reaches every node).
 - [ ] No `--sk-*` nor `data-skin-*` on the element page; no third-party loading; text from elsewhere **escaped**.
 - [ ] Several readers: one cursor per reader, bounded reads, `assertMultiReaders` test written if the element follows a stream.
 - [ ] `demo: true` if the element can show sample content, for test mode.
