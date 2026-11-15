@@ -6,8 +6,11 @@ import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
 import { ui } from "./ui";
 import { TextSizeField } from "./TextSizeField";
+import { HelpTip } from "./HelpTip";
+import { OverlayLookPanel } from "./OverlayLookPanel";
+import { NEW_ELEMENT_STYLE, appliedLook, readabilityOf, type PageSide } from "@/core/overlays/appearance";
 import { foldText, queryWords } from "@/core/adminkit/search";
-import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setRect } from "@/core/overlays/editorModel";
+import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setLook, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
 import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
 import { effectiveTextScale } from "@/core/overlays/textScale";
@@ -24,13 +27,15 @@ type Props = {
   limits: { elements: number; fold: number; minSide: number; maxSide: number };
   previewSrc: string;
   strings: Record<string, string>;
+  /** (0.17.0) The page wears an overlay skin (default skin or skin per context): the readability fix of a transparent page does not apply then. */
+  pageSkin?: boolean;
 };
 
 const hue = (i: number) => (i * 47 + 10) % 360;
 const GRID_ANCHORS: Anchor[] = [...ANCHORS];
 const SNAP_PX = 8;
 
-export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings }: Props) {
+export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false }: Props) {
   const s = useCallback((key: string, vars?: Record<string, string | number>) => {
     let text = strings[key] ?? key;
     if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
@@ -60,6 +65,14 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const page = useMemo(() => ({ width: size.width, height: size.height }), [size.width, size.height]);
   const sel = elements.find((e) => e.uid === selected) ?? null;
   const selInfo = sel ? byKey.get(catalogKey(sel.instance, sel.element)) ?? null : null;
+  const pageSide: PageSide = useMemo(() => ({ style, skin: pageSkin }), [style, pageSkin]);
+  const lookOf = (e: EditorElement) => { const info = byKey.get(catalogKey(e.instance, e.element)); const applied = appliedLook(e.style, pageSide, !!info?.followsStyle); return { applied, readable: readabilityOf(applied) }; };
+  const autoCount = elements.filter((e) => lookOf(e).applied?.source === "auto").length;
+  const selLook = sel ? lookOf(sel) : null;
+  // The tab of the selected element: chosen by the person, else its appearance when it is hard to read (design 7.1), else its place.
+  const [tabOf, setTabOf] = useState<{ uid: string | null; tab: "place" | "look" | "options" }>({ uid: null, tab: "place" });
+  const tab = tabOf.uid === selected ? tabOf.tab : selLook && !selLook.readable.ok ? "look" : "place";
+  const setTab = (t: "place" | "look" | "options") => setTabOf({ uid: selected, tab: t });
 
   const data = useMemo(() => JSON.stringify({ name, width: size.width, height: size.height, style, elements: elements.map(({ missing, ...e }) => { void missing; return e; }) }), [name, size, style, elements]);
 
@@ -86,7 +99,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     const taken = new Set(elements.map((e) => e.uid));
     const uid = newUid(taken);
     const defaults = Object.fromEntries(a.options.map((o) => [o.id, o.default]));
-    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults }, uid));
+    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults, ...(a.followsStyle ? { style: NEW_ELEMENT_STYLE } : {}) }, uid));
     setSelected(uid); setAdding(false);
     setAnnounce(s("ed.added", { name: a.title }));
   }
@@ -235,6 +248,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
             </div>
           </div>
           {full && <p className={ui.help}>{s("ed.full", { max: limits.elements })}</p>}
+          {autoCount > 0 && <p role="status" data-testid="look-auto-notice" className="flex items-center gap-1 text-sm text-muted">{s(autoCount === 1 ? "ed.look.autoNotice.one" : "ed.look.autoNotice", { n: autoCount })}<HelpTip help={s("ed.look.autoNoticeHelp")} name={s("ed.look.preset")} always /></p>}
           {adding && (
             <div role="dialog" aria-label={s("ed.add")} className={`${ui.card} space-y-4`}>
               {available.length === 0 && <p className="text-sm text-muted">{s("ed.noneAvailable")}</p>}
@@ -346,6 +360,23 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                 {!selInfo && <p className={ui.help}>{s("ed.goneHelp")}</p>}
                 {selInfo && <p className={ui.help}>{s(`ed.fit.${selInfo.layout.fit}`)}</p>}
               </div>
+              {(() => {
+                const tabs = [{ id: "place" as const, label: s("ed.tab.place") }, ...(selInfo?.followsStyle ? [{ id: "look" as const, label: s("ed.tab.look") }] : []), ...(selInfo && selInfo.options.length > 0 ? [{ id: "options" as const, label: s("ed.tab.options") }] : [])];
+                const current = tabs.some((t) => t.id === tab) ? tab : "place";
+                return (
+                  <>
+                    {tabs.length > 1 && (
+                      <div role="tablist" aria-label={s("ed.tab.label")} className="flex flex-wrap gap-1 border-b border-line" data-testid="element-tabs">
+                        {tabs.map((t) => (
+                          <button key={t.id} type="button" role="tab" id={`ov-tab-${t.id}`} aria-selected={current === t.id} aria-controls={`ov-tabpanel-${t.id}`} onClick={() => setTab(t.id)}
+                            className={`-mb-px min-h-11 rounded-t-lg border-b-2 px-3 text-sm font-medium ${current === t.id ? "border-accent text-accent" : "border-transparent text-muted hover:text-fg"}`}>
+                            {t.label}{t.id === "look" && selLook && !selLook.readable.ok ? <span aria-hidden className="ml-1 text-amber-600">⚠</span> : null}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {current === "place" && (
+                      <div role={tabs.length > 1 ? "tabpanel" : undefined} id="ov-tabpanel-place" aria-labelledby={tabs.length > 1 ? "ov-tab-place" : undefined} className="space-y-4">
               <div className="grid gap-x-6 gap-y-4 lg:grid-cols-[minmax(0,1fr)_auto]">
               <div className="grid grid-cols-2 gap-3 self-start">
                 {(["x", "y", "w", "h"] as const).map((f) => (
@@ -385,9 +416,24 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
               <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={sel.visible} onChange={(e) => update(elements.map((x) => (x.uid === sel.uid ? { ...x, visible: e.target.checked } : x)))} className="h-4 w-4 accent-[var(--v-accent)]" />{s("ed.visible")}</label>
               <TextSizeField key={sel.uid} testId="text-size-element" legend={s("ed.textSize.element")} help={s("ed.textSize.elementHelp")} value={sel.textScale ?? null} inherit errorPath={`elements.${sel.uid}.textScale`} s={s}
                 onChange={(v) => update(elements.map((x) => { if (x.uid !== sel.uid) return x; const { textScale, ...rest } = x; void textScale; return v === null ? rest : { ...rest, textScale: v }; }))} />
-              {selInfo && selInfo.options.length > 0 && <OptionsForm info={selInfo} el={sel} s={s} fold={limits.fold} onChange={(id, v) => update(elements.map((x) => (x.uid === sel.uid ? { ...x, options: { ...x.options, [id]: v } } : x)))} />}
               {selInfo && !selInfo.followsStyle && <p className={ui.help}>{s("ed.noStyle")}</p>}
               <button type="button" className={ui.btnDanger} onClick={() => { const next = removeElement(elements, sel.uid); update(next); setSelected(next.at(-1)?.uid ?? null); setAnnounce(s("ed.removed")); }}>{s("ed.remove")}</button>
+                      </div>
+                    )}
+                    {current === "look" && selInfo?.followsStyle && selLook && (
+                      <div role="tabpanel" id="ov-tabpanel-look" aria-labelledby="ov-tab-look">
+                        <OverlayLookPanel key={sel.uid} uid={sel.uid} style={sel.style ?? null} applied={selLook.applied} readable={selLook.readable} s={s}
+                          onChange={(next) => update(setLook(elements, sel.uid, next) as EditorElement[])} />
+                      </div>
+                    )}
+                    {current === "options" && selInfo && selInfo.options.length > 0 && (
+                      <div role="tabpanel" id="ov-tabpanel-options" aria-labelledby="ov-tab-options">
+                        <OptionsForm info={selInfo} el={sel} s={s} fold={limits.fold} onChange={(id, v) => update(elements.map((x) => (x.uid === sel.uid ? { ...x, options: { ...x.options, [id]: v } } : x)))} />
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </section>
           )}
         </aside>
