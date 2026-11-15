@@ -40,6 +40,10 @@ import { loadCore } from "./core.mjs";
  *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 4 Go / 20 000). Sans la permission
  *   « files » (option `permissions`) : `claim`/`remove` répondent `no-permission` et `ctx.calls.denied` le note. `ctx.calls.files` garde chaque appel `{ op, url, result }` ;
  *   `ctx.dumpFiles()` donne les fichiers encore là `[{ url, bytes, owner }]` (`owner` : « me », une autre instance, ou null), de quoi vérifier qu'un fichier a bien disparu.
+ * - `ctx.api.files.upload` (core 0.18.0, assistant uploads): `begin`, `chunk`, `finish`, `cancel`. Off (`not-allowed`, like an action that does not declare `uploads: true`)
+ *   unless `assistantUploads: { tokenName?, tokenId?, nowMs?: () => number, open?: n }`. The bytes go through the SAME check as the core (`checkAssistantFile`: kind from
+ *   the bytes, container probe, sizes, duration), with the same piece size, order, sha256, 30-minute expiry, replay (`already`) and per-access limit (3 open). The PUT
+ *   address is not served: `ctx.putUpload(upload, bytes, offset?)` plays it. A finished file becomes one of `dumpFiles()` with `owner: "me"` and `by: "assistant:<id>"`.
  * - `ctx.api.log.write({ action, target?, level?, data? })` (cœur après 0.5.1) : le journal central. Les MÊMES règles que le cœur (bornes, liste blanche des champs, 200 caractères, secrets écartés) s'appliquent à partir de `logEvents`
  *   (option : la liste `logEvents` de votre module.json). Une action non déclarée, ou un module sans `logEvents`, donne une ligne générique sans `data`. Une clé invalide renvoie `false` (jamais d'exception). L'acteur n'est jamais fourni
  *   par le module : `actor` (option) vaut « module » (défaut), « person », « assistant » ou « system ». `ctx.calls.log` garde chaque ligne ÉCRITE `{ action, target, level, data, actor }` ; `ctx.dumpLog()` la même liste.
@@ -69,7 +73,7 @@ export function fakeCtx(opts = {}) {
     brand = { name: "Site", tagline: "", about: "", logo: null, contactEmail: "", colors: [], font: { key: "sans", name: "Sans-serif", stack: "sans-serif" }, defaultLocale, locales },
     migration = false, seedResult, legacy, rows: seedRows = {}, permissions, lastVisit = new Date(0), site = { name: "Site", tagline: "", logo: null }, theme = { accent: "#e8a23b", accentFg: "#111111", bg: "#121214", surface: "#1b1b1d", fg: "#f4f4f5", muted: "#a1a1a3", line: "#2e2e30", fontKey: "sans", font: "sans-serif" }, services = {}, serviceInstances = {}, mailConfigured = true, mailResult = { ok: true }, privacyDeclarations = { modules: [], truncated: false }, rawgConfigured = true, rawgCover = { status: "found", url: "https://media.example.test/cover.jpg" }, rawgCandidates = { status: "none", candidates: [] }, siteUrl = "https://example.test",
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
-    uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {},
+    uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {}, assistantUploads = null,
     logEvents = [], actor: logActor = "module",
     timezone = "UTC", requires = [], installedModules = {},
   } = opts;
@@ -181,6 +185,72 @@ export function fakeCtx(opts = {}) {
     },
   };
 
+  // ── Assistant uploads (ctx.api.files.upload, core 0.18.0): same rules as services/assistantUploads.ts, in memory, same check of the bytes. ──
+  const staged = new Map();
+  const upNow = () => (assistantUploads?.nowMs ? assistantUploads.nowMs() : Date.now());
+  const upNo = (reason, message) => ({ ok: false, reason, message });
+  const upCheck = async () => import("@/core/services/assistantUploadCheck");
+  const upMine = (id) => { const st = staged.get(String(id ?? "")); if (!st) return upNo("unknown", "Unknown upload."); if (upNow() - st.at > 30 * 60_000) { staged.delete(st.id); return upNo("expired", "This upload expired (30 minutes). Start a new one."); } return st; };
+  const upWrite = (st, offset, data) => {
+    if (st.result) return upNo("invalid", "This upload is already finished.");
+    if (offset < 0 || offset > st.buf.length) return upNo("invalid", `Send the file in order: ${st.buf.length} bytes received.`);
+    if (offset + data.length > st.bytes) return upNo("size", "This piece goes past the announced size.");
+    st.buf = Buffer.concat([st.buf.subarray(0, offset), data, st.buf.subarray(offset + data.length)]);
+    return { ok: true, received: st.buf.length, total: st.bytes, complete: st.buf.length === st.bytes };
+  };
+  const uploadApi = {
+    begin: async (input = {}) => {
+      if (!assistantUploads || (allowed && !allowed.has("files"))) return upNo("not-allowed", "Uploading is not possible here.");
+      const C = await upCheck();
+      const accept = (Array.isArray(input.accept) && input.accept.length ? input.accept : C.ASSISTANT_KINDS).filter((k) => C.ASSISTANT_KINDS.includes(k));
+      if (!accept.length) return upNo("invalid", "accept must list image, video and/or audio.");
+      const max = Math.max(...accept.map((k) => C.ASSISTANT_MAX_BYTES[k]));
+      if (!Number.isInteger(input.bytes) || input.bytes < 1) return upNo("invalid", "Give the exact size of the file in bytes.");
+      if (input.bytes > max) return upNo("size", "The file is too large.");
+      if (!/^[0-9a-f]{64}$/i.test(String(input.sha256 ?? "").trim())) return upNo("invalid", "Give the sha256 of the file as 64 hexadecimal characters.");
+      if ([...staged.values()].filter((x) => !x.result && upNow() - x.at <= 30 * 60_000).length >= (assistantUploads.open ?? 3)) return upNo("busy", "This access already has 3 uploads in progress.");
+      const id = createHash("sha256").update(`${Math.random()}${upNow()}`).digest("hex").slice(0, 32);
+      staged.set(id, { id, at: upNow(), bytes: input.bytes, sha256: String(input.sha256).trim().toLowerCase(), accept, label: String(input.label ?? "").replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 60), buf: Buffer.alloc(0), result: null });
+      return { ok: true, upload: id, putUrl: `${siteUrl}/api/assistant-upload/${id}.${"x".repeat(43)}`, partBytes: C.HTTP_PART_BYTES, chunkBytes: C.CHUNK_BYTES, chunks: Math.ceil(input.bytes / C.CHUNK_BYTES), expiresAt: new Date(upNow() + 30 * 60_000).toISOString(), maxBytes: max };
+    },
+    chunk: async (input = {}) => {
+      if (!assistantUploads) return upNo("not-allowed", "Uploading is not possible here.");
+      const C = await upCheck();
+      const st = upMine(input.upload); if (st.ok === false) return st;
+      const raw = typeof input.data === "string" ? input.data.replace(/\s+/g, "") : "";
+      if (!Number.isInteger(input.index) || input.index < 0) return upNo("invalid", "index must be the number of the piece, starting at 0.");
+      if (!raw || !/^[A-Za-z0-9+/]+={0,2}$/.test(raw) || raw.length % 4 === 1) return upNo("invalid", "data must be plain base64.");
+      const data = Buffer.from(raw, "base64");
+      if (data.length > C.CHUNK_BYTES) return upNo("size", "A piece is too large.");
+      if (data.length !== C.CHUNK_BYTES && input.index !== Math.ceil(st.bytes / C.CHUNK_BYTES) - 1) return upNo("invalid", "Every piece except the last one must be exactly the piece size.");
+      return upWrite(st, input.index * C.CHUNK_BYTES, data);
+    },
+    finish: async (input = {}) => {
+      if (!assistantUploads) return upNo("not-allowed", "Uploading is not possible here.");
+      const C = await upCheck();
+      const st = upMine(input.upload); if (st.ok === false) return st;
+      if (st.result) return { ...st.result, already: true };
+      if (st.buf.length !== st.bytes) return upNo("incomplete", `Only ${st.buf.length} of ${st.bytes} bytes were received.`);
+      if (createHash("sha256").update(st.buf).digest("hex") !== st.sha256) { st.buf = Buffer.alloc(0); return upNo("hash", "The sha256 of the received bytes does not match."); }
+      const checked = await C.checkAssistantFile(st.buf, st.accept);
+      if (!checked.ok) { staged.delete(st.id); return upNo(checked.reason, checked.message); }
+      const own = [...fileRows.values()].filter(mine);
+      if (own.length + 1 > limitFiles || own.reduce((t, x) => t + x.bytes, 0) + st.buf.length > limitBytes) return upNo("quota", "This module has no room left for files.");
+      const name = `${createHash("sha256").update(st.id).digest("hex").slice(0, 8)}-0000-4000-8000-${st.id.slice(0, 12)}.${checked.ext}`;
+      fileRows.set(name, { bytes: st.buf.length, by: `assistant:${assistantUploads.tokenId ?? "t1"}`, ageMs: 0, owner: "me" });
+      st.result = { ok: true, url: `/uploads/${name}`, kind: checked.kind, type: checked.ext, bytes: st.buf.length, label: st.label, width: checked.width, height: checked.height, durationSeconds: checked.durationSeconds, codec: checked.codec, alpha: checked.alpha };
+      calls.files.push({ op: "upload", url: st.result.url, result: st.result });
+      return { ...st.result, already: false };
+    },
+    cancel: async (input = {}) => {
+      if (!assistantUploads) return upNo("not-allowed", "Uploading is not possible here.");
+      const st = upMine(input.upload); if (st.ok === false) return st;
+      if (!st.result) staged.delete(st.id);
+      return { ok: true };
+    },
+  };
+  filesApi.upload = uploadApi;
+
   // ── Journal central (ctx.api.log, cœur après 0.5.1) : mêmes règles que core/journal/write.ts, en mémoire. ──
   const logApi = {
     write: async (entry) => {
@@ -234,6 +304,8 @@ export function fakeCtx(opts = {}) {
     calls,
     /** Tout ce que le module a rangé dans son stockage : [{ id, collection, data }] (sans passer par la permission « storage »). */
     dumpStore: () => [...rows.values()].map((r) => ({ id: r.id, collection: r.collection, data: structuredClone(r.data) })),
+    /** (core 0.18.0) Plays the one-time PUT address of an assistant upload: `bytes` (a Buffer) written at `offset` (default 0). Returns what the route answers. */
+    putUpload: (upload, bytes, offset = 0) => { const st = upMine(upload); return st.ok === false ? st : upWrite(st, offset, Buffer.from(bytes)); },
     /** Les fichiers encore présents (ctx.api.files) : [{ url, bytes, owner }], owner = « me » (revendiqué par ce module), une autre instance, ou null. */
     /** Les lignes écrites au journal central (ctx.api.log) : `[{ action, target, level, data, actor }]`. */
     dumpLog: () => structuredClone(calls.log),

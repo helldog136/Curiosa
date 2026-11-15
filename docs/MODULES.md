@@ -730,6 +730,7 @@ See [TRANSLATING.md](TRANSLATING.md) to add a language.
 | `readOnly` | Lecture seule (défaut : non). Les jetons « lecture » n'ont accès qu'aux actions en lecture seule. |
 | `default` | Accordée d'office aux jetons ? Défaut : oui pour une lecture seule, non pour une action qui écrit. |
 | `destructive` | Irréversible (suppression…). Jamais `default: true`, jamais `readOnly` : le manifeste est refusé sinon. |
+| `uploads` | (core 0.18.0) The action receives a file from the assistant through `ctx.api.files.upload` (see "Files an assistant sends"). Needs the `files` permission; never `readOnly`, never `default: true`. An older core ignores the key. |
 | `input` | Schéma des arguments (sous-ensemble de JSON Schema, voir « API MCP »). |
 
 ### Module à contenu (`content`) : zéro code
@@ -1950,7 +1951,7 @@ async deletePhoto(ctx, { id }) {
 | `reason` | veut dire |
 |---|---|
 | `no-permission` | le module n'a pas déclaré `files` |
-| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier. Dans une méthode de service, seulement si l'appel porte ses droits (`asCaller` + `callerRights`, cœur 0.14.0 : voir « Dépendances entre modules ») |
+| `no-person` | pas d'action d'administration en cours (page publique, route, tâche, MCP) : seule la personne qui vient de cliquer peut confier un fichier (an assistant uses `ctx.api.files.upload`, core 0.18.0). Dans une méthode de service, seulement si l'appel porte ses droits (`asCaller` + `callerRights`, cœur 0.14.0 : voir « Dépendances entre modules ») |
 | `invalid` | pas une adresse d'envoi du cœur (`/uploads/<uuid>.<ext>`, ou le nom seul) : tout autre chemin, `..`, adresse externe… est refusé |
 | `unknown` | le cœur n'a pas reçu ce fichier récemment (ancien envoi d'avant la 0.2.13, logo, couverture d'un autre écran, adresse inventée) |
 | `not-uploader` | le fichier a été envoyé par quelqu'un d'autre |
@@ -1974,6 +1975,32 @@ Le succès rend `{ ok: true, url, bytes, already }` (`already: true` si cette in
 - Le propriétaire est l'**instance**, comme pour le stockage (`ctx.api.store`) : deux instances d'un même module ne se suppriment pas leurs fichiers, mais partagent le plafond du module.
 
 Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ageMs, bytes, owner }], person, filesQuota })` applique les mêmes règles et les mêmes motifs de refus que le cœur ; `ctx.calls.files` garde les appels, `ctx.dumpFiles()` les fichiers encore présents (pour constater qu'un fichier a disparu). Voir [TESTSUPPORT.md](TESTSUPPORT.md).
+
+### Files an assistant sends (`ctx.api.files.upload`, core 0.18.0)
+
+`claim` keeps only a file that a PERSON just uploaded in the admin; an AI assistant has no person (`no-person`). An MCP action that declares `"uploads": true` (and the module has the `files` permission) gets `ctx.api.files.upload` instead, for the access (token) that calls it. Anywhere else (a page, a route, a task, a service, an action without the key) every method answers `{ ok: false, reason: "not-allowed" }`. The owner grants the action like any writing action: off by default, never in a preset.
+
+```js
+// module.json: { "name": "clip_upload_begin", "uploads": true, "description": "…", "input": { … } } (same for _chunk and _finish)
+async clip_upload_begin(ctx, a) { return ctx.api.files.upload.begin({ bytes: a.bytes, sha256: a.sha256, accept: ["video", "image"], label: a.name }); },
+async clip_upload_chunk(ctx, a) { return ctx.api.files.upload.chunk({ upload: a.upload, index: a.index, data: a.data }); },  // declare `data` WITHOUT maxLength
+async clip_upload_finish(ctx, a) {
+  const r = await ctx.api.files.upload.finish({ upload: a.upload });
+  if (!r.ok) throw Object.assign(new Error(r.message), { expose: true });   // the message says what to do
+  await ctx.api.store.add("clips", { url: r.url, name: r.label, by: "assistant" }); // already OWNED by this instance: no claim
+  return r;
+},
+```
+
+| Step | What happens |
+|---|---|
+| `begin({ bytes, sha256, accept?, label? })` | Opens a staging slot (outside `/uploads`, never served) for 30 minutes, bound to the access AND the instance. Returns `upload`, `putUrl` (one-time address), `chunkBytes` (700 000), `chunks`, `partBytes` (8 MB), `expiresAt`. Refused: size above the kind's cap (`size`), bad sha256 (`invalid`), 3 slots open for this access or 10 for the site (`busy`), the access's hourly "content" slots, 30 files / 250 MB per 24 hours for all assistants or the module quota (`quota`). |
+| `chunk({ upload, index, data })` | Base64 piece number `index`, exactly `chunkBytes` except the last; in order, a piece may be sent again. |
+| `PUT putUrl[?offset=n]` | The same bytes over HTTP (8 MB per request), for an assistant that can run curl: `curl -T clip.webm "<putUrl>"`. Any problem answers the same 404. |
+| `finish({ upload })` | Size, sha256 (on mismatch the bytes are discarded, send again), kind from the bytes (`type`), container probe (`probe`: nothing after the end, VP8/VP9/AV1 webm, H.264/VP9/AV1 mp4, 30 s and 1920x1080 at most, GIF walked to its trailer, PNG/JPEG/WebP ending where they should). Stores `/uploads/<uuid>.<ext>` owned by this instance, journal `file.upload` with the access name. Returns `{ url, kind, type, bytes, label, width, height, durationSeconds, codec, alpha, already }` (`alpha`: true for a transparent WebM, AlphaMode 1; false for other videos; null for pictures, GIFs and sounds); calling it again returns the same file with `already: true`. |
+| `cancel({ upload })` | Drops an unfinished slot. |
+
+Caps: pictures 5 MB, sounds 10 MB, videos 25 MB. Every refusal carries `message`, an English sentence for the assistant (what is wrong and what to do, often an ffmpeg example). The label is plain text (60 characters). Test kit: `fakeCtx({ permissions: ["files"], assistantUploads: { tokenId?, nowMs? } })` runs the same check of the bytes (`checkAssistantFile`), `ctx.putUpload(upload, buffer, offset?)` plays the one-time address.
 
 ## Jaquettes de jeux (RAWG)
 
