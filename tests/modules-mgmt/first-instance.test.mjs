@@ -138,6 +138,7 @@ test("migration: never touches a module with a public page, a creation hook, a s
   await noCopy("gone", { ...base({ manifest: { ...overlayManifest } }), files: { "index.mjs": "export default { overlayElements: { box: () => null } };" } });
   await noCopy("needy", { ...base({ manifest: { ...overlayManifest, requires: [{ service: "demo.absent" }] } }), files: { "index.mjs": "export default { overlayElements: { box: () => null } };" } });
   await noCopy("plain", base());
+  await noCopy("routey", { ...base({ manifest: { permissions: ["routes"], offers: [{ service: "demo.a" }] } }), files: { "index.mjs": "export default { routes: { pair: () => new Response('ok') } };" } });
   await noCopy("consumer", base({ manifest: { requires: [{ service: "demo.a", optional: true }] } }));
   // kept data: an instance that was retired with its data
   await D.ensureDefaultInstance("kepty");
@@ -156,7 +157,8 @@ test("migration: never touches a module with a public page, a creation hook, a s
   assert.equal(why.gone, "instance removed by the owner");
   assert.equal(why.needy, "missing requirement");
   assert.equal(why.plain, "nothing shown or consumed");
-  assert.equal(await prisma.moduleInstance.count({ where: { moduleId: { in: ["pagey", "hooky", "tasky", "kepty", "gone", "needy", "plain"] } } }), 0);
+  assert.equal(why.routey, "routes");
+  assert.equal(await prisma.moduleInstance.count({ where: { moduleId: { in: ["pagey", "hooky", "tasky", "kepty", "gone", "needy", "plain", "routey"] } } }), 0);
 });
 
 test("migration: an instance the owner removes AFTER the pass does not come back at the next start", async () => {

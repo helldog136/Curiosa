@@ -24,8 +24,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Une reprise, une seule fois.** Au premier démarrage de cette version, le cœur crée la première copie des extensions installées sans copie qui affichent quelque chose à l'écran du direct (un élément d'overlay) ou qui fournissent un service qu'une autre extension utilise. Chaque création est notée au journal.
 - **(English) One pass, once.** At the first start of this version, the core creates the first copy of extensions installed without a copy that show something on the live screen (an overlay element) or provide a service another extension uses. Each creation is written to the log.
-- **Ce qui n'est pas touché.** Une extension qui a une page publique, une tâche de fond, une action à la création, des données gardées, ou dont vous aviez retiré la copie reste telle quelle : rien d'autre qu'une copie locale n'est créé, aucune connexion n'est ouverte, aucun bot ne rejoint un salon.
-- **(English) What is left alone.** An extension with a public page, a background task, an action on creation, kept data, or whose copy you removed stays as it is: nothing but a local copy is created, no connection is opened, no bot joins a chat.
+- **Ce qui n'est pas touché.** Une extension avec une page publique, une tâche de fond, une action à la création, des données gardées ou des adresses à ouvrir reste telle quelle, comme celle dont vous aviez retiré la copie. Aucune connexion n'est ouverte, aucun bot ne rejoint un salon.
+- **(English) What is left alone.** An extension with a public page, a background task, an action on creation, kept data or addresses to open stays as it is, like one whose copy you removed. No connection is opened, no bot joins a chat.
 
 ### Pour les développeurs
 

@@ -18,14 +18,14 @@ import { normalizeNeeds } from "./serviceVersions";
  *   - aucune instance, aucune donnée gardée (une personne qui a retiré sa copie ne la voit pas revenir), aucune ligne du journal « instance retirée » pour ce module ;
  *   - rien à régler avant : tous ses besoins durs sont déjà fournis (la reprise n'installe ni ne télécharge rien) ;
  *   - ni page publique (pas d'adresse nouvelle, pas d'entrée au menu), ni tâche planifiée, ni crochet `onInstanceCreate` (un crochet peut joindre un service extérieur) ;
- *   - il montre quelque chose au direct (un élément d'overlay) OU fournit un service qu'un autre module installé déclare (`requires`, dur ou facultatif).
+ *   - il montre quelque chose au direct (un élément d'overlay) OU fournit un service qu'un autre module installé déclare (`requires`, dur ou facultatif) ; dans ce second cas, sans adresses (`routes`) à ouvrir.
  * Aucune connexion, aucun abonnement, aucun robot n'est lancé par le cœur ; chaque création est notée au journal (`instance.create`, acteur « system »).
  */
 export const FIRST_INSTANCES_KEY = "core.firstInstances.v1";
 
 export type FirstInstancesReport = { created: string[]; skipped: { module: string; why: string }[]; already: boolean };
 
-type Candidate = { manifest: ParsedManifest; hooked: boolean; tasked: boolean };
+type Candidate = { manifest: ParsedManifest; hooked: boolean; tasked: boolean; routed: boolean };
 
 /** Pur : pourquoi ce module n'entre PAS dans la classe sûre (null = il y entre). `consumed` : services déclarés dans `requires` par les autres modules installés. */
 export function whyNotSafe(c: Candidate, consumed: ReadonlySet<string>): string | null {
@@ -36,6 +36,8 @@ export function whyNotSafe(c: Candidate, consumed: ReadonlySet<string>): string 
   const showsLive = (m.overlayElements?.length ?? 0) > 0;
   const provides = normalizeOfferedServices(m).some((s) => consumed.has(s));
   if (!showsLive && !provides) return "nothing shown or consumed";
+  // Un simple fournisseur de service qui ouvre des adresses (routes) : on n'en crée pas d'office (appairage, rappel d'un tiers…). Un élément d'overlay, lui, vient de la demande même de la personne.
+  if (!showsLive && c.routed) return "routes";
   return null;
 }
 
@@ -56,7 +58,7 @@ export async function runFirstInstances(opts: { actor?: string } = {}): Promise<
     if ((await listRetired(id)).length) { skip(id, "data kept"); continue; }
     const removed = await prisma.auditLog.findFirst({ where: { action: { in: ["instance.delete", "instance.retire"] }, OR: [{ module: id }, { target: id }, { target: { startsWith: `${id}-` } }] }, select: { id: true } });
     if (removed) { skip(id, "instance removed by the owner"); continue; }
-    const why = whyNotSafe({ manifest: mod.manifest, hooked: !!mod.def.hooks?.onInstanceCreate, tasked: Object.keys(mod.def.tasks ?? {}).length > 0 }, consumed);
+    const why = whyNotSafe({ manifest: mod.manifest, hooked: !!mod.def.hooks?.onInstanceCreate, tasked: Object.keys(mod.def.tasks ?? {}).length > 0, routed: Object.keys(mod.def.routes ?? {}).length > 0 }, consumed);
     if (why) { skip(id, why); continue; }
     if ((await requirementGaps(mod.manifest)).length) { skip(id, "missing requirement"); continue; }
     try {
