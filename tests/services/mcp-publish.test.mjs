@@ -216,6 +216,8 @@ test("limits: publishing is an everyday action (its own counter, 120 per hour by
 });
 
 test("profiles: both tools are assigned to the \"full\" preset only; every tool of the real catalogue is assigned or excluded", async () => {
+  // (0.26.0) The overlay-skin tools exist only on a site that uses overlays: one overlay page makes them part of the catalogue.
+  await (await import("@/core/overlays/store")).createPage({ name: "Overlay", width: 1920, height: 1080 });
   const catalogue = await listMcpToolCatalogue();
   const unassigned = catalogue.filter((t) => P.placementOf(t) === "unassigned").map((t) => t.name);
   assert.deepEqual(unassigned, [], "a new core tool must be assigned to a profile or excluded in src/core/services/mcp/profiles.ts");
