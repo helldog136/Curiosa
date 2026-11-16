@@ -8,7 +8,7 @@ import { frameLayout, type FrameLayout } from "./layout";
 import type { OverlayPageData, PageElement } from "./model";
 import { checkOptions } from "./options";
 import { moduleSurface } from "./tokens";
-import { effectiveTextScale, tvFactor } from "./textScale";
+import { effectiveTextScale, tvFactor, tvSide } from "./textScale";
 
 /**
  * Pour chaque élément VISIBLE d'une page, demande au module (côté serveur, avec ses secrets) l'adresse de son élément. Jamais d'exception : un élément qui ne répond pas,
@@ -53,7 +53,7 @@ export async function resolvePage(page: OverlayPageData, opts: { lang: string; d
       if (answer === null || answer === undefined) return { el, title, status: "failed", reason: "empty", layout };
       const base = parseAddress(answer);
       if (!base) return { el, title, status: "failed", reason: "address", layout };
-      const input = { decl, layout, style: page.style, options, lang: opts.lang, ...(decl.tvScale ? { tv: tvFactor(page.height, percent, layout.scale) } : {}) };
+      const input = { decl, layout, style: page.style, options, lang: opts.lang, ...(decl.tvScale ? { tv: tvFactor(tvSide(page), percent, layout.scale) } : {}) };
       return { el, title, status: "ok", layout, follows: decl.followsStyle, src: finalAddress(base, input), ...(decl.demo ? { demoSrc: finalAddress(base, input, true) } : {}) };
     } catch (error) {
       // Le message d'un module peut contenir une adresse secrète : on ne journalise que sa nature.
