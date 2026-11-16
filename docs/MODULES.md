@@ -1047,7 +1047,7 @@ Uploading goes through `/api/admin/upload` with the declared kinds (`kind=galler
 
 ### Compositions: "Place the text" on a picture (`compose` option of a gallery, core 0.19.0)
 
-A **composition** is a backdrop (a picture or a GIF of the gallery; video comes later) with 1 to 4 **text boxes** placed on it. The core gives the whole editor; the module declares what its texts may say and keeps the result. Words of the interface: see the glossary in [TRANSLATING.md](TRANSLATING.md) (composition, Place the text, backdrop, text box, automatic value).
+A **composition** is a backdrop (a picture or a GIF of the gallery; a video since 0.21.0, see "Videos" below) with 1 to 4 **text boxes** placed on it. The core gives the whole editor; the module declares what its texts may say and keeps the result. Words of the interface: see the glossary in [TRANSLATING.md](TRANSLATING.md) (composition, Place the text, backdrop, text box, automatic value).
 
 ```js
 { name: "variants", kind: "gallery", accept: ["image", "video"], max: 12, value: JSON.stringify(items),   // items: [{ src, compose? }]
@@ -1059,7 +1059,7 @@ A **composition** is a backdrop (a picture or a GIF of the gallery; video comes 
   } }
 ```
 
-- Every picture tile then offers **Place the text** (or **Edit the text** and a "With text" badge). Videos have no button in this step. The tile shows two actions (Place the text, Remove); the moves are in its "⋯" menu (R16). A gallery with `compose` holds 12 files at most.
+- Every picture tile then offers **Place the text** (or **Edit the text** and a "With text" badge). Videos get one only with `video: true` (0.21.0). The tile shows two actions (Place the text, Remove); the moves are in its "⋯" menu (R16). A gallery with `compose` holds 12 files at most.
 - The editor is a full-screen window above the module's window: drag and resize the boxes (44 px handles), zoom (buttons, wheel, pinch, `+` `-` `0` `1`), move the view (space and drag, two fingers), magnet lines (edges, centre, 5 % safe margins, other boxes), arrows and Alt+arrows, undo and redo (50 steps). Visible fields: Text, Size, Readability; the rest is folded. One main button: **Use this placement**; the result stays in the form until the module's own save button.
 - **Value**: each item may carry `compose`, a checked composition (canonical JSON, 4 KB at most). The server checks every composition again (`checkComposition`, the backdrop must be the item's own file, only the declared `variables`), and refuses the form under the field otherwise. The field may post 64 000 characters (20 000 for any other field).
 - **`<name>__compose` = "1"** in `values` means the core could place text: an item WITHOUT `compose` then means "no text on this file". Without it (an older core), keep what you had: the person could not change it.
@@ -1067,6 +1067,16 @@ A **composition** is a backdrop (a picture or a GIF of the gallery; video comes 
 - **Showing it**: keep the compositions where an older version of your module will not wipe them (a collection of their own, not your configuration object). For each alert, fill the texts on the server with `ctx.overlay.resolveComposition(c, { phrase, values })` and send the result to your page, which draws it with the engine: put `ctx.overlay.composeCss()` in your `css` and `ctx.overlay.composeScript()` before your `script`, then `window.CuriosaCompose.mount(container, resolved, { seconds })` and, at the end, `CuriosaCompose.unmount(root)`. The engine sets texts with `textContent`, sizes them in px of a 1080-high frame (`size` 24 to 220), shrinks a long text down to `minSize`, then cuts it with "…", keeps the frame whole inside your element (transparent bands), and draws it in `data-ov-region="composition"`: the appearance kit of the overlay page gives it its tokens but never overrides a box's own colour or outline. A box with `look: "element"` follows the element's readability preset (`--ov-fg`, `--ov-surface`, `--ov-text-shadow`).
 - Add the engine to your page only when you have something to draw: without a composition your page stays byte for byte what it was.
 - Tests: `fakeCtx()` gives the real kit as `ctx.overlay` (`fakeCtx({ overlay: null })` = an older core).
+
+#### Videos (core 0.21.0)
+
+Add `video: true` to the `compose` option when your page plays a video backdrop as the engine says: video tiles then get **Place the text** too. Without it, an older module keeps pictures only. Test the core first: `ctx.overlay.features?.includes("video")` (absent on 0.19.0, and then do not send `video: true`).
+
+- The editor shows the first picture of the video, **Play** plays the alert in the editor (muted unless the sound button is on), and the folded "Backdrop" section adds **Playback** (`backdrop.play`: `"loop"`, `"once"` = the video goes at its end, `"hold"` = its last picture stays), **Sound of the video** (`backdrop.sound`) and **Length of the alert** (`duration`: `{ mode: "media", seconds }` = the video's own length, read by the browser and rounded up, or `{ mode: "fixed", seconds }`, 2 to 60). A new placement on a video plays once and lasts as long as the video.
+- The data refuses `play`, `sound`, `poster` and `duration.mode: "media"` on a picture or a GIF (code `choice`): a GIF always loops.
+- "Auto" text colour on a video measures 8 pictures taken while the box shows; an area that is mostly see-through (a transparent WebM) gives white with its outline.
+- **Your page**: make the alert last `ctx.overlay.alertSeconds(composition)` seconds when it is not null (null: as before). Call `window.CuriosaCompose.preload(nextResolved)` for the alert that waits next: its backdrop loads ahead (one at a time; the next `mount` of the same file takes the buffered video). The engine plays one video at a time per page (a new one stops the previous one and frees its decoder), falls back to muted when the browser refuses a sound, and keeps the transparency of a VP8/VP9 WebM with alpha.
+- `ctx.overlay.copyPlacement(c, src, { seconds })`, `defaultComposition(src, { seconds })` and `isVideoSrc(src)` know videos.
 
 ### Champ fichier (`kind: "file"`) dans un `adminForm`
 
@@ -1342,7 +1352,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
-| `ctx.overlay` | (core 0.19.0) compositions of alerts (text placed on a picture): `composeScript()` and `composeCss()` (the core's engine for an overlay page), `checkComposition(raw, { src, variables, maxBoxes, formats })` (codes by path, every problem at once), `resolveComposition(c, { phrase, values })` (texts filled, what the page receives), `copyPlacement(c, src)`, `defaultComposition(src)`. Pure functions, nothing read or written. Absent on an older core: test `typeof ctx.overlay?.composeScript === "function"` and keep showing the media alone. See "Compositions". |
+| `ctx.overlay` | (core 0.19.0) compositions of alerts (text placed on a picture; (0.21.0) on a video: `features: ["video"]`, `alertSeconds(c)`, `isVideoSrc(src)`): `composeScript()` and `composeCss()` (the core's engine for an overlay page), `checkComposition(raw, { src, variables, maxBoxes, formats })` (codes by path, every problem at once), `resolveComposition(c, { phrase, values })` (texts filled, what the page receives), `copyPlacement(c, src)`, `defaultComposition(src)`. Pure functions, nothing read or written. Absent on an older core: test `typeof ctx.overlay?.composeScript === "function"` and keep showing the media alone. See "Compositions". |
 | `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
 | `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
 
