@@ -1078,6 +1078,15 @@ Add `video: true` to the `compose` option when your page plays a video backdrop 
 - **Your page**: make the alert last `ctx.overlay.alertSeconds(composition)` seconds when it is not null (null: as before). Call `window.CuriosaCompose.preload(nextResolved)` for the alert that waits next: its backdrop loads ahead (one at a time; the next `mount` of the same file takes the buffered video). The engine plays one video at a time per page (a new one stops the previous one and frees its decoder), falls back to muted when the browser refuses a sound, and keeps the transparency of a VP8/VP9 WebM with alpha.
 - `ctx.overlay.copyPlacement(c, src, { seconds })`, `defaultComposition(src, { seconds })` and `isVideoSrc(src)` know videos.
 
+#### For an assistant: preview, render kit, errors in plain words (core 0.25.0)
+
+`ctx.overlay.features` includes `"preview"`. A module that offers MCP tools on its compositions uses:
+
+- `await ctx.overlay.preview(resolved, { width, background, at, media })`: an approximate still picture made on the server with `sharp` (no browser on the server). Returns `{ png, mimeType, info }`; `info` says `approximate: true`, the frame size, what backdrop was drawn (`picture`, `gif-first-frame`, `video-still` = the video's still picture `backdrop.poster`, or `none` with a note), and per box the text as drawn, `sizePx1080` after shrinking, `lines`, `overflow`, `colour`, `band`, `outline`, `contrast` (5th percentile of the text over what is under it) and `readable` / `readableBy` (`band` 65 % or more, `outline`, or `contrast` 4.5 or more). The font is the bundled preview font (Inter Bold, `fonts/preview`), not OBS's. Width 320 to 1280; the longest side stays under 1280; about 0.1 to 0.5 s per picture. Send it with `ctx.overlay.mcpImage(r.png, r.mimeType, r.info)` and rate-limit the tool.
+- `ctx.overlay.renderKit(resolved, { siteUrl, width, background, seconds })`: a self-contained HTML page (the engine inline, the site's files through `<base href>`, no secret) for the assistant's OWN browser: exact render, `#t=2.5` freezes the moment, `<html data-ready="1">` when it can be looked at.
+- `ctx.overlay.explainErrors(errors, { variables })`: one plain English sentence per problem of `checkComposition` (all at once).
+
+
 ### Champ fichier (`kind: "file"`) dans un `adminForm`
 
 (Cœur 0.2.0.) `{ name: "list", label: "Fichier CSV", kind: "file", accept: ".csv,.txt", maxBytes: 1048576, required: true }`. Le formulaire est envoyé à une **route dédiée du cœur**
@@ -1352,7 +1361,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.page` | (slots `page.*` et `entry.*`) `{ key, basePath }` de l'instance dont on affiche la page |
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
-| `ctx.overlay` | (core 0.19.0) compositions of alerts (text placed on a picture; (0.21.0) on a video: `features: ["video"]`, `alertSeconds(c)`, `isVideoSrc(src)`): `composeScript()` and `composeCss()` (the core's engine for an overlay page), `checkComposition(raw, { src, variables, maxBoxes, formats })` (codes by path, every problem at once), `resolveComposition(c, { phrase, values })` (texts filled, what the page receives), `copyPlacement(c, src)`, `defaultComposition(src)`. Pure functions, nothing read or written. Absent on an older core: test `typeof ctx.overlay?.composeScript === "function"` and keep showing the media alone. See "Compositions". (core 0.24.0) Also `tokens(query, selector?)` (the common-style tokens of an overlay element as one rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale): see docs/OVERLAY-ELEMENTS.md, section 3. |
+| `ctx.overlay` | (core 0.19.0) compositions of alerts (text placed on a picture; (0.21.0) on a video: `features: ["video"]`, `alertSeconds(c)`, `isVideoSrc(src)`; (0.25.0) for assistants: `preview`, `renderKit`, `explainErrors`, `mcpImage`): `composeScript()` and `composeCss()` (the core's engine for an overlay page), `checkComposition(raw, { src, variables, maxBoxes, formats })` (codes by path, every problem at once), `resolveComposition(c, { phrase, values })` (texts filled, what the page receives), `copyPlacement(c, src)`, `defaultComposition(src)`. Pure functions, nothing read or written. Absent on an older core: test `typeof ctx.overlay?.composeScript === "function"` and keep showing the media alone. See "Compositions". (core 0.25.0) Also `tokens(query, selector?)` (the common-style tokens of an overlay element as one rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale): see docs/OVERLAY-ELEMENTS.md, section 3. |
 | `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
 | `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
 
@@ -2009,6 +2018,10 @@ Le succès rend `{ ok: true, url, bytes, already }` (`already: true` si cette in
 - Le propriétaire est l'**instance**, comme pour le stockage (`ctx.api.store`) : deux instances d'un même module ne se suppriment pas leurs fichiers, mais partagent le plafond du module.
 
 Pour vos tests : `fakeCtx({ permissions: ["files"], uploads: [url, { url, by, ageMs, bytes, owner }], person, filesQuota })` applique les mêmes règles et les mêmes motifs de refus que le cœur ; `ctx.calls.files` garde les appels, `ctx.dumpFiles()` les fichiers encore présents (pour constater qu'un fichier a disparu). Voir [TESTSUPPORT.md](TESTSUPPORT.md).
+
+### A picture as a tool result (core 0.25.0)
+
+A tool may answer with a picture: return `ctx.overlay.mcpImage(bytes, mimeType, info)` (PNG, JPEG or WebP, 1 MB at most). The server sends an MCP `image` content item, then `info` as the usual JSON text; a client that does not show pictures reads the text. Larger than 1 MB: the text alone, with `image: "not sent…"`. Every other tool answers exactly as before (one text item).
 
 ### Files an assistant sends (`ctx.api.files.upload`, core 0.18.0)
 
