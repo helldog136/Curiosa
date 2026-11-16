@@ -2,6 +2,7 @@ import { makeNetClient } from "./fakeNet.mjs";
 import { createHash } from "node:crypto";
 import { loadCore, loadComposeKit } from "./core.mjs";
 // (core 0.19.0) `ctx.overlay`: the REAL composition kit of the core (pure functions, no database), never a stand-in, so a module test sees what the site does.
+// (core 0.25.0) option `uploadsDir`: the folder `ctx.overlay.preview` reads files from (the drawing with sharp is the real one).
 const composeKit = await loadComposeKit();
 
 /**
@@ -302,7 +303,8 @@ export function fakeCtx(opts = {}) {
     },
     theme,
     // `overlay: null` = an older core, without `ctx.overlay`
-    ...(opts.overlay === null || !composeKit ? {} : { overlay: composeKit }),
+    // (core 0.25.0) `uploadsDir`: where `ctx.overlay.preview` reads the files (the real files of your test, in a temporary folder); the drawing is the real one
+    ...(opts.overlay === null || !composeKit ? {} : { overlay: opts.uploadsDir && composeKit.preview ? Object.freeze({ ...composeKit, preview: (c, o) => composeKit.preview(c, { ...(o ?? {}), uploadsDir: opts.uploadsDir }) }) : composeKit }),
     visit: { lastVisit },
     t: (k, vars) => { let s = messages[k] ?? k; for (const [n, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${n}}`, String(v)); return s; },
     calls,

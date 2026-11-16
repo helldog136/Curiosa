@@ -26,3 +26,7 @@ Les fichiers viennent des paquets `@fontsource/<famille>` (version 5.3.0), eux-m
 | Space Mono | Chasse fixe | The Space Mono Project Authors | https://github.com/googlefonts/spacemono | OFL-1.1 (`LICENSES/space-mono-OFL.txt`) |
 | Atkinson Hyperlegible | Lisibilité | Braille Institute of America, Inc. | https://www.brailleinstitute.org/freefont/ | OFL-1.1 (`LICENSES/atkinson-hyperlegible-OFL.txt`) |
 | Lexend | Lisibilité | The Lexend Project Authors | https://github.com/googlefonts/lexend | OFL-1.1 (`LICENSES/lexend-OFL.txt`) |
+
+## Police des aperçus de compositions (`preview/`)
+
+`preview/Inter-Bold.otf` (Inter, The Inter Project Authors, OFL-1.1, `LICENSES/inter-OFL.txt`) sert seulement à dessiner sur le serveur l'aperçu approché d'une composition pour un assistant IA (`src/core/compose/preview.ts`, cœur 0.25.0). Elle n'est jamais servie au public. Fichier tel que publié par le projet Inter (format OpenType, sans modification) : le moteur de texte du serveur ne lit pas le WOFF2.
