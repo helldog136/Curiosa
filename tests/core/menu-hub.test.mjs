@@ -396,7 +396,7 @@ test("menu Administration : Assistants IA est UNE entrée, visible du propriéta
     assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
   }
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /administrationEntries\(\{ role: user\.level, advanced(, overlays: [^}]+)? \}\)/, "(0.25.0) plus whether the site uses overlays");
+  assert.match(layout, /administrationEntries\(\{ role: user\.level, advanced(, overlays: [^}]+)? \}\)/, "(0.26.0) plus whether the site uses overlays");
   assert.match(layout, /<NavLink key="assistants" href=\{ASSISTANTS_HREF\} badge=\{aiWaiting\} badgeLabel=\{t\("nav\.badge\.ai"\)\}>\{t\("nav\.assistants"\)\}<\/NavLink>/, "la pastille = demandes d'IA en attente");
   assert.match(layout, /\{adminEntries\.length > 0 && \(/, "la rubrique disparaît quand elle est vide");
 });

@@ -69,7 +69,7 @@ export const HOME_MENU_TAB_HREFS = { home: HOME_HREF, menu: NAVIGATION_HREF, hea
 
 // ── Administration ─────────────────────────────────────────────────────────────────────────────────────────────────────
 export const OVERLAY_PAGES_HREF = "/admin/overlay-pages";
-/** (0.25.0) Every address to paste into OBS, on one page. */
+/** (0.26.0) Every address to paste into OBS, on one page. */
 export const OVERLAYS_OBS_HREF = "/admin/overlay-pages/obs";
 export const USERS_HREF = "/admin/users";
 export const ACCOUNT_HREF = "/admin/account";

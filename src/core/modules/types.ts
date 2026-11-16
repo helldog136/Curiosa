@@ -362,7 +362,7 @@ export type ModuleAdminTheme = {
 
 export type ModuleApi = {
   /**
-   * (core 0.25.0; no permission) Where the overlay page elements of THIS instance are placed: `placement(element?)` gives `{ placed, onActivePage, pages: [{ name, active }] }`
+   * (core 0.26.0; no permission) Where the overlay page elements of THIS instance are placed: `placement(element?)` gives `{ placed, onActivePage, pages: [{ name, active }] }`
    * (visible elements only, 20 pages at most, never an address). For an honest "placed on an active overlay page" step in your own list of what is left to do.
    * An older core has no `ctx.api.overlays`: write `await ctx.api.overlays?.placement?.("alerts")` and show nothing without it.
    */

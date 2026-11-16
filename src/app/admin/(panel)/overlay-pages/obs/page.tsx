@@ -19,7 +19,7 @@ import { ui } from "@/components/admin/ui";
 export const dynamic = "force-dynamic";
 
 /**
- * (core 0.25.0) "OBS": every address to paste into a browser source of OBS, on one page: the overlay pages (their secret address, the size to set) and the overlays
+ * (core 0.26.0) "OBS": every address to paste into a browser source of OBS, on one page: the overlay pages (their secret address, the size to set) and the overlays
  * of extensions. One table (R30): the kind is a column with a coloured AND written pill, filters above, live search (R15). Nothing is changed here.
  */
 type Row = { id: string; kind: "page" | "extension"; name: string; size: string | null; active: boolean; address: string | null; settings: string };

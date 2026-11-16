@@ -68,7 +68,7 @@ async function resolveValue(ref: ContextRef, asked: string): Promise<{ id: strin
 export const overlaySkinsToolProvider: McpToolProvider = {
   id: "overlay-skins",
   async list() {
-    // (0.25.0) A site that uses no overlay (no extension offers one, no page exists) does not get these tools.
+    // (0.26.0) A site that uses no overlay (no extension offers one, no page exists) does not get these tools.
     if (!(await overlaysUseful())) return [];
     const base = { source: "core", destructive: false } as const;
     const listSchema: JsonSchemaLite = { type: "object", properties: {} };

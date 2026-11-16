@@ -34,14 +34,14 @@ export function maintenanceTabs({ role, advanced }: { role: Level; advanced: boo
  * - Assistants IA : qui détient `core:mcp.tokens` (personne propriétaire, coordination technique), en mode simple comme en mode avancé (c'est la page qu'une personne non technique utilise pour brancher une IA) ;
  * - Entretien : une seule entrée, présente dès que la personne a au moins un onglet (maintenanceTabs : contrôle du site, sauvegarde, mises à jour, restes d'anciennes versions, journal d'activité) ;
  */
-export function administrationEntries({ role, advanced, overlays = true }: { role: Level; advanced: boolean; /** (0.25.0) An extension offers overlays or a page exists (overlays/presence.ts). Absent: shown, as before. */ overlays?: boolean }): AdminEntry[] {
+export function administrationEntries({ role, advanced, overlays = true }: { role: Level; advanced: boolean; /** (0.26.0) An extension offers overlays or a page exists (overlays/presence.ts). Absent: shown, as before. */ overlays?: boolean }): AdminEntry[] {
   // « Gérer » : administrateur, coordinateur ou propriétaire (un « none » à rôles personnalisés n'a pas cette rubrique, comme un éditeur).
   const manage = role === "admin" || role === "coordinator" || role === "owner";
   const out: AdminEntry[] = [];
   if (manage) out.push("extensions");
   // Overlays (0.5.0) : composer les pages d'overlay est une fonction d'administration (administration, coordination technique, personne propriétaire), en mode simple comme avancé.
   // Pas de droit dédié : l'éditeur et les rôles personnalisés sans palier n'y entrent pas (voir overlays/access.ts).
-  // (0.25.0) ... and only on a site that uses overlays: an extension offers elements or an overlay, or a page already exists.
+  // (0.26.0) ... and only on a site that uses overlays: an extension offers elements or an overlay, or a page already exists.
   if (manage && overlays) out.push("overlays");
   if (levelHolds(role, "core:mcp.tokens")) out.push("assistants");
   if (manage) out.push("users");

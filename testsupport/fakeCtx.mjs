@@ -363,7 +363,7 @@ export function fakeCtx(opts = {}) {
       },
       // `ctx.api.links.measured(url)` : hors site réel il n'y a pas de lien court, l'adresse revient telle quelle (comme sur un site où « Compter les clics » est désactivé).
       links: { measured: async (url) => String(url ?? "") },
-      // (core 0.25.0) Where this instance's overlay elements are placed. Option `overlayPlacement`: [{ name, active, elements: ["alerts"] }] (none by default);
+      // (core 0.26.0) Where this instance's overlay elements are placed. Option `overlayPlacement`: [{ name, active, elements: ["alerts"] }] (none by default);
       // `overlayPlacement: null` = an older core, without `ctx.api.overlays`.
       ...(opts.overlayPlacement === null ? {} : { overlays: { placement: async (element) => {
         const pages = (opts.overlayPlacement ?? []).filter((p) => !element || (p.elements ?? []).includes(element)).map((p) => ({ name: String(p.name), active: p.active !== false }));

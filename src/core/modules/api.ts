@@ -108,7 +108,7 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
     // Empreinte salée, non réversible et cloisonnée du visiteur d'une requête (limites de débit) : jamais l'adresse, jamais la première entrée de X-Forwarded-For.
     visitor: { fingerprint: (request, scope) => visitorFingerprint(instance.moduleId, request, scope) },
 
-    // (core 0.25.0) Where this instance's overlay elements are placed: page names and states only, never an address. No permission (it reads only about this instance).
+    // (core 0.26.0) Where this instance's overlay elements are placed: page names and states only, never an address. No permission (it reads only about this instance).
     overlays: { placement: (element?: string) => placementOf(instance.key, typeof element === "string" ? element.slice(0, 60) : undefined) },
 
     // Adresse mesurée d'un bouton (réglage « Compter les clics sur mes liens ») : un simple relais, sans permission ; sans le réglage, l'adresse revient telle quelle.

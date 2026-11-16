@@ -1,4 +1,4 @@
-// Overlay admin hygiene (core 0.25.0): the "Overlay pages" entry and the overlay-skin AI tools only on a site that uses overlays, the "Addresses for OBS" page,
+// Overlay admin hygiene (core 0.26.0): the "Overlay pages" entry and the overlay-skin AI tools only on a site that uses overlays, the "Addresses for OBS" page,
 // "Add an element" no longer a primary button (R3), and the read-only placement service for extensions (`ctx.api.overlays.placement`).
 import test, { after, beforeEach } from "node:test";
 import assert from "node:assert/strict";

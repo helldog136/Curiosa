@@ -3,7 +3,7 @@ import { getActiveInstances } from "../modules/registry";
 import { parseElements } from "./store";
 
 /**
- * (core 0.25.0) Does this site use overlays at all, and where is an element placed? Read only, bounded, never throws.
+ * (core 0.26.0) Does this site use overlays at all, and where is an element placed? Read only, bounded, never throws.
  *
  *  - `overlaysUseful()`: an active extension offers overlay page elements or an overlay of its own, or an overlay page already exists. When it is false, the
  *    administration hides "Overlay pages" and the AI tools of overlay skins (a site without streaming never sees them).
