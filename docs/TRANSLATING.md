@@ -90,7 +90,8 @@ Use the same word for the same thing everywhere.
 | reaction | réaction | what an event type (a follow, a raid…) shows on screen: pictures, GIFs or videos, a sentence, a sound; set in one window per type |
 | display order | ordre d'affichage | how one of several files of a reaction is picked: at random or in turn |
 | game scene | scène de jeu | (0.20.0) a preview background drawn by the core, with bright and dark parts (the editor only) |
-| vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons |
+| vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons; (0.23.0) also the 1080 × 1920 page size |
+| Fix the text size | Corriger la taille du texte | (0.23.0) the one-click fix of a vertical overlay page made before 0.23.0, whose TV text was sized on its height |
 | colour-blind view | vue daltonienne | (0.20.0) "View as a colour-blind person": a filter on the editor preview only |
 | saved version | version enregistrée | (0.20.0) a layout of an overlay page that a later save replaced; "Restore this version" puts it back |
 | default readability | lisibilité par défaut | (0.21.0) the readability preset of an overlay page, worn by every element set to "Like the page" |

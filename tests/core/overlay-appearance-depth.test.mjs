@@ -52,7 +52,7 @@ test("page readability default: elements set to Like the page wear it; an elemen
   assert.equal(K.appliedLook(null, side({ readability: { preset: "readable" } }), false), null, "an element that does not follow the style is never touched");
   assert.deepEqual(K.NEW_PAGE_READABILITY, { preset: "readable" });
   const src = fs.readFileSync("src/app/admin/(panel)/overlay-pages/actions.ts", "utf8");
-  assert.match(src, /createPage\(\{[^}]*style: \{ \.\.\.DEFAULT_STYLE, readability: NEW_PAGE_READABILITY \}/, "a NEW page starts readable");
+  assert.match(src, /createPage\(\{[^}]*style: \{ \.\.\.DEFAULT_STYLE, readability: NEW_PAGE_READABILITY(, tvBase: "short")? \}/, "a NEW page starts readable");
   assert.doesNotMatch(fs.readFileSync("src/core/overlays/store.ts", "utf8"), /NEW_PAGE_READABILITY/, "existing pages are never rewritten");
 });
 

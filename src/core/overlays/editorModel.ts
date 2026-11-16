@@ -18,10 +18,10 @@ export function newUid(taken: ReadonlySet<string>, random: () => number = Math.r
   }
 }
 
-export function addElement(list: readonly PageElement[], page: { width: number; height: number }, pick: { instance: string; element: string; decl: LayoutDecl; defaults: Record<string, OptionValue>; /** (0.17.0) The look a new element starts with ("Readable everywhere" for an element that follows the style). */ style?: ElementStyle }, uid: string): PageElement[] {
+export function addElement(list: readonly PageElement[], page: { width: number; height: number }, pick: { instance: string; element: string; decl: LayoutDecl; defaults: Record<string, OptionValue>; /** (0.17.0) The look a new element starts with ("Readable everywhere" for an element that follows the style). */ style?: ElementStyle; /** (0.23.0) Its text size (TV for an element without TV sizes of its own). */ textScale?: number }, uid: string): PageElement[] {
   if (list.length >= MAX_ELEMENTS_PER_PAGE) return [...list];
   const r = defaultRect(pick.decl, page, list.length);
-  return [...list, { uid, instance: pick.instance, element: pick.element, ...r, visible: true, options: { ...pick.defaults }, ...(pick.style ? { style: { ...pick.style } } : {}) }];
+  return [...list, { uid, instance: pick.instance, element: pick.element, ...r, visible: true, options: { ...pick.defaults }, ...(pick.textScale ? { textScale: pick.textScale } : {}), ...(pick.style ? { style: { ...pick.style } } : {}) }];
 }
 
 /** (0.17.0) Sets the look of one element (null: follows the page again). */

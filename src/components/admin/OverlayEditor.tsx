@@ -16,7 +16,8 @@ import { foldText, queryWords } from "@/core/adminkit/search";
 import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setLook, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
 import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
-import { effectiveTextScale } from "@/core/overlays/textScale";
+import { TEXT_SCALE_PRESETS, effectiveTextScale, tvTextTooLarge } from "@/core/overlays/textScale";
+import { formatOf } from "@/core/overlays/model";
 import { HISTORY_MAX, record, redo, replace, startHistory, undo, type History } from "@/core/compose/history";
 import { nearEdge, safeLines, sameDoc } from "@/core/overlays/editorView";
 import type { ElementStyle } from "@/core/overlays/appearance";
@@ -25,7 +26,7 @@ import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } fro
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
 export type ClientOption = { id: string; type: "choice" | "boolean" | "number" | "text"; label: string; help: string; example: string; choices: { value: string; label: string }[]; default: OptionValue };
-export type ClientElement = { key: string; instance: string; element: string; group: string; groupId: string; hint: string; title: string; label: string; description: string; layout: LayoutDecl; followsStyle: boolean; options: ClientOption[] };
+export type ClientElement = { key: string; instance: string; element: string; group: string; groupId: string; hint: string; title: string; label: string; description: string; layout: LayoutDecl; followsStyle: boolean; options: ClientOption[]; /** (0.23.0) The element sizes its text for TV itself. */ tvScale?: boolean };
 export type EditorElement = PageElement & { missing?: boolean };
 type Props = {
   initial: { name: string; width: number; height: number; style: OverlayStyle; elements: EditorElement[] };
@@ -48,6 +49,8 @@ type Doc = { size: { width: number; height: number }; style: OverlayStyle; eleme
 const hue = (i: number) => (i * 47 + 10) % 360;
 const GRID_ANCHORS: Anchor[] = [...ANCHORS];
 const SNAP_PX = 8;
+/** (0.23.0) "TV (recommended)": the text size a new element without TV sizes of its own starts with (owner design 3.3.3; elements already placed do not move). */
+const TV_PERCENT = TEXT_SCALE_PRESETS.find((p) => p.id === "tv")!.percent;
 
 export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false, pageId = "", skins = [], pageSkinColors = null }: Props) {
   const s = useCallback((key: string, vars?: Record<string, string | number>) => {
@@ -144,7 +147,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     const taken = new Set(elements.map((e) => e.uid));
     const uid = newUid(taken);
     const defaults = Object.fromEntries(a.options.map((o) => [o.id, o.default]));
-    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults, ...(a.followsStyle && !style.readability ? { style: NEW_ELEMENT_STYLE } : {}) }, uid));
+    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults, ...(a.followsStyle && !style.readability ? { style: NEW_ELEMENT_STYLE } : {}), ...(a.tvScale === false && (style.textScale ?? 100) <= 100 ? { textScale: TV_PERCENT } : {}) }, uid));
     setSelected(uid); setAdding(false);
     setAnnounce(s("ed.added", { name: a.title }));
   }
@@ -255,7 +258,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
         <div>
           <label htmlFor="ov-res" className={ui.label}>{s("ed.resolution")}</label>
           <select id="ov-res" value={custom ? "custom" : `${size.width}x${size.height}`} onChange={(e) => chooseResolution(e.target.value)} className={ui.input}>
-            {resolutions.map(([w, h]) => <option key={`${w}x${h}`} value={`${w}x${h}`}>{w}×{h}</option>)}
+            {resolutions.map(([w, h]) => { const f = formatOf(w, h); return <option key={`${w}x${h}`} value={`${w}x${h}`}>{w}×{h}{f ? ` · ${s(`ed.format.${f}`)}` : ""}</option>; })}
             <option value="custom">{s("ed.resolutionOther")}</option>
           </select>
           {custom && (
@@ -274,6 +277,13 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
         <Choice legend={s("ed.pageLook")} help={s("ed.pageLookHelp")} name="ov-page-look" value={style.readability ? (presetShown(style.readability) === "custom" ? null : presetShown(style.readability)) : "none"}
           options={(["readable", "discreet", "bare", "none"] as const).map((v) => ({ value: v, label: s(v === "none" ? "ed.pageLook.none" : `ed.look.preset.${v}`) }))}
           onChange={(v) => setStyle((cur) => { const { readability, ...rest } = cur; void readability; return v === "none" ? rest : { ...rest, readability: { preset: v as "readable" | "discreet" | "bare" } }; })} />
+        {tvTextTooLarge({ width: size.width, height: size.height, style }) && (
+          <p role="status" data-testid="tv-fix" className="flex flex-wrap items-center gap-2">
+            <span className={ui.chipWarn}><span aria-hidden>⚠</span>{s("ed.tvFix.warn")}</span>
+            <button type="button" className={`${ui.btn} min-h-11`} onClick={() => { setStyle((cur) => ({ ...cur, tvBase: "short" })); setAnnounce(s("ed.tvFix.done")); }}>{s("ed.tvFix")}</button>
+            <HelpTip help={s("ed.tvFix.help")} name={s("ed.tvFix")} />
+          </p>
+        )}
         <TextSizeField testId="text-size-page" legend={s("ed.textSize.page")} help={s("ed.textSize.pageHelp")} value={style.textScale ?? null} inherit={false} errorPath="style.textScale" s={s}
           onChange={(v) => setStyle((cur) => { const { textScale, ...rest } = cur; void textScale; return v === null || v === 100 ? rest : { ...rest, textScale: v }; })} />
         <MoreOptions title={s("ed.pageMore")} summary={[s(`ed.style.text.${style.text}`), s(`ed.style.background.${style.background}`), s(`ed.style.corners.${style.corners}`)].join(" · ")}>

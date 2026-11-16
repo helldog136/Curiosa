@@ -19,7 +19,15 @@ export const TEST_MAX_MINUTES = 240;
 /** Taille maximale d'une valeur de texte d'option gardée telle quelle pour un élément disparu (le reste est écarté). */
 export const KEPT_OPTIONS_MAX_BYTES = 4000;
 
-export const RESOLUTIONS: readonly (readonly [number, number])[] = [[1280, 720], [1920, 1080], [2560, 1440], [3440, 1440], [3840, 2160]];
+export const RESOLUTIONS: readonly (readonly [number, number])[] = [[1280, 720], [1920, 1080], [2560, 1440], [3440, 1440], [3840, 2160], [2560, 1080], [1440, 1080], [1080, 1920]];
+/** (0.23.0) The name of a format that is not a plain 16:9 one (shown next to its size in the lists). */
+export function formatOf(width: number, height: number): "vertical" | "fourThree" | "ultrawide" | null {
+  if (height > width) return "vertical";
+  const r = width / height;
+  if (Math.abs(r - 4 / 3) < 0.02) return "fourThree";
+  if (r > 2.2) return "ultrawide";
+  return null;
+}
 export const DEFAULT_RESOLUTION = RESOLUTIONS[1]!;
 
 export type OptionValue = string | number | boolean;
@@ -30,6 +38,8 @@ export type OverlayStyle = {
   text: "light" | "dark"; background: "transparent" | "soft" | "opaque"; corners: "round" | "square";
   /** (0.11.0) Text size of the page in percent (50 to 300), the default of every element. Absent = 100 %: nothing changes (textScale.ts). */
   textScale?: number;
+  /** (0.23.0) "short": TV text sizes follow the SHORTEST side of the canvas (new pages, and old ones after "Fix the text size"). Absent: its height, as before (owner decision 5). */
+  tvBase?: "short";
   /** (0.21.0) Readability default of the page: what every element that follows the page ("Like the page") wears. Absent = as before 0.21.0. */
   readability?: import("./appearance").ElementStyle;
 };

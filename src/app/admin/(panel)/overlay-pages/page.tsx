@@ -2,7 +2,7 @@ import Link from "next/link";
 import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
 import { OVERLAY_NEED } from "@/core/overlays/access";
-import { MAX_ACTIVE_PAGES, MAX_PAGES, RESOLUTIONS, nowMs, testActive } from "@/core/overlays/model";
+import { MAX_ACTIVE_PAGES, MAX_PAGES, RESOLUTIONS, formatOf, nowMs, testActive } from "@/core/overlays/model";
 import { listPages, readSecret } from "@/core/overlays/store";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { CopyAddress } from "@/components/admin/CopyAddress";
@@ -38,7 +38,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
       <Panel title={t("ovp.new")} help={t("ovp.newHelp")}>
         <form action={createPageAction} className="grid gap-4 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
           <TextField name="name" label={t("ovp.name")} required />
-          <Select name="resolution" label={t("ovp.resolution")} defaultValue="1920x1080" options={RESOLUTIONS.map(([w, h]) => ({ value: `${w}x${h}`, label: `${w}×${h}` }))} />
+          <Select name="resolution" label={t("ovp.resolution")} defaultValue="1920x1080" options={RESOLUTIONS.map(([w, h]) => { const f = formatOf(w, h); return { value: `${w}x${h}`, label: f ? `${w}×${h} · ${t(`ovp.format.${f}`)}` : `${w}×${h}` }; })} />
           <PendingButton variant="primary" pendingLabel={t("progress.creating")} disabled={pages.length >= MAX_PAGES}>{t("ovp.newButton")}</PendingButton>
         </form>
         <p className={ui.help}>{t("ovp.counts", { pages: pages.length, maxPages: MAX_PAGES, active: activeCount, maxActive: MAX_ACTIVE_PAGES })}</p>

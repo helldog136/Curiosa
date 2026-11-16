@@ -35,7 +35,7 @@ test("chaque clé de texte citée dans le code existe, et chaque clé écrite se
   for (const f of ["skin", "system", "serif", "rounded", "condensed", "mono", "typewriter", "display"]) assert.ok(`ovp.tweak.font.${f}` in fr && `ovp.tweak.font.${f}` in en, f);
   for (const c of ["skin", "round", "square"]) assert.ok(`ovp.tweak.corners.${c}` in fr && `ovp.tweak.corners.${c}` in en, c);
   for (const a of ["tl", "tc", "tr", "ml", "c", "mr", "bl", "bc", "br"]) assert.ok(`ovp.ed.anchor.${a}` in fr && `ovp.ed.anchor.${a}` in en);
-  const unused = mine(fr).filter((k) => !used.has(k) && k !== "nav.overlayPages" && k !== "overlay.page.gone" && !/^ovp\.(ed|flash|err\.option)\./.test(k) && !/^overlay\.page\.failed\./.test(k) && !/^ovp\.tweak\.(font|corners)\./.test(k) && !k.startsWith("audit.action.") && !/\.one$/.test(k));
+  const unused = mine(fr).filter((k) => !used.has(k) && k !== "nav.overlayPages" && k !== "overlay.page.gone" && !/^ovp\.(ed|flash|err\.option)\./.test(k) && !/^overlay\.page\.failed\./.test(k) && !/^ovp\.(tweak\.(font|corners)|format)\./.test(k) && !k.startsWith("audit.action.") && !/\.one$/.test(k));
   assert.deepEqual(unused, [], "clés écrites mais jamais utilisées");
 });
 

@@ -30,7 +30,7 @@ export async function createPageAction(formData: FormData): Promise<void> {
   const [w, h] = text(formData.get("resolution"), 20).split("x").map(Number);
   const known = RESOLUTIONS.find((r) => r[0] === w && r[1] === h) ?? RESOLUTIONS[1]!;
   // (0.21.0) A new page starts readable: its elements follow the page's "Readable everywhere" default.
-  const made = await createPage({ name: text(formData.get("name"), 200), width: known[0], height: known[1], style: { ...DEFAULT_STYLE, readability: NEW_PAGE_READABILITY } });
+  const made = await createPage({ name: text(formData.get("name"), 200), width: known[0], height: known[1], style: { ...DEFAULT_STYLE, readability: NEW_PAGE_READABILITY, tvBase: "short" } });
   if (!made.ok) return back(made.error);
   await audit(user.email, "overlay.create", made.page.id);
   revalidatePath(LIST);

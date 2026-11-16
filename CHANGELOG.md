@@ -7,6 +7,34 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.23.0 — 2026-11-16
+
+**En bref.** Les pages d'overlay ont trois nouveaux formats : vertical (1080 × 1920), 4:3 et 21:9. Sur une nouvelle page verticale, le texte a enfin la bonne taille ; une ancienne page verticale se corrige d'un clic.
+
+**In short.** Overlay pages get three new formats: vertical (1080 × 1920), 4:3 and 21:9. On a new vertical page the text finally has the right size; an old vertical page is fixed with one click.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien sur vos pages existantes.** Une page verticale créée avant garde sa taille de texte, même trop grande, tant que vous ne cliquez pas sur « Corriger la taille du texte ».
+- **(English) Nothing on your existing pages.** A vertical page made before keeps its text size, even too large, until you click "Fix the text size".
+
+### Les formats
+
+- **Vertical, 4:3 et 21:9.** La liste des résolutions propose 1080 × 1920 (vertical), 1440 × 1080 (4:3) et 2560 × 1080 (21:9), avec le nom du format.
+- **(English) Vertical, 4:3 and 21:9.** The list of resolutions offers 1080 × 1920 (vertical), 1440 × 1080 (4:3) and 2560 × 1080 (21:9), with the name of the format.
+- **La bonne taille sur un téléphone.** La taille « TV » se calcule sur le petit côté de la page. Un texte vertical n'est plus presque deux fois trop grand.
+- **(English) The right size on a phone.** The "TV" size follows the short side of the page. Text on a vertical page is no longer almost twice too large.
+- **Corriger d'un clic.** Sur une ancienne page verticale, l'éditeur signale « Texte trop grand pour ce format vertical ». Cliquez sur « Corriger la taille du texte », puis enregistrez.
+- **(English) Fix in one click.** On an old vertical page, the editor says "Text too large for this vertical format". Click "Fix the text size", then save.
+- **Les alertes en taille TV.** Un élément qui ne règle pas lui-même sa taille de texte, comme les alertes, démarre en « TV (conseillée) » quand vous le posez. Les éléments déjà posés ne bougent pas.
+- **(English) Alerts at TV size.** An element that does not size its text itself, like the alerts, starts at "TV (recommended)" when you place it. Elements already placed do not move.
+
+### Pour les développeurs
+
+- **`ov-tv`** follows `tvSide(page)`: the shortest side when `style.tvBase === "short"` (every page created from 0.23.0, and old ones after "Fix the text size"), else the height as before. Same value for every landscape page; `tvTextTooLarge(page)` says when the fix applies.
+- **Formats**: `RESOLUTIONS` gains `[2560, 1080]`, `[1440, 1080]`, `[1080, 1920]` (the first five keep their order, 1920 × 1080 stays the default); `formatOf(w, h)` names them.
+- **New elements**: an element whose declaration has no `tvScale` starts with `textScale: 200` when the page's own size is 100 % or less (design 3.3.3). Placed elements are untouched. The alerts accent is a module setting: not changed by the core.
+
 ## 0.22.0 — 2026-11-16
 
 **En bref.** Une nouvelle page d'overlay démarre lisible : ses éléments suivent sa « Lisibilité par défaut ». Un élément peut porter un autre skin que sa page, et vous pouvez retoucher le skin d'une page (accent, fond, police, coins) sans changer le skin installé.
