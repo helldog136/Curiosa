@@ -1,6 +1,8 @@
 import { makeNetClient } from "./fakeNet.mjs";
 import { createHash } from "node:crypto";
-import { loadCore } from "./core.mjs";
+import { loadCore, loadComposeKit } from "./core.mjs";
+// (core 0.19.0) `ctx.overlay`: the REAL composition kit of the core (pure functions, no database), never a stand-in, so a module test sees what the site does.
+const composeKit = await loadComposeKit();
 
 /**
  * FAUX CONTEXTE DE MODULE — API publique du kit de test (testsupport/). Voir docs/TESTSUPPORT.md.
@@ -299,6 +301,8 @@ export function fakeCtx(opts = {}) {
       return structuredClone(typeof r === "function" ? await r() : r ?? { status: "none" });
     },
     theme,
+    // `overlay: null` = an older core, without `ctx.overlay`
+    ...(opts.overlay === null || !composeKit ? {} : { overlay: composeKit }),
     visit: { lastVisit },
     t: (k, vars) => { let s = messages[k] ?? k; for (const [n, v] of Object.entries(vars ?? {})) s = s.replaceAll(`{${n}}`, String(v)); return s; },
     calls,

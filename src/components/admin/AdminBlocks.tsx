@@ -1,6 +1,6 @@
 "use client";
 
-import { startTransition, useActionState, useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { createContext, startTransition, useActionState, useContext, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
 import { PendingButton } from "./PendingButton";
@@ -8,7 +8,9 @@ import { useRouter } from "next/navigation";
 import type { AdminField, Block } from "@/core/blocks";
 import { ImageField } from "./ImageField";
 import { FileField } from "./FileField";
-import { GalleryField, type GalleryLabels } from "./GalleryField";
+import { GalleryField, type ComposeTestRun, type GalleryLabels } from "./GalleryField";
+import type { ComposeLabels } from "./ComposeEditor";
+import { composeOption } from "@/core/compose/option";
 import { galleryLibrary } from "@/core/gallery";
 import { ui } from "./ui";
 import { Checkbox, FieldLabel } from "./Field";
@@ -79,13 +81,18 @@ export type FormLabels = {
   dialog?: DialogLabels;
   /** (core 0.14.0) Texts of the `gallery` field (the `gallery.*` keys); present only when the form has one. Absent: the field falls back to a text field. */
   gallery?: GalleryLabels;
+  /** (core 0.19.0) Texts of the composition editor (`compose.*`); present only when a gallery declares `compose`. */
+  compose?: ComposeLabels;
 };
+/** (0.19.0) Runs another action of the module with given fields (the "Test on the overlay" of the composition editor). Null outside a module form. */
+const FormRun = createContext<ComposeTestRun | null>(null);
 
 /** Texts of the edit dialog, already translated by the server. */
 export type DialogLabels = { close: string; cancel: string; saved: string; discard: DiscardGuard };
 
 /** Rend un champ déclaré par un module (formulaires d'admin pilotés par les modules). */
 function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
+  const run = useContext(FormRun);
   if (f.kind === "hidden") return <input type="hidden" name={f.name} value={f.value ?? ""} />;
   const example = f.example && labels ? labels.example.replace("{example}", f.example) : undefined;
   // (0.6.0) Interrupteur, boutons segmentés, période, date et heure, durée, nombre borné : un seul contrôle par notion.
@@ -98,7 +105,8 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
     return <NumberField label={f.label} name={f.name} defaultValue={f.value} min={f.min} max={f.max} step={f.step} unit={f.unit} required={f.required} help={f.help} hint={labels?.hints?.[f.name]} invalidText={labels?.invalid?.[f.name]} example={example}
       emptyValue={f.placeholder} />;
   }
-  if (f.kind === "gallery" && labels?.gallery) return <GalleryField name={f.name} label={f.label} defaultValue={f.value} accept={f.accept} max={f.max} min={f.min} itemLabel={f.itemLabel === true} library={galleryLibrary(f.library, f.accept)} required={f.required} help={f.help} example={example} labels={labels.gallery} />;
+  if (f.kind === "gallery" && labels?.gallery) return <GalleryField name={f.name} label={f.label} defaultValue={f.value} accept={f.accept} max={f.max} min={f.min} itemLabel={f.itemLabel === true} library={galleryLibrary(f.library, f.accept)} required={f.required} help={f.help} example={example} labels={labels.gallery}
+    compose={labels.compose ? composeOption(f.compose) : null} composeLabels={labels.compose} testRun={run ?? undefined} />;
   if (f.kind === "image") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" />;
   if (f.kind === "audio") return <ImageField name={f.name} label={f.label} defaultValue={f.value} uploadLabel="↑" kind="audio" required={f.required} />;
   // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
@@ -226,7 +234,7 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
   return (
     <form ref={formRef} onSubmit={submitKeepingValues(action)} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
-      <FormFields fields={block.fields} labels={labels} />
+      <FormRun.Provider value={(a, data) => runner(instanceId, a, entry)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <ExtraStatus result={extra} />
@@ -273,7 +281,7 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
       <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
       {secondary && <DialogOutcome state={secondState} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />}
       <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
-        <FormFields fields={block.fields} labels={labels} />
+        <FormRun.Provider value={(a, data) => runner(instanceId, a)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       </form>
     </EditDialog>
   );

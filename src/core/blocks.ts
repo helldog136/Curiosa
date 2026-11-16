@@ -67,6 +67,11 @@ export type AdminField = {
    * of an accepted kind. A search box filters them. At most 500 entries are read. Picking one adds the item; the module still decides what it keeps (`ctx.api.files.owns`).
    */
   library?: { label: string; value: string; kind: "image" | "video" | "audio" }[];
+  /**
+   * (core 0.19.0) `kind: "gallery"`: "Place the text" on its pictures (the composition editor). `{ variables: [{ token, label, sample }], phrase: { label, sample }, formats?,
+   * defaultFormat?, maxBoxes?, testAction? }`. Each item of the value may then carry `compose` (a checked composition); the field holds 12 files at most. See docs/MODULES.md, "Compositions".
+   */
+  compose?: { variables?: { token: string; label: string; sample?: string }[]; phrase?: { label: string; sample?: string }; formats?: string[]; defaultFormat?: string; maxBoxes?: number; testAction?: string };
   /** (0.6.0) Champ rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Il ne compte plus dans le budget de champs visibles. */
   folded?: boolean;
 };

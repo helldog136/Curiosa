@@ -12,7 +12,7 @@ import type { AdminActionHandler } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { PERIOD_MARK, periodErrorKey } from "@/core/adminkit/values";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
-import { checkGalleryValues } from "@/core/gallery";
+import { boundFormValues, checkGalleryValues } from "@/core/gallery";
 import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
 /** Le gestionnaire d'une `adminAction` SI cette personne peut l'exécuter (voir `decideAdminAction`), sinon null (refus noté au journal) ; `undefined` : pas d'action de ce nom. */
@@ -35,8 +35,8 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
   const handler = await allowedHandler(user, active, action);
   if (!active || !handler) return { error: t(handler === null && active?.mod.def.adminActions?.[action] ? "error.denied" : "error.generic") };
 
-  const values: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) if (typeof v === "string" && !k.startsWith("$ACTION")) values[k] = v.slice(0, 20000);
+  // 20 000 characters per field; 64 000 for a gallery that places text (core 0.19.0).
+  const values = boundFormValues(formData.entries());
 
   // Champs période : une valeur à moitié remplie ou à l'envers est refusée ICI, sous le champ, avant d'appeler le module (sinon elle serait lue comme « pas de période »).
   const periodErrors: Record<string, string> = {};

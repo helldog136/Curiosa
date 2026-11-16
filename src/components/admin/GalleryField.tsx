@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
-  GALLERY_EXTENSIONS, GALLERY_HARD_MAX, GALLERY_KINDS, GALLERY_MARK, GALLERY_MAX_BYTES, galleryAccept, galleryKindOf, galleryMark, galleryMax, galleryMin, readGallery, writeGallery,
+  COMPOSE_GALLERY_MAX, GALLERY_EXTENSIONS, GALLERY_HARD_MAX, GALLERY_KINDS, GALLERY_MARK, GALLERY_MAX_BYTES, composeRules, galleryAccept, galleryKindOf, galleryMark, galleryMax, galleryMin, readGallery, writeGallery,
   type GalleryChoice, type GalleryKind,
 } from "@/core/gallery";
+import { copyPlacement, type Composition } from "@/core/compose/model";
+import { ComposeEditor, type ComposeLabels, type ComposeOption } from "./ComposeEditor";
 import { ui } from "./ui";
 import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
@@ -31,7 +33,11 @@ type Entry = {
   /** A failed upload keeps its file so that "Try again" does not ask for it again (a connection problem only). */
   retry?: boolean;
   preview?: string;
+  /** (0.19.0) The text placed on this picture. */
+  compose?: Composition;
 };
+/** (0.19.0) Runs a module action of the form with the given fields ("Test on the overlay"); absent outside a module form. */
+export type ComposeTestRun = (action: string, data: FormData) => Promise<{ ok?: string | boolean; error?: string; errors?: Record<string, string> } | null | undefined>;
 
 /** How many files travel at the same time. */
 const PARALLEL = 3;
@@ -78,22 +84,26 @@ function send(file: File, kinds: GalleryKind[], onProgress: (pct: number) => voi
  * caption, an optional list of files already on the site, and per-item progress and error. The value posted with the form is the canonical JSON of the items that are on the site
  * (`[{ src, label? }]`); `<name>__gallery` tells the server which rules to check again (kinds, maximum, minimum). While files are still sending, saving waits.
  */
-export function GalleryField({ name, label, defaultValue, accept, max, min, itemLabel = false, library, required, help, example, labels }: {
+export function GalleryField({ name, label, defaultValue, accept, max, min, itemLabel = false, library, required, help, example, labels, compose, composeLabels, testRun }: {
   name: string; label: string; defaultValue?: string; accept?: unknown; max?: unknown; min?: unknown; itemLabel?: boolean; library?: GalleryChoice[]; required?: boolean; help?: string; example?: string; labels: GalleryLabels;
+  /** (core 0.19.0) "Place the text" on the pictures: the module's `compose` option, read by the core (see `composeOption`), and the `compose.*` texts. */
+  compose?: ComposeOption | null; composeLabels?: ComposeLabels; testRun?: ComposeTestRun;
 }) {
   const kinds = useMemo(() => galleryAccept(accept), [accept]);
-  const limit = galleryMax(max);
+  const placing = !!(compose && composeLabels);
+  const rules = useMemo(() => (placing ? composeRules({ variables: compose!.variables, maxBoxes: compose!.maxBoxes, formats: compose!.formats }) : null), [placing, compose]);
+  const limit = placing ? Math.min(galleryMax(max), COMPOSE_GALLERY_MAX) : galleryMax(max);
   const least = Math.max(galleryMin(min, limit), required ? 1 : 0);
   const uid = useId();
   const nextId = useRef(1);
   const initial = useMemo<Entry[]>(() => {
-    const read = readGallery(defaultValue ?? "", { accept: GALLERY_KINDS, max: GALLERY_HARD_MAX });
+    const read = readGallery(defaultValue ?? "", { accept: GALLERY_KINDS, max: GALLERY_HARD_MAX, compose: rules });
     if (!read.ok) return [];
     const counts: Record<string, number> = {};
     return read.items.map((item) => {
       const kind = galleryKindOf(item.src)!;
       counts[kind] = (counts[kind] ?? 0) + 1;
-      return { id: nextId.current++, src: item.src, kind, name: item.label || text(labels, `gallery.name.${kind}`, { n: counts[kind]! }), label: item.label ?? "", status: "ready" as const, pct: 100 };
+      return { id: nextId.current++, src: item.src, kind, name: item.label || text(labels, `gallery.name.${kind}`, { n: counts[kind]! }), label: item.label ?? "", status: "ready" as const, pct: 100, ...(item.compose ? { compose: item.compose } : {}) };
     });
     // The initial list is read once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,12 +121,14 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
   const picker = useRef<HTMLInputElement>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const root = useRef<HTMLDivElement>(null);
-  const focusAfter = useRef<{ move?: string; remove?: number; add?: boolean } | null>(null);
+  const focusAfter = useRef<{ move?: string; remove?: number; add?: boolean; compose?: number } | null>(null);
   const entriesRef = useRef(entries);
   entriesRef.current = entries;
 
   const ready = entries.filter((e) => e.status === "ready" && e.src);
-  const value = writeGallery(ready.map((e) => ({ src: e.src!, ...(e.label.trim() ? { label: e.label.trim() } : {}) })));
+  const value = writeGallery(ready.map((e) => ({ src: e.src!, ...(e.label.trim() ? { label: e.label.trim() } : {}), ...(placing && e.compose ? { compose: e.compose } : {}) })));
+  const [editing, setEditing] = useState<number | null>(null);
+  const editEntry = entries.find((e) => e.id === editing && e.src);
   const counted = entries.filter((e) => e.status !== "error").length;
   const busy = entries.some((e) => e.status === "sending");
   const full = counted >= limit;
@@ -152,7 +164,8 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
     focusAfter.current = null;
     const list = root.current;
     if (!list) return;
-    if (want.move) list.querySelector<HTMLElement>(`[data-gallery-move="${want.move}"]`)?.focus();
+    if (want.compose !== undefined) requestAnimationFrame(() => list.querySelector<HTMLElement>(`[data-gallery-compose="${want.compose}"]`)?.focus());
+    else if (want.move) list.querySelector<HTMLElement>(`[data-gallery-move="${want.move}"]`)?.focus();
     else if (want.remove !== undefined) {
       const rows = entriesRef.current;
       const target = rows[Math.min(want.remove, rows.length - 1)];
@@ -248,6 +261,17 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
     setLive(text(labels, "gallery.moved", { name: item!.name, n: to + 1, total: next.length }));
     setEntries(next);
   };
+  /** "Test on the overlay": the module's test action receives the whole form, this list with THIS placement, and `<name>__composeFor` = the file to show. */
+  const runTest = async (c: Composition, entry: Entry): Promise<{ ok?: string; error?: string }> => {
+    const form = hidden.current?.form;
+    if (!form || !testRun || !compose?.testAction) return {};
+    const data = new FormData(form);
+    data.set(name, writeGallery(entriesRef.current.filter((e) => e.status === "ready" && e.src).map((e) => ({ src: e.src!, ...(e.label.trim() ? { label: e.label.trim() } : {}), ...(e.id === entry.id ? { compose: c } : e.compose ? { compose: e.compose } : {}) }))));
+    data.set(`${name}__composeFor`, entry.src!);
+    const r = await testRun(compose.testAction, data);
+    const error = r?.error ?? (r?.errors ? Object.values(r.errors)[0] : undefined);
+    return error ? { error } : { ok: typeof r?.ok === "string" ? r.ok : text(composeLabels!, "compose.test") };
+  };
   const retry = (entry: Entry) => { if (!files.current.has(entry.id)) return; queue.current.push(entry.id); patch(entry.id, { status: "sending", pct: 0, error: undefined }); pump(); };
 
   const addFromLibrary = (picked: GalleryChoice[]) => {
@@ -282,7 +306,7 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
         <span className="shrink-0 text-[13px] text-muted" data-gallery-counter="">{count}</span>
       </div>
       <input ref={hidden} type="hidden" name={name} value={value} data-gallery-value="" />
-      <input type="hidden" name={`${name}${GALLERY_MARK}`} value={galleryMark(kinds, limit, least)} />
+      <input type="hidden" name={`${name}${GALLERY_MARK}`} value={galleryMark(kinds, limit, least, rules)} />
       <div {...dropProps} className={`relative rounded-2xl border border-dashed p-3 transition-colors ${dragging ? "border-accent bg-accent/10" : "border-line bg-bg/40"}`}>
         <ul role="list" data-gallery-grid="" className="grid list-none grid-cols-[repeat(auto-fill,minmax(9.5rem,1fr))] gap-3 p-0">
           {entries.map((entry, index) => {
@@ -302,6 +326,7 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
                   )}
                   {entry.kind === "video" && entry.src && <span aria-hidden="true" className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-xs text-white">▶</span>}
                   {entry.src && entry.kind !== "image" && <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[11px] font-medium text-white">{ext}</span>}
+                  {placing && entry.compose && <span className="absolute right-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-[11px] font-medium text-white" data-gallery-with-text="">{text(composeLabels!, "compose.withText")}</span>}
                   {entry.status === "sending" && (
                     <div className="absolute inset-x-0 bottom-0 bg-surface/90 p-2" data-gallery-progress={entry.pct}>
                       <div role="progressbar" aria-label={text(labels, "gallery.sending", { name: itemName })} aria-valuemin={0} aria-valuemax={100} aria-valuenow={entry.pct} className="h-2 overflow-hidden rounded-full bg-line">
@@ -321,14 +346,24 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
                 {entry.status === "error" && (
                   <p role="alert" data-gallery-error="" className="px-2 pt-1.5 text-xs font-medium text-red-700 [overflow-wrap:anywhere]"><span aria-hidden="true">⚠ </span>{entry.error}</p>
                 )}
-                <div className="mt-auto flex items-center justify-between gap-1 p-1.5">
+                <div className="mt-auto flex flex-wrap items-center justify-between gap-1 p-1.5">
                   {entry.status === "error" ? (
                     <>
                       {entry.retry ? <button type="button" onClick={() => retry(entry)} className={`${ui.btn} min-h-11 !px-3`}>{text(labels, "gallery.retry")}</button> : <span />}
                       <button type="button" data-gallery-remove={entry.id} aria-label={text(labels, "gallery.remove", { name: itemName })} onClick={() => remove(entry, index)} className={small}><span aria-hidden="true">✕</span></button>
                     </>
                   ) : (
-                    <>
+                    placing && entry.kind === "image" && entry.status === "ready" ? (
+                      <>
+                        <button type="button" data-gallery-compose={entry.id} onClick={() => setEditing(entry.id)} aria-label={text(composeLabels!, entry.compose ? "compose.editFor" : "compose.placeFor", { name: itemName })}
+                          className={`${ui.btn} min-h-11 min-w-0 basis-full !px-2 !text-[13px]`}>{text(composeLabels!, entry.compose ? "compose.edit" : "compose.place")}</button>
+                        <button type="button" data-gallery-remove={entry.id} aria-label={text(labels, "gallery.remove", { name: itemName })} onClick={() => remove(entry, index)} className={small}><span aria-hidden="true">✕</span></button>
+                        <TileMenu label={text(composeLabels!, "compose.moreFor", { name: itemName })}>
+                          <button type="button" data-gallery-move={`${entry.id}:earlier`} disabled={index === 0} onClick={() => move(index, -1)} className="flex min-h-11 w-full items-center px-4 text-left text-sm hover:bg-bg disabled:opacity-40">{text(labels, "gallery.earlier", { name: itemName })}</button>
+                          <button type="button" data-gallery-move={`${entry.id}:later`} disabled={index === entries.length - 1} onClick={() => move(index, 1)} className="flex min-h-11 w-full items-center px-4 text-left text-sm hover:bg-bg disabled:opacity-40">{text(labels, "gallery.later", { name: itemName })}</button>
+                        </TileMenu>
+                      </>
+                    ) : <>
                       <button type="button" data-gallery-move={`${entry.id}:earlier`} aria-label={text(labels, "gallery.earlier", { name: itemName })} aria-disabled={index === 0 || undefined}
                         onClick={() => move(index, -1)} className={`${small} ${index === 0 ? "opacity-40" : ""}`}><span aria-hidden="true">←</span></button>
                       <button type="button" data-gallery-remove={entry.id} aria-label={text(labels, "gallery.remove", { name: itemName })} onClick={() => remove(entry, index)} className={small}><span aria-hidden="true">✕</span></button>
@@ -368,7 +403,38 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
       {busy && <span className="sr-only" role="status">{text(labels, "gallery.sending", { name: "" })}</span>}
       <HelpBelow help={help} className={ui.help} />
       {example && <p id={`ex-${name}`} className={ui.help} data-field-example="">{example}</p>}
+      {placing && editEntry && (
+        <ComposeEditor key={editEntry.id} src={editEntry.src!} name={editEntry.name} initial={editEntry.compose ?? null} option={compose!} labels={composeLabels!}
+          others={entries.filter((e) => e.id !== editEntry.id && e.kind === "image" && e.status === "ready" && e.src).length}
+          onUse={(c) => { patch(editEntry.id, { compose: c }); setEditing(null); setLive(text(composeLabels!, "compose.withText")); focusAfter.current = { compose: editEntry.id }; }}
+          onApply={(c) => { setEntries((list) => list.map((e) => (e.id === editEntry.id ? { ...e, compose: c } : e.kind === "image" && e.status === "ready" && e.src ? { ...e, compose: copyPlacement(c, e.src) } : e))); setEditing(null); focusAfter.current = { compose: editEntry.id }; }}
+          onRemove={() => { patch(editEntry.id, { compose: undefined }); setEditing(null); focusAfter.current = { compose: editEntry.id }; }}
+          onTest={compose!.testAction && testRun ? (c) => runTest(c, editEntry) : undefined}
+          onClose={() => { setEditing(null); focusAfter.current = { compose: editEntry.id }; }} />
+      )}
     </div>
+  );
+}
+
+/** "⋯" of a tile: the moves (R16: at most two visible actions per item). A native <details>: keyboard and touch work without more; Esc closes it. */
+function TileMenu({ label, children }: { label: string; children: React.ReactNode }) {
+  const box = useRef<HTMLDetailsElement>(null);
+  useEffect(() => {
+    const close = (e: Event) => {
+      const el = box.current;
+      if (!el?.open) return;
+      if (e instanceof KeyboardEvent) { if (e.key === "Escape") { e.stopPropagation(); el.open = false; el.querySelector("summary")?.focus(); } }
+      else if (!el.contains(e.target as Node)) el.open = false;
+    };
+    document.addEventListener("keydown", close, true);
+    document.addEventListener("pointerdown", close);
+    return () => { document.removeEventListener("keydown", close, true); document.removeEventListener("pointerdown", close); };
+  }, []);
+  return (
+    <details ref={box} className="relative" data-gallery-menu="">
+      <summary aria-label={label} title={label} className="flex h-11 w-11 cursor-pointer list-none items-center justify-center rounded-lg border border-line bg-surface text-base text-muted transition-colors hover:border-accent hover:text-accent [&::-webkit-details-marker]:hidden"><span aria-hidden="true">⋯</span></summary>
+      <div className="absolute bottom-full right-0 z-20 mb-1 w-64 overflow-hidden rounded-xl border border-line bg-surface py-1 shadow-lg">{children}</div>
+    </details>
   );
 }
 

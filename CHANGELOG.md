@@ -7,6 +7,45 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.19.0 — 2026-11-16
+
+**En bref.** Vous pouvez écrire la phrase d'une alerte sur son image ou son GIF, à l'endroit choisi. Le bouton « Placer le texte » ouvre un éditeur : faites glisser le texte, choisissez sa taille, puis « Utiliser ce placement ».
+
+**In short.** You can write the sentence of an alert on its picture or GIF, where you choose. The "Place the text" button opens an editor: drag the text, choose its size, then "Use this placement".
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien, tant que vous ne placez pas de texte.** Une réaction avec une image ou un GIF montre toujours l'image seule. Le texte n'apparaît que sur les fichiers où vous l'avez placé.
+- **(English) Nothing, until you place a text.** A reaction with a picture or a GIF still shows the picture alone. Text appears only on the files where you placed it.
+
+### Placer le texte
+
+- **Un bouton sur chaque image.** Dans la fenêtre d'une réaction, chaque image ou GIF a un bouton « Placer le texte ». Une image qui a déjà son texte dit « Avec texte ».
+- **(English) A button on each picture.** In the window of a reaction, each picture or GIF has a "Place the text" button. A picture that already has its text says "With text".
+- **Le chemin court.** Faites glisser le texte, choisissez une taille, puis cliquez « Utiliser ce placement ». Enregistrez ensuite la réaction, comme d'habitude.
+- **(English) The short path.** Drag the text, choose a size, then click "Use this placement". Then save the reaction, as usual.
+- **Lisible sur toute l'image.** « Lisibilité » propose les mêmes choix que les éléments d'overlay. « Comme l'élément » suit l'apparence de l'élément qui montre l'alerte.
+- **(English) Readable on the whole picture.** "Readability" offers the same choices as overlay elements. "Like the element" follows the look of the element that shows the alert.
+- **Les noms très longs.** Le bouton « Nom très long » montre le pire cas. Un texte trop long rétrécit, puis passe à la ligne, puis se termine par « … ».
+- **(English) Very long names.** The "Very long name" button shows the worst case. A text that is too long shrinks, then wraps, then ends with "…".
+- **Votre propre texte.** Choisissez « Un texte à vous » et insérez des valeurs comme le pseudo ou le montant : elles sont remplacées pendant l'alerte.
+- **(English) Your own text.** Choose "Your own text" and insert values such as the name or the amount: they are replaced during the alert.
+- **Au clavier et au téléphone.** Les flèches déplacent le texte, Alt avec les flèches change sa taille et Ctrl+Z annule. Au téléphone, les réglages passent en bas et deux doigts zooment.
+- **(English) With the keyboard and on a phone.** Arrows move the text, Alt with the arrows resizes it and Ctrl+Z undoes. On a phone, the settings move to the bottom and two fingers zoom.
+- **Un placement pour toutes les images.** « Appliquer aux autres fichiers », dans le menu « ⋯ » de l'éditeur, copie le placement sur les autres images de la réaction.
+- **(English) One placement for every picture.** "Apply to the other files", in the "⋯" menu of the editor, copies the placement onto the other pictures of the reaction.
+- **Tester avant d'enregistrer.** « Tester sur l'overlay » envoie une alerte de test avec ce placement, sans rien enregistrer.
+- **(English) Test before saving.** "Test on the overlay" sends a test alert with this placement, without saving anything.
+
+### Pour les développeurs
+
+- **Data** (`src/core/compose/model.ts`, pure): composition `v: 1`, boxes in percent of the frame, text in px of a 1080-high frame (24 to 220), 1 to 4 boxes, 4 KB at most. Video backdrops are accepted by the data (step 2), not offered by the editor yet.
+- **Checker**: `checkComposition(raw, { src, variables, maxBoxes, formats })` returns every problem with its path and code (`json`, `format`, `version`, `unknown_key`, `range`, `choice`, `boxes`, `variable`, `file`, `size`, `required`).
+- **Engine** (`src/core/compose/render.ts`): one self-contained renderer for the editor and the overlay pages, `textContent` only, closed CSS values, auto-shrink by halving (8 tries at most), frame kept whole in its container. Modules get it through `ctx.overlay` (`composeScript()`, `composeCss()`, `checkComposition`, `resolveComposition`, `copyPlacement`). Absent on an older core.
+- **Gallery `compose` option** (`kind: "gallery"`): `{ variables, phrase, formats, defaultFormat, maxBoxes, testAction }`; items carry `compose`; the server re-checks every composition, posts `<name>__compose=1`, and allows 64 000 characters for that field only (12 files at most). See `docs/MODULES.md`, "Compositions".
+- **Appearance kit**: its "outline on all text under 65 %" rule now skips `data-ov-region="composition"`, so a placed text keeps its own colour and outline. Every other page renders as with 0.18.0.
+- **Editor** `ComposeEditor.tsx` (native modal `<dialog>` above the module window): drag, 44 px handles, magnet lines (edges, centre, safe margins, other boxes), zoom buttons, wheel, pinch, keys, pan, undo/redo 50 steps, preview background, chips for automatic values, phone bottom sheet. Glossary words added in `docs/TRANSLATING.md`. `fakeCtx()` gives the real kit as `ctx.overlay`.
+
 ## 0.18.0 — 2026-11-16
 
 **En bref.** Votre assistant IA peut envoyer une vidéo, un GIF, une image ou un son qu'il a fabriqué, par exemple pour une alerte de follow ou de raid. Seulement si une extension le propose et si vous lui en donnez le droit.
