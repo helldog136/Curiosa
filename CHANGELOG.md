@@ -21,7 +21,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 ### Pour les développeurs
 
 - **`ctx.overlay.tokens(query, selector?)`**: the four common-style tokens of an element page as one rule (`:root` by default), the same values as the core page; empty without the style parameters. **`ctx.overlay.tvFactor(query)`** and **`ctx.overlay.tvTokens(query)`**: the TV factor and type scale. The composition kit of 0.19.0 stays in `ctx.overlay` (`src/core/overlays/moduleKit.ts`). `fakeCtx()` gives the real ones.
-- **`module:check`**: two advice rules for overlay elements. `overlay.idle`: rendered with no data, the element paints nothing (real Chromium when installed, else the page text). `overlay.readable`: the page reads `--ov-fg` and `--ov-surface`, marks its parts and writes no `--ov-*` token inline on an inner node (the 0.16.0 alerts bug). Advice only: no module is refused. On the 16 modules of the modules repository, only the generative maze is reported (it always plays): no module needs a new version.
+- **`module:check`**: two advice rules. `overlay.idle`: with no data, the element paints nothing (real Chromium when installed). `overlay.readable`: the page reads `--ov-fg` and `--ov-surface`, marks its parts and writes no `--ov-*` token inline on an inner node. Advice only: no module is refused.
+- **The 16 modules of the modules repository** pass both, except the generative maze (it always plays): no module needs a new version.
 - The requirements file of overlay elements is now in English (translated when touched). `docs/TESTSUPPORT.md` regenerated.
 
 ## 0.23.0 — 2026-11-16
