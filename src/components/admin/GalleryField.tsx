@@ -52,6 +52,18 @@ function guessKind(file: File): GalleryKind | null {
   if (/^audio\//.test(file.type)) return "audio";
   return null;
 }
+/** (0.21.0) The length in seconds of a video of the site, read from its first bytes by the browser (null when it cannot be read within 5 s). */
+function videoLength(src: string): Promise<number | null> {
+  return new Promise((ok) => {
+    const v = document.createElement("video");
+    const end = (n: number | null) => { clearTimeout(timer); v.removeAttribute("src"); v.load(); ok(n); };
+    const timer = setTimeout(() => end(null), 5000);
+    v.preload = "metadata"; v.muted = true;
+    v.onloadedmetadata = () => end(Number.isFinite(v.duration) && v.duration > 0 ? v.duration : null);
+    v.onerror = () => end(null);
+    v.src = src;
+  });
+}
 const acceptAttr = (kinds: GalleryKind[]) => kinds.map((k) => (k === "image" ? "image/png,image/jpeg,image/webp,image/gif" : k === "video" ? "video/mp4,video/webm" : "audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac")).join(",");
 const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -262,6 +274,18 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
     setEntries(next);
   };
   /** "Test on the overlay": the module's test action receives the whole form, this list with THIS placement, and `<name>__composeFor` = the file to show. */
+  /** A file of the list that can receive a placed text: a picture, or (0.21.0) a video when the module said its page plays them. */
+  const placeable = (e: Entry) => e.status === "ready" && !!e.src && (e.kind === "image" || (e.kind === "video" && compose?.video === true));
+  /**
+   * "Apply to the other files": the placement goes onto every other file that can take one. A video keeps "its own length": that length is read here, from
+   * the file itself, before the copy is made (a few hundred ms; the copy keeps the length of the first video if a file cannot be read).
+   */
+  const applyToOthers = async (id: number, c: Composition) => {
+    const targets = entriesRef.current.filter((e) => e.id !== id && placeable(e));
+    const lengths = new Map<number, number | null>();
+    await Promise.all(targets.filter((e) => e.kind === "video" && c.duration?.mode === "media").map(async (e) => lengths.set(e.id, await videoLength(e.src!))));
+    setEntries((list) => list.map((e) => (e.id === id ? { ...e, compose: c } : targets.some((t) => t.id === e.id) ? { ...e, compose: copyPlacement(c, e.src!, { seconds: lengths.get(e.id) ?? null }) } : e)));
+  };
   const runTest = async (c: Composition, entry: Entry): Promise<{ ok?: string; error?: string }> => {
     const form = hidden.current?.form;
     if (!form || !testRun || !compose?.testAction) return {};
@@ -353,7 +377,7 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
                       <button type="button" data-gallery-remove={entry.id} aria-label={text(labels, "gallery.remove", { name: itemName })} onClick={() => remove(entry, index)} className={small}><span aria-hidden="true">✕</span></button>
                     </>
                   ) : (
-                    placing && entry.kind === "image" && entry.status === "ready" ? (
+                    placing && (entry.kind === "image" || (entry.kind === "video" && compose!.video === true)) && entry.status === "ready" ? (
                       <>
                         <button type="button" data-gallery-compose={entry.id} onClick={() => setEditing(entry.id)} aria-label={text(composeLabels!, entry.compose ? "compose.editFor" : "compose.placeFor", { name: itemName })}
                           className={`${ui.btn} min-h-11 min-w-0 basis-full !px-2 !text-[13px]`}>{text(composeLabels!, entry.compose ? "compose.edit" : "compose.place")}</button>
@@ -405,9 +429,9 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
       {example && <p id={`ex-${name}`} className={ui.help} data-field-example="">{example}</p>}
       {placing && editEntry && (
         <ComposeEditor key={editEntry.id} src={editEntry.src!} name={editEntry.name} initial={editEntry.compose ?? null} option={compose!} labels={composeLabels!}
-          others={entries.filter((e) => e.id !== editEntry.id && e.kind === "image" && e.status === "ready" && e.src).length}
+          others={entries.filter((e) => e.id !== editEntry.id && placeable(e)).length}
           onUse={(c) => { patch(editEntry.id, { compose: c }); setEditing(null); setLive(text(composeLabels!, "compose.withText")); focusAfter.current = { compose: editEntry.id }; }}
-          onApply={(c) => { setEntries((list) => list.map((e) => (e.id === editEntry.id ? { ...e, compose: c } : e.kind === "image" && e.status === "ready" && e.src ? { ...e, compose: copyPlacement(c, e.src) } : e))); setEditing(null); focusAfter.current = { compose: editEntry.id }; }}
+          onApply={(c) => { void applyToOthers(editEntry.id, c); setEditing(null); focusAfter.current = { compose: editEntry.id }; }}
           onRemove={() => { patch(editEntry.id, { compose: undefined }); setEditing(null); focusAfter.current = { compose: editEntry.id }; }}
           onTest={compose!.testAction && testRun ? (c) => runTest(c, editEntry) : undefined}
           onClose={() => { setEditing(null); focusAfter.current = { compose: editEntry.id }; }} />

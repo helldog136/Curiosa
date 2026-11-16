@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
-  ALIGNS, ANIMS, BOX_FITS, FONTS, LIMITS, PLACEMENTS, SIZE_STEPS, canonicalComposition, checkComposition, defaultBox, defaultComposition, frameRatio, resolveComposition,
+  ALIGNS, ANIMS, BOX_FITS, FONTS, LIMITS, PLACEMENTS, PLAYS, SIZE_STEPS, canonicalComposition, checkComposition, defaultBox, defaultComposition, defaultVideoComposition, frameRatio, isVideoSrc, mediaSeconds, resolveComposition,
   type Box, type ComposeError, type ComposeFormat, type Composition, type PlacementId,
 } from "@/core/compose/model";
 import { HANDLES, baseFrame, clampRect, fitZoom, moveRect, nudge, overlapShare, placeOf, rectOf, resizeRect, snapLines, snapMove, snapResize, stepZoom, clampZoom, zoomAround, type Handle, type PRect, type SnapLine } from "@/core/compose/layout";
@@ -70,16 +70,28 @@ function Num({ label, value, min, max, step, hint, onChange, id }: { label: stri
   );
 }
 
-/** Pixels of the picture under a box, read through a small canvas (the picture is a file of the site: same origin). Null when the browser cannot read it. */
-function pixelsUnder(img: HTMLImageElement, comp: Composition, box: PRect): Uint8ClampedArray | null {
+type MediaEl = HTMLImageElement | HTMLVideoElement;
+const sizeOf = (el: MediaEl) => (el instanceof HTMLVideoElement ? { width: el.videoWidth, height: el.videoHeight } : { width: el.naturalWidth, height: el.naturalHeight });
+/** (0.21.0) The video shows the picture at `t` seconds (resolves when it does; never rejects). */
+const seekTo = (v: HTMLVideoElement, t: number) => new Promise<void>((ok) => {
+  const done = () => { v.removeEventListener("seeked", done); clearTimeout(timer); ok(); };
+  const timer = setTimeout(done, 1500);
+  v.addEventListener("seeked", done);
+  try { v.currentTime = Math.max(0, t); } catch { done(); }
+});
+
+/** Pixels of the picture (or of the video's current picture) under a box, read through a small canvas (a file of the site: same origin). Null when the browser cannot read it. */
+function pixelsUnder(img: MediaEl, comp: Composition, box: PRect): Uint8ClampedArray | null {
   try {
-    const r = frameRatio(comp.format, { width: img.naturalWidth, height: img.naturalHeight });
+    const nat = sizeOf(img);
+    if (!(nat.width > 0 && nat.height > 0)) return null;
+    const r = frameRatio(comp.format, nat);
     const W = 160, H = Math.max(1, Math.round(W / r));
     const c = document.createElement("canvas");
     c.width = W; c.height = H;
     const g = c.getContext("2d", { willReadFrequently: true });
     if (!g) return null;
-    const iw = img.naturalWidth, ih = img.naturalHeight;
+    const iw = nat.width, ih = nat.height;
     const k = comp.backdrop.fit === "contain" ? Math.min(W / iw, H / ih) : Math.max(W / iw, H / ih);
     const dw = iw * k, dh = ih * k;
     g.drawImage(img, (W - dw) * (comp.backdrop.focus[0] / 100), (H - dh) * (comp.backdrop.focus[1] / 100), dw, dh);
@@ -108,12 +120,19 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
   onClose: () => void;
 }) {
   const vars = option.variables;
-  const start = useMemo(() => initial ?? defaultComposition(src, { format: option.formats.includes(option.defaultFormat ?? "media") ? option.defaultFormat ?? "media" : option.formats[0] }), [initial, src, option]);
+  const video = isVideoSrc(src);
+  const start = useMemo(() => {
+    if (initial) return initial;
+    const format = option.formats.includes(option.defaultFormat ?? "media") ? option.defaultFormat ?? "media" : option.formats[0];
+    return video ? defaultVideoComposition(src, { format }) : defaultComposition(src, { format });
+  }, [initial, src, option, video]);
   const [hist, setHist] = useState<History<Composition>>(() => startHistory(start));
   const comp = hist.present;
   const [sel, setSel] = useState(comp.boxes[0]?.id ?? "t1");
   const box = comp.boxes.find((b) => b.id === sel) ?? comp.boxes[0]!;
-  const [media, setMedia] = useState<{ width: number; height: number } | null>(null);
+  const [media, setMedia] = useState<{ width: number; height: number; seconds?: number } | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const [listen, setListen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [fitMode, setFitMode] = useState(true);
   const [bg, setBg] = useState<PreviewBg>("checker");
@@ -127,7 +146,8 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
   const dialog = useRef<HTMLDialogElement>(null);
   const viewport = useRef<HTMLDivElement>(null);
   const host = useRef<HTMLDivElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
+  const imgRef = useRef<MediaEl | null>(null);
+  const playHost = useRef<HTMLDivElement>(null);
   const textRef = useRef<HTMLSelectElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
   const space = useRef(false);
@@ -136,12 +156,26 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
 
   // The window opens as a modal dialog (top layer: the window below is inert and never answers Esc).
   useEffect(() => { const d = dialog.current; if (d && !d.open) d.showModal(); return () => { if (d?.open) d.close(); }; }, []);
-  // The picture: its own size (100 % zoom, the "file's own" format) and the pixels for the "auto" colour.
+  // The picture (or the video): its own size (100 % zoom, the "file's own" format), its length, and the pixels for the "auto" colour. A video is read here
+  // muted and never shown (the engine draws its own); this one is only measured and moved to the moments the colour is checked at.
   useEffect(() => {
+    if (video) {
+      const v = document.createElement("video");
+      v.muted = true; v.playsInline = true; v.preload = "auto"; v.crossOrigin = "anonymous";
+      v.onloadeddata = () => {
+        imgRef.current = v;
+        const length = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : undefined;
+        setMedia({ width: v.videoWidth, height: v.videoHeight, seconds: length });
+        // a new placement on a video lasts as long as the video: its length is known now (not a step of the history)
+        if (!initial && length) setHist((h) => (h.present.duration?.mode === "media" && h.present.duration.seconds !== mediaSeconds(length) ? replace(h, { ...h.present, duration: { mode: "media", seconds: mediaSeconds(length) } }) : h));
+      };
+      v.src = src;
+      return () => { v.removeAttribute("src"); v.load(); imgRef.current = null; };
+    }
     const img = new Image();
     img.onload = () => { imgRef.current = img; setMedia({ width: img.naturalWidth, height: img.naturalHeight }); };
     img.src = src;
-  }, [src]);
+  }, [src, video, initial]);
   // The engine runs in this page too: one implementation for the editor and OBS.
   useEffect(() => { const w = window as unknown as { CuriosaCompose?: unknown }; if (!w.CuriosaCompose) composeEngine(window); }, []);
 
@@ -190,6 +224,17 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
     return () => { clearTimeout(t); engine.unmount(root); };
   }, [resolved, stage.width, stage.height]);
 
+  // "Play": the alert as OBS will show it (the video plays, the texts come in and go out), above the still picture, then back to placing. Muted unless asked.
+  const seconds = comp.duration?.seconds ?? 6;
+  useEffect(() => {
+    if (!playing) return;
+    const h = playHost.current, engine = (window as unknown as { CuriosaCompose?: { mount: (c: HTMLElement, x: unknown, o: unknown) => HTMLElement; unmount: (r: HTMLElement) => void } }).CuriosaCompose;
+    if (!h || !engine) return;
+    const root = engine.mount(h, resolved, { seconds, muted: !listen });
+    const t = setTimeout(() => setPlaying(false), seconds * 1000 + 200);
+    return () => { clearTimeout(t); engine.unmount(root); };
+  }, [playing, resolved, seconds, listen]);
+
   const commit = useCallback((next: Composition) => setHist((h) => record(h, next, same)), []);
   const patchBox = useCallback((id: string, change: Partial<Box>, step = true) => {
     setHist((h) => {
@@ -205,14 +250,25 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
     onClose();
   }, [comp, start, L, onClose]);
 
-  /** The composition as it will be used: checked, "auto" colours measured under each box (bare text only). */
-  const finished = useCallback((): Composition | null => {
+  /**
+   * The composition as it will be used: checked, "auto" colours measured under each box (bare text only). On a video, 8 pictures taken while the box shows
+   * are measured together (the worst case wins), so a bright flash in the middle of the video counts.
+   */
+  const finished = useCallback(async (): Promise<Composition | null> => {
     const img = imgRef.current;
-    const measured: Composition = { ...comp, boxes: comp.boxes.map((b) => {
-      if (!needsMeasure(b)) { const rest = { ...b }; delete rest.resolved; return rest; }
-      const px = img ? pixelsUnder(img, comp, rectOf(b)) : null;
-      return px ? { ...b, resolved: pickTextColour(px, 2).colour } : b;
-    }) };
+    const boxes: Box[] = [];
+    for (const b of comp.boxes) {
+      if (!needsMeasure(b)) { const rest = { ...b }; delete rest.resolved; boxes.push(rest); continue; }
+      let px: Uint8ClampedArray | null = null;
+      if (img instanceof HTMLVideoElement && Number.isFinite(img.duration) && img.duration > 0) {
+        const end = Math.min(img.duration, b.out.at ?? img.duration), from = Math.min(b.in.at, end);
+        const parts: Uint8ClampedArray[] = [];
+        for (let i = 0; i < 8; i++) { await seekTo(img, from + ((end - from) * (i + 0.5)) / 8); const p = pixelsUnder(img, comp, rectOf(b)); if (p) parts.push(p); }
+        if (parts.length) { px = new Uint8ClampedArray(parts.reduce((n, p) => n + p.length, 0)); let at = 0; for (const p of parts) { px.set(p, at); at += p.length; } }
+      } else if (img) px = pixelsUnder(img, comp, rectOf(b));
+      boxes.push(px ? { ...b, resolved: pickTextColour(px, 2).colour } : b);
+    }
+    const measured: Composition = { ...comp, boxes };
     const check = checkComposition(measured, { src, variables: vars.map((v) => v.token), maxBoxes: option.maxBoxes, formats: option.formats });
     if (!check.ok) {
       setErrors(check.errors);
@@ -359,9 +415,9 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
   };
   const preset = (id: PlacementId) => patch({ ...PLACEMENTS[id] });
 
-  const use = () => { const c = finished(); if (c) onUse(c); };
+  const use = async () => { const c = await finished(); if (c) onUse(c); };
   const apply = async () => {
-    const c = finished();
+    const c = await finished();
     if (!c) return;
     if (!(await askConfirm(L("compose.applyConfirm", { n: others }), { confirmLabel: L("compose.applyYes") }))) return;
     onApply(c);
@@ -372,7 +428,7 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
     onRemove();
   };
   const runTest = async () => {
-    const c = finished();
+    const c = await finished();
     if (!c || !onTest) return;
     setTest({ pending: true });
     try { setTest({ pending: false, ...(await onTest(c)) }); } catch { setTest({ pending: false, error: L("compose.testHelp") }); }
@@ -397,6 +453,7 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
   const overlapped = comp.boxes.findIndex((o) => o.id !== box.id && overlapShare(rectOf(o), rectOf(box)) > 0.1);
   const sizeStep = (SIZE_STEPS as readonly number[]).includes(box.size) ? box.size : null;
   const hasBig = vars.some((v) => /^[\d\s.,  ]+$/.test(v.sample));
+  const heavy = video && !!media && media.width * media.height > 1280 * 720;
   const pill = "inline-flex items-center rounded-full bg-amber-500/15 px-2.5 py-0.5 text-xs font-medium text-amber-800";
 
   const body = (
@@ -428,6 +485,15 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
               <button key={k} type="button" className={`${small} ${bg === k ? "!border-accent !bg-accent !text-accent-fg" : ""}`} aria-pressed={bg === k} onClick={() => setBg(k)} data-testid={`compose-bg-${k}`}>{L(`compose.preview.${k}`)}</button>
             ))}
           </div>
+          <span className="mx-1 hidden h-6 w-px bg-line sm:block" aria-hidden="true" />
+          <button type="button" className={`${small} ${playing ? "!border-accent !text-accent" : ""}`} onClick={() => setPlaying((v) => !v)} title={L("compose.playHelp")} data-testid="compose-play" data-playing={playing ? "1" : undefined}>
+            <span aria-hidden="true">{playing ? "■" : "▶"}</span>{L(playing ? "compose.stop" : "compose.play")}
+          </button>
+          {video && (
+            <button type="button" className={`${small} ${listen ? "!border-accent !bg-accent !text-accent-fg" : ""}`} aria-pressed={listen} onClick={() => setListen((v) => !v)} aria-label={L("compose.listen")} title={L("compose.listen")} data-testid="compose-listen">
+              <span aria-hidden="true">{listen ? "🔊" : "🔇"}</span>
+            </button>
+          )}
         </div>
         <div className="flex min-h-0 flex-1 flex-col sm:flex-row">
           <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -435,11 +501,12 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
               onPointerDown={viewDown} onPointerMove={viewMove} onPointerUp={viewUp} onPointerCancel={viewUp}>
               <div className="flex min-h-full min-w-full items-center justify-center p-4" style={{ width: "max-content", height: "max-content" }}>
                 <div className="relative shrink-0 shadow-lg" style={{ width: stage.width, height: stage.height, ...BG[bg] }} data-compose-stage="" data-testid="compose-stage">
-                  <div ref={host} className="absolute inset-0" aria-hidden="true" />
-                  {!media && <p className="absolute inset-0 flex items-center justify-center text-sm text-muted">{L("compose.loading")}</p>}
+                  <div ref={host} className="absolute inset-0" aria-hidden="true" style={playing ? { visibility: "hidden" } : undefined} />
+                  {playing && <div ref={playHost} className="absolute inset-0 z-10" aria-hidden="true" data-testid="compose-playing" />}
+                  {!media && <p className="absolute inset-0 flex items-center justify-center text-sm text-muted">{L(video ? "compose.loadingVideo" : "compose.loading")}</p>}
                   {comp.guides !== "none" && <div aria-hidden="true" className="pointer-events-none absolute border border-dashed border-sky-400/80" style={{ inset: `${comp.guides === "title" ? 5 : 3.5}%` }} />}
                   {guides.map((g, i) => <div key={i} aria-hidden="true" data-compose-guide={g.axis} className="pointer-events-none absolute bg-fuchsia-500" style={g.axis === "x" ? { left: `${g.at}%`, top: 0, bottom: 0, width: 1 } : { top: `${g.at}%`, left: 0, right: 0, height: 1 }} />)}
-                  {comp.boxes.map((b, i) => {
+                  {!playing && comp.boxes.map((b, i) => {
                     const on = b.id === box.id;
                     const text = resolved.boxes.find((r) => r.id === b.id)?.text ?? "";
                     return (
@@ -491,6 +558,7 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
                   </div>
                 </details>
               </div>
+              {heavy && <p className="flex items-center gap-1" data-testid="compose-heavy"><span className={pill}>{L("compose.videoHeavy")}</span><HelpTip help={L("compose.videoHeavyHelp")} name={L("compose.videoHeavy")} /></p>}
               {(overlapped >= 0 || overflow.has(box.id)) && (
                 <p className="flex flex-wrap gap-1.5" role="status">
                   {overlapped >= 0 && <span className={pill}>{L("compose.overlap", { n: overlapped + 1 })}</span>}
@@ -580,8 +648,23 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
                 </div>
               </details>
               <details className="group rounded-2xl border border-line bg-bg/40" data-testid="compose-backdrop">
-                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-medium [&::-webkit-details-marker]:hidden"><span aria-hidden="true" className="text-xs text-muted transition-transform group-open:rotate-90">▶</span>{L("compose.backdrop")}</summary>
+                <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 text-[15px] font-medium [&::-webkit-details-marker]:hidden"><span aria-hidden="true" className="text-xs text-muted transition-transform group-open:rotate-90">▶</span>{L("compose.backdrop")}
+                  {video && <span className="ml-auto truncate text-[13px] font-normal text-muted" data-testid="compose-backdrop-summary">{L("compose.summary.video", { play: L(`compose.play.${comp.backdrop.play ?? "loop"}`), n: seconds })}</span>}</summary>
                 <div className="space-y-4 border-t border-line px-4 py-4">
+                  {video && (
+                    <>
+                      <Seg label={L("compose.f.play")} help={L("compose.playKindHelp")} value={comp.backdrop.play ?? "loop"} testid="compose-play-kind" options={PLAYS.map((v) => ({ value: v, label: L(`compose.play.${v}`) }))} onChange={(v) => commit({ ...comp, backdrop: { ...comp.backdrop, play: v } })} />
+                      <label className="flex min-h-11 items-center gap-2 text-[15px]"><input type="checkbox" role="switch" className="h-5 w-5 accent-[var(--accent)]" checked={comp.backdrop.sound === true} data-testid="compose-sound"
+                        onChange={(e) => { const bd = { ...comp.backdrop }; if (e.target.checked) bd.sound = true; else delete bd.sound; commit({ ...comp, backdrop: bd }); }} />{L("compose.f.sound")}</label>
+                      <Seg label={L("compose.f.duration")} value={comp.duration?.mode ?? "media"} testid="compose-duration"
+                        options={[{ value: "media" as const, label: L("compose.duration.media", { n: media?.seconds ? mediaSeconds(media.seconds) : seconds }) }, { value: "fixed" as const, label: L("compose.duration.fixed") }]}
+                        onChange={(v) => commit({ ...comp, duration: v === "media" ? { mode: "media", seconds: media?.seconds ? mediaSeconds(media.seconds) : seconds } : { mode: "fixed", seconds } })} />
+                      {comp.duration?.mode === "fixed" && (
+                        <Num id={`${ids}-secs`} label={L("compose.f.seconds")} value={comp.duration.seconds} min={LIMITS.seconds.min} max={LIMITS.seconds.max} step={1} hint={L("compose.secondsRange")}
+                          onChange={(n) => commit({ ...comp, duration: { mode: "fixed", seconds: Math.round(n) } })} />
+                      )}
+                    </>
+                  )}
                   <Seg label={L("compose.f.cover")} value={comp.backdrop.fit} options={(["cover", "contain"] as const).map((v) => ({ value: v, label: L(`compose.cover.${v}`) }))} onChange={(v) => commit({ ...comp, backdrop: { ...comp.backdrop, fit: v } })} />
                   {option.formats.length > 1 && (
                     <div>
@@ -602,7 +685,7 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
               {test.pending && <span aria-hidden="true" className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />}{L("compose.test")}
             </button>
           )}
-          <button type="button" className={`${ui.btnPrimary} min-h-11`} onClick={use} data-testid="compose-use" data-dirty={dirty ? "1" : undefined}>{L("compose.use")}</button>
+          <button type="button" className={`${ui.btnPrimary} min-h-11`} onClick={() => void use()} data-testid="compose-use" data-dirty={dirty ? "1" : undefined}>{L("compose.use")}</button>
         </footer>
         <span role="status" aria-live="polite" className="sr-only" data-testid="compose-live">{live}</span>
       </div>

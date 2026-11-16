@@ -6,6 +6,7 @@
  *     phrase: { label: "La phrase de la réaction", sample: "Merci etoile_nord" },   // what a "sentence" box shows in the editor
  *     formats: ["media", "16:9", …], defaultFormat: "media", maxBoxes: 4,
  *     testAction: "testReaction",   // optional: "Test on the overlay" runs this action of the module with the form
+ *     video: true,                  // (0.21.0) optional: videos too (the module shows how they play and how long the alert lasts); without it, pictures only
  *   }
  */
 import { FORMATS, LIMITS, type ComposeFormat } from "./model";
@@ -18,6 +19,8 @@ export type ComposeOption = {
   defaultFormat?: ComposeFormat;
   maxBoxes: number;
   testAction?: string;
+  /** (0.21.0) "Place the text" on the videos of the list too (the module said its page plays them as the engine says). */
+  video?: boolean;
 };
 const TOKEN = /^[a-z][a-zA-Z0-9_]{0,23}$/;
 const ACTION = /^[A-Za-z][A-Za-z0-9_-]{0,60}$/;
@@ -49,5 +52,6 @@ export function composeOption(raw: unknown): ComposeOption | null {
     ...(def ? { defaultFormat: def } : {}),
     maxBoxes: Number.isInteger(n) && n >= 1 ? Math.min(n, LIMITS.boxes) : LIMITS.boxes,
     ...(typeof o.testAction === "string" && ACTION.test(o.testAction) ? { testAction: o.testAction } : {}),
+    ...(o.video === true ? { video: true } : {}),
   };
 }

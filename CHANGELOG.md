@@ -7,6 +7,38 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.21.0 — 2026-11-16
+
+**En bref.** « Placer le texte » marche aussi sur les vidéos. Le bouton « Lire » joue l'alerte dans l'éditeur, et vous choisissez si la vidéo tourne en boucle, une fois ou s'arrête sur sa fin.
+
+**In short.** "Place the text" now works on videos too. The "Play" button plays the alert in the editor, and you choose whether the video loops, plays once or stops on its end.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien, tant que vous ne placez pas de texte sur une vidéo.** Une réaction avec une vidéo la montre toujours seule. Le bouton n'apparaît que si l'extension qui montre les alertes le permet.
+- **(English) Nothing, until you place a text on a video.** A reaction with a video still shows it alone. The button appears only if the extension that shows the alerts allows it.
+
+### Le texte sur une vidéo
+
+- **Un bouton sur chaque vidéo.** Dans la fenêtre d'une réaction, chaque vidéo a maintenant « Placer le texte », comme les images.
+- **(English) A button on each video.** In the window of a reaction, each video now has "Place the text", like the pictures.
+- **Lire l'alerte.** « Lire » joue la vidéo et l'entrée du texte dans l'éditeur, sans le son. Le bouton du haut-parleur ajoute le son.
+- **(English) Play the alert.** "Play" plays the video and the entrance of the text in the editor, without sound. The speaker button adds the sound.
+- **Comment la vidéo joue.** Dans « Arrière-plan » : en boucle, une fois, ou s'arrêter sur la fin. « Son de la vidéo » la fait entendre.
+- **(English) How the video plays.** In "Backdrop": loop, once, or stop on the end. "Sound of the video" makes it heard.
+- **La durée de l'alerte.** Par défaut, l'alerte dure le temps de la vidéo. « Choisir » fixe une durée, de 2 à 60 secondes.
+- **(English) The length of the alert.** By default, the alert lasts as long as the video. "Choose" sets a length, from 2 to 60 seconds.
+- **Les vidéos transparentes.** Une vidéo WebM transparente le reste dans OBS. Le damier de l'éditeur montre ce qui sera transparent.
+- **(English) Transparent videos.** A transparent WebM video stays transparent in OBS. The checkerboard of the editor shows what will be transparent.
+- **Plus fluide dans OBS.** La vidéo de l'alerte suivante se charge pendant l'alerte en cours, et une seule vidéo joue à la fois.
+- **(English) Smoother in OBS.** The video of the next alert loads during the current alert, and only one video plays at a time.
+
+### Pour les développeurs
+
+- **Gallery `compose` option**: `video: true` opts a module into video tiles (absent: pictures only, as in 0.20.0). Modules test `ctx.overlay.features?.includes("video")`.
+- **Data**: `backdrop.play` (`loop`, `once`, `hold`), `backdrop.sound`, `backdrop.poster` and `duration.mode: "media"` belong to a video; on a picture or a GIF they are refused with `choice`. New pure helpers: `mediaSeconds`, `defaultVideoComposition`, `alertSeconds`, `isVideoSrc`; `copyPlacement(c, src, { seconds })` carries playback between videos only.
+- **Engine**: `CuriosaCompose.preload(c)` loads the next backdrop ahead (one at a time, reused by the next `build`), one video plays per page, a refused sound falls back to muted (`data-muted="autoplay"`), `once` with a chosen length hides the video at its end, `opts.muted` for previews. `features: ["video"]`.
+- **Editor**: Play/Stop and a preview sound button, Playback, Sound of the video, Length of the alert in the folded "Backdrop" section; "auto" colour measured over 8 pictures of the video; a mostly see-through area gives white. Real-browser tests with VP9 files made by ffmpeg (`tests/core/compose-video.test.mjs`).
 ## 0.20.0 — 2026-11-16
 
 **En bref.** L'éditeur des pages d'overlay devient plus confortable : un fond d'aperçu (vidéo sombre, vidéo claire, scène de jeu ou votre capture), des marges de sécurité, une vue daltonienne, Annuler et Rétablir, copier l'apparence d'un élément, et les 10 dernières versions enregistrées.
