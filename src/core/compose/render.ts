@@ -110,7 +110,8 @@ export function composeEngine(win: any): void {
 
   /**
    * Builds the DOM of a resolved composition (texts already filled). `opts.doc`: the document; `opts.motion` false: no entrance or exit; `opts.seconds`: the
-   * length of the alert (an exit "at the end" starts then); `opts.still`: no video play (editor). Returns the root, not yet in the page (see `mount`).
+   * length of the alert (an exit "at the end" starts then); `opts.still`: no video play (editor); (0.21.0) `opts.muted`: no sound even if the composition has
+   * some (the editor's preview). Returns the root, not yet in the page (see `mount`).
    */
   function build(c: any, opts?: any): any {
     opts = opts || {};
@@ -127,13 +128,22 @@ export function composeEngine(win: any): void {
     bg.setAttribute("aria-hidden", "true");
     bg.style.objectFit = bd.fit === "contain" ? "contain" : "cover";
     bg.style.objectPosition = fx + "% " + fy + "%";
+    var reused = false;
+    if (video && pre && pre.src === src && pre.el && (!opts.doc || opts.doc === win.document)) {
+      // (0.21.0) the video the page loaded ahead for this alert: already buffered, it starts at once
+      bg = pre.el; pre = null; reused = true;
+      bg.className = "cmp-bg"; bg.setAttribute("aria-hidden", "true"); bg.style.objectFit = bd.fit === "contain" ? "contain" : "cover"; bg.style.objectPosition = fx + "% " + fy + "%";
+    }
     if (video) {
-      bg.muted = !bd.sound; bg.playsInline = true; bg.loop = bd.play !== "once" && bd.play !== "hold"; bg.preload = "auto";
+      bg.muted = opts.muted === true ? true : !bd.sound; bg.playsInline = true; bg.loop = bd.play !== "once" && bd.play !== "hold"; bg.preload = "auto";
       if (bd.poster && SRC.test(bd.poster)) bg.poster = bd.poster;
       if (!opts.still) { bg.autoplay = true; }
+      // "once": when the alert lasts longer than the video (a length chosen by hand), the video goes and the text stays; "hold": it stops on its last picture
+      if (bd.play === "once" && c.duration && c.duration.mode === "fixed") bg.addEventListener("ended", function () { bg.style.visibility = "hidden"; });
     } else bg.alt = "";
-    bg.src = src;
+    if (!reused) bg.src = src;
     root.appendChild(bg);
+    root.setAttribute("data-backdrop", video ? "video" : "picture");
     root._media = null;
     root._comp = c;
     root._opts = opts;
@@ -175,10 +185,46 @@ export function composeEngine(win: any): void {
     }
     root.setAttribute("aria-label", texts.join(" · "));
     if (video) {
+      if (reused && bg.readyState >= 1) root._media = { w: bg.videoWidth, h: bg.videoHeight };
       bg.addEventListener("loadedmetadata", function () { root._media = { w: bg.videoWidth, h: bg.videoHeight }; layout(root); });
-      if (!opts.still && bg.play) { try { var p = bg.play(); if (p && p.catch) p.catch(function () { bg.muted = true; try { bg.play(); } catch { /* not allowed */ } }); } catch { /* not allowed */ } }
+      if (!opts.still) {
+        // one video plays at a time in a page (decoding is costly in OBS): the one playing before stops and frees its decoder
+        if (playing && playing !== root) stopVideo(playing);
+        playing = root;
+        if (bg.play) {
+          // a browser that refuses to start with sound (autoplay rule) plays it muted rather than not at all
+          try { var p = bg.play(); if (p && p.catch) p.catch(function () { if (bg.muted) return; bg.muted = true; root.setAttribute("data-muted", "autoplay"); try { var p2 = bg.play(); if (p2 && p2.catch) p2.catch(function () { /* not allowed at all */ }); } catch { /* not allowed */ } }); } catch { /* not allowed */ }
+        }
+      }
     } else bg.addEventListener("load", function () { root._media = { w: bg.naturalWidth, h: bg.naturalHeight }; layout(root); });
     return root;
+  }
+
+  /** The root whose video plays (one at a time per page), and the backdrop loaded ahead for the next alert (one at a time). */
+  var playing: any = null, pre: any = null;
+  function stopVideo(root: any): void {
+    var v = root && root.querySelector && root.querySelector("video");
+    if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch { /* gone */ } }
+    if (playing === root) playing = null;
+  }
+  /**
+   * (0.21.0) Loads the backdrop of the NEXT alert while the current one shows, so it starts without a black gap: a video is buffered in an element kept aside
+   * (the next `build` of the same file takes it), a picture goes into the browser's cache. One at a time: asking for another drops the previous one.
+   */
+  function preload(c: any): boolean {
+    var src = c && c.v === VERSION && c.backdrop ? String(c.backdrop.src || "") : "";
+    if (!SRC.test(src)) return false;
+    if (pre && pre.src === src) return true;
+    if (pre && pre.el) { try { pre.el.removeAttribute("src"); pre.el.load(); } catch { /* gone */ } }
+    pre = null;
+    var doc = win.document;
+    if (VIDEO.test(src)) {
+      var el = doc.createElement("video");
+      el.muted = true; el.playsInline = true; el.preload = "auto"; el.src = src;
+      try { el.load(); } catch { /* not allowed */ }
+      pre = { src: src, el: el };
+    } else if (typeof win.Image === "function") { var im = new win.Image(); im.src = src; pre = { src: src, el: null }; }
+    return true;
   }
 
   /** Sizes the frame inside its container (whole, centred, transparent bands), then fits every text. */
@@ -249,12 +295,11 @@ export function composeEngine(win: any): void {
   function unmount(root: any): void {
     if (!root) return;
     if (root._ro) { try { root._ro.disconnect(); } catch { /* gone */ } }
-    var v = root.querySelector && root.querySelector("video");
-    if (v) { try { v.pause(); v.removeAttribute("src"); v.load(); } catch { /* gone */ } }
+    stopVideo(root);
     if (root.parentNode) root.parentNode.removeChild(root);
   }
 
-  win.CuriosaCompose = { version: VERSION, build: build, mount: mount, unmount: unmount, layout: layout, fitFont: fitFont, lookOf: lookOf, worst: worst, ratioOf: ratioOf, presets: PRESETS, outline: outline };
+  win.CuriosaCompose = { version: VERSION, features: ["video"], build: build, mount: mount, unmount: unmount, layout: layout, preload: preload, fitFont: fitFont, lookOf: lookOf, worst: worst, ratioOf: ratioOf, presets: PRESETS, outline: outline };
 }
 
 /** The engine as page script text (what a module adds to its overlay page script). Idempotent: a page that has it already keeps the first one. */
