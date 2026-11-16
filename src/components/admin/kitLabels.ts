@@ -5,6 +5,10 @@ import { summarizeGroup } from "@/core/adminkit/summary";
 import type { FormLabels } from "./AdminBlocks";
 import type { TableLabels } from "./TableView";
 import { periodLabels } from "./periodLabels";
+import en from "@/locales/en.json";
+
+/** (0.19.0) Every `compose.*` text of the composition editor (sent only with a gallery that places text). */
+const COMPOSE_KEYS = Object.keys(en).filter((k) => k.startsWith("compose."));
 
 /** The `gallery.*` texts the gallery field needs, with their `{vars}` left for the field to fill. */
 const GALLERY_KEYS = [
@@ -47,6 +51,7 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
     hints, invalid, fold,
     ...(block.fields.some((f) => f.kind === "gallery") ? { gallery: Object.fromEntries(GALLERY_KEYS.map((k) => [k, t(k)])) } : {}),
+    ...(block.fields.some((f) => f.kind === "gallery" && f.compose) ? { compose: Object.fromEntries(COMPOSE_KEYS.map((k) => [k, t(k)])) } : {}),
     dialog: { close: t("modal.close"), cancel: t("editDialog.cancel"), saved: t("action.saved"), discard: { message: t("editDialog.message"), discard: t("editDialog.discard"), keep: t("editDialog.keep") } },
   };
 }

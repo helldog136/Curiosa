@@ -107,7 +107,7 @@ test("sheet: tokens forced on the whole document (beats an inline token), contai
   assert.doesNotMatch(css, /backdrop-filter/); assert.doesNotMatch(css, /\*\{text-shadow/);
   assert.doesNotMatch(css, /(^|[,}])(html|body)\s*\{[^}]*background/);
   assert.match(K.lookCss(K.appliedLook({ preset: "readable", background: "glass" }, page(), true)), /backdrop-filter:blur\(10px\)/);
-  assert.match(K.lookCss(K.appliedLook({ preset: "bare" }, page(), true)), /:not\(#ov-look\) \*\{text-shadow:var\(--ov-text-shadow\)!important\}/);
+  assert.match(K.lookCss(K.appliedLook({ preset: "bare" }, page(), true)), /:not\(#ov-look\) \*:not\(\[data-ov-region="composition"\],\[data-ov-region="composition"\] \*\)\{text-shadow:var\(--ov-text-shadow\)!important\}/);
   assert.equal(K.outlineShadow("none", "light"), "none");
   assert.equal(K.outlineShadow("thin", "light").split("),").length, 5, "4 directions and a soft blur");
 });

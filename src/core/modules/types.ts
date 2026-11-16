@@ -628,6 +628,12 @@ export type ModuleContext = {
   t(key: string, vars?: Record<string, string | number>): string;
   api: ModuleApi;
   /**
+   * (core 0.19.0) Compositions of alerts (text placed on a picture): the engine for an overlay page (`composeScript()`, `composeCss()`), the checker
+   * (`checkComposition`), the filling of texts (`resolveComposition`) and `copyPlacement`. Pure functions. Absent on an older core: test it and keep showing the
+   * media alone. See docs/MODULES.md, "Compositions".
+   */
+  overlay?: import("@/core/compose/kit").ComposeKit;
+  /**
    * (0.2.0) La personne qui regarde l'administration a-t-elle ce droit du module (identifiant LOCAL : « email.view », préfixé « <module>: » par le cœur) ?
    * Vrai seulement dans un contexte d'administration d'un humain (`adminPanel`, `adminActions`, `entryPanels`) ; toujours faux ailleurs (page publique,
    * route, overlay OBS, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus.

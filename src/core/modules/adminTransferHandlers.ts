@@ -17,7 +17,9 @@ import {
   readBodyBounded, readTextFile, sanitizeFilename, streamGenerator, type DownloadEnd, type DownloadLimits,
 } from "./adminTransfer";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
-import { checkGalleryValues } from "@/core/gallery";
+import { COMPOSE_FIELD_MAX, FIELD_MAX, GALLERY_MARK, checkGalleryValues, parseGalleryMark } from "@/core/gallery";
+/** (0.19.0) A gallery field that places text may post 64 000 characters. */
+const isComposeMark = (mark: FormDataEntryValue | null): boolean => typeof mark === "string" && !!parseGalleryMark(mark).compose;
 import type { AdminActionResult, ModuleContext, ModuleDefinition } from "./types";
 import { ADMIN_HREF, instanceHref, isAdminPath } from "@/core/adminLinks";
 
@@ -183,7 +185,7 @@ export async function actionHandler(request: Request, p: { instance: string; act
     if (typeof v === "string") {
       if (k.startsWith("$ACTION")) continue;
       if (k.startsWith("$")) hints[k] = v.slice(0, 200);
-      else values[k] = v.slice(0, 20000);
+      else values[k] = v.slice(0, isComposeMark(form.get(`${k}${GALLERY_MARK}`)) ? COMPOSE_FIELD_MAX : FIELD_MAX);
     } else files.push([k, v]);
   }
   if (files.length > MAX_FILES) return fail(request, 400, t("transfer.file.many"), back);

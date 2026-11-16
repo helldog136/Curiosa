@@ -33,8 +33,11 @@ export function panelsFor<I>(host: HostModule, providers: PanelProvider<I>[]): {
 
 /** Les valeurs d'un formulaire de section : textes seulement, bornés, sans les champs internes de React. */
 export function panelValues(formData: FormData): Record<string, string> {
+  // (0.19.0) the same bound as the module actions: 20 000 characters, 64 000 for a gallery that places text (gallery.ts `boundFormValues`, kept out of this pure file)
+  const raw: Record<string, string> = {};
+  for (const [k, v] of formData.entries()) if (typeof v === "string" && !k.startsWith("$ACTION")) raw[k] = v;
   const values: Record<string, string> = {};
-  for (const [k, v] of formData.entries()) if (typeof v === "string" && !k.startsWith("$ACTION")) values[k] = v.slice(0, 20000);
+  for (const [k, v] of Object.entries(raw)) values[k] = v.slice(0, /\|compose:/.test(raw[`${k}__gallery`] ?? "") ? 64_000 : 20_000);
   return values;
 }
 

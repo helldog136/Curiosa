@@ -10,6 +10,7 @@ import type { LoadedModule } from "./registry";
 import { siteTimezone } from "@/core/siteTime";
 import { followsSite, readMulti, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
+import { composeKit } from "@/core/compose/kit";
 
 export function instanceSettingKey(instanceId: string, key: string): string {
   return `instance.${instanceId}.${key}`;
@@ -64,6 +65,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
       return text;
     },
     api: makeApi(instance, loc, mod.manifest.permissions, caller),
+    // (core 0.19.0) The composition engine and its checker, pure functions (compose/kit.ts).
+    overlay: composeKit,
     // Réglages hérités (0.2.0) : seulement les clés déclarées dans `legacySettings`, pour cette instance.
     legacy: makeLegacy(mod.manifest, instance.id),
     // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».
