@@ -111,7 +111,8 @@ export function composeEngine(win: any): void {
   /**
    * Builds the DOM of a resolved composition (texts already filled). `opts.doc`: the document; `opts.motion` false: no entrance or exit; `opts.seconds`: the
    * length of the alert (an exit "at the end" starts then); `opts.still`: no video play (editor); (0.21.0) `opts.muted`: no sound even if the composition has
-   * some (the editor's preview). Returns the root, not yet in the page (see `mount`).
+   * some (the editor's preview); (0.27.0) `opts.light` with `still`: a video loads only its first picture (the preview of a form). Returns the root, not yet in
+   * the page (see `mount`).
    */
   function build(c: any, opts?: any): any {
     opts = opts || {};
@@ -135,7 +136,7 @@ export function composeEngine(win: any): void {
       bg.className = "cmp-bg"; bg.setAttribute("aria-hidden", "true"); bg.style.objectFit = bd.fit === "contain" ? "contain" : "cover"; bg.style.objectPosition = fx + "% " + fy + "%";
     }
     if (video) {
-      bg.muted = opts.muted === true ? true : !bd.sound; bg.playsInline = true; bg.loop = bd.play !== "once" && bd.play !== "hold"; bg.preload = "auto";
+      bg.muted = opts.muted === true ? true : !bd.sound; bg.playsInline = true; bg.loop = bd.play !== "once" && bd.play !== "hold"; bg.preload = opts.still && opts.light ? "metadata" : "auto";
       if (bd.poster && SRC.test(bd.poster)) bg.poster = bd.poster;
       if (!opts.still) { bg.autoplay = true; }
       // "once": when the alert lasts longer than the video (a length chosen by hand), the video goes and the text stays; "hold": it stops on its last picture
