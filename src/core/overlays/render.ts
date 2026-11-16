@@ -72,6 +72,14 @@ if(C.fit){var f=function(){var s=Math.min(innerWidth/C.w,innerHeight/C.h),st=doc
 if(C.test&&C.left>0)timer=setTimeout(function(){test(false,0)},C.left+50);
 if(C.state)setTimeout(tick,gap)})();`;
 
+/**
+ * (0.21.0) Skin per element: the frames that wear their own skin (or none) carry `data-eskin="<n>"`; `applyFrame` gives them `C.es[n]` instead of the page's
+ * skin, so a skin change of the page (per context) leaves them as they are. Emitted only when an element has its own skin: other pages are unchanged byte for byte.
+ */
+export const pollScript = (elementSkins: boolean): string => elementSkins
+  ? POLL_SCRIPT.replace('if(S.css&&w.CSSStyleSheet', 'var X=f.getAttribute("data-eskin"),Q=X===null?S:(C.es[+X]||{id:"",css:""});if(Q.css&&w.CSSStyleSheet').replace("ns.replaceSync(S.css)", "ns.replaceSync(Q.css)").replace('el.setAttribute("data-ov-skin",S.id)', 'el.setAttribute("data-ov-skin",Q.id)')
+  : POLL_SCRIPT;
+
 /** (0.11.0) Opaque background: adopts the solid panel colour into each element that follows the style (only on an opaque page, so other pages are unchanged byte for byte). A skin brings its own solid colour instead. */
 const OWNER_SCRIPT = (css: string): string => `(function(){var css=${JSON.stringify(css).replace(/</g, "\\u003c")},SH=new WeakMap();function ap(f){try{var d=f.contentDocument,w=f.contentWindow;if(!d||!w||!d.documentElement||!w.CSSStyleSheet||d.adoptedStyleSheets===undefined)return;var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-owner","1")}catch(e){}}
 var f=document.querySelectorAll("iframe[data-follows]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
@@ -101,6 +109,8 @@ export type RenderInput = {
   fit?: boolean;
   /** (0.8.0) The overlay skin the page wears now (null: the common style), and whether the page should keep polling quickly because a context drives the skin. */
   skin?: LoadedPayload | null;
+  /** (0.21.0) The skins elements wear instead of the page's, by skin id (null: that skin does not work any more; the element then wears no skin). */
+  elementSkins?: ReadonlyMap<string, LoadedPayload | null>;
   contextual?: boolean;
 };
 
@@ -109,9 +119,22 @@ const hue = (i: number) => (i * 47 + 10) % 360;
 export function renderPage(i: RenderInput): string {
   const { page, t } = i;
   const left = i.test && page.testUntil ? Math.max(0, page.testUntil - i.now) : 0;
-  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css } : null };
+  // (0.21.0) Skins of single elements: one entry per distinct choice ("" = no skin), only for elements that follow the style.
+  const es: { id: string; css: string }[] = [];
+  const esIndex = new Map<string, number>();
+  /** undefined: the page's skin (also for a skin that was not loaded); null: no skin; else the loaded skin (null payload: it does not work, so no skin). */
+  const chosen = (e: ResolvedElement["el"]): LoadedPayload | null | undefined => e.skin === undefined ? undefined : e.skin === null ? null : i.elementSkins?.has(e.skin) ? i.elementSkins.get(e.skin) ?? null : undefined;
+  const ownSkin = (r: ResolvedElement): number => {
+    if (r.status !== "ok" || !r.follows || chosen(r.el) === undefined) return -1;
+    const k = r.el.skin ?? "";
+    let n = esIndex.get(k);
+    if (n === undefined) { const p = k ? i.elementSkins?.get(k) ?? null : null; n = es.push({ id: p?.id ?? "", css: p?.css ?? "" }) - 1; esIndex.set(k, n); }
+    return n;
+  };
+  const ownSkins = page.active ? i.elements.map(ownSkin) : [];
+  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css } : null, ...(es.length ? { es } : {}) };
   const head = (title: string) => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>${esc(title)}</title>`;
-  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${POLL_SCRIPT}</script>`;
+  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${pollScript(es.length > 0)}</script>`;
   if (!page.active) {
     return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page">${i.test ? `<div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>` : ""}${script}</body></html>`;
   }
@@ -119,13 +142,16 @@ export function renderPage(i: RenderInput): string {
   const sheets: string[] = [];
   const frames = i.elements.map((r, idx) => {
     const { el } = r;
-    const applied = r.status === "ok" ? appliedLook(el.style, pageSide, !!r.follows) : null;
+    const mine = ownSkins[idx] ?? -1;
+    const elSkin = r.follows ? chosen(el) : undefined;
+    const side = elSkin === undefined ? pageSide : { ...pageSide, skin: !!elSkin };
+    const applied = r.status === "ok" ? appliedLook(el.style, side, !!r.follows, elSkin === undefined ? i.skin?.colors : elSkin?.colors) : null;
     const look = applied ? sheets.push(lookCss(applied)) - 1 : -1;
     const label = `${r.title} · ${el.w}×${el.h} px`;
     const note = r.status === "ok" ? "" : ` <em>— ${esc(t(r.status === "missing" ? "overlay.page.gone" : `overlay.page.failed.${r.reason ?? "error"}`))}</em>`;
     // En direct, un élément manquant ou en échec reste un cadre VIDE et silencieux ; le détail n'est que dans le cadre de test.
     const iframe = r.status === "ok" && r.layout
-      ? `<iframe title="${esc(r.title)}" src="${esc(i.test && r.demoSrc ? r.demoSrc : r.src)}" data-live="${esc(r.src)}"${r.demoSrc ? ` data-demo="${esc(r.demoSrc)}"` : ""} sandbox="${FRAME_SANDBOX}" allow="autoplay" referrerpolicy="no-referrer" loading="eager" tabindex="-1"${r.follows ? ' data-follows="1"' : ""}${look >= 0 ? ` data-look="${look}"` : ""} style="${(i.skin && r.follows) || look >= 0 ? "opacity:0;transition:opacity .2s;" : ""}left:${r.layout.offsetX}px;top:${r.layout.offsetY}px;width:${r.layout.iframeW}px;height:${r.layout.iframeH}px;transform:scale(${r.layout.scale})"></iframe>`
+      ? `<iframe title="${esc(r.title)}" src="${esc(i.test && r.demoSrc ? r.demoSrc : r.src)}" data-live="${esc(r.src)}"${r.demoSrc ? ` data-demo="${esc(r.demoSrc)}"` : ""} sandbox="${FRAME_SANDBOX}" allow="autoplay" referrerpolicy="no-referrer" loading="eager" tabindex="-1"${r.follows ? ' data-follows="1"' : ""}${mine >= 0 ? ` data-eskin="${mine}"` : ""}${look >= 0 ? ` data-look="${look}"` : ""} style="${(i.skin && r.follows) || look >= 0 || (mine >= 0 && es[mine]!.css) ? "opacity:0;transition:opacity .2s;" : ""}left:${r.layout.offsetX}px;top:${r.layout.offsetY}px;width:${r.layout.iframeW}px;height:${r.layout.iframeH}px;transform:scale(${r.layout.scale})"></iframe>`
       : "";
     return `<div class="el" data-ov-region="element" data-ov-part="${r.status === "ok" ? "frame" : "empty"}" data-uid="${esc(el.uid)}" style="left:${el.x}px;top:${el.y}px;width:${el.w}px;height:${el.h}px;z-index:${idx + 1}">${iframe}<div class="tf" data-ov-part="test-frame" style="--tc:hsl(${hue(idx)} 85% 62%)"><span class="lb" data-ov-part="label">${esc(label)}${note}</span></div></div>`;
   }).join("");

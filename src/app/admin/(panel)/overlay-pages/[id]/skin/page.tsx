@@ -13,12 +13,16 @@ import { DialogLink } from "@/components/admin/EditDialog";
 import { HelpTip } from "@/components/admin/HelpTip";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import { LiveSearch } from "@/components/admin/LiveSearch";
-import { AnimationsToggle, CatalogueThumb, RuleDialog, ScaledFrame } from "@/components/admin/OverlaySkin";
+import { AnimationsToggle, CatalogueThumb, RuleDialog, ScaledFrame, TweakColour } from "@/components/admin/OverlaySkin";
+import { ActionForm } from "@/components/admin/ActionForm";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { MoreOptions } from "@/components/admin/MoreOptions";
+import { TWEAK_FONTS } from "@/core/overlays/skinSheet";
 import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Switch } from "@/components/admin/Switch";
 import { ui } from "@/components/admin/ui";
-import { chooseContextAction, installOverlaySkinAction, refreshSkinCatalogueAction, removeRuleAction, saveRuleAction, searchValuesAction, setPageSkinAction, toggleByContextAction } from "./actions";
+import { chooseContextAction, installOverlaySkinAction, refreshSkinCatalogueAction, removeRuleAction, resetTweaksAction, saveRuleAction, saveTweaksAction, searchValuesAction, setPageSkinAction, toggleByContextAction } from "./actions";
 
 export const dynamic = "force-dynamic";
 
@@ -107,6 +111,44 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
           )}
         </section>
       </Panel>
+
+      {(look.skin || look.byContext.enabled) && (() => {
+        // (0.21.0) Skin retouches of this page: folded, with a one-line summary of what is retouched (design 7.2).
+        const tw = look.tweaks ?? {};
+        const summary = [tw.accent ? t("ovp.tweak.accent") : "", tw.surface ? t("ovp.tweak.surface") : "", tw.font ? t(`ovp.tweak.font.${tw.font}`) : "", tw.corners ? t(`ovp.tweak.corners.${tw.corners}`) : ""].filter(Boolean).join(" · ") || t("ovp.tweak.none");
+        return (
+          <section className="max-w-4xl" data-testid="skin-tweaks">
+            <MoreOptions title={t("ovp.tweak.title")} summary={summary}>
+              <p className="flex items-center gap-1 text-sm text-muted">{t("ovp.tweak.intro")}<HelpTip help={t("ovp.tweak.help")} name={t("ovp.tweak.title")} /></p>
+              <ActionForm action={saveTweaksAction.bind(null, id)} submitLabel={t("ovp.tweak.save")} className="space-y-4">
+                <TweakColour name="accent" legend={t("ovp.tweak.accent")} skinLabel={t("ovp.tweak.skinColour")} ownLabel={t("ovp.tweak.ownColour")} value={tw.accent ?? null} fallback="#7c5cff" />
+                <TweakColour name="surface" legend={t("ovp.tweak.surface")} skinLabel={t("ovp.tweak.skinColour")} ownLabel={t("ovp.tweak.ownColour")} value={tw.surface ?? null} fallback="#14171c" />
+                <div>
+                  <label htmlFor="tweak-font" className="mb-1 block text-sm font-medium">{t("ovp.tweak.font")}</label>
+                  <select id="tweak-font" name="font" defaultValue={tw.font ?? ""} className={`${ui.input} min-h-11`}>
+                    <option value="">{t("ovp.tweak.font.skin")}</option>
+                    {TWEAK_FONTS.map((f) => <option key={f} value={f}>{t(`ovp.tweak.font.${f}`)}</option>)}
+                  </select>
+                </div>
+                <fieldset>
+                  <legend className="mb-1 text-sm font-medium">{t("ovp.tweak.corners")}</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(["skin", "round", "square"] as const).map((c) => (
+                      <span key={c} className="relative"><input id={`tweak-corners-${c}`} type="radio" name="corners" value={c} defaultChecked={(tw.corners ?? "skin") === c} className="peer sr-only" />
+                        <label htmlFor={`tweak-corners-${c}`} className="inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-bg px-3.5 text-sm font-medium hover:border-accent peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-accent">{t(`ovp.tweak.corners.${c}`)}</label></span>
+                    ))}
+                  </div>
+                </fieldset>
+              </ActionForm>
+              {look.tweaks && (
+                <form action={resetTweaksAction.bind(null, id)}>
+                  <ConfirmButton danger={false} message={t("ovp.tweak.resetConfirm")} confirmLabel={t("ovp.tweak.reset")}>{t("ovp.tweak.reset")}</ConfirmButton>
+                </form>
+              )}
+            </MoreOptions>
+          </section>
+        );
+      })()}
 
       <Panel title={t("ovp.skin.ctx.title")} help={contexts.length === 0 ? t("ovp.skin.ctx.none") : t("ovp.skin.ctx.help")} testid="skin-context">
         {chosen && (

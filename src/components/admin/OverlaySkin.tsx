@@ -4,7 +4,7 @@ import { useActionState, useEffect, useRef, useState, useSyncExternalStore, star
 import { EditDialog } from "./EditDialog";
 import { PendingButton } from "./PendingButton";
 import { useModalWindow } from "./ModalWindow";
-import { FieldErrorText } from "./FieldErrors";
+import { FieldErrorText, useFieldError } from "./FieldErrors";
 import { HelpTip } from "./HelpTip";
 import { ui } from "./ui";
 import type { ActionState } from "./ActionForm";
@@ -222,5 +222,32 @@ function Picker({ labels, picked, onPick, search, error }: { labels: RuleLabels;
       </ul>
       <FieldErrorText id="err-value" message={error ?? null} />
     </div>
+  );
+}
+
+/**
+ * (0.21.0) One colour of the skin retouches: "the skin's" (default) or "another colour" with a colour field. Two choices = radio buttons (R19); the colour field only
+ * appears when it is used (R7). Sent with the form: `<name>Mode` = skin | own, `<name>` = #rrggbb.
+ */
+export function TweakColour({ name, legend, skinLabel, ownLabel, value, fallback }: { name: string; legend: string; skinLabel: string; ownLabel: string; value: string | null; fallback: string }) {
+  const [own, setOwn] = useState(!!value);
+  const [colour, setColour] = useState(value ?? fallback);
+  const err = useFieldError(name);
+  const pill = "inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-bg px-3.5 text-sm font-medium transition-colors hover:border-accent peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent";
+  return (
+    <fieldset className="min-w-0" data-testid={`tweak-${name}`}>
+      <legend className="mb-1 text-sm font-medium">{legend}</legend>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="relative"><input id={`tw-${name}-skin`} type="radio" name={`${name}Mode`} value="skin" className="peer sr-only" checked={!own} onChange={() => setOwn(false)} /><label htmlFor={`tw-${name}-skin`} className={pill}>{skinLabel}</label></span>
+        <span className="relative"><input id={`tw-${name}-own`} type="radio" name={`${name}Mode`} value="own" className="peer sr-only" checked={own} onChange={() => setOwn(true)} /><label htmlFor={`tw-${name}-own`} className={pill}>{ownLabel}</label></span>
+        {own && (
+          <span className="flex items-center gap-2">
+            <input type="color" name={name} value={colour} onChange={(e) => setColour(e.target.value.toLowerCase())} aria-label={legend} className="h-11 w-16 cursor-pointer rounded-xl border border-line bg-bg p-1" />
+            <span className="font-mono text-sm text-muted">{colour}</span>
+          </span>
+        )}
+      </div>
+      <FieldErrorText id={err.id} message={err.message} />
+    </fieldset>
   );
 }

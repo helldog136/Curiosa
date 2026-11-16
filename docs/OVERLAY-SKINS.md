@@ -65,6 +65,14 @@ The vocabulary is **closed** and each value is checked by its type (`src/core/ov
 | `--ov-heading-transform` | `none`, `uppercase`, `lowercase`, `capitalize` | case of titles, badges, tags, labels | none |
 | `--ov-anim` | `none`, `fade`, `rise`, `pop`, `glow` | entrance of panels (keyframes belong to the core) | none |
 | `--ov-anim-duration` | 100 ms to 4 s | duration of the entrance | 0.6 s |
+| `--ov-surface-soft` (0.22.0) | colour | the skin's light panel, used by an element's "Discreet" look when it takes "the skin's colours" | `--ov-surface` (the kit sets the opacity) |
+| `--ov-surface-solid` (0.22.0) | colour | the skin's solid panel ("Readable everywhere" with the skin's colours) | `--ov-surface` made solid |
+| `--ov-fg-on-light`, `--ov-fg-on-dark` (0.22.0) | colour | the text the skin wants on a light / a dark panel ("Auto" text) | `#111111` / `#ffffff` |
+| `--ov-outline` (0.22.0) | colour | colour of the text outline of the appearance kit | the opposite of the text |
+
+**The five kit tokens (core 0.22.0) are optional and additive (still contract 3).** A skin that uses one sets `"minCore": "0.22.0"`: an older core reads `minCore` before the tokens and refuses the skin as "needs a newer core", never as "unknown token". Checks: `--ov-fg` over `--ov-surface-soft` and over `--ov-surface-solid`, `--ov-fg-on-light` over white and `--ov-fg-on-dark` over black, all at 4.5:1 in the worst case. Without them the core derives the same values (`skinColors` in `src/core/overlays/skinSheet.ts`), so the 14 skins of the repository work unchanged.
+
+**Skin per element and site retouches (core 0.22.0).** An element may wear another skin than its page (`elements[].skin`: absent = the page's, `null` = none); it keeps it when the page changes skin per context. The page's skin may be **retouched for this site** (`look.tweaks`: accent, panel colour, font among closed system stacks, corners): the retouch is written over the skin's tokens and before its rules, the text colour is corrected when a panel colour would drop below 4.5:1, and the installed skin is never changed. Retouches apply to the page's skin only, never to an element's own skin. Priority, from the weakest: module fallback < skin < site retouch < page style < element style.
 
 Elements should still read every token with a fallback (`var(--ov-font, system-ui)`), like the first four. A token the skin does not define maps to nothing, so the element keeps its own look.
 
