@@ -55,6 +55,7 @@ test("chaque action exportée est refusée à l'édition et à l'anonyme, et ne 
     resetSecretAction: () => Act.resetSecretAction(page.id),
     testAction: () => Act.testAction(page.id, "start"),
     savePageAction: () => Act.savePageAction(page.id, null, form([["data", JSON.stringify({ name: "Piraté", width: 1920, height: 1080, elements: [] })]])),
+    restoreVersionAction: () => Act.restoreVersionAction(page.id, 1),
   };
   assert.deepEqual(Object.keys(calls).sort(), Object.keys(Act).sort(), "ce test couvre toutes les actions exportées");
   const secret = await S.readSecret(page.id);
@@ -74,7 +75,7 @@ test("source : chaque action commence par adminCtx(OVERLAY_NEED), l'acteur ne vi
   assert.ok(fns.length >= 8);
   for (const [, name, , first] of fns) assert.match(first, /await adminCtx\(OVERLAY_NEED\)/, name);
   assert.doesNotMatch(src, /formData\.get\("(actor|user|userId|email|role)"\)/);
-  assert.equal((src.match(/await audit\(user\.email,/g) ?? []).length, 8, "chacune des huit actions qui changent quelque chose écrit au journal");
+  assert.equal((src.match(/await audit\(user\.email,/g) ?? []).length, 9, "each of the nine actions that change something writes to the journal");
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/page.tsx", "utf8"), /adminCtx\(OVERLAY_NEED\)/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/page.tsx", "utf8"), /adminCtx\(OVERLAY_NEED\)/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/preview/route.ts", "utf8"), /hasRole\(user, OVERLAY_NEED\)/);
