@@ -90,7 +90,7 @@ export function fakeCtx(opts = {}) {
   const needsList = requires.map((r) => (typeof r === "string" ? { service: r, min: 1 } : { service: r.service, min: r.min ?? 1 }));
   const setUpNeeds = (m) => needsList.filter((n) => (m.offers ?? []).some((o) => o.service === n.service && (o.version ?? 1) >= n.min));
   const setUpOffers = () => (allowed && !allowed.has("instances.setup") ? [] : Object.entries(installedModules).filter(([id, m]) => id !== moduleId && !m.instances && setUpNeeds(m).length).map(([id, m]) => ({ module: id, name: m.name ?? id, services: setUpNeeds(m).map((n) => n.service) })));
-  const calls = { setUps: [], topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [] };
+  const calls = { setUps: [], topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [], overlayPlacement: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -363,6 +363,13 @@ export function fakeCtx(opts = {}) {
       },
       // `ctx.api.links.measured(url)` : hors site réel il n'y a pas de lien court, l'adresse revient telle quelle (comme sur un site où « Compter les clics » est désactivé).
       links: { measured: async (url) => String(url ?? "") },
+      // (core 0.26.0) Where this instance's overlay elements are placed. Option `overlayPlacement`: [{ name, active, elements: ["alerts"] }] (none by default);
+      // `overlayPlacement: null` = an older core, without `ctx.api.overlays`.
+      ...(opts.overlayPlacement === null ? {} : { overlays: { placement: async (element) => {
+        const pages = (opts.overlayPlacement ?? []).filter((p) => !element || (p.elements ?? []).includes(element)).map((p) => ({ name: String(p.name), active: p.active !== false }));
+        calls.overlayPlacement.push(element ?? null);
+        return { placed: pages.length > 0, onActivePage: pages.some((p) => p.active), pages };
+      } } }),
       files: filesApi,
       log: logApi,
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },

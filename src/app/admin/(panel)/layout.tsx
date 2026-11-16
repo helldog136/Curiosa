@@ -19,6 +19,7 @@ import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { overlaysUseful } from "@/core/overlays/presence";
 import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
@@ -72,7 +73,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const unpinnedPages = nav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
-  const adminEntries = administrationEntries({ role: user.level, advanced });
+  const adminEntries = administrationEntries({ role: user.level, advanced, overlays: canManage ? await overlaysUseful() : false });
   // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
   const maintenanceTabList = maintenanceTabs({ role: user.level, advanced });
   const maintenanceBadge = (maintenanceTabList.includes("updates") && updateAvailable ? 1 : 0) + (maintenanceTabList.includes("upkeep") && upkeep?.state === "todo" ? upkeep.todo : 0);
