@@ -66,7 +66,7 @@ export function OverlayLookPanel({ uid, style, applied, readable, onChange, s }:
 const pill = "inline-flex min-h-11 cursor-pointer items-center rounded-xl border border-line bg-bg px-3.5 text-sm font-medium transition-colors hover:border-accent peer-checked:border-accent peer-checked:bg-accent/10 peer-checked:text-accent peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent peer-disabled:cursor-not-allowed peer-disabled:opacity-50";
 
 /** 2 to 4 choices as radio buttons dressed as buttons (R19): arrow keys move between them, labels wrap, never truncated, 44 px targets. */
-function Choice({ legend, help, name, value, options, onChange, note }: {
+export function Choice({ legend, help, name, value, options, onChange, note }: {
   legend: string; help?: string; name: string; value: string | null; options: { value: string; label: string; disabled?: boolean }[]; onChange: (v: string) => void; note?: string;
 }) {
   return (
