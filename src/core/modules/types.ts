@@ -630,9 +630,10 @@ export type ModuleContext = {
   /**
    * (core 0.19.0) Compositions of alerts (text placed on a picture): the engine for an overlay page (`composeScript()`, `composeCss()`), the checker
    * (`checkComposition`), the filling of texts (`resolveComposition`) and `copyPlacement`. Pure functions. Absent on an older core: test it and keep showing the
-   * media alone. See docs/MODULES.md, "Compositions".
+   * media alone. See docs/MODULES.md, "Compositions". (core 0.24.0) Also the helpers of overlay ELEMENTS: `tokens(query)` (the common-style tokens as one
+   * `:root` rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale). See docs/OVERLAY-ELEMENTS.md.
    */
-  overlay?: import("@/core/compose/kit").ComposeKit;
+  overlay?: import("@/core/overlays/moduleKit").OverlayKit;
   /**
    * (0.2.0) La personne qui regarde l'administration a-t-elle ce droit du module (identifiant LOCAL : « email.view », préfixé « <module>: » par le cœur) ?
    * Vrai seulement dans un contexte d'administration d'un humain (`adminPanel`, `adminActions`, `entryPanels`) ; toujours faux ailleurs (page publique,
