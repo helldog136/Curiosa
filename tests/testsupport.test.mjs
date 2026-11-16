@@ -27,7 +27,7 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
   assert.equal(report.summary.ok, true);
   // « neutrality.clean » est sautée sans liste de neutralité, vérifiée (et réussie) avec : les deux sont corrects.
   const notPassed = report.results.filter((r) => r.status !== "pass" && r.id !== "neutrality.clean" && !(r.group === "skin" && r.status === "na")).map((r) => `${r.id}:${r.status}`);
-  assert.deepEqual(notPassed.sort(), ["compat.minCoreAdvice:na", "manifest.imageHosts:na", "manifest.inertCollections.unused:na", "manifest.inertCollections:na", "manifest.previews:na", "overlay.elements:na", "srp.single:na"]);
+  assert.deepEqual(notPassed.sort(), ["compat.minCoreAdvice:na", "manifest.imageHosts:na", "manifest.inertCollections.unused:na", "manifest.inertCollections:na", "manifest.previews:na", "overlay.elements:na", "overlay.idle:na", "overlay.readable:na", "srp.single:na"]);
   // avec un voisin sans rapport, « un propriétaire par donnée » est vérifié et réussit
   void other;
   assert.equal(status(await checkModule(dir, { siblings: [path.join(path.dirname(other), "full-mod")] }), "srp.single").status, "pass");
@@ -36,6 +36,12 @@ test("un module conforme réussit toutes les exigences (aucune en échec, aucune
 });
 
 // ── Un module fautif par exigence ───────────────────────────────────────────────────────────────────────────────────
+/** Adds one overlay element served by a route of the module, with the given page. */
+const overlayElement = (f, html) => {
+  editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "board", label: { fr: "Tableau", en: "Board" }, fit: "fluid" }]; });
+  REPLACE(f, "export default {", `export default {\n  overlayElements: { board: (ctx) => ({ url: "/m/" + ctx.instance.key + "/board" }) },`);
+  REPLACE(f, "  routes: {", `  routes: {\n    board: () => new Response(${JSON.stringify(`<!doctype html><meta charset="utf-8">${html}`)}, { headers: { "content-type": "text/html; charset=utf-8" } }),`);
+};
 const REPLACE = (f, from, to) => { assert.ok(f["index.mjs"].includes(from), `fixture : « ${from} » introuvable`); f["index.mjs"] = f["index.mjs"].replace(from, to); };
 
 // ── Pièces de skin (clé « skin », docs/SKINS.md §8) : un module avec pièces conforme, dont chaque défaut est dérivé ───────
@@ -128,6 +134,9 @@ const FAULTS = {
   "manifest.imageHosts": (f) => editManifest(f, (m) => { m.imageHosts = ["https://media.example.org/", "*.example.org"]; }),
   "manifest.previews": (f) => editManifest(f, (m) => { m.previews = [{ file: "previews/fantome.webp", caption: { fr: "Fantôme", en: "Ghost" }, alt: { fr: "Une image absente", en: "A missing image" }, type: "public" }]; }),
   "overlay.elements": (f) => editManifest(f, (m) => { m.minCore = "0.5.0"; m.overlayElements = [{ id: "ghost", label: { fr: "Fantôme", en: "Ghost" }, fit: "fluid" }]; }),
+  // (core 0.24.0) An element page that says "no data" in a box at rest, and writes its tokens inline on an inner node (the 0.16.0 alerts bug).
+  "overlay.idle": (f) => overlayElement(f, '<div style="background:#222;padding:12px" data-ov-part="panel">Aucune donnée</div>'),
+  "overlay.readable": (f) => overlayElement(f, '<div id="stage" style="--ov-fg:#fff"><div data-ov-part="card" hidden></div></div>'),
   "admin.ergonomics": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // avec une base vide : le NOUVEL écart (R10) échoue
   "i18n.complete": (f) => editManifest(f, (m) => { m.description = "A plain English description without a language"; }), // a plain string has no language: a NEW gap fails
   "i18n.complete.known": (f) => editManifest(f, (m) => { m.description = "A plain English description without a language"; }), // a known gap (listed in the baseline) is advice
