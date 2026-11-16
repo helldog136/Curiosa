@@ -48,7 +48,7 @@ test("video lengths: rounded up, 2 to 60 s; a new placement on a video plays onc
   assert.equal(M.alertSeconds(M.defaultComposition(PNG)), null, "a picture without a length: the place decides, as before");
   assert.equal(M.isVideoSrc(VID), true); assert.equal(M.isVideoSrc(GIF), false);
   // the kit gives modules the same
-  assert.deepEqual([...composeKit.features], ["video"]);
+  assert.ok(composeKit.features.includes("video"));
   assert.equal(composeKit.defaultComposition(VID, { seconds: 3.5 }).duration.seconds, 4);
   assert.equal(composeKit.defaultComposition(PNG).backdrop.play, undefined);
   assert.equal(composeKit.alertSeconds({ duration: { mode: "fixed", seconds: 12 } }), 12);

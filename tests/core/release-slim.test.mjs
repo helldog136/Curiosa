@@ -30,9 +30,9 @@ test("le serveur de production n'a besoin ni du compilateur ni de TypeScript : c
   assert.ok(!fs.readFileSync("package.json", "utf8").includes("\"@types/qrcode\"") || pkg.devDependencies["@types/qrcode"], "@types/qrcode est un outil de développement");
   assert.ok(!Object.keys(pkg.dependencies).some((d) => d.startsWith("@types/")), "aucun paquet de types en dépendance de production");
   assert.ok(pkg.dependencies.sharp, "sharp est déclaré : le recadrage des images en dépend, l'archive le livre");
-  // le code n'emploie ni next/image ni TypeScript à l'exécution (sinon l'exclusion casserait le site) ; sharp n'est chargé que par core/imageDerive.ts, à la demande
+  // le code n'emploie ni next/image ni TypeScript à l'exécution (sinon l'exclusion casserait le site) ; sharp n'est chargé que par core/imageDerive.ts et (0.25.0) core/compose/preview.ts, à la demande
   const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
-  for (const f of walk("src").filter((x) => /\.(ts|tsx)$/.test(x))) assert.ok(!/next\/image|from "typescript"/.test(fs.readFileSync(f, "utf8")) && (f.endsWith("imageDerive.ts") || !/sharp/.test(fs.readFileSync(f, "utf8").replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ""))), `${f} emploie un paquet que l'archive n'embarque pas`);
+  for (const f of walk("src").filter((x) => /\.(ts|tsx)$/.test(x))) assert.ok(!/next\/image|from "typescript"/.test(fs.readFileSync(f, "utf8")) && (f.endsWith("imageDerive.ts") || f.endsWith("compose/preview.ts") || !/sharp/.test(fs.readFileSync(f, "utf8").replace(/\/\/.*|\/\*[\s\S]*?\*\//g, ""))), `${f} emploie un paquet que l'archive n'embarque pas`);
 });
 
 test("release archive: next.config.mjs starts without src/ (languages come from release.json) and still exposes the language rewrites", async () => {
