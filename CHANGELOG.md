@@ -7,6 +7,43 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.22.0 — 2026-11-16
+
+**En bref.** Une nouvelle page d'overlay démarre lisible : ses éléments suivent sa « Lisibilité par défaut ». Un élément peut porter un autre skin que sa page, et vous pouvez retoucher le skin d'une page (accent, fond, police, coins) sans changer le skin installé.
+
+**In short.** A new overlay page starts readable: its elements follow its "Default readability". An element may wear another skin than its page, and you can retouch the skin of a page (accent, background, font, corners) without changing the installed skin.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien sur vos pages existantes.** Elles s'affichent exactement comme avant. Leur « Lisibilité par défaut » est sur « Aucune ».
+- **(English) Nothing on your existing pages.** They show exactly as before. Their "Default readability" is set to "None".
+
+### Lisibilité par défaut
+
+- **Une page lisible dès sa création.** Une nouvelle page démarre sur « Lisible partout ». Les éléments réglés sur « Comme la page » la suivent.
+- **(English) A page readable from the start.** A new page starts on "Readable everywhere". Elements set to "Like the page" follow it.
+- **Le style commun est replié.** Texte, Fond et Coins de la page passent sous « Style commun », avec un résumé d'une ligne.
+- **(English) The common style is folded.** Text, Background and Corners of the page move under "Common style", with a one-line summary.
+
+### Les skins
+
+- **Un skin pour un seul élément.** Sous « Plus d'options » de l'onglet Apparence, « Skin de cet élément » propose Comme la page, Aucun skin ou un skin installé. Pratique pour un bandeau partenaire.
+- **(English) A skin for one element.** Under "More options" of the Appearance tab, "Skin of this element" offers Like the page, No skin or an installed skin. Handy for a partner banner.
+- **Retouches du skin.** Dans l'onglet Skin, changez la couleur d'accent, le fond des panneaux, la police ou les coins pour cette page. Le skin installé ne change pas.
+- **(English) Skin retouches.** In the Skin tab, change the accent colour, the panel background, the font or the corners for this page. The installed skin does not change.
+- **Toujours lisible.** Si une couleur de fond rend le texte difficile à lire, le texte passe en clair ou en sombre tout seul.
+- **(English) Always readable.** If a background colour makes the text hard to read, the text switches to light or dark on its own.
+- **Les couleurs du skin.** « Prendre les couleurs du skin » donne à un élément le fond et le texte prévus par son skin.
+- **(English) The skin's colours.** "Use the skin's colours" gives an element the background and text its skin planned.
+
+### Pour les développeurs
+
+- **Order of the layers**: module fallback < skin (page or element) < site retouch < page style (`style.readability`) < element style. Absent means inherit; nothing is stored at the default; the 96 fixture pages of `tests/fixtures/overlays/render-cases.mjs` render byte for byte as with 0.20.0 (`render-0.20.0.json`).
+- **Data**: `OverlayStyle.readability` (an element style), `PageElement.skin` (`string | null`, absent = the page's), `PageLook.tweaks` (`{ accent?, surface?, font?, corners? }`, closed values), `ElementStyle.colorFrom: "skin"`. An older core drops these keys on the next save (as with every additive key).
+- **Rendering**: element skins are loaded once per distinct skin (6 at most per page) and given by `data-eskin`; the page script switches to an element's own sheet only when the page has one (`pollScript`), otherwise it is the 0.20.0 script byte for byte. Retouches change the skin key (`:t<hash>`), so a live page switches to them like to another skin.
+- **Skin contract 3, additive**: optional `--ov-surface-soft`, `--ov-surface-solid`, `--ov-fg-on-light`, `--ov-fg-on-dark`, `--ov-outline`, checked at installation; derived by `skinColors()` when absent. Skin installation reads `minCore` before the tokens (verified, since 0.4.0 for site skins and 0.8.0 for overlay skins), so a skin that uses them only needs `"minCore": "0.22.0"`, no contract 4.
+- **New pages** get `{ readability: { preset: "readable" } }` in their style (`NEW_PAGE_READABILITY`); a new element on such a page has no own style (it follows the page). Glossary words added in `docs/TRANSLATING.md`. `docs/OVERLAY-SKINS.md` and `docs/OVERLAY-ELEMENTS.md` describe the layers.
+
 ## 0.21.0 — 2026-11-16
 
 **En bref.** « Placer le texte » marche aussi sur les vidéos. Le bouton « Lire » joue l'alerte dans l'éditeur, et vous choisissez si la vidéo tourne en boucle, une fois ou s'arrête sur sa fin.

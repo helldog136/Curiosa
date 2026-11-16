@@ -46,6 +46,12 @@ export const OV_TOKEN_DEFS: readonly OvTokenDef[] = [
   { name: "--ov-text-shadow", type: "shadow", group: "typography", fallback: "none", doc: "Text shadow (keeps text readable on a transparent surface)." },
   { name: "--ov-anim", type: "anim", group: "motion", fallback: "none", doc: "Entrance preset: none, fade, rise, pop or glow. Switched off for people who prefer reduced motion." },
   { name: "--ov-anim-duration", type: "duration", group: "motion", fallback: "0.6s", doc: "Duration of the entrance preset." },
+  // (core 0.21.0) Optional, additive: what the appearance kit of an element uses when it takes "the skin's colour". Absent: the core derives them (skinSheet.ts, `skinColors`).
+  { name: "--ov-surface-soft", type: "color", group: "color", fallback: "--ov-surface at 55 %", doc: "(0.21.0) The skin's light panel (\"Discreet\" look)." },
+  { name: "--ov-surface-solid", type: "color", group: "color", fallback: "--ov-surface made solid", doc: "(0.21.0) The skin's solid panel (\"Readable everywhere\" look)." },
+  { name: "--ov-fg-on-light", type: "color", group: "color", fallback: "#111111", doc: "(0.21.0) Text colour the skin wants on a light panel." },
+  { name: "--ov-fg-on-dark", type: "color", group: "color", fallback: "#ffffff", doc: "(0.21.0) Text colour the skin wants on a dark panel." },
+  { name: "--ov-outline", type: "color", group: "color", fallback: "opposite of the text", doc: "(0.21.0) Colour of the text outline." },
 ] as const;
 
 export const OV_TOKEN_BY_NAME: ReadonlyMap<string, OvTokenDef> = new Map(OV_TOKEN_DEFS.map((d) => [d.name, d]));

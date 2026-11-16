@@ -30,6 +30,8 @@ export type OverlayStyle = {
   text: "light" | "dark"; background: "transparent" | "soft" | "opaque"; corners: "round" | "square";
   /** (0.11.0) Text size of the page in percent (50 to 300), the default of every element. Absent = 100 %: nothing changes (textScale.ts). */
   textScale?: number;
+  /** (0.21.0) Readability default of the page: what every element that follows the page ("Like the page") wears. Absent = as before 0.21.0. */
+  readability?: import("./appearance").ElementStyle;
 };
 export const DEFAULT_STYLE: OverlayStyle = { text: "light", background: "transparent", corners: "round" };
 
@@ -46,7 +48,11 @@ export type PageElement = {
   textScale?: number;
   /** (0.17.0) Appearance kit of this element (appearance.ts). Absent = follows the page (with the readability fix of a transparent page without skin). */
   style?: ElementStyle;
+  /** (0.21.0) The overlay skin this element wears instead of the page's (owner decision 3). Absent = the page's skin; null = no skin (the common style). */
+  skin?: string | null;
 };
+/** Overlay skin ids (same rule as `look.ts`). */
+export const ELEMENT_SKIN_RE = /^[a-z][a-z0-9-]{1,40}$/;
 
 export type OverlayPageData = {
   id: string;

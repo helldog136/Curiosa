@@ -1,4 +1,5 @@
 import { isPlainObject } from "./model";
+import { TWEAK_FONTS, type SkinTweaks } from "./skinSheet";
 
 /**
  * THE LOOK OF AN OVERLAY PAGE (core 0.8.0): which overlay skin it wears, and optionally a skin PER CONTEXT VALUE (docs/OVERLAY-SKINS.md). Pure.
@@ -13,7 +14,7 @@ export const LABEL_MAX = 80;
 const SKIN_ID = /^[a-z][a-z0-9-]{1,40}$/;
 
 export type SkinRule = { value: string; label: string; skin: string };
-export type PageLook = { skin: string | null; byContext: { enabled: boolean; instance: string | null; context: string | null; rules: SkinRule[] } };
+export type PageLook = { skin: string | null; byContext: { enabled: boolean; instance: string | null; context: string | null; rules: SkinRule[] }; /** (0.21.0) The site's retouches of the skins this page wears. Absent: none. */ tweaks?: SkinTweaks };
 export const DEFAULT_LOOK: PageLook = { skin: null, byContext: { enabled: false, instance: null, context: null, rules: [] } };
 
 const text = (v: unknown, max: number): string => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "");
@@ -32,7 +33,20 @@ export function parseLook(raw: unknown): PageLook {
     rules.push({ value, label: text(r.label, LABEL_MAX) || value, skin });
   }
   const ref = (v: unknown) => (typeof v === "string" && /^[A-Za-z0-9._-]{1,60}$/.test(v) ? v : null);
-  return { skin: typeof o.skin === "string" && SKIN_ID.test(o.skin) ? o.skin : null, byContext: { enabled: b.enabled === true, instance: ref(b.instance), context: ref(b.context), rules } };
+  const tweaks = parseTweaks(o.tweaks);
+  return { skin: typeof o.skin === "string" && SKIN_ID.test(o.skin) ? o.skin : null, byContext: { enabled: b.enabled === true, instance: ref(b.instance), context: ref(b.context), rules }, ...(tweaks ? { tweaks } : {}) };
+}
+
+const HEX = /^#[0-9a-fA-F]{6}$/;
+/** (0.21.0) Reads the site's retouches of a skin: closed values only (#rrggbb colours, a listed font, round or square); anything else is dropped. Empty = null. */
+export function parseTweaks(raw: unknown): SkinTweaks | null {
+  if (!isPlainObject(raw)) return null;
+  const out: SkinTweaks = {};
+  if (typeof raw.accent === "string" && HEX.test(raw.accent)) out.accent = raw.accent.toLowerCase();
+  if (typeof raw.surface === "string" && HEX.test(raw.surface)) out.surface = raw.surface.toLowerCase();
+  if (typeof raw.font === "string" && (TWEAK_FONTS as readonly string[]).includes(raw.font)) out.font = raw.font as SkinTweaks["font"];
+  if (raw.corners === "round" || raw.corners === "square") out.corners = raw.corners;
+  return Object.keys(out).length ? out : null;
 }
 
 export type LookIssue = { path: string; code: "skin" | "context" | "tooMany" | "value" | "duplicate" | "format" | "ruleSkin" };

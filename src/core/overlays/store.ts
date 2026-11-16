@@ -1,6 +1,6 @@
 import type { OverlayPage } from "@prisma/client";
 import { prisma } from "../db";
-import { MAX_ACTIVE_PAGES, MAX_ELEMENTS_PER_PAGE, MAX_PAGES, DEFAULT_RESOLUTION, MAX_SIDE, MIN_SIDE, NAME_MAX, UID_RE, clampInt, isPlainObject, nextTestUntil, type OverlayPageData, type PageElement } from "./model";
+import { ELEMENT_SKIN_RE, MAX_ACTIVE_PAGES, MAX_ELEMENTS_PER_PAGE, MAX_PAGES, DEFAULT_RESOLUTION, MAX_SIDE, MIN_SIDE, NAME_MAX, UID_RE, clampInt, isPlainObject, nextTestUntil, type OverlayPageData, type PageElement } from "./model";
 import { keepOptions } from "./options";
 import { newSecret, secretColumns, unsealSecret } from "./secret";
 import { cleanName, type PageValue } from "./pageInput";
@@ -27,7 +27,8 @@ export function parseElements(raw: string): PageElement[] {
     const n = (v: unknown, d: number) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v) : d);
     const textScale = parseTextScale(e.textScale);
     const style = parseElementStyle(e.style);
-    out.push({ uid: e.uid, instance: e.instance.slice(0, 40), element: e.element.slice(0, 60), x: n(e.x, 0), y: n(e.y, 0), w: Math.max(1, n(e.w, 100)), h: Math.max(1, n(e.h, 100)), visible: e.visible !== false, options: keepOptions(e.options), ...(textScale !== null ? { textScale } : {}), ...(style ? { style } : {}) });
+    const skin = e.skin === null ? null : typeof e.skin === "string" && ELEMENT_SKIN_RE.test(e.skin) ? e.skin : undefined;
+    out.push({ uid: e.uid, instance: e.instance.slice(0, 40), element: e.element.slice(0, 60), x: n(e.x, 0), y: n(e.y, 0), w: Math.max(1, n(e.w, 100)), h: Math.max(1, n(e.h, 100)), visible: e.visible !== false, options: keepOptions(e.options), ...(textScale !== null ? { textScale } : {}), ...(style ? { style } : {}), ...(skin !== undefined ? { skin } : {}) });
   }
   return out;
 }

@@ -8,7 +8,10 @@ import { ui } from "./ui";
 import { TextSizeField } from "./TextSizeField";
 import { HelpTip } from "./HelpTip";
 import { OverlayLookPanel } from "./OverlayLookPanel";
-import { NEW_ELEMENT_STYLE, appliedLook, readabilityOf, type PageSide } from "@/core/overlays/appearance";
+import { NEW_ELEMENT_STYLE, appliedLook, presetShown, readabilityOf, type PageSide } from "@/core/overlays/appearance";
+import type { SkinColors } from "@/core/overlays/skinSheet";
+import { MoreOptions } from "./MoreOptions";
+import { Choice } from "./OverlayLookPanel";
 import { foldText, queryWords } from "@/core/adminkit/search";
 import { addElement, anchorElement, changeResolution, newUid, removeElement, reorder, setField, setLook, setRect } from "@/core/overlays/editorModel";
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
@@ -35,6 +38,9 @@ type Props = {
   pageSkin?: boolean;
   /** (0.20.0) The page id: the person's own preview screenshot is remembered per page, in this browser only. */
   pageId?: string;
+  /** (0.21.0) Installed overlay skins an element may wear, the kit colours of each, and those of the page's skin now. */
+  skins?: { id: string; name: string; colors: SkinColors | null }[];
+  pageSkinColors?: SkinColors | null;
 };
 /** (0.20.0) One undo step: the size, the common style and the elements. */
 type Doc = { size: { width: number; height: number }; style: OverlayStyle; elements: EditorElement[] };
@@ -43,7 +49,7 @@ const hue = (i: number) => (i * 47 + 10) % 360;
 const GRID_ANCHORS: Anchor[] = [...ANCHORS];
 const SNAP_PX = 8;
 
-export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false, pageId = "" }: Props) {
+export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false, pageId = "", skins = [], pageSkinColors = null }: Props) {
   const s = useCallback((key: string, vars?: Record<string, string | number>) => {
     let text = strings[key] ?? key;
     if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
@@ -80,7 +86,15 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const sel = elements.find((e) => e.uid === selected) ?? null;
   const selInfo = sel ? byKey.get(catalogKey(sel.instance, sel.element)) ?? null : null;
   const pageSide: PageSide = useMemo(() => ({ style, skin: pageSkin }), [style, pageSkin]);
-  const lookOf = (e: EditorElement) => { const info = byKey.get(catalogKey(e.instance, e.element)); const applied = appliedLook(e.style, pageSide, !!info?.followsStyle); return { applied, readable: readabilityOf(applied) }; };
+  const skinById = useMemo(() => new Map(skins.map((k) => [k.id, k])), [skins]);
+  // (0.21.0) An element wearing its own skin (or none) is judged with that skin's colours, like the public page does.
+  const wears = (e: EditorElement): boolean => (e.skin === undefined ? pageSkin : !!e.skin);
+  const lookOf = (e: EditorElement) => {
+    const info = byKey.get(catalogKey(e.instance, e.element));
+    const colors = e.skin === undefined ? pageSkinColors : e.skin ? skinById.get(e.skin)?.colors ?? null : null;
+    const applied = appliedLook(e.style, { ...pageSide, skin: wears(e) }, !!info?.followsStyle, colors);
+    return { applied, readable: readabilityOf(applied) };
+  };
   const autoCount = elements.filter((e) => lookOf(e).applied?.source === "auto").length;
   const selLook = sel ? lookOf(sel) : null;
   // The tab of the selected element: chosen by the person, else its appearance when it is hard to read (design 7.1), else its place.
@@ -130,7 +144,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     const taken = new Set(elements.map((e) => e.uid));
     const uid = newUid(taken);
     const defaults = Object.fromEntries(a.options.map((o) => [o.id, o.default]));
-    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults, ...(a.followsStyle ? { style: NEW_ELEMENT_STYLE } : {}) }, uid));
+    update(addElement(elements, page, { instance: a.instance, element: a.element, decl: a.layout, defaults, ...(a.followsStyle && !style.readability ? { style: NEW_ELEMENT_STYLE } : {}) }, uid));
     setSelected(uid); setAdding(false);
     setAnnounce(s("ed.added", { name: a.title }));
   }
@@ -256,6 +270,13 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           <p className={ui.help}>{s("ed.resolutionHelp")}</p>
         </div>
         </div>
+        {/* (0.21.0) The page's readability default replaces the three lists, which move under "More options" (design 7.2). */}
+        <Choice legend={s("ed.pageLook")} help={s("ed.pageLookHelp")} name="ov-page-look" value={style.readability ? (presetShown(style.readability) === "custom" ? null : presetShown(style.readability)) : "none"}
+          options={(["readable", "discreet", "bare", "none"] as const).map((v) => ({ value: v, label: s(v === "none" ? "ed.pageLook.none" : `ed.look.preset.${v}`) }))}
+          onChange={(v) => setStyle((cur) => { const { readability, ...rest } = cur; void readability; return v === "none" ? rest : { ...rest, readability: { preset: v as "readable" | "discreet" | "bare" } }; })} />
+        <TextSizeField testId="text-size-page" legend={s("ed.textSize.page")} help={s("ed.textSize.pageHelp")} value={style.textScale ?? null} inherit={false} errorPath="style.textScale" s={s}
+          onChange={(v) => setStyle((cur) => { const { textScale, ...rest } = cur; void textScale; return v === null || v === 100 ? rest : { ...rest, textScale: v }; })} />
+        <MoreOptions title={s("ed.pageMore")} summary={[s(`ed.style.text.${style.text}`), s(`ed.style.background.${style.background}`), s(`ed.style.corners.${style.corners}`)].join(" · ")}>
         <fieldset className="min-w-0">
           <legend className={ui.label}>{s("ed.style")}</legend>
           <div className="grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(12rem,1fr))]">
@@ -265,8 +286,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           </div>
           <p className={ui.help}>{s("ed.styleHelp")}</p>
         </fieldset>
-        <TextSizeField testId="text-size-page" legend={s("ed.textSize.page")} help={s("ed.textSize.pageHelp")} value={style.textScale ?? null} inherit={false} errorPath="style.textScale" s={s}
-          onChange={(v) => setStyle((cur) => { const { textScale, ...rest } = cur; void textScale; return v === null || v === 100 ? rest : { ...rest, textScale: v }; })} />
+        </MoreOptions>
       </section>
 
       <div className="space-y-6">
@@ -469,6 +489,8 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                     {current === "look" && selInfo?.followsStyle && selLook && (
                       <div role="tabpanel" id="ov-tabpanel-look" aria-labelledby="ov-tab-look">
                         <OverlayLookPanel key={sel.uid} uid={sel.uid} style={sel.style ?? null} applied={selLook.applied} readable={selLook.readable} s={s}
+                          pageLook={style.readability ?? null} skins={skins} skin={sel.skin} wearsSkin={wears(sel)}
+                          onSkin={(next) => update(elements.map((x) => { if (x.uid !== sel.uid) return x; const { skin, ...rest } = x; void skin; return next === undefined ? rest : { ...rest, skin: next }; }))}
                           onChange={(next) => update(setLook(elements, sel.uid, next) as EditorElement[])} />
                         <div role="group" aria-label={s("ed.lookClip")} className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3" data-testid="look-clip">
                           <button type="button" className={`${ui.btn} min-h-11`} onClick={() => { setClip({ style: sel.style ?? null }); setAnnounce(s("ed.lookCopied")); }}>{s("ed.copyLook")}</button>

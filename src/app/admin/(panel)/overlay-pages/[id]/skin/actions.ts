@@ -7,7 +7,7 @@ import { audit } from "@/core/permissions";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { listContextValues } from "@/core/overlays/context";
 import { updateLook } from "@/core/overlays/lookService";
-import { LABEL_MAX, VALUE_MAX, upsertRule } from "@/core/overlays/look";
+import { LABEL_MAX, VALUE_MAX, parseTweaks, upsertRule } from "@/core/overlays/look";
 import { getPage } from "@/core/overlays/store";
 import { clearSkinCatalogueCache } from "@/core/skins/catalogue";
 import * as skins from "@/core/skins/service";
@@ -98,4 +98,35 @@ export async function searchValuesAction(id: string, query: string): Promise<{ i
   const b = page?.look.byContext;
   if (!b?.instance || !b.context) return [];
   return listContextValues({ instance: b.instance, context: b.context }, text(query, 80), 30);
+}
+
+/**
+ * (0.21.0) "Skin retouches": accent, panel colour, font and corners for THIS page, written over the skin's tokens (owner decision 4: the shared skin is never
+ * changed). Every value is closed (`parseTweaks`); "the skin's" means absent. The text colour is corrected by the core when a panel colour would make it unreadable.
+ */
+export async function saveTweaksAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, locale, config } = await adminCtx(OVERLAY_NEED);
+  const own = (mode: string, value: string) => (text(formData.get(mode), 10) === "own" ? text(formData.get(value), 7).toLowerCase() : "");
+  const accent = own("accentMode", "accent"), surface = own("surfaceMode", "surface");
+  const hex = /^#[0-9a-f]{6}$/;
+  const errors: Record<string, string> = {};
+  if (accent && !hex.test(accent)) errors.accent = t("ovp.tweak.err.colour");
+  if (surface && !hex.test(surface)) errors.surface = t("ovp.tweak.err.colour");
+  if (Object.keys(errors).length) return { error: t("ovp.err.fields"), errors };
+  const font = text(formData.get("font"), 20), corners = text(formData.get("corners"), 10);
+  const tweaks = parseTweaks({ ...(accent ? { accent } : {}), ...(surface ? { surface } : {}), ...(font ? { font } : {}), ...(corners === "round" || corners === "square" ? { corners } : {}) });
+  const r = await updateLook(text(id, 40), (cur) => { const { tweaks: _old, ...rest } = cur; void _old; return tweaks ? { ...rest, tweaks } : rest; }, locale, config.defaultLocale);
+  if (!r.ok) return { error: t("ovp.skin.err.generic") };
+  await audit(user.email, "overlay.skin", text(id, 40));
+  revalidatePath(here(id));
+  return { ok: t("ovp.tweak.saved") };
+}
+
+/** (0.21.0) "Back to the original skin": removes every retouch of this page. */
+export async function resetTweaksAction(id: string): Promise<void> {
+  const { user, locale, config } = await adminCtx(OVERLAY_NEED);
+  const r = await updateLook(text(id, 40), (cur) => { const { tweaks: _old, ...rest } = cur; void _old; return rest; }, locale, config.defaultLocale);
+  if (r.ok) await audit(user.email, "overlay.skin", text(id, 40));
+  revalidatePath(here(id));
+  redirect(`${here(id)}?ok=skin`);
 }

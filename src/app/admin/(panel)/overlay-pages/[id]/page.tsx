@@ -7,6 +7,7 @@ import { defaultOf } from "@/core/overlays/options";
 import { catalogKey, MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, RESOLUTIONS, nowMs, testActive } from "@/core/overlays/model";
 import { OPTIONS_FOLDED_AFTER } from "@/core/overlays/decl";
 import { getPage, listVersions } from "@/core/overlays/store";
+import { listOverlaySkins, skinForPage, skinPayload } from "@/core/overlays/skinLoad";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { HelpTip } from "@/components/admin/HelpTip";
 import { localized } from "@/core/modules/types";
@@ -35,6 +36,7 @@ const STRINGS = [
   "look.outline.thick", "look.corners", "look.corners.page", "look.corners.round", "look.corners.square", "look.warn", "look.fix",
   "history", "undo", "redo", "undoKeys", "redoKeys", "undone", "redone", "backdrop", "backdropHelp", "backdrop.checker", "backdrop.dark", "backdrop.bright", "backdrop.game", "backdrop.own", "backdrop.ownChange", "backdrop.ownTooBig",
   "viewTools", "safe", "safeHelp", "safe.none", "safe.broadcast", "safe.vertical", "nearEdge", "cvd", "cvdHelp", "cvd.none", "cvd.deuteranopia", "cvd.protanopia", "cvd.tritanopia",
+  "pageLook", "pageLookHelp", "pageLook.none", "pageMore", "look.fromPage", "look.colorFromSkin", "look.skin", "look.skinHelp", "look.skin.page", "look.skin.none",
   "lookClip", "copyLook", "pasteLook", "applyLookAll", "lookCopied", "lookPasted", "lookAppliedAll", "lookAppliedAll.one",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
@@ -72,6 +74,11 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
   const initial: EditorElement[] = page.elements.map((e) => ({ ...e, ...(catalog.has(catalogKey(e.instance, e.element)) ? {} : { missing: true }) }));
   const strings = Object.fromEntries(STRINGS.map((k) => [`ed.${k}`, t(`ovp.ed.${k}`)]));
   const versions = await listVersions(page.id);
+  // (0.21.0) Skins an element may wear, with the colours the appearance kit takes from each, and the colours of the page's skin now.
+  const opaque = page.style.background === "opaque";
+  const usable = (await listOverlaySkins().catch(() => [])).filter((k) => k.status === "ok");
+  const skins = await Promise.all(usable.map(async (k) => ({ id: k.id, name: locale === "fr" ? k.name.fr : k.name.en, colors: (await skinPayload(k.id, opaque).catch(() => null))?.colors ?? null })));
+  const pageSkinColors = (await skinForPage(page.look, now, opaque)).payload?.colors ?? null;
   const when = (at: number) => new Intl.DateTimeFormat(locale, { timeZone: tz, dateStyle: "medium", timeStyle: "short" }).format(new Date(at));
 
   return (
@@ -115,6 +122,8 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
           strings={strings}
           pageSkin={!!(page.look.skin || page.look.byContext.enabled)}
           pageId={page.id}
+          skins={skins}
+          pageSkinColors={pageSkinColors}
         />
       </ActionForm>
 

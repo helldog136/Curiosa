@@ -93,6 +93,9 @@ Use the same word for the same thing everywhere.
 | vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons |
 | colour-blind view | vue daltonienne | (0.20.0) "View as a colour-blind person": a filter on the editor preview only |
 | saved version | version enregistrée | (0.20.0) a layout of an overlay page that a later save replaced; "Restore this version" puts it back |
+| default readability | lisibilité par défaut | (0.21.0) the readability preset of an overlay page, worn by every element set to "Like the page" |
+| skin retouches | retouches du skin | (0.21.0) accent, panel colour, font and corners changed for one overlay page, without changing the installed skin |
+| skin of this element | skin de cet élément | (0.21.0) an overlay skin worn by one element instead of the page's skin |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 
