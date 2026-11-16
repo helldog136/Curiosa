@@ -319,7 +319,7 @@ test("panel: warning pill with Fix when hard to read; Custom note; the automatic
 test("editor wiring: tabs Place / Appearance / Options, strings sent by the server, page skin passed, new elements readable", () => {
   const editor = fs.readFileSync("src/components/admin/OverlayEditor.tsx", "utf8"), pageTsx = fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/page.tsx", "utf8");
   assert.match(editor, /role="tablist"/); assert.match(editor, /role="tab"/); assert.match(editor, /aria-selected=/);
-  assert.match(editor, /\.\.\.\(a\.followsStyle \? \{ style: NEW_ELEMENT_STYLE \} : \{\}\)/);
+  assert.match(editor, /\.\.\.\(a\.followsStyle && !style\.readability \? \{ style: NEW_ELEMENT_STYLE \} : \{\}\)/, "(0.21.0) on a page with a readability default, a new element follows the page");
   assert.match(pageTsx, /pageSkin=\{!!\(page\.look\.skin \|\| page\.look\.byContext\.enabled\)\}/);
   const strings = pageTsx.match(/const STRINGS = \[([\s\S]*?)\] as const/)[1].match(/"[\w.]+"/g).map((x) => x.slice(1, -1));
   for (const k of lookKeys(fr).filter((k) => k.startsWith("ovp.ed."))) assert.ok(strings.includes(k.slice("ovp.ed.".length)), k);

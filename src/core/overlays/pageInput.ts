@@ -1,4 +1,4 @@
-import { MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, NAME_MAX, UID_RE, catalogKey, clampInt, isPlainObject, type Catalog, type OverlayStyle, type PageElement } from "./model";
+import { ELEMENT_SKIN_RE, MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, NAME_MAX, UID_RE, catalogKey, clampInt, isPlainObject, type Catalog, type OverlayStyle, type PageElement } from "./model";
 import { constrainRect, type Rect } from "./layout";
 import { checkOptions, keepOptions, type OptionCheck } from "./options";
 import { parseStyle } from "./tokens";
@@ -17,7 +17,7 @@ export function cleanName(raw: unknown): string {
   return typeof raw === "string" ? raw.replace(/[\u0000-\u001f\u007f]/g, " ").replace(/\s+/g, " ").trim() : "";
 }
 
-export function validatePageInput(raw: unknown, ctx: { catalog: Catalog; previous: readonly PageElement[] }): { ok: true; value: PageValue } | { ok: false; issues: Issue[] } {
+export function validatePageInput(raw: unknown, ctx: { catalog: Catalog; previous: readonly PageElement[]; /** (0.21.0) Installed overlay skins that work: an element may wear one of them (or keep the one it already had). Absent: any well-formed id. */ skins?: ReadonlySet<string> }): { ok: true; value: PageValue } | { ok: false; issues: Issue[] } {
   const issues: Issue[] = [];
   if (!isPlainObject(raw)) return { ok: false, issues: [{ path: "", code: "format" }] };
   const name = cleanName(raw.name);
@@ -28,6 +28,8 @@ export function validatePageInput(raw: unknown, ctx: { catalog: Catalog; previou
   const page = { width: width || 1920, height: height || 1080 };
   const pageScale = isPlainObject(raw.style) ? checkTextScale(raw.style.textScale) : ({ ok: true, value: null } as const);
   if (!pageScale.ok) issues.push({ path: "style.textScale", code: "textScale" });
+  const pageLook = isPlainObject(raw.style) ? checkElementStyle(raw.style.readability) : ({ ok: true, value: null } as const);
+  if (!pageLook.ok) issues.push({ path: `style.readability.${pageLook.field}`, code: "appearance" });
   const list = Array.isArray(raw.elements) ? raw.elements : null;
   if (!list) issues.push({ path: "elements", code: "format" });
   if (list && list.length > MAX_ELEMENTS_PER_PAGE) issues.push({ path: "elements", code: "tooMany" });
@@ -50,7 +52,14 @@ export function validatePageInput(raw: unknown, ctx: { catalog: Catalog; previou
     if (!scale.ok) issues.push({ path: `elements.${uid}.textScale`, code: "textScale" });
     const look = checkElementStyle(item.style);
     if (!look.ok) issues.push({ path: `elements.${uid}.style.${look.field}`, code: "appearance" });
-    const own = { ...(scale.ok && scale.value !== null ? { textScale: scale.value } : {}), ...(look.ok && look.value ? { style: look.value } : {}) };
+    // (0.21.0) Skin of this element: absent = the page's, null = none, else an installed skin (or the one it already had: a removed skin never blocks a save).
+    let skin: string | null | undefined;
+    if (item.skin === null) skin = null;
+    else if (item.skin !== undefined) {
+      if (typeof item.skin === "string" && ELEMENT_SKIN_RE.test(item.skin) && (!ctx.skins || ctx.skins.has(item.skin) || before?.skin === item.skin)) skin = item.skin;
+      else issues.push({ path: `elements.${uid}.skin`, code: "appearance" });
+    }
+    const own = { ...(scale.ok && scale.value !== null ? { textScale: scale.value } : {}), ...(look.ok && look.value ? { style: look.value } : {}), ...(skin !== undefined ? { skin } : {}) };
     if (entry) {
       const { values, errors } = checkOptions(entry.decl.options, item.options);
       for (const [id, e] of Object.entries(errors)) issues.push({ path: `elements.${uid}.options.${id}`, code: "option", option: e });

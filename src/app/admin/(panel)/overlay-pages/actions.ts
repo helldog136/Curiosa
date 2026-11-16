@@ -8,8 +8,10 @@ import { audit } from "@/core/permissions";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { buildCatalog } from "@/core/overlays/catalog";
 import { issueMessages } from "@/core/overlays/messages";
-import { RESOLUTIONS } from "@/core/overlays/model";
+import { DEFAULT_STYLE, RESOLUTIONS } from "@/core/overlays/model";
+import { NEW_PAGE_READABILITY } from "@/core/overlays/appearance";
 import { validatePageInput } from "@/core/overlays/pageInput";
+import { usableOverlaySkinIds } from "@/core/overlays/skinLoad";
 import { createPage, deletePage, duplicatePage, getPage, renamePage, resetPageSecret, restoreVersion, savePage, setActive, setTest } from "@/core/overlays/store";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -27,7 +29,8 @@ export async function createPageAction(formData: FormData): Promise<void> {
   const { user } = await adminCtx(OVERLAY_NEED);
   const [w, h] = text(formData.get("resolution"), 20).split("x").map(Number);
   const known = RESOLUTIONS.find((r) => r[0] === w && r[1] === h) ?? RESOLUTIONS[1]!;
-  const made = await createPage({ name: text(formData.get("name"), 200), width: known[0], height: known[1] });
+  // (0.21.0) A new page starts readable: its elements follow the page's "Readable everywhere" default.
+  const made = await createPage({ name: text(formData.get("name"), 200), width: known[0], height: known[1], style: { ...DEFAULT_STYLE, readability: NEW_PAGE_READABILITY } });
   if (!made.ok) return back(made.error);
   await audit(user.email, "overlay.create", made.page.id);
   revalidatePath(LIST);
@@ -101,7 +104,7 @@ export async function savePageAction(id: string, _prev: ActionState, formData: F
   const page = await getPage(text(id, 40));
   if (!page) return { error: t("ovp.err.notFound") };
   const catalog = await buildCatalog(locale, config.defaultLocale);
-  const checked = validatePageInput(input, { catalog, previous: page.elements });
+  const checked = validatePageInput(input, { catalog, previous: page.elements, skins: await usableOverlaySkinIds() });
   if (!checked.ok) {
     const m = issueMessages(checked.issues, input, catalog, t);
     return { error: m.general ?? t("ovp.err.fields"), errors: m.errors };

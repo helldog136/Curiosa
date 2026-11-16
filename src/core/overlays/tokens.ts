@@ -1,6 +1,7 @@
 import type { OverlayStyle } from "./model";
 import { DEFAULT_STYLE } from "./model";
 import { parseTextScale } from "./textScale";
+import { parseElementStyle } from "./appearance";
 
 /**
  * JETONS D'APPARENCE d'une page d'overlay (0.5.0). Vocabulaire PROPRE aux overlays, distinct de celui des skins de site (`--sk-*`, `data-skin-*`) :
@@ -31,9 +32,10 @@ export const STYLE_CHOICES = {
 
 export function parseStyle(raw: unknown): OverlayStyle {
   const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-  const pick = <K extends Exclude<keyof OverlayStyle, "textScale">>(k: K): OverlayStyle[K] => ((STYLE_CHOICES[k] as readonly unknown[]).includes(o[k]) ? (o[k] as OverlayStyle[K]) : DEFAULT_STYLE[k]);
+  const pick = <K extends Exclude<keyof OverlayStyle, "textScale" | "readability">>(k: K): OverlayStyle[K] => ((STYLE_CHOICES[k] as readonly unknown[]).includes(o[k]) ? (o[k] as OverlayStyle[K]) : DEFAULT_STYLE[k]);
   const textScale = parseTextScale(o.textScale);
-  return { text: pick("text"), background: pick("background"), corners: pick("corners"), ...(textScale !== null && textScale !== 100 ? { textScale } : {}) };
+  const readability = parseElementStyle(o.readability);
+  return { text: pick("text"), background: pick("background"), corners: pick("corners"), ...(textScale !== null && textScale !== 100 ? { textScale } : {}), ...(readability ? { readability } : {}) };
 }
 
 /** Valeurs des jetons pour un style. Le fond « semi-transparent » est contrasté avec le texte (texte clair → fond sombre, et l'inverse). */

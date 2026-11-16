@@ -1,6 +1,7 @@
 import { installed, loadInstalledSkin } from "../skins/service";
 import { readRows } from "../skins/registry";
-import { compileSkin, type SkinPayload } from "./skinSheet";
+import crypto from "node:crypto";
+import { compileSkin, type SkinPayload, type SkinTweaks } from "./skinSheet";
 import { pickSkin, type PageLook } from "./look";
 import { readContextValue, type ContextValue } from "./context";
 
@@ -21,14 +22,17 @@ export async function usableOverlaySkinIds(): Promise<Set<string>> {
 }
 
 export type LoadedPayload = SkinPayload & { key: string };
-export async function skinPayload(id: string | null, opaque = false): Promise<LoadedPayload | null> {
+export async function skinPayload(id: string | null, opaque = false, tweaks?: SkinTweaks): Promise<LoadedPayload | null> {
   if (!id) return null;
   const row = (await readRows()).find((r) => r.id === id);
   if (!row || row.kind !== "overlay") return null;
   const loaded = await loadInstalledSkin(id);
   if (!loaded.ok || loaded.manifest.kind !== "overlay") return null;
-  const p = compileSkin({ id, version: loaded.version, tokens: loaded.tokens.common, css: loaded.css, ...(opaque ? { opaque } : {}) });
-  return { ...p, key: `${id}@${loaded.version}:${loaded.fingerprint.slice(0, 12)}${opaque ? ":solid" : ""}` };
+  const tw = tweaks && Object.keys(tweaks).length ? tweaks : undefined;
+  const p = compileSkin({ id, version: loaded.version, tokens: loaded.tokens.common, css: loaded.css, ...(opaque ? { opaque } : {}), ...(tw ? { tweaks: tw } : {}) });
+  // (0.21.0) A retouch changes the sheet, so it changes the key (the live page switches to it like to another skin).
+  const tweakKey = tw ? `:t${crypto.createHash("sha256").update(JSON.stringify(tw)).digest("hex").slice(0, 10)}` : "";
+  return { ...p, key: `${id}@${loaded.version}:${loaded.fingerprint.slice(0, 12)}${opaque ? ":solid" : ""}${tweakKey}` };
 }
 
 export type PageSkin = { payload: LoadedPayload | null; value: ContextValue | null; source: "rule" | "default" | "none" };
@@ -38,9 +42,9 @@ export async function skinForPage(look: PageLook, now = Date.now(), opaque = fal
     const b = look.byContext;
     const value = b.enabled && b.instance && b.context ? await readContextValue({ instance: b.instance, context: b.context }, now) : null;
     const pick = pickSkin(look, value);
-    const payload = await skinPayload(pick.skin, opaque);
+    const payload = await skinPayload(pick.skin, opaque, look.tweaks);
     // A rule that points to a skin that no longer works falls back to the default skin, never to a broken page.
-    if (!payload && pick.source === "rule") return { payload: await skinPayload(look.skin, opaque), value, source: look.skin ? "default" : "none" };
+    if (!payload && pick.source === "rule") return { payload: await skinPayload(look.skin, opaque, look.tweaks), value, source: look.skin ? "default" : "none" };
     return { payload, value, source: pick.source };
   } catch { return { payload: null, value: null, source: "none" }; }
 }

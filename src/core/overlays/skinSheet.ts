@@ -27,7 +27,61 @@ export const ANIM_CSS: Record<string, string> = {
   glow: "@keyframes ov-glow{from{opacity:.94}to{opacity:1}}",
 };
 
-export type SkinPayload = { id: string; version: string; css: string };
+export type SkinPayload = { id: string; version: string; css: string; /** (0.21.0) The colours the appearance kit takes from this skin (derived when the skin does not set them). */ colors?: SkinColors };
+
+// ── (0.21.0) The skin's colours for the appearance kit, and the site's retouches of a skin ─────────────────────────────────────────────────────
+/** All #rrggbb: what an element's "the skin's colour" means. */
+export type SkinColors = { solid: string; soft: string; onLight: string; onDark: string; outline: string | null };
+const toHex = (k: { r: number; g: number; b: number }) => `#${[k.r, k.g, k.b].map((n) => Math.max(0, Math.min(255, Math.round(n))).toString(16).padStart(2, "0")).join("")}`;
+/** The kit colours of a skin: its own optional tokens, else derived (solid: its panel made solid; soft: the same colour, the kit sets the opacity; text pair: #111111 / #ffffff). Null without a panel colour. */
+export function skinColors(tokens: Readonly<Record<string, string>>): SkinColors | null {
+  const surface = tokens["--ov-surface"] ? parseColor(tokens["--ov-surface"]) : null;
+  if (!surface) return null;
+  const hex = (name: string): string | null => { const c = tokens[name] ? parseColor(tokens[name]) : null; return c ? toHex(c.a >= 1 ? c : composite(c, BLACK)) : null; };
+  const solidRaw = tokens["--ov-surface-solid"] ?? solidSurface(tokens["--ov-surface"]!, tokens["--ov-fg"]);
+  const solidC = parseColor(solidRaw)!;
+  const solid = toHex(solidC.a >= 1 ? solidC : composite(solidC, BLACK));
+  const softC = tokens["--ov-surface-soft"] ? parseColor(tokens["--ov-surface-soft"]) : null;
+  return { solid, soft: softC ? toHex(softC) : toHex(surface), onLight: hex("--ov-fg-on-light") ?? "#111111", onDark: hex("--ov-fg-on-dark") ?? "#ffffff", outline: hex("--ov-outline") };
+}
+
+export const TWEAK_FONTS = ["system", "serif", "rounded", "condensed", "mono", "typewriter", "display"] as const;
+export type TweakFont = (typeof TWEAK_FONTS)[number];
+const TWEAK_FONT_STACKS: Record<TweakFont, string> = {
+  system: 'system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+  serif: 'Georgia, "Times New Roman", serif',
+  rounded: 'ui-rounded, "Varela Round", "Nunito", system-ui, sans-serif',
+  condensed: '"Arial Narrow", "Roboto Condensed", "Helvetica Neue", sans-serif',
+  mono: 'ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace',
+  typewriter: '"Courier New", Courier, "Nimbus Mono PS", monospace',
+  display: 'Didot, "Bodoni MT", "Playfair Display", Georgia, serif',
+};
+/** The site's retouches of a skin (owner decision 4: for this site only, the shared skin is never changed). Every value is closed: a colour #rrggbb, a font from the list, round or square corners. */
+export type SkinTweaks = { accent?: string; surface?: string; font?: TweakFont; corners?: "round" | "square" };
+const best = (fg: string, bgs: readonly { r: number; g: number; b: number; a: number }[]) => Math.min(...bgs.map((b) => contrastRatio({ ...parseColor(fg)!, a: 1 }, b)));
+/** The tokens a retouch writes over the skin's own, with the text colours that keep 4.5:1 (worst case over white and black when the panel is translucent). */
+export function tweakTokens(tokens: Readonly<Record<string, string>>, t: SkinTweaks): Record<string, string> {
+  const out: Record<string, string> = {};
+  if (t.surface) {
+    const own = tokens["--ov-surface"] ? parseColor(tokens["--ov-surface"]) : null;
+    const next = { ...parseColor(t.surface)!, a: own ? own.a : 1 };
+    out["--ov-surface"] = next.a >= 1 ? t.surface : `rgba(${next.r},${next.g},${next.b},${Math.round(next.a * 100) / 100})`;
+    out["--ov-surface-image"] = "none";
+    const backs = [composite(next, WHITE), composite(next, BLACK)];
+    const fg = tokens["--ov-fg"];
+    if (!fg || !parseColor(fg) || best(fg, backs) < 4.5) out["--ov-fg"] = best("#ffffff", backs) >= best("#111111", backs) ? "#ffffff" : "#111111";
+    const muted = tokens["--ov-muted"];
+    if (muted && parseColor(muted) && best(muted, backs) < 4.5) out["--ov-muted"] = out["--ov-fg"] ?? fg!;
+  }
+  if (t.accent) {
+    out["--ov-accent"] = t.accent;
+    const a = { ...parseColor(t.accent)!, a: 1 };
+    out["--ov-accent-fg"] = contrastRatio({ r: 255, g: 255, b: 255, a: 1 }, a) >= contrastRatio({ r: 17, g: 17, b: 17, a: 1 }, a) ? "#ffffff" : "#111111";
+  }
+  if (t.font) { out["--ov-font"] = TWEAK_FONT_STACKS[t.font]; out["--ov-font-heading"] = TWEAK_FONT_STACKS[t.font]; }
+  if (t.corners) out["--ov-radius"] = t.corners === "round" ? "12px" : "0px";
+  return out;
+}
 
 /** The skin's panel colour made solid (the owner chose an opaque background): same colour, alpha 1 when that keeps the text readable, else the colour it was checked over (black under light text, white under dark text). */
 export function solidSurface(surface: string, fg: string | undefined): string {
@@ -41,9 +95,11 @@ export function solidSurface(surface: string, fg: string | undefined): string {
   return hex(composite(c, light ? BLACK : WHITE));
 }
 
-export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean }): SkinPayload {
+export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean; /** (0.21.0) The site's retouches, written over the skin's tokens and before its rules. */ tweaks?: SkinTweaks }): SkinPayload {
   const { id } = input;
-  const tokens = input.opaque && input.tokens["--ov-surface"] ? { ...input.tokens, "--ov-surface": solidSurface(input.tokens["--ov-surface"], input.tokens["--ov-fg"]) } : input.tokens;
+  const base = input.opaque && input.tokens["--ov-surface"] ? { ...input.tokens, "--ov-surface": solidSurface(input.tokens["--ov-surface"], input.tokens["--ov-fg"]) } : input.tokens;
+  const tweaked = input.tweaks && Object.keys(input.tweaks).length ? tweakTokens(base, input.tweaks) : null;
+  const tokens: Readonly<Record<string, string>> = tweaked ? { ...base, ...tweaked } : base;
   const has = (n: string) => typeof tokens[n] === "string" && tokens[n] !== "";
   const out: string[] = [];
   const known = OV_TOKEN_DEFS.filter((d) => has(d.name));
@@ -83,7 +139,8 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   // Idle motion presets of contract 3 (their rules are already inside `prefers-reduced-motion: no-preference`): the keyframes belong to the core.
   for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) { out.push(frames); motion = true; }
   if (motion) out.push(`@media (prefers-reduced-motion:reduce){html[data-ov-skin="${id}"] *,html[data-ov-skin="${id}"] *::before,html[data-ov-skin="${id}"] *::after{animation:none!important;transition:none!important}}`);
-  return { id, version: input.version, css: out.filter(Boolean).join("\n") };
+  const colors = skinColors(tokens);
+  return { id, version: input.version, css: out.filter(Boolean).join("\n"), ...(colors ? { colors } : {}) };
 }
 
 export type TokenIssue = { code: "missing" | "contrast" | "no-shadow"; token?: string; ratio?: number; pair?: string };
@@ -112,6 +169,15 @@ export function checkSkinTokens(tokens: Readonly<Record<string, string>>): Token
     const r = worstOver(tokens["--ov-fg"]!, tokens["--ov-surface"]!);
     if (r !== null && r < 4.5) out.push({ code: "contrast", pair: "--ov-fg / --ov-surface", ratio: Math.round(r * 10) / 10 });
     if (tokens["--ov-muted"]) { const m = worstOver(tokens["--ov-muted"], tokens["--ov-surface"]!); if (m !== null && m < 4.5) out.push({ code: "contrast", pair: "--ov-muted / --ov-surface", ratio: Math.round(m * 10) / 10 }); }
+  }
+  // (0.21.0) The optional kit colours: the skin's text on its light and solid panels, and its text pair on a light and a dark panel.
+  for (const n of ["--ov-surface-soft", "--ov-surface-solid"]) if (tokens[n]) {
+    const r = worstOver(tokens["--ov-fg"]!, tokens[n]!);
+    if (r !== null && r < 4.5) out.push({ code: "contrast", pair: `--ov-fg / ${n}`, ratio: Math.round(r * 10) / 10 });
+  }
+  for (const [n, back] of [["--ov-fg-on-light", "#ffffff"], ["--ov-fg-on-dark", "#000000"]] as const) if (tokens[n]) {
+    const r = worstOver(tokens[n]!, back);
+    if (r !== null && r < 4.5) out.push({ code: "contrast", pair: `${n} / ${back}`, ratio: Math.round(r * 10) / 10 });
   }
   if (tokens["--ov-accent"] && tokens["--ov-accent-fg"]) {
     const r = worstOver(tokens["--ov-accent-fg"], tokens["--ov-accent"]);
