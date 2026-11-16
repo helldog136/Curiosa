@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.27.0 — 2026-11-16
+
+**En bref.** La fenêtre d'une réaction montre maintenant l'aperçu de l'alerte : le fichier, le texte placé et son animation, sans passer par OBS.
+
+**In short.** The window of a reaction now shows the alert preview: the file, the placed text and its animation, without going through OBS.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **L'aperçu de l'alerte.** Sous les fichiers d'une réaction (Activité Twitch, commande du Bot Twitch), l'alerte s'affiche comme sur l'overlay, avec un pseudo d'exemple. Elle suit vos changements de fichiers, d'ordre, de phrase et de texte placé.
+- **(English) The alert preview.** Under the files of a reaction (Twitch activity, a Twitch bot command), the alert shows as on the overlay, with a sample name. It follows your changes of files, order, sentence and placed text.
+- **Lire et rejouer.** « Lire » joue la vidéo et l'apparition du texte, puis « Rejouer ». Le son est coupé au départ ; un bouton l'allume.
+- **(English) Play and play again.** "Play" plays the video and the entrance of the text, then "Play again". The sound is off at first; a button turns it on.
+- **Un fichier à la fois.** Avec plusieurs fichiers, de petites vignettes choisissent celui qu'on regarde. Damier, sombre ou clair montre ce qu'il y a derrière un fichier transparent.
+- **(English) One file at a time.** With several files, small thumbnails pick the one you look at. Checkerboard, dark or light shows what is behind a transparent file.
+
+### Pour les développeurs
+
+- **`ReactionPreview`** (`src/components/admin/ReactionPreview.tsx`), drawn by `GalleryField` when the field declares `compose`: the same engine as the overlay (`CuriosaCompose.mount`), the still picture first, one decoding video at a time, nothing while the editor is open.
+- **`compose.phraseField`** (optional): the name of the form field that holds the sentence; the preview follows it as it is typed (its `{word}`s filled with the samples). An older core ignores it.
+- **Engine option `light`** with `still`: a video loads only its first picture (`preload="metadata"`). Glossary words added: alert preview, play again, all other rewards, deleted on Twitch.
+
 ## 0.26.0 — 2026-11-16
 
 **En bref.** Un nouvel onglet « Adresses pour OBS » réunit toutes les adresses à coller dans OBS. « Pages d'overlay » n'apparaît plus dans le menu d'un site qui ne fait pas de stream.

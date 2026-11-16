@@ -1056,6 +1056,7 @@ A **composition** is a backdrop (a picture or a GIF of the gallery; a video sinc
     phrase: { label: t("phrase"), sample: "Merci etoile_nord" },   // what a "sentence" box shows in the editor
     formats: ["media", "16:9", "9:16", "1:1", "4:3", "21:9"], defaultFormat: "media", maxBoxes: 4,
     testAction: "testReaction",   // optional: "Test on the overlay" runs this adminAction with the form, the placement and <name>__composeFor = the file
+    phraseField: "text",          // (0.27.0) optional: the field of the same form that holds the sentence; the inline preview follows what is typed there
   } }
 ```
 
@@ -1069,6 +1070,8 @@ A **composition** is a backdrop (a picture or a GIF of the gallery; a video sinc
 - Tests: `fakeCtx()` gives the real kit as `ctx.overlay` (`fakeCtx({ overlay: null })` = an older core).
 
 #### Videos (core 0.21.0)
+
+**The inline preview (core 0.27.0).** A gallery with `compose` shows, under its files, the alert as the overlay draws it: the SAME engine (`CuriosaCompose`), the file with its placed texts filled with the samples of `variables`, their entrance and exit, the readability look; a file without placed text shows alone, with the sentence (`phrase.sample`, or what is typed in `phraseField`, its `{word}`s filled with the samples) under the frame. A row of small buttons picks the file shown when there are several (the overlay picks at random or in turn); three grounds (checkerboard, dark, light) show what is behind a transparent file; "Play" plays it, muted until the sound button is on, then "Play again". Light on purpose: the still picture first (a video loads its first picture only: `mount(…, { still: true, light: true })`), one video decodes at a time, nothing plays while the composition editor is open. The module adds nothing: an older core ignores `phraseField` and shows no preview.
 
 Add `video: true` to the `compose` option when your page plays a video backdrop as the engine says: video tiles then get **Place the text** too. Without it, an older module keeps pictures only. Test the core first: `ctx.overlay.features?.includes("video")` (absent on 0.19.0, and then do not send `video: true`).
 
