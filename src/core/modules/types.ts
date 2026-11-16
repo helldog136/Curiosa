@@ -484,6 +484,17 @@ export type ModuleApi = {
     owns(url: string): Promise<boolean>;
     /** Espace pris par les fichiers revendiqués par ce module (toutes ses instances) et plafonds. Sans la permission : zéros. */
     usage(): Promise<{ files: number; bytes: number; limitFiles: number; limitBytes: number }>;
+    /**
+     * (core 0.18.0) A file an AI ASSISTANT sends, in an MCP action that declares `"uploads": true` (anywhere else: `not-allowed`). Nothing is ever thrown; a refusal
+     * carries `message`, an English sentence for the assistant (what is wrong, what to do), that the action may return as is. The finished file is ALREADY owned by
+     * this instance (no claim): `remove`/`owns` work on it. See core/services/assistantUploads.ts.
+     */
+    upload?: {
+      begin(input: { bytes: number; sha256: string; accept?: ("image" | "video" | "audio")[]; label?: string }): Promise<AssistantUploadBegin | AssistantUploadProblem>;
+      chunk(input: { upload: string; index: number; data: string }): Promise<{ ok: true; received: number; total: number; complete: boolean } | AssistantUploadProblem>;
+      finish(input: { upload: string }): Promise<AssistantUploadDone | AssistantUploadProblem>;
+      cancel(input: { upload: string }): Promise<{ ok: true } | AssistantUploadProblem>;
+    };
   };
   /**
    * DÉPRÉCIÉ depuis la 0.3.0 : préférez le service `game.cover` (`ctx.api.services.call("game.cover", "cover", { title })`, besoin facultatif). Simple relais vers le module « Jaquettes de jeux »
@@ -861,6 +872,11 @@ export type McpDecl = {
   default?: boolean;
   /** Action irréversible (suppression…) : signalée comme telle, confirmation avant de l'accorder. Doit être `default: false`. */
   destructive?: boolean;
+  /**
+   * (core 0.18.0) The action receives a file from the assistant through `ctx.api.files.upload` (begin, chunk, finish, cancel). Needs the `files` permission; never
+   * read-only, never on by default (the owner grants it). An older core ignores the key: `ctx.api.files.upload` is then absent. See docs/MODULES.md, "Files an assistant sends".
+   */
+  uploads?: boolean;
   input?: JsonSchemaLite;
 };
 
@@ -898,3 +914,8 @@ export function localized(value: LocalizedString | undefined, locale: string, de
 
 /** Autorisation de semer : le module cible, et pourquoi (affiché à l'administrateur). */
 export type SeedDecl = { module: string; reason: LocalizedString };
+
+/** (core 0.18.0) Assistant uploads, see `ctx.api.files.upload`. */
+export type AssistantUploadProblem = { ok: false; reason: "not-allowed" | "invalid" | "busy" | "unknown" | "expired" | "incomplete" | "hash" | "type" | "size" | "probe" | "quota" | "failed"; message: string };
+export type AssistantUploadBegin = { ok: true; upload: string; putUrl: string; partBytes: number; chunkBytes: number; chunks: number; expiresAt: string; maxBytes: number };
+export type AssistantUploadDone = { ok: true; url: string; kind: "image" | "video" | "audio"; type: string; bytes: number; label: string; width: number | null; height: number | null; durationSeconds: number | null; codec: string | null; /** (core 0.18.0) transparent video or GIF; null when not read */ alpha: boolean | null; already: boolean };
