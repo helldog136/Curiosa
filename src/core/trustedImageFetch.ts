@@ -67,7 +67,7 @@ async function verifiedAddresses(url: URL, signal: AbortSignal): Promise<string[
 
 type Hop = { redirect: string } | { body: Buffer };
 
-function fetchOnce(url: URL, addresses: string[], signal: AbortSignal): Promise<Hop> {
+function fetchOnce(url: URL, addresses: string[], signal: AbortSignal, maxBytes: number): Promise<Hop> {
   return new Promise<Hop>((resolve, reject) => {
     const secure = url.protocol === "https:";
     const transport = secure ? https : http;
@@ -90,14 +90,14 @@ function fetchOnce(url: URL, addresses: string[], signal: AbortSignal): Promise<
       if (status !== 200) { res.resume(); req.destroy(); return fail(new McpToolError(`The site answered with status ${status} instead of an image. Check that the address is right and public.`)); }
       const encoding = String(res.headers["content-encoding"] ?? "identity").toLowerCase();
       if (encoding !== "identity") { req.destroy(); return fail(new McpToolError("The site sent a compressed answer, which is not accepted for an image.")); }
-      const tooBig = () => new McpToolError(`The image is larger than ${IMPORT_MAX_BYTES / 1024 / 1024} MB. Use a smaller or compressed version (for example a 1600 pixel wide webp) and import it again.`);
+      const tooBig = () => new McpToolError(`The image is larger than ${maxBytes / 1024 / 1024} MB. Use a smaller or compressed version (for example a 1600 pixel wide webp) and import it again.${maxBytes > IMPORT_MAX_BYTES ? "" : " The owner can lift the upload limits for a few minutes in Admin > AI assistants > Settings."}`);
       const length = Number(res.headers["content-length"]);
-      if (Number.isFinite(length) && length > IMPORT_MAX_BYTES) { req.destroy(); return fail(tooBig()); }
+      if (Number.isFinite(length) && length > maxBytes) { req.destroy(); return fail(tooBig()); }
       const chunks: Buffer[] = [];
       let total = 0;
       res.on("data", (chunk: Buffer) => {
         total += chunk.length;
-        if (total > IMPORT_MAX_BYTES) { chunks.length = 0; req.destroy(); return fail(tooBig()); }
+        if (total > maxBytes) { chunks.length = 0; req.destroy(); return fail(tooBig()); }
         chunks.push(chunk);
       });
       res.on("end", () => { if (!done) { done = true; resolve({ body: Buffer.concat(chunks) }); } });
@@ -113,7 +113,8 @@ function fetchOnce(url: URL, addresses: string[], signal: AbortSignal): Promise<
 }
 
 /** Downloads one image from a trusted source. Returns the bytes and the address they finally came from. */
-export async function fetchTrustedImage(raw: string, sources: readonly TrustedSource[]): Promise<{ bytes: Buffer; from: URL; requested: URL }> {
+/** `maxBytes`: 3 MB, or 10 MB while the owner lifted the upload limits (core 0.28.0). */
+export async function fetchTrustedImage(raw: string, sources: readonly TrustedSource[], maxBytes: number = IMPORT_MAX_BYTES): Promise<{ bytes: Buffer; from: URL; requested: URL }> {
   const control = new AbortController();
   const timer = setTimeout(() => control.abort(), importDeps.timeoutMs);
   try {
@@ -128,7 +129,7 @@ export async function fetchTrustedImage(raw: string, sources: readonly TrustedSo
       seen.add(key);
       const addresses = await verifiedAddresses(url, control.signal);
       if (control.signal.aborted) throw new McpToolError(`The site did not answer within ${Math.round(importDeps.timeoutMs / 1000)} seconds. Try again later.`);
-      const hop = await fetchOnce(url, addresses, control.signal);
+      const hop = await fetchOnce(url, addresses, control.signal, maxBytes);
       if ("body" in hop) return { bytes: hop.body, from: url, requested: first };
       if (redirects >= IMPORT_MAX_REDIRECTS) throw new McpToolError(`The address redirects more than ${IMPORT_MAX_REDIRECTS} times. Use the final address of the image.`);
       try { current = new URL(hop.redirect, url).href; } catch { throw new McpToolError("The site answered with a redirection that has no usable destination."); }

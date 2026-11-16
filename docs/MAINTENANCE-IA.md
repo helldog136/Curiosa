@@ -293,8 +293,20 @@ Goal: an AI with the right to do it sets up the identity of a whole site without
 | EXIF | Like the admin's upload, the stored original is not rewritten: only the resized copies lose their metadata. |
 | Alternative text | Required, 125 characters at most, one line. Stored in the setting `media.alt.<file name>` (no migration). `media_set_alt` changes it; the old text goes to the journal. |
 | `media_list` | 50 per page, newest first: id, address, type, alt, bytes, date, `usedBy` (best effort: logos, settings, text of the content). Read only. There is no deletion tool. |
-| Limits | The everyday counter of the access (see below) plus a daily quota for the whole site: 100 images or 60 MB per 24 hours, counted from the journal. |
+| Limits | The everyday counter of the access (see below) plus a daily quota for the whole site: 100 images or 60 MB per 24 hours, counted from the journal. The owner can start the count over or lift the limits for a few minutes: see "Lifting the upload limits" below. |
 | Journal | `media.upload` (file name, size in bytes, the label sent) and `media.alt` (old and new text), actor `mcp:<access name>`, kind `assistant`. Never the bytes. |
+
+### Lifting the upload limits (core 0.28.0)
+
+Admin > AI assistants > Settings, card "Image uploads by assistants", **owner only** (not the technical coordination, never an assistant: no MCP tool reads or writes these two settings; `maintenance_my_access` only reports `imageUploads.liftedUntil`). Code: `src/core/services/mcp/uploadLift.ts`.
+
+| Action | What it does | Journal (actor: the signed-in owner) |
+|---|---|---|
+| Start over from zero | Writes `mcp.media.quotaFrom` = now. The daily quota counts the journal lines after `max(now - 24 h, quotaFrom)`. No journal line is deleted or changed. | `mcp.media.quota.reset` |
+| Lift the limits for 10, 30 or 60 minutes (10 by default, never more than 60) | Writes `mcp.media.liftedUntil` = now + N. Compared on every call, with no timer: a restart neither extends nor forgets it; at the end time itself the limits apply again; a stored end more than 60 minutes ahead is ignored. A banner "Upload limits lifted until HH:MM" with "Stop now" shows at the top of the Settings tab. | `mcp.limits.lift` (duration, end) |
+| Stop now | Writes the end = now: the limits apply at once. | `mcp.limits.lift.stop` |
+
+While lifted: `media_upload` has no daily quota, no `content` hourly counter, and one image may reach 10 MB (its call body 14 MB instead of 4.3 MB); `media_import` has no daily quota and one image may reach 10 MB (its `content` counter and its 10 images per call stay). **Never lifted**: the type read from the bytes, the pixel limit, the svg cleaning, the 1 MB cap of every other call and of a batch, the `risky` counter (installs, updates), the trusted image sources list, the rights per tool, the `content` counter of every other tool. "Lifted" is a higher bound, never "unlimited": the body of an upload is read into memory. A refusal for size or for the daily quota tells the assistant what the owner can do here.
 
 ### Importing images from trusted sources: `media_import`
 

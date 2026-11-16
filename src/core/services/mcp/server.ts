@@ -11,6 +11,7 @@ import type { McpTool } from "./types";
 export type ServerIcons = (request: Request) => Promise<unknown[]>;
 export type ListTools = (hint?: { name?: string }) => Promise<McpTool[]>;
 import { McpToolError } from "./validate";
+import { LIFTED_MEDIA_BODY, liftedUntil, MEDIA_BODY } from "./uploadLift";
 import { toolContent } from "./image";
 
 /**
@@ -27,8 +28,9 @@ import { toolContent } from "./image";
  */
 const SUPPORTED_VERSIONS = ["2025-11-25", "2025-06-18", "2025-03-26", "2024-11-05"];
 const MAX_BODY = 1_000_000;
-/** Only one call may be bigger: `media_upload` (an image of 3 MB sent as base64). Everything else stays at 1 MB. */
-const MAX_BODY_MEDIA = 4_300_000;
+/** Only one call may be bigger: `media_upload` (an image of 3 MB sent as base64; 10 MB, so 14 MB of body, while the owner lifted the upload limits). Everything else stays at 1 MB. */
+const MAX_BODY_MEDIA = MEDIA_BODY;
+const TOO_LARGE_MEDIA = "Request too large. One image sent with media_upload is 3 MB at most; the owner can lift this to 10 MB for a few minutes in Admin > AI assistants > Settings.";
 
 type RpcRequest = { jsonrpc?: string; id?: string | number | null; method?: string; params?: Record<string, unknown>; result?: unknown; error?: unknown };
 
@@ -57,7 +59,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools,
         capabilities: { tools: { listChanged: false } },
         // `icons` (MCP 2025-11-25): ABSOLUTE https addresses on the exact public host of THIS site (clients accept only the server's own origin, without redirect).
         serverInfo: { name: config.name, title: config.name, version: "1.0.0", ...(icons.length > 0 ? { icons } : {}) },
-        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change). To set up the identity of the site: upload images with media_upload (base64, alternative text required, 3 MB), then use site_settings_get and site_settings_set (name, tagline, presentation per language, contact e-mail, logos); changing settings follows the owner's approval setting.",
+        instructions: "Tools come from the modules installed on this site. What you create stays a draft: publishing is a separate right that the owner may grant, and it follows the owner's approval setting. The menu and the home page have their own tools (navigation_get / navigation_set, home_sections_list / home_sections_set): read, change the whole list, send it back; they follow the same approval setting. If a tool you expect is missing, the owner may not have granted it yet (call maintenance_my_access if you have it, and reconnect after a change). To set up the identity of the site: upload images with media_upload (base64, alternative text required, 3 MB; the owner can lift this to 10 MB for a few minutes), then use site_settings_get and site_settings_set (name, tagline, presentation per language, contact e-mail, logos); changing settings follows the owner's approval setting.",
       });
     }
     case "ping":
@@ -133,7 +135,8 @@ async function run(request: Request, token: AuthedToken, listTools: ListTools, s
 
   const icons = await serverIcons?.(request).catch(() => []) ?? [];
   const raw = await request.text();
-  if (raw.length > MAX_BODY_MEDIA) return json(rpcError(null, -32600, "Request too large."), 413);
+  // Above the usual media cap, the lift is read (from the database, every time): only then can a body reach 14 MB. It is never unbounded.
+  if (raw.length > MAX_BODY_MEDIA && (raw.length > LIFTED_MEDIA_BODY || (await liftedUntil()) === null)) return json(rpcError(null, -32600, raw.length > LIFTED_MEDIA_BODY ? "Request too large." : TOO_LARGE_MEDIA), 413);
   let body: unknown;
   try {
     body = JSON.parse(raw);

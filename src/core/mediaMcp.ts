@@ -11,6 +11,7 @@ import { saveUpload, sniffImage } from "@/core/services/uploads";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { takeSlot } from "@/core/maintenance/slots";
+import { dailyWindowStart, LIFTED_MEDIA_BODY, LIFTED_MEDIA_BYTES, MEDIA_BYTES, mediaLimitsNow } from "@/core/services/mcp/uploadLift";
 
 /**
  * MEDIA FOR AN AI: `media_upload`, `media_list` (read) and `media_set_alt`. No deletion tool.
@@ -26,8 +27,11 @@ import { takeSlot } from "@/core/maintenance/slots";
  * The admin's upload route does not strip EXIF data from the stored original (only the resized copies lose it): the same holds here. Said in docs/MAINTENANCE-IA.md.
  * Limits: the "content" counter of the access (slots.ts), and a daily quota for the whole site counted from the journal. The journal gets who / when / the file name and
  * its size, never the bytes.
+ * (0.28.0) The owner may start the daily count over, or lift the limits for 10, 30 or 60 minutes (services/mcp/uploadLift.ts): then no daily quota, no "content"
+ * counter for media_upload, and one image up to 10 MB. The type, pixel and svg checks above are NEVER lifted.
  */
-export const MAX_MEDIA_BYTES = 3 * 1024 * 1024;
+export const MAX_MEDIA_BYTES = MEDIA_BYTES;
+export const LIFTED_MAX_MEDIA_BYTES = LIFTED_MEDIA_BYTES;
 export const MAX_ALT = 125;
 export const PAGE_SIZE = 50;
 /** For the whole site, all accesses together, over the last 24 hours. */
@@ -41,7 +45,7 @@ export const TYPE_OF: Record<string, string> = { png: "image/png", jpg: "image/j
 export const MEDIA_UPLOAD_INPUT: JsonSchemaLite = {
   type: "object",
   properties: {
-    dataBase64: { type: "string", maxLength: 4_300_000, description: "The image bytes as plain base64 (no \"data:\" prefix). png, jpeg, webp or gif, 3 MB at most; svg only for logos (300 KB at most, it is cleaned). The site never downloads from an address: the bytes must be here." },
+    dataBase64: { type: "string", maxLength: LIFTED_MEDIA_BODY, description: "The image bytes as plain base64 (no \"data:\" prefix). png, jpeg, webp or gif, 3 MB at most (10 MB while the owner has lifted the upload limits); svg only for logos (300 KB at most, it is cleaned). The site never downloads from an address: the bytes must be here." },
     alt: { type: "string", maxLength: MAX_ALT + 40, description: `Alternative text that describes the image for people who cannot see it, ${MAX_ALT} characters at most, for example "Blue logo of Etoile Nord". Required.` },
     name: { type: "string", maxLength: 120, description: "Optional: the original file name, only written in the journal as a label. The stored name is chosen by the site." },
   },
@@ -69,14 +73,19 @@ export function cleanAlt(v: unknown): string {
 /** The label of the journal: the last part of what was sent, letters, digits, dot, dash, underscore and space only. */
 const label = (v: unknown): string => (typeof v === "string" ? v.split(/[\\/]/).pop()!.replace(/[^\p{L}\p{N} ._-]+/gu, "").replace(/^\.+/, "").trim().slice(0, 60) : "");
 
-function decode(raw: string): Buffer {
+/** What the AI is told when the size or the quota refuses an image: what to do, and what the owner can do. */
+export const OWNER_CAN_LIFT = "The owner can lift the upload limits for a few minutes in Admin > AI assistants > Settings.";
+const tooBig = (max: number, lifted: boolean) => `The image is larger than ${max / 1024 / 1024} MB. Resize or compress it (for example a 1600 pixel wide jpeg or webp) and send it again.${lifted ? "" : ` ${OWNER_CAN_LIFT}`}`;
+export const quotaMessage = (via: "upload" | "import") => `The daily ${via === "upload" ? "upload" : "image"} quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later. The owner can start the count over, or lift the upload limits for a few minutes, in Admin > AI assistants > Settings.`;
+
+function decode(raw: string, max: number, lifted: boolean): Buffer {
   const b64 = raw.replace(/\s+/g, "");
   if (/^data:/i.test(b64)) throw new McpToolError('Send only the base64 text, without the "data:image/…;base64," prefix.');
   if (!b64 || !/^[A-Za-z0-9+/]+={0,2}$/.test(b64) || b64.length % 4 === 1) throw new McpToolError('"dataBase64" must be the image encoded as plain base64 (letters, digits, + and /).');
   const approx = Math.floor((b64.length * 3) / 4);
-  if (approx > MAX_MEDIA_BYTES + 3) throw new McpToolError(`The image is larger than ${MAX_MEDIA_BYTES / 1024 / 1024} MB. Resize or compress it (for example a 1600 pixel wide jpeg or webp) and send it again.`);
+  if (approx > max + 3) throw new McpToolError(tooBig(max, lifted));
   const buf = Buffer.from(b64, "base64");
-  if (buf.length > MAX_MEDIA_BYTES) throw new McpToolError(`The image is larger than ${MAX_MEDIA_BYTES / 1024 / 1024} MB. Resize or compress it and send it again.`);
+  if (buf.length > max) throw new McpToolError(tooBig(max, lifted));
   return buf;
 }
 
@@ -88,14 +97,15 @@ export async function checkPixels(buf: Buffer): Promise<{ width: number; height:
   return size;
 }
 
-/** What the assistants uploaded or imported in the last 24 hours, counted from the journal (nothing else to keep, nothing to clean). */
+/** What the assistants uploaded or imported in the last 24 hours (or since the owner started the count over), counted from the journal (nothing else to keep, nothing to clean). */
 export async function usedToday(): Promise<{ files: number; bytes: number }> {
-  const rows = await prisma.auditLog.findMany({ where: { action: { in: ["media.upload", "media.import"] }, actorKind: "assistant", createdAt: { gt: new Date(Date.now() - 86_400_000) } }, select: { target: true }, take: DAILY_FILES * 4 });
+  const from = await dailyWindowStart();
+  const rows = await prisma.auditLog.findMany({ where: { action: { in: ["media.upload", "media.import"] }, actorKind: "assistant", createdAt: { gt: new Date(from) } }, select: { target: true }, take: DAILY_FILES * 4 });
   return { files: rows.length, bytes: rows.reduce((n, r) => n + Number(/ (\d+) bytes/.exec(r.target)?.[1] ?? 0), 0) };
 }
 
 /** What `media_upload` and `media_import` share: the bytes are checked (type from the content, pixels, svg through the logo pipeline) and stored under a random name. */
-export async function storeCheckedImage(buf: Buffer, via: "upload" | "import"): Promise<{ address: string; name: string; kind: string; size: { width: number; height: number }; stored: number }> {
+export async function storeCheckedImage(buf: Buffer, via: "upload" | "import", maxBytes: number = MAX_MEDIA_BYTES): Promise<{ address: string; name: string; kind: string; size: { width: number; height: number }; stored: number }> {
   const again = via === "upload" ? "send it again" : "use another image";
   let address: string;
   let kind: string;
@@ -109,8 +119,9 @@ export async function storeCheckedImage(buf: Buffer, via: "upload" | "import"): 
     const type = sniffImage(buf);
     if (!type) throw new McpToolError(`This is not a png, jpeg, webp or gif image (the file content was checked, not its name or the type announced). Convert it to one of these formats and ${again}.`);
     size = (await checkPixels(buf)) ?? size;
-    const saved = await saveUpload(buf);
-    if (!saved) throw new McpToolError("The image was refused. Check that it is a png, jpeg, webp or gif of 3 MB at most.");
+    if (buf.length > maxBytes) throw new McpToolError(tooBig(maxBytes, maxBytes > MAX_MEDIA_BYTES));
+    const saved = await saveUpload(buf, { only: ["image"], imageMax: maxBytes });
+    if (!saved) throw new McpToolError(`The image was refused. Check that it is a png, jpeg, webp or gif of ${maxBytes / 1024 / 1024} MB at most.`);
     address = saved; kind = type;
   }
   const name = uploadNameOf(address)!;
@@ -125,12 +136,16 @@ export async function saveAlt(name: string, alt: string): Promise<void> {
 export async function mediaUpload(rawArgs: Record<string, unknown>, actor: { name: string; tokenId?: string }): Promise<unknown> {
   const args = validateArgs(MEDIA_UPLOAD_INPUT, rawArgs);
   const alt = cleanAlt(args.alt);
-  const buf = decode(String(args.dataBase64));
-  await takeSlot(actor.tokenId, "content");
-  const day = await usedToday();
-  if (day.files >= DAILY_FILES || day.bytes + buf.length > DAILY_BYTES) throw new McpToolError(`The daily upload quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
+  // The limits are read on every call: a lift that ended a second ago no longer counts.
+  const limits = await mediaLimitsNow();
+  const buf = decode(String(args.dataBase64), limits.imageBytes, limits.until !== null);
+  if (limits.contentCounter) await takeSlot(actor.tokenId, "content");
+  if (limits.daily) {
+    const day = await usedToday();
+    if (day.files >= DAILY_FILES || day.bytes + buf.length > DAILY_BYTES) throw new McpToolError(quotaMessage("upload"));
+  }
 
-  const { address, kind, size, name, stored } = await storeCheckedImage(buf, "upload");
+  const { address, kind, size, name, stored } = await storeCheckedImage(buf, "upload", limits.imageBytes);
   await saveAlt(name, alt);
   // Who, what, when, the file name and its size. Never the bytes.
   await audit(`mcp:${actor.name}`, "media.upload", `${name} ${stored} bytes${label(args.name) ? ` (sent as "${label(args.name)}")` : ""}`);

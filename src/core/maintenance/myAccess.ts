@@ -8,6 +8,7 @@ import { ALWAYS_HUMAN } from "./actions";
 import { reconnectView } from "./reconnect";
 import { getApprovalMode } from "./settings";
 import { remainingSlots } from "./slots";
+import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
 
 /**
  * `maintenance_my_access` (level 1, read): what THIS access can and cannot do, so that an assistant never assumes a tool does not exist.
@@ -53,6 +54,7 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   const approval = await getApprovalMode(actor.tokenId);
   const readOnly = token.scope === "read";
   const slots = await remainingSlots(actor.tokenId);
+  const media = await mediaLimitsNow();
   // Top level, first thing the assistant reads: did the rights or the features change after its list was sent?
   const reconnect = await reconnectView(actor.tokenId, token, t, granted.map((g) => g.tool));
   return {
@@ -67,6 +69,13 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
       meaning: t("aim.my.limits.meaning"),
       risky: { ...slots.risky, covers: t("aim.my.limits.risky") },
       content: { ...slots.content, covers: t("aim.my.limits.content") },
+    },
+    // (0.28.0) Read only: whether the owner lifted the upload limits, and until when. No tool can change it.
+    imageUploads: {
+      liftedUntil: media.until === null ? null : new Date(media.until).toISOString(),
+      maxImageMB: media.imageBytes / 1024 / 1024,
+      dailyQuotaApplies: media.daily,
+      meaning: t(media.until === null ? "aim.my.uploads.normal" : "aim.my.uploads.lifted"),
     },
     granted,
     notGranted: notGranted.slice(0, 300),

@@ -169,14 +169,17 @@ export async function storeUpload(content: Buffer | string, ext: keyof typeof TY
 /** Les genres de contenu qu'un envoi peut être : le champ « galerie » en choisit un sous-ensemble (`only`). */
 export type UploadKind = "image" | "video" | "audio";
 
+/** `imageMax` (core 0.28.0): another cap for an image, chosen by the caller (the AI upload while the owner lifted its limits: 10 MB). Sounds and videos keep theirs. */
+export type UploadOpts = { only?: "audio" | readonly UploadKind[]; imageMax?: number };
+
 /** Pourquoi un envoi est refusé : `format` (contenu non reconnu ou d'un genre non voulu) ou `size` (reconnu, mais trop lourd pour son genre). */
-export function uploadProblem(buf: Buffer, opts: { only?: "audio" | readonly UploadKind[] } = {}): "format" | "size" | null {
+export function uploadProblem(buf: Buffer, opts: UploadOpts = {}): "format" | "size" | null {
   const allow = allowed(opts.only);
   const image = allow.has("image") ? sniffImage(buf) : null;
   const audio = image || !allow.has("audio") ? null : sniffAudio(buf);
   const video = image || audio || !allow.has("video") ? null : sniffVideo(buf);
   if (!image && !audio && !video) return "format";
-  return buf.length > (image ? MAX_UPLOAD_BYTES : audio ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES) ? "size" : null;
+  return buf.length > (image ? (opts.imageMax ?? MAX_UPLOAD_BYTES) : audio ? MAX_AUDIO_BYTES : MAX_VIDEO_BYTES) ? "size" : null;
 }
 const allowed = (only: "audio" | readonly UploadKind[] | undefined): Set<UploadKind> => new Set(only === undefined ? ["image", "audio", "video"] : only === "audio" ? ["audio"] : only);
 
@@ -184,7 +187,7 @@ const allowed = (only: "audio" | readonly UploadKind[] | undefined): Set<UploadK
  * Enregistre un envoi dont le contenu est reconnu (image, son ou vidéo). `only: "audio"` : seuls les sons passent (champs et réglages « audio » : un champ son ne
  * reçoit jamais une image ni une vidéo, même si le navigateur a été contourné). `only: ["image", "video"]` (champ « galerie », cœur 0.14.0) : seulement ces genres.
  */
-export async function saveUpload(buf: Buffer, opts: { only?: "audio" | readonly UploadKind[] } = {}): Promise<string | null> {
+export async function saveUpload(buf: Buffer, opts: UploadOpts = {}): Promise<string | null> {
   if (uploadProblem(buf, opts) !== null) return null;
   const allow = allowed(opts.only);
   const image = allow.has("image") ? sniffImage(buf) : null;
