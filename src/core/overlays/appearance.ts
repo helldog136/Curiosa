@@ -173,6 +173,8 @@ export const CONTAINER_PARTS = ["panel", "card", "bubble", "quote"] as const;
 export const TEXT_PARTS = ["title", "name", "body", "text", "message", "detail", "content", "summary", "value", "stat", "list", "label", "status", "game", "clock"] as const;
 /** The `:not(#…)` raises the specificity above any skin or "Opaque" rule (they never use an id), so the element setting wins (priority above). */
 const ROOT = 'html[data-ov-look]:not(#ov-look)';
+/** (0.19.0) The region a composition is drawn in (compose/render.ts): the kit gives it its tokens, never its text colours or outline. */
+export const COMPOSITION = '[data-ov-region="composition"]';
 const rgba = (hex: string, alpha: number) => { const c = hexRgb(hex); return `rgba(${c.r},${c.g},${c.b},${Math.round(alpha * 100) / 100})`; };
 export function outlineShadow(kind: Applied["outline"], text: Applied["text"]): string {
   if (kind === "none") return "none";
@@ -205,7 +207,8 @@ export function lookCss(a: Applied): string {
     `${parts(CONTAINER_PARTS)}{background-color:var(--ov-surface);color:var(--ov-fg);border-color:var(--ov-border)${a.background === "glass" ? ";-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)" : ""}${a.corners ? ";border-radius:var(--ov-radius)" : ""}}`,
     `${parts(TEXT_PARTS)}{color:var(--ov-fg)}`,
     // Under 65 % the video shows through: every text (a module's own coloured title too) gets the outline, which then carries the contrast.
-    ...(a.outline !== "none" && a.opacity < OUTLINE_BELOW ? [`${ROOT} *{text-shadow:var(--ov-text-shadow)!important}`] : []),
+    // (0.19.0) Except the texts of a composition: each box carries its own colour and outline (compose/render.ts), which this rule would override.
+    ...(a.outline !== "none" && a.opacity < OUTLINE_BELOW ? [`${ROOT} *:not(${COMPOSITION},${COMPOSITION} *){text-shadow:var(--ov-text-shadow)!important}`] : []),
   ].join("\n");
 }
 

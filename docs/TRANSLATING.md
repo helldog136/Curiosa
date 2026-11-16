@@ -78,6 +78,15 @@ Use the same word for the same thing everywhere.
 | Discreet | Discret | the readability preset with a light background (55 %) and a thin text outline |
 | No background, outlined text | Sans fond, texte détouré | the readability preset with no background and a thick text outline |
 | text outline | contour du texte | a dark (or light) edge drawn around letters so they stay readable |
+| composition | composition | (0.19.0) a backdrop with text boxes placed on it, shown as an alert |
+| Place the text | Placer le texte | (0.19.0) the button that opens the composition editor on a picture or a GIF |
+| backdrop | arrière-plan | (0.19.0) the picture, GIF or video of a composition (not "background", which is the panel behind a text) |
+| text box | zone de texte | (0.19.0) a frame of a composition that holds one sentence |
+| automatic value | valeur automatique | (0.19.0) a word replaced when the alert shows (Name, Amount), shown as a chip, never with braces |
+| safe margins | marges de sécurité | (0.19.0) the dotted guides 5 % from the edges of a composition |
+| preview background | fond d'aperçu | (0.19.0) checkerboard, dark or light: what the editor shows behind a transparent backdrop (the editor only) |
+| format | format | (0.19.0) the shape of a composition frame: 16:9, 9:16, 1:1, 4:3, 21:9 or the file's own |
+| entrance, exit | apparition, disparition | (0.19.0) how and when a text box appears and leaves during the alert |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 

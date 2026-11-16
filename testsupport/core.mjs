@@ -30,3 +30,9 @@ export async function loadCore() {
   cached = { dir: CORE_DIR, version: pkg.version, apiVersion: config.MODULE_API_VERSION, parseManifest: manifest.parseManifest, SLOTS: blocks.SLOTS, parseCoreVersion: compat.parseCoreVersion, isCompatible: compat.isCompatible, analyzeModuleSkin: moduleSkin.analyzeModuleSkin, skinParts: [...allowlist.PARTS], journal };
   return cached;
 }
+
+/** (core 0.19.0) The composition kit of the core (pure: nothing touches the database), for `fakeCtx().overlay`. Null when it cannot be loaded (an older core). */
+export async function loadComposeKit() {
+  try { return (await import("@/core/compose/kit")).composeKit; } catch { /* the alias hooks are not registered yet */ }
+  try { register("./alias-hooks.mjs", here); return (await import("@/core/compose/kit")).composeKit; } catch { return null; }
+}
