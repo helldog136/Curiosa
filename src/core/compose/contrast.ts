@@ -13,12 +13,14 @@ const WHITE: Rgb = { r: 255, g: 255, b: 255 }, DARK: Rgb = { r: 17, g: 17, b: 17
  */
 export function pickTextColour(rgba: ArrayLike<number>, step = 1): { colour: (typeof RESOLVED)[number]; ratio: number } {
   const white: number[] = [], dark: number[] = [];
+  let clear = 0;
   for (let i = 0; i + 3 < rgba.length; i += 4 * Math.max(1, step)) {
-    if (rgba[i + 3]! < 16) continue;   // transparent: the checkerboard of the editor, not the picture
+    if (rgba[i + 3]! < 16) { clear++; continue; }   // transparent: the checkerboard of the editor, not the picture
     const px = { r: rgba[i]!, g: rgba[i + 1]!, b: rgba[i + 2]! };
     white.push(ratio(WHITE, px)); dark.push(ratio(DARK, px));
   }
-  if (!white.length) return { colour: "#ffffff", ratio: 0 };
+  // (0.21.0) mostly see-through under the box (a transparent video): what shows there is the stream, unknown here; white with its outline reads everywhere
+  if (!white.length || clear > white.length) return { colour: "#ffffff", ratio: 0 };
   const p5 = (list: number[]) => { const s = [...list].sort((a, b) => a - b); return s[Math.floor(s.length * 0.05)]!; };
   const w = p5(white), d = p5(dark);
   return w >= d ? { colour: "#ffffff", ratio: Math.round(w * 10) / 10 } : { colour: "#111111", ratio: Math.round(d * 10) / 10 };

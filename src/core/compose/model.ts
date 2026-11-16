@@ -1,5 +1,5 @@
 /**
- * COMPOSITION OF AN ALERT (core 0.19.0): a backdrop (a picture, a GIF, later a video) and 1 to 4 text boxes placed on it, in percent of the frame. Pure: no
+ * COMPOSITION OF AN ALERT (core 0.19.0; videos 0.21.0): a backdrop (a picture, a GIF or a video) and 1 to 4 text boxes placed on it, in percent of the frame. Pure: no
  * database, no Next, no browser. The same checker serves the editor (client), the form action (server), the modules (through `ctx.overlay`) and, later, the
  * assistant tools, so every caller refuses the same things with the same codes.
  *
@@ -189,6 +189,7 @@ export function checkComposition(raw: unknown, opts: ComposeCheckOptions = {}): 
   // The backdrop: a file of the site, the one the composition belongs to.
   const b = obj(data.backdrop, "backdrop");
   let backdrop: Backdrop = { src: "", fit: "cover", focus: [50, 50] };
+  let isVideo = false;
   if (!b) { if (data.backdrop === undefined) fail("backdrop", "required"); }
   else {
     known(b, "backdrop", ["src", "fit", "focus", "play", "sound", "poster"]);
@@ -202,9 +203,11 @@ export function checkComposition(raw: unknown, opts: ComposeCheckOptions = {}): 
       else focus = [num(b.focus[0], "backdrop.focus[0]", 0, 100, 50), num(b.focus[1], "backdrop.focus[1]", 0, 100, 50)];
     }
     backdrop = { src, fit: choice(b.fit, FITS, "backdrop.fit", "cover"), focus };
-    if (b.play !== undefined) backdrop.play = choice(b.play, PLAYS, "backdrop.play", "loop");
-    if (b.sound !== undefined) { if (typeof b.sound !== "boolean") fail("backdrop.sound", "format"); else if (b.sound) backdrop.sound = true; }
-    if (b.poster !== undefined) { if (typeof b.poster !== "string" || !IMAGE_SRC.test(b.poster)) fail("backdrop.poster", "file"); else backdrop.poster = b.poster; }
+    isVideo = video;
+    // (0.21.0) How a video plays, its sound and its still picture: a video only (a GIF always loops, a picture does not play).
+    if (b.play !== undefined) { if (src && !video) fail("backdrop.play", "choice", { videoOnly: 1 }); else backdrop.play = choice(b.play, PLAYS, "backdrop.play", "loop"); }
+    if (b.sound !== undefined) { if (typeof b.sound !== "boolean") fail("backdrop.sound", "format"); else if (b.sound && src && !video) fail("backdrop.sound", "choice", { videoOnly: 1 }); else if (b.sound) backdrop.sound = true; }
+    if (b.poster !== undefined) { if (typeof b.poster !== "string" || !IMAGE_SRC.test(b.poster)) fail("backdrop.poster", "file"); else if (src && !video) fail("backdrop.poster", "choice", { videoOnly: 1 }); else backdrop.poster = b.poster; }
   }
 
   let duration: Composition["duration"];
@@ -212,6 +215,8 @@ export function checkComposition(raw: unknown, opts: ComposeCheckOptions = {}): 
   if (d) {
     known(d, "duration", ["mode", "seconds"]);
     duration = { mode: choice(d.mode, DURATION_MODES, "duration.mode", "fixed"), seconds: num(d.seconds, "duration.seconds", LIMITS.seconds.min, LIMITS.seconds.max, 6, Math.round, true) };
+    // "The video's own length" needs a video; for a picture or a GIF the length is chosen ("fixed").
+    if (duration.mode === "media" && b && !isVideo) fail("duration.mode", "choice", { allowed: "fixed" });
   }
 
   if (data.stickers !== undefined && (!Array.isArray(data.stickers) || data.stickers.length > LIMITS.stickers)) fail("stickers", "range", { max: LIMITS.stickers });
@@ -335,8 +340,35 @@ export function resolveComposition(c: Composition, fill: { phrase?: string; valu
   return { v: 1, format: c.format, backdrop: { ...c.backdrop, focus: [c.backdrop.focus[0], c.backdrop.focus[1]] }, ...(c.duration ? { duration: c.duration } : {}), boxes };
 }
 
-/** Copies the placement of one composition onto another file: the boxes and their settings, never the backdrop (each file keeps its own). */
-export const copyPlacement = (from: Composition, toSrc: string): Composition => ({ ...from, backdrop: { src: toSrc, fit: from.backdrop.fit, focus: [50, 50] }, boxes: from.boxes.map((b) => ({ ...b, content: { ...b.content }, in: { ...b.in }, out: { ...b.out }, ...(b.pill ? { pill: { ...b.pill } } : {}) })) });
+/**
+ * Copies the placement of one composition onto another file: the boxes and their settings, never the backdrop (each file keeps its own). (0.21.0) Between two
+ * videos, the way it plays and its sound go along; a picture or a GIF takes neither, nor "the video's own length". `seconds`: the length of the target video,
+ * when known, for "the video's own length".
+ */
+export function copyPlacement(from: Composition, toSrc: string, opts: { seconds?: number | null } = {}): Composition {
+  const toVideo = VIDEO_SRC.test(toSrc), fromVideo = VIDEO_SRC.test(from.backdrop.src);
+  const backdrop: Backdrop = { src: toSrc, fit: from.backdrop.fit, focus: [50, 50] };
+  if (toVideo && fromVideo) { if (from.backdrop.play) backdrop.play = from.backdrop.play; if (from.backdrop.sound) backdrop.sound = true; }
+  let duration: Composition["duration"];
+  if (from.duration) {
+    if (from.duration.mode === "fixed") duration = { ...from.duration };
+    else if (toVideo) duration = { mode: "media", seconds: opts.seconds && opts.seconds > 0 ? mediaSeconds(opts.seconds) : from.duration.seconds };
+  }
+  const out: Composition = { ...from, backdrop, boxes: from.boxes.map((b) => ({ ...b, content: { ...b.content }, in: { ...b.in }, out: { ...b.out }, ...(b.pill ? { pill: { ...b.pill } } : {}) })) };
+  if (duration) out.duration = duration; else delete out.duration;
+  return out;
+}
+
+/** (0.21.0) Whether a file address is a video (mp4, webm). */
+export const isVideoSrc = (src: string): boolean => VIDEO_SRC.test(String(src ?? ""));
+/** (0.21.0) The seconds an alert lasts for "the video's own length": the length rounded up (a 7.2 s video gives 8), kept between 2 and 60. */
+export const mediaSeconds = (length: number): number => Math.min(LIMITS.seconds.max, Math.max(LIMITS.seconds.min, Math.ceil((Number(length) || 0) - 0.05)));
+/** (0.21.0) A new composition for a video: it plays once and the alert lasts as long as the video (what an alert with a video did before). */
+export function defaultVideoComposition(src: string, opts: { format?: ComposeFormat; seconds?: number | null } = {}): Composition {
+  return { ...defaultComposition(src, opts), backdrop: { src, fit: "cover", focus: [50, 50], play: "once" }, duration: { mode: "media", seconds: mediaSeconds(opts.seconds ?? 6) } };
+}
+/** (0.21.0) How many seconds the alert of a composition lasts, when the composition says so (null: the place decides, as before). */
+export const alertSeconds = (c: Pick<Composition, "duration"> | null | undefined): number | null => (c?.duration ? Math.min(LIMITS.seconds.max, Math.max(LIMITS.seconds.min, Math.round(c.duration.seconds))) : null);
 
 /** The ratio (width / height) of a composition's frame; "media" needs the file's own size (16:9 until it is known). */
 export function frameRatio(format: ComposeFormat, media?: { width: number; height: number } | null): number {
