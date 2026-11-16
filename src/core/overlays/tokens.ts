@@ -32,10 +32,10 @@ export const STYLE_CHOICES = {
 
 export function parseStyle(raw: unknown): OverlayStyle {
   const o = raw && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
-  const pick = <K extends Exclude<keyof OverlayStyle, "textScale" | "readability">>(k: K): OverlayStyle[K] => ((STYLE_CHOICES[k] as readonly unknown[]).includes(o[k]) ? (o[k] as OverlayStyle[K]) : DEFAULT_STYLE[k]);
+  const pick = <K extends Exclude<keyof OverlayStyle, "textScale" | "readability" | "tvBase">>(k: K): OverlayStyle[K] => ((STYLE_CHOICES[k] as readonly unknown[]).includes(o[k]) ? (o[k] as OverlayStyle[K]) : DEFAULT_STYLE[k]);
   const textScale = parseTextScale(o.textScale);
   const readability = parseElementStyle(o.readability);
-  return { text: pick("text"), background: pick("background"), corners: pick("corners"), ...(textScale !== null && textScale !== 100 ? { textScale } : {}), ...(readability ? { readability } : {}) };
+  return { text: pick("text"), background: pick("background"), corners: pick("corners"), ...(textScale !== null && textScale !== 100 ? { textScale } : {}), ...(readability ? { readability } : {}), ...(o.tvBase === "short" ? { tvBase: "short" as const } : {}) };
 }
 
 /** Valeurs des jetons pour un style. Le fond « semi-transparent » est contrasté avec le texte (texte clair → fond sombre, et l'inverse). */

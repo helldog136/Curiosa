@@ -36,6 +36,7 @@ const STRINGS = [
   "look.outline.thick", "look.corners", "look.corners.page", "look.corners.round", "look.corners.square", "look.warn", "look.fix",
   "history", "undo", "redo", "undoKeys", "redoKeys", "undone", "redone", "backdrop", "backdropHelp", "backdrop.checker", "backdrop.dark", "backdrop.bright", "backdrop.game", "backdrop.own", "backdrop.ownChange", "backdrop.ownTooBig",
   "viewTools", "safe", "safeHelp", "safe.none", "safe.broadcast", "safe.vertical", "nearEdge", "cvd", "cvdHelp", "cvd.none", "cvd.deuteranopia", "cvd.protanopia", "cvd.tritanopia",
+  "format.vertical", "format.fourThree", "format.ultrawide", "tvFix", "tvFix.warn", "tvFix.help", "tvFix.done",
   "pageLook", "pageLookHelp", "pageLook.none", "pageMore", "look.fromPage", "look.colorFromSkin", "look.skin", "look.skinHelp", "look.skin.page", "look.skin.none",
   "lookClip", "copyLook", "pasteLook", "applyLookAll", "lookCopied", "lookPasted", "lookAppliedAll", "lookAppliedAll.one",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
@@ -65,7 +66,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
   const available: ClientElement[] = [...catalog.values()].sort((a, b) => a.moduleName.localeCompare(b.moduleName, locale) || a.instanceLabel.localeCompare(b.instanceLabel, locale) || L(a.decl.label).localeCompare(L(b.decl.label), locale)).map((c) => ({
     key: catalogKey(c.instance, c.decl.id), instance: c.instance, element: c.decl.id, group: c.moduleName, groupId: c.moduleId, hint: (instancesOf.get(c.moduleId)?.size ?? 0) > 1 ? c.instanceLabel : "",
     title: `${c.instanceLabel} · ${L(c.decl.label)}`, label: L(c.decl.label), description: L(c.decl.description),
-    layout: { fit: c.decl.fit, size: c.decl.size, referenceHeight: c.decl.referenceHeight, ratios: c.decl.ratios, minSize: c.decl.minSize }, followsStyle: c.decl.followsStyle,
+    layout: { fit: c.decl.fit, size: c.decl.size, referenceHeight: c.decl.referenceHeight, ratios: c.decl.ratios, minSize: c.decl.minSize }, followsStyle: c.decl.followsStyle, tvScale: !!c.decl.tvScale,
     options: c.decl.options.map((o) => ({
       id: o.id, type: o.type, label: L(o.label), help: L(o.help), example: o.example ?? "", default: defaultOf(o),
       choices: o.type === "choice" ? o.choices.map((x) => ({ value: x.value, label: L(x.label) })) : [],

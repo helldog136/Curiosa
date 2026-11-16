@@ -63,6 +63,14 @@ export function tvFactor(pageHeight: number, percent: number, frameScale: number
   return Math.round(f * 10000) / 10000;
 }
 
+/**
+ * (0.23.0) The canvas side the TV sizes follow: the shortest one for a page marked `tvBase: "short"` (every new page), else the height (pages made before:
+ * owner decision 5, a vertical page is never resized without the person's click on "Fix the text size"). Same result for any landscape page.
+ */
+export const tvSide = (page: { width: number; height: number; style?: { tvBase?: "short" } }): number => (page.style?.tvBase === "short" ? Math.min(page.width, page.height) : page.height);
+/** (0.23.0) A page whose TV text is too large: taller than wide and still sized on its height. */
+export const tvTextTooLarge = (page: { width: number; height: number; style?: { tvBase?: "short" } }): boolean => page.height > page.width && page.style?.tvBase !== "short";
+
 /** Size of a TV step in CSS px of an element's window (what `calc(<px> * var(--ov-tv))` gives). */
 export const tvStepPx = (step: TvStep, factor: number): number => Math.round(TV_TYPE_SCALE[step] * factor * 100) / 100;
 
