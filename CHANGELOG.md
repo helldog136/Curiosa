@@ -7,6 +7,33 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.25.0 — 2026-11-16
+
+**En bref.** Votre assistant IA peut maintenant voir une image de ses alertes avec le texte placé, et les régler pour vous. Seulement si une extension le propose et si vous lui en donnez le droit.
+
+**In short.** Your AI assistant can now see a picture of its alerts with the placed text, and set them up for you. Only if an extension offers it and you give it the right.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien.** Ces outils servent aux assistants IA. Vos pages et vos alertes ne changent pas.
+- **(English) Nothing.** These tools are for AI assistants. Your pages and alerts do not change.
+
+### Pour votre assistant IA
+
+- **Une image du résultat.** Le site dessine une image approchée d'une alerte avec son texte, pour que l'assistant la regarde et corrige.
+- **(English) A picture of the result.** The site draws an approximate picture of an alert with its text, so the assistant looks at it and corrects it.
+- **Une page exacte.** L'assistant peut aussi ouvrir, dans son propre navigateur, une page qui dessine l'alerte comme OBS.
+- **(English) An exact page.** The assistant can also open, in its own browser, a page that draws the alert as OBS does.
+- **Des erreurs claires.** Quand un réglage ne va pas, l'assistant reçoit tous les problèmes d'un coup, en phrases simples.
+- **(English) Clear errors.** When a setting is wrong, the assistant gets every problem at once, in plain sentences.
+
+### Pour les développeurs
+
+- **MCP image results** (`src/core/services/mcp/image.ts`): a tool returns `ctx.overlay.mcpImage(bytes, mimeType, info)` (PNG, JPEG, WebP, 1 MB at most) and the server sends an `image` content item then the JSON text. Additive: every other tool answers as before.
+- **`ctx.overlay.preview(resolved, opts)`** (`src/core/compose/preview.ts`): approximate still picture with `sharp` (backdrop framed as the engine frames it, still picture of a video, bands, outlines, shrink and cut with "…", per-box size, lines, overflow, contrast, readability). Font: Inter Bold bundled in `fonts/preview` (OFL; the server's text engine does not read WOFF2).
+- **`ctx.overlay.renderKit(resolved, { siteUrl, … })`** (`kitPage.ts`): a self-contained HTML page with the engine, `<base href>` on the site, `#t=` freezes a moment, `data-ready`. **`ctx.overlay.explainErrors(errors)`**: one plain English sentence per problem. `features` adds `"preview"`.
+- `fakeCtx({ uploadsDir })`: the folder the real preview reads files from in module tests.
+
 ## 0.24.0 — 2026-11-16
 
 **En bref.** Pour les personnes qui écrivent des extensions : le cœur fournit les couleurs communes des éléments d'overlay, et la vérification des extensions conseille quand un élément se voit au repos ou ignore l'apparence de la page.

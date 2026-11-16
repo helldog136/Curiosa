@@ -11,6 +11,7 @@ import type { McpTool } from "./types";
 export type ServerIcons = (request: Request) => Promise<unknown[]>;
 export type ListTools = (hint?: { name?: string }) => Promise<McpTool[]>;
 import { McpToolError } from "./validate";
+import { toolContent } from "./image";
 
 /**
  * SERVICE « MCP » — le mécanisme, sans aucune fonctionnalité.
@@ -83,7 +84,8 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools,
       try {
         const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name, tokenId: token.id });
         if (!tool.readOnly && !tool.audited) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: `mcp.${tool.name}`, target: tool.source, module: tool.moduleId ?? "", instance: tool.moduleId ? tool.source : "" } }).catch(() => {});
-        return rpcResult(rpc.id, { content: [{ type: "text", text: JSON.stringify(result ?? null, null, 2).slice(0, 200_000) }] });
+        // (0.25.0) a tool may answer with a picture (mcpImage): an `image` content item, then its text
+        return rpcResult(rpc.id, { content: toolContent(result) });
       } catch (error) {
         const exposed = error instanceof McpToolError || (error as { expose?: boolean })?.expose === true;
         if (!exposed) console.error(`[mcp] ${name} failed:`, error);
