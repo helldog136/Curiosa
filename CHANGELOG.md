@@ -7,6 +7,32 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.26.0 — 2026-11-16
+
+**En bref.** Un nouvel onglet « Adresses pour OBS » réunit toutes les adresses à coller dans OBS. « Pages d'overlay » n'apparaît plus dans le menu d'un site qui ne fait pas de stream.
+
+**In short.** A new "Addresses for OBS" tab gathers every address to paste into OBS. "Overlay pages" no longer shows in the menu of a site that does not stream.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Le menu d'un site sans overlay.** Sans extension qui propose un overlay et sans page d'overlay, l'entrée « Pages d'overlay » disparaît du menu. Elle revient dès qu'une telle extension est installée.
+- **(English) The menu of a site without overlays.** Without an extension that offers an overlay and without an overlay page, the "Overlay pages" entry leaves the menu. It comes back as soon as such an extension is installed.
+- **Un bouton plus discret.** Dans l'éditeur, « Ajouter un élément » devient un bouton secondaire. Le seul bouton principal reste « Enregistrer ».
+- **(English) A quieter button.** In the editor, "Add an element" becomes a secondary button. The only main button stays "Save".
+
+### Adresses pour OBS
+
+- **Tout au même endroit.** L'onglet « Adresses pour OBS » liste vos pages d'overlay et les overlays de vos extensions, avec la taille à donner à la source. Un bouton copie chaque adresse.
+- **(English) Everything in one place.** The "Addresses for OBS" tab lists your overlay pages and the overlays of your extensions, with the size to give the source. A button copies each address.
+- **Retrouver une adresse.** Une recherche et des filtres (Page d'overlay, Extension) trient la liste pendant que vous tapez.
+- **(English) Find an address.** A search and filters (Overlay page, Extension) sort the list as you type.
+
+### Pour les développeurs
+
+- **`ctx.api.overlays.placement(element?)`** (no permission): `{ placed, onActivePage, pages: [{ name, active }] }` for this instance's visible elements, never an address. `fakeCtx({ overlayPlacement })` simulates it, `overlayPlacement: null` an older core.
+- **`overlaysUseful()`** (`src/core/overlays/presence.ts`): an active extension offers elements or an overlay, or a page exists. It gates the "Overlay pages" entry (`administrationEntries({ overlays })`) and the overlay-skin AI tools. The skin galleries live inside the overlay pages, so they follow.
+- **New page** `/admin/overlay-pages/obs` (`OVERLAYS_OBS_HREF`), same right as the overlay pages. Glossary word added: addresses for OBS.
+
 ## 0.25.0 — 2026-11-16
 
 **En bref.** Votre assistant IA peut maintenant voir une image de ses alertes avec le texte placé, et les régler pour vous. Seulement si une extension le propose et si vous lui en donnez le droit.

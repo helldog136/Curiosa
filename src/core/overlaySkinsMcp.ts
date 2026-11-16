@@ -1,4 +1,5 @@
 import type { JsonSchemaLite } from "@/core/modules/types";
+import { overlaysUseful } from "./overlays/presence";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { audit } from "./permissions";
@@ -67,6 +68,8 @@ async function resolveValue(ref: ContextRef, asked: string): Promise<{ id: strin
 export const overlaySkinsToolProvider: McpToolProvider = {
   id: "overlay-skins",
   async list() {
+    // (0.26.0) A site that uses no overlay (no extension offers one, no page exists) does not get these tools.
+    if (!(await overlaysUseful())) return [];
     const base = { source: "core", destructive: false } as const;
     const listSchema: JsonSchemaLite = { type: "object", properties: {} };
     const rulesSchema: JsonSchemaLite = { type: "object", required: ["page"], properties: { page: str(60), query: str(80) } };
