@@ -33,6 +33,7 @@ export async function loadCore() {
 
 /** (core 0.19.0) The composition kit of the core (pure: nothing touches the database), for `fakeCtx().overlay`. Null when it cannot be loaded (an older core). */
 export async function loadComposeKit() {
-  try { return (await import("@/core/compose/kit")).composeKit; } catch { /* the alias hooks are not registered yet */ }
-  try { register("./alias-hooks.mjs", here); return (await import("@/core/compose/kit")).composeKit; } catch { return null; }
+  // (core 0.24.0) The whole `ctx.overlay`: the composition kit and the element helpers (tokens, TV factor).
+  try { return (await import("@/core/overlays/moduleKit")).overlayKit; } catch { /* the alias hooks are not registered yet */ }
+  try { register("./alias-hooks.mjs", here); return (await import("@/core/overlays/moduleKit")).overlayKit; } catch { return null; }
 }

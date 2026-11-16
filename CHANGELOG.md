@@ -7,6 +7,23 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.24.0 — 2026-11-16
+
+**En bref.** Pour les personnes qui écrivent des extensions : le cœur fournit les couleurs communes des éléments d'overlay, et la vérification des extensions conseille quand un élément se voit au repos ou ignore l'apparence de la page.
+
+**In short.** For people who write extensions: the core gives the common colours of overlay elements, and the extension check advises when an element shows at rest or ignores the look of the page.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien.** Vos pages d'overlay, vos extensions et l'administration restent les mêmes.
+- **(English) Nothing.** Your overlay pages, your extensions and the administration stay the same.
+
+### Pour les développeurs
+
+- **`ctx.overlay.tokens(query, selector?)`**: the four common-style tokens of an element page as one rule (`:root` by default), the same values as the core page; empty without the style parameters. **`ctx.overlay.tvFactor(query)`** and **`ctx.overlay.tvTokens(query)`**: the TV factor and type scale. The composition kit of 0.19.0 stays in `ctx.overlay` (`src/core/overlays/moduleKit.ts`). `fakeCtx()` gives the real ones.
+- **`module:check`**: two advice rules for overlay elements. `overlay.idle`: rendered with no data, the element paints nothing (real Chromium when installed, else the page text). `overlay.readable`: the page reads `--ov-fg` and `--ov-surface`, marks its parts and writes no `--ov-*` token inline on an inner node (the 0.16.0 alerts bug). Advice only: no module is refused. On the 16 modules of the modules repository, only the generative maze is reported (it always plays): no module needs a new version.
+- The requirements file of overlay elements is now in English (translated when touched). `docs/TESTSUPPORT.md` regenerated.
+
 ## 0.23.0 — 2026-11-16
 
 **En bref.** Les pages d'overlay ont trois nouveaux formats : vertical (1080 × 1920), 4:3 et 21:9. Sur une nouvelle page verticale, le texte a enfin la bonne taille ; une ancienne page verticale se corrige d'un clic.

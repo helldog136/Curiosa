@@ -77,7 +77,7 @@ Tout s'importe depuis `testsupport/index.mjs` (stable) :
 |---|---|
 | `checkModule(dir, opts)` | Lance toutes les exigences sur un dossier et renvoie le rapport (celui de `--json`). `opts.siblings` : dossiers des autres modules ; `opts.only` : identifiants à lancer. Ne lève jamais pour un module fautif. |
 | `registerConformanceTests(dir, { test, siblings, only, prefix })` | Adaptateur node:test : une exigence = un test nommé. |
-| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.instances.pending` et `setUp` (cœur 0.15.0, permission `instances.setup`) : mêmes refus que le cœur (`no-permission`, `no-person` si `person: null`, `denied` si `person.role` n'est pas administrateur, `undeclared`, `not-installed`) ; options `requires` (services déclarés) et `installedModules` (`{ id: { name, offers: [{ service, version }], instances } }`, rien par défaut), appels dans `ctx.calls.setUps`. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.api.log.write` (cœur après 0.5.1) : option `logEvents` (celle de votre `module.json`), mêmes règles que le cœur (liste blanche, 200 caractères, secrets écartés, clé invalide : `false`), option `actor`, lignes dans `ctx.calls.log` et `ctx.dumpLog()`. `ctx.api.adminTheme` (cœur après 0.6.6) : `{ css, scheme, wordmark }` d'exemple, appels dans `ctx.calls.adminTheme`. `ctx.params` (cœur 0.2.14) : option `params` (par exemple `{ slug: "abc" }` pour une route `"go/:slug"`). `ctx.timezone` (cœur 0.6.4) : option `timezone` (nom IANA, `UTC` par défaut ; un nom inconnu donne le fuseau de la machine, comme le cœur ; `null` simule un cœur plus ancien, sans cette clé). `ctx.overlay` (core 0.19.0): the real composition kit of the core (`composeScript`, `checkComposition`, `resolveComposition`…), never a stand-in; `overlay: null` simulates an older core. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage ; le stockage gère aussi les clés d'index (`add(collection, data, { key })`, `getByKey`, `listByKey`, `page({ key })`, `addMany`). Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
+| `fakeCtx(options)` | Faux contexte de module (réglages, stockage en mémoire, e-mail enregistré, sujets, services…). Option `permissions` : le contexte refuse ce qui n'est pas déclaré. `ctx.api.files` (cœur 0.2.13) : mêmes règles et mêmes refus que le cœur, options `uploads`, `person`, `filesQuota`, appels dans `ctx.calls.files`, `ctx.dumpFiles()` pour constater qu'un fichier a disparu. `ctx.api.instances.pending` et `setUp` (cœur 0.15.0, permission `instances.setup`) : mêmes refus que le cœur (`no-permission`, `no-person` si `person: null`, `denied` si `person.role` n'est pas administrateur, `undeclared`, `not-installed`) ; options `requires` (services déclarés) et `installedModules` (`{ id: { name, offers: [{ service, version }], instances } }`, rien par défaut), appels dans `ctx.calls.setUps`. `ctx.api.rawg` : `cover` et `candidates` (options `rawgCover`, `rawgCandidates` ; appels dans `ctx.calls.rawg` et `ctx.calls.rawgCandidates`). `ctx.api.net` est le vrai client réseau du cœur (état neuf par contexte ; options `netLimits`, `netBudgetMs`), branché sur `globalThis.fetch`. `ctx.api.log.write` (cœur après 0.5.1) : option `logEvents` (celle de votre `module.json`), mêmes règles que le cœur (liste blanche, 200 caractères, secrets écartés, clé invalide : `false`), option `actor`, lignes dans `ctx.calls.log` et `ctx.dumpLog()`. `ctx.api.adminTheme` (cœur après 0.6.6) : `{ css, scheme, wordmark }` d'exemple, appels dans `ctx.calls.adminTheme`. `ctx.params` (cœur 0.2.14) : option `params` (par exemple `{ slug: "abc" }` pour une route `"go/:slug"`). `ctx.timezone` (cœur 0.6.4) : option `timezone` (nom IANA, `UTC` par défaut ; un nom inconnu donne le fuseau de la machine, comme le cœur ; `null` simule un cœur plus ancien, sans cette clé). `ctx.overlay` (core 0.19.0): the real composition kit of the core (`composeScript`, `checkComposition`, `resolveComposition`…), never a stand-in, and (core 0.24.0) the element helpers `tokens(query)`, `tvFactor(query)`, `tvTokens(query)`; `overlay: null` simulates an older core. `ctx.calls` garde les appels, `ctx.dumpStore()` le contenu du stockage ; le stockage gère aussi les clés d'index (`add(collection, data, { key })`, `getByKey`, `listByKey`, `page({ key })`, `addMany`). Voir l'en-tête de `testsupport/fakeCtx.mjs`. |
 | `loadModuleDir(dir)` | Charge un dossier de module comme le cœur (manifeste, code, textes), sans jamais lever. |
 | `fakeFetch(routes)`, `withFakeFetch(routes, fn)`, `blockNetwork(fn)` | Faux `fetch` pour tester un module qui appelle un service, sans réseau. La clé `"*"` répond à toutes les adresses ; le `signal` d'annulation est respecté. |
 | `netReplies`, `makeNetClient(options)` | Pannes prêtes à l'emploi pour `fakeFetch` : `rateLimited(120)` (429 + Retry-After), `rateLimitedBody(s)`, `rateLimitedReset(époque)`, `quotaExceeded()` (403), `silence()` (jamais de réponse), `truncatedJson()`, `slow(ms, réponse)`, `down()`, `status(code)`. `makeNetClient` : le vrai client `ctx.api.net`, état neuf. |
@@ -196,7 +196,9 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`skin.tokensUsed`](#skintokensused) | conseil | Les jetons déclarés sont utilisés par le CSS du module |
 | [`skin.textPair`](#skintextpair) | conseil | Un jeton de couleur de texte dit sur quel fond il est posé |
 | [`skin.declare`](#skindeclare) | conseil | Un module qui met en forme une page publique déclare ses pièces de skin |
-| [`overlay.elements`](#overlayelements) | obligatoire | Les éléments d'overlay déclarés sont servis, avec des adresses valables |
+| [`overlay.elements`](#overlayelements) | obligatoire | Declared overlay elements are served, with valid addresses |
+| [`overlay.idle`](#overlayidle) | conseil | An element with nothing to say is invisible on stream |
+| [`overlay.readable`](#overlayreadable) | conseil | The look of the page reaches every part of the element |
 | [`routes.methods`](#routesmethods) | obligatoire | Les routes n'écrivent que sur demande explicite (POST) |
 | [`routes.size`](#routessize) | obligatoire | Les routes bornent la taille de ce qu'elles reçoivent |
 | [`routes.redirect`](#routesredirect) | obligatoire | Aucune redirection vers un site extérieur |
@@ -231,7 +233,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-48 exigences obligatoires et 34 conseils.
+48 exigences obligatoires et 36 conseils.
 
 ### Le fichier module.json
 
@@ -637,11 +639,27 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 #### `overlay.elements`
 
-**Les éléments d'overlay déclarés sont servis, avec des adresses valables** — niveau : **obligatoire**
+**Declared overlay elements are served, with valid addresses** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** Chaque élément de « overlayElements » (module.json) a sa fonction dans « overlayElements » du code, et inversement ; chaque fonction répond par une adresse du site (un chemin qui commence par « / », jamais une adresse externe) ou par null, même avec des options extrêmes ou hostiles.
-- **Pourquoi.** Le cœur demande à votre module, côté serveur, l'adresse de chaque élément. Une adresse externe ou mal formée est refusée (cadre vide dans OBS) ; une fonction qui plante avec une option inattendue fait disparaître l'élément du direct.
-- **Comment corriger.** Déclarez chaque élément des deux côtés avec le même identifiant. Répondez { url: `/m/${ctx.instance.key}/…` } ; validez les options reçues (ignorez celles que vous ne connaissez pas) ; répondez null si l'élément n'est pas disponible.
+- **Ce qui est vérifié.** Every element of `overlayElements` (module.json) has its function in `overlayElements` of the code, and the reverse; every function answers a site address (a path starting with `/`, never an external address) or null, even with extreme or hostile options.
+- **Pourquoi.** The core asks your module, on the server, for the address of each element. An external or malformed address is refused (an empty frame in OBS); a function that throws on an unexpected option makes the element disappear from the stream.
+- **Comment corriger.** Declare each element on both sides with the same id. Answer { url: `/m/${ctx.instance.key}/…` }; validate the options you receive (ignore unknown ones); answer null when the element is not available.
+
+#### `overlay.idle`
+
+**An element with nothing to say is invisible on stream** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Rendered with no data at all (no draw, no poll, no event, nothing planned), each element's page shows nothing: no title, no "no data" text, no empty box with a background, a border or a shadow. Checked in a real Chromium when one is installed, else on the page text.
+- **Pourquoi.** An overlay element sits on top of a game all stream long. A box or a "Nothing yet" text at rest hides the game and looks broken; the core never paints the frame around your element, so only your page decides.
+- **Comment corriger.** Start the panel `hidden` (or `display:none`) and show it when there is something to show; write no placeholder text. A scene that always plays (a generative animation) can ignore this advice.
+
+#### `overlay.readable`
+
+**The look of the page reaches every part of the element** — niveau : **conseil**
+
+- **Ce qui est vérifié.** An element that follows the common style reads `--ov-fg` and `--ov-surface` (with a fallback), marks its parts with `data-ov-part`, and declares its own `--ov-*` tokens only on `:root` or on the `data-ov-region="element"` node, never inline on another node.
+- **Pourquoi.** A skin, the "Opaque" background and the readability default of a page reach `:root` and the element node. A token written inline on an inner node (the 0.16.0 alerts bug) hides them from everything inside: white text with no background over a bright game.
+- **Comment corriger.** Use `ctx.overlay.tokens(query)` (core 0.24.0) for the `:root` rule, or put your tokens on `[data-ov-region="element"]`; draw backgrounds with `var(--ov-surface, …)` and text with `var(--ov-fg, …)` on parts named `panel`, `card`, `title`, `text`…
 
 ### Les routes (formulaires et envois)
 
