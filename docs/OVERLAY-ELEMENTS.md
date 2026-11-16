@@ -152,6 +152,12 @@ Since 0.11.0 the person can also choose an **opaque** background (a solid panel:
 | `ov-corners` = `round` / `square` | `--ov-radius` | `12px` / `0px` |
 | (derived from the background) | `--ov-border` | `transparent` or a discreet outline |
 
+**The shared helper (core 0.24.0).** Do not copy the table above into your module: `ctx.overlay.tokens(query)` returns the `:root` rule with the four tokens, from the parameters of the request (empty when the page is opened by hand without them), and `ctx.overlay.tvTokens(query)` the `--ov-tv` factor and the TV type scale. They give exactly what the core page uses, and follow it when it changes. On an older core, `ctx.overlay.tokens` is absent: keep your own copy as a fallback (`typeof ctx.overlay?.tokens === "function"`).
+
+```js
+const css = `${ctx.overlay?.tokens?.(query) ?? myOwnTokens(query)}:root{${ctx.overlay?.tvTokens?.(query) ?? ""}}`;
+```
+
 Write your CSS with these tokens and a **fallback** (`color: var(--ov-fg, #fff)`), and put attributes on your pieces: `data-ov-part="panel"`, `data-ov-region="element"`. **Style through tokens and attributes, not hard-coded classes.**
 
 **Overlay skins (0.8.0).** When a page wears an overlay skin, the core injects the skin into your element's page once it has loaded (the iframe is same-origin, and a skin is only data: tokens and a sanitised sheet of rules, adopted with a constructed style sheet; nothing is executed). The skin then:
@@ -273,6 +279,6 @@ Tick before publishing the version of your module that offers elements:
 - [ ] `demo: true` if the element can show sample content, for test mode.
 - [ ] Text readable on TV: nothing below 24 px **on the canvas** at 100 % (28 to 32 px for body text), or `tvScale: true` with the `--ov-text-*` tokens; the element reflows when its window is smaller (text size 150 to 200 %).
 - [ ] Sound, if any, plays inside the element (OBS control).
-- [ ] `npm run module:check -- <folder>`: the `overlay.elements` requirement passes.
+- [ ] `npm run module:check -- <folder>`: the `overlay.elements` requirement passes, and the advice `overlay.idle` (nothing painted at rest, checked in a real Chromium when one is installed) and `overlay.readable` (tokens read, parts marked, no `--ov-*` token written inline on an inner node) have nothing to say (core 0.24.0).
 - [ ] A minor version bump (`1.4.0` → `1.5.0`) and a mention in the module's README.
 - [ ] You tried it in OBS: an overlay page in 3440×1440, test mode on, elements resized, page turned off, and an overlay skin worn.

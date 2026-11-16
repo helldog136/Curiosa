@@ -45,13 +45,13 @@ test("l'exigence « overlay.elements » du kit : réussie pour l'exemple, ÉCHEC
   const edit = (file, fn) => (mod) => { const p = path.join(mod, file); fs.writeFileSync(p, fn(fs.readFileSync(p, "utf8"))); };
   const run = async (mutate) => (await checkModule(copy(mutate), { only: ["overlay.elements"] })).results[0];
   const noFn = await run(edit("index.mjs", (s) => s.replace("overlayElements: Object.fromEntries(Object.keys(PAGES)", "overlayElements: Object.fromEntries(Object.keys(PAGES).filter((k) => k !== 'feed')")));
-  assert.equal(noFn.status, "fail"); assert.match(noFn.problems.join("\n"), /« feed » est déclaré dans module\.json mais le code n'a pas de fonction/);
+  assert.equal(noFn.status, "fail"); assert.match(noFn.problems.join("\n"), /"feed" is declared in module\.json but the code has no function/);
   const external = await run(edit("index.mjs", (s) => s.replace("url: `/m/${ctx.instance.key}/element/${id}`", "url: 'https://evil.example/x'")));
-  assert.equal(external.status, "fail"); assert.match(external.problems.join("\n"), /adresse que le cœur refuse/);
+  assert.equal(external.status, "fail"); assert.match(external.problems.join("\n"), /an address the core refuses/);
   const throws = await run(edit("index.mjs", (s) => s.replace("(ctx) => ({ url:", "(ctx, req) => { if (req.options.size > 100 || req.options.label) throw new Error('boom'); return { url:").replace("/element/${id}` })", "/element/${id}` }; }")));
-  assert.equal(throws.status, "fail"); assert.match(throws.problems.join("\n"), /lève une erreur/);
+  assert.equal(throws.status, "fail"); assert.match(throws.problems.join("\n"), /throws with/);
   const undeclared = await run(edit("module.json", (s) => { const j = JSON.parse(s); j.overlayElements = j.overlayElements.filter((e) => e.id !== "scene"); return JSON.stringify(j); }));
-  assert.equal(undeclared.status, "fail"); assert.match(undeclared.problems.join("\n"), /« scene » qui n'est pas déclaré/);
+  assert.equal(undeclared.status, "fail"); assert.match(undeclared.problems.join("\n"), /"scene", which is not declared/);
   const none = await checkModule(path.resolve("testsupport/template"), { only: ["overlay.elements"] });
   assert.equal(none.results[0].status, "na");
 });
