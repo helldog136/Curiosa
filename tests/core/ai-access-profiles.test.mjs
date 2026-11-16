@@ -20,6 +20,8 @@ test.after(() => db.close());
 const read = (p) => fs.readFileSync(p, "utf8");
 const en = JSON.parse(read("src/locales/en.json"));
 const fr = JSON.parse(read("src/locales/fr.json"));
+// (0.25.0) The overlay-skin tools exist only on a site that uses overlays: one overlay page makes them part of the catalogue.
+await (await import("@/core/overlays/store")).createPage({ name: "Overlay", width: 1920, height: 1080 });
 const catalogue = await listMcpToolCatalogue();
 const byName = new Map(catalogue.map((t) => [t.name, t]));
 
