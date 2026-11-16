@@ -14,7 +14,7 @@ export function issueMessages(issues: readonly Issue[], raw: unknown, catalog: C
     else if (i.code === "resolution") errors.resolution = t("ovp.err.resolution");
     else if (i.code === "tooMany") general = t("ovp.err.tooMany");
     else if (i.code === "textScale") errors[i.path] = t("ovp.err.textScale");
-    else if (i.code === "appearance") errors[i.path] = t(i.path.endsWith(".opacity") ? "ovp.err.lookOpacity" : i.path.endsWith(".color") ? "ovp.err.lookColor" : "ovp.err.lookChoice");
+    else if (i.code === "appearance") errors[i.path] = t(i.path.endsWith(".opacity") ? "ovp.err.lookOpacity" : i.path.endsWith(".color") ? "ovp.err.lookColor" : i.path.endsWith(".skin") ? "ovp.err.lookSkin" : "ovp.err.lookChoice");
     else if (i.code === "unknown") errors[i.path] = t("ovp.err.unknown");
     else if (i.code === "option" && i.option) {
       const [, uid, , id] = i.path.split(".");

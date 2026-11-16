@@ -1,6 +1,7 @@
 import { isPlainObject } from "./model";
 import type { OverlayStyle } from "./model";
 import { OPAQUE_SURFACE } from "./tokens";
+import type { SkinColors } from "./skinSheet";
 
 /**
  * APPEARANCE KIT OF AN OVERLAY ELEMENT (core 0.17.0). Pure: no database, no Next, no browser. Used by the editor (client), the page validation and the
@@ -42,9 +43,11 @@ export type ElementStyle = {
   color?: string;
   outline?: (typeof LOOK_OUTLINE)[number];
   corners?: (typeof LOOK_CORNERS)[number];
+  /** (0.21.0) The background and text colours come from the skin the element wears (its optional kit tokens, or derived). Ignored when `color` is set or no skin is worn. */
+  colorFrom?: "skin";
 };
 /** The fine settings (under "More options"): when one is set, the preset control shows "Custom". */
-export const FINE_KEYS = ["background", "opacity", "color", "outline", "corners"] as const;
+export const FINE_KEYS = ["background", "opacity", "color", "outline", "corners", "colorFrom"] as const;
 
 type Base = { text: "auto" | "light" | "dark"; background: (typeof LOOK_BACKGROUND)[number]; opacity: number; outline: (typeof LOOK_OUTLINE)[number] };
 export const PRESET_VALUES: Record<LookPreset, Base> = {
@@ -54,8 +57,10 @@ export const PRESET_VALUES: Record<LookPreset, Base> = {
 };
 /** The opacity a background kind starts with when it is chosen on its own. */
 export const KIND_OPACITY: Record<(typeof LOOK_BACKGROUND)[number], number> = { none: 0, soft: 55, solid: 85, glass: 60 };
-/** The look new elements start with (owner decision 2). */
+/** The look new elements start with (owner decision 2), on a page without a readability default. On a page with one, a new element follows the page. */
 export const NEW_ELEMENT_STYLE: ElementStyle = { preset: "readable" };
+/** (0.21.0) The readability default of a NEW page: it starts readable, and its elements follow it. Pages created before keep no default (no visual change). */
+export const NEW_PAGE_READABILITY: ElementStyle = { preset: "readable" };
 
 const HEX = /^#[0-9a-fA-F]{6}$/;
 const pick = <T extends string>(list: readonly T[], v: unknown): T | undefined => (list as readonly unknown[]).includes(v) ? (v as T) : undefined;
@@ -71,10 +76,11 @@ export function parseElementStyle(raw: unknown): ElementStyle | null {
   if (typeof raw.color === "string" && HEX.test(raw.color)) out.color = raw.color.toLowerCase();
   const outline = pick(LOOK_OUTLINE, raw.outline); if (outline) out.outline = outline;
   const corners = pick(LOOK_CORNERS, raw.corners); if (corners) out.corners = corners;
+  if (raw.colorFrom === "skin") out.colorFrom = "skin";
   return Object.keys(out).length ? out : null;
 }
 
-export type StyleCheck = { ok: true; value: ElementStyle | null } | { ok: false; field: "preset" | "text" | "background" | "opacity" | "color" | "outline" | "corners" | "format" };
+export type StyleCheck = { ok: true; value: ElementStyle | null } | { ok: false; field: "preset" | "text" | "background" | "opacity" | "color" | "outline" | "corners" | "colorFrom" | "format" };
 /** Strict reading of what the editor or an AI sends: absent/null = follows the page; anything unknown or out of bounds is refused with the field to fix. */
 export function checkElementStyle(raw: unknown): StyleCheck {
   if (raw === undefined || raw === null) return { ok: true, value: null };
@@ -83,6 +89,7 @@ export function checkElementStyle(raw: unknown): StyleCheck {
   for (const [k, list] of Object.entries(lists)) if (raw[k] !== undefined && !(list as readonly unknown[]).includes(raw[k])) return { ok: false, field: k as keyof typeof lists };
   if (raw.opacity !== undefined && (typeof raw.opacity !== "number" || !Number.isInteger(raw.opacity) || raw.opacity < OPACITY_MIN || raw.opacity > OPACITY_MAX)) return { ok: false, field: "opacity" };
   if (raw.color !== undefined && (typeof raw.color !== "string" || !HEX.test(raw.color))) return { ok: false, field: "color" };
+  if (raw.colorFrom !== undefined && raw.colorFrom !== "skin") return { ok: false, field: "colorFrom" };
   return { ok: true, value: parseElementStyle(raw) };
 }
 
@@ -126,8 +133,8 @@ export function accentFor(accent: string, surface: string, alpha: number, target
 
 // ── What applies to an element ───────────────────────────────────────────────────────────────────────────────────────────
 export type Applied = {
-  /** "element": its own setting; "auto": the readability fix of an element left unreadable by the page (transparent background, no skin). */
-  source: "element" | "auto";
+  /** "element": its own setting; "page" (0.21.0): the readability default of the page; "auto": the readability fix of an element left unreadable by the page (transparent background, no skin). */
+  source: "element" | "page" | "auto";
   text: "light" | "dark";
   background: (typeof LOOK_BACKGROUND)[number];
   /** 0 to 100 (0 when there is no background). */
@@ -138,32 +145,38 @@ export type Applied = {
   /** The outline was added because the background is under 65 %. */
   outlineForced: boolean;
   corners?: (typeof LOOK_CORNERS)[number];
+  /** (0.21.0) Text and outline colours taken from the skin (absent: #ffffff / #111111 and the opposite outline). */
+  fg?: string;
+  outlineColor?: string;
 };
-export type PageSide = { style: Pick<OverlayStyle, "text" | "background">; /** The page wears an overlay skin (default skin or skin per context). */ skin: boolean };
+export type PageSide = { style: Pick<OverlayStyle, "text" | "background" | "readability">; /** The page wears an overlay skin (default skin or skin per context). */ skin: boolean };
 
 /** The appearance the core applies to an element, or null: the page style and the skin apply as before 0.17.0, nothing is injected. */
-export function appliedLook(style: ElementStyle | null | undefined, page: PageSide, follows: boolean): Applied | null {
+export function appliedLook(style: ElementStyle | null | undefined, page: PageSide, follows: boolean, /** (0.21.0) The kit colours of the skin the element wears now. */ skin?: SkinColors | null): Applied | null {
   if (!follows) return null;
   let s: ElementStyle, source: Applied["source"];
   if (style) { s = style; source = "element"; }
+  else if (page.style.readability) { s = page.style.readability; source = "page"; }
   else if (!page.skin && page.style.background === "transparent") { s = { preset: "readable", ...(page.style.text === "dark" ? { text: "dark" } : {}) }; source = "auto"; }
   else return null;
   const base = PRESET_VALUES[s.preset ?? "readable"];
   const background = s.background ?? base.background;
   const opacity = background === "none" ? 0 : s.opacity ?? (s.background !== undefined && s.background !== base.background ? KIND_OPACITY[background] : base.opacity);
   const want = s.text ?? base.text;
-  const color = s.color ?? (want === "dark" ? OPAQUE_SURFACE.dark : OPAQUE_SURFACE.light);
-  const text: "light" | "dark" = want !== "auto" ? want : background === "none" ? "light" : worstContrast(FG.light, color, opacity / 100) >= worstContrast(FG.dark, color, opacity / 100) ? "light" : "dark";
+  const kit = !s.color && s.colorFrom === "skin" && skin ? skin : null;
+  const color = s.color ?? (kit ? (background === "soft" ? kit.soft : kit.solid) : want === "dark" ? OPAQUE_SURFACE.dark : OPAQUE_SURFACE.light);
+  const pair = kit ? { light: kit.onDark, dark: kit.onLight } : FG;
+  const text: "light" | "dark" = want !== "auto" ? want : background === "none" ? "light" : worstContrast(pair.light, color, opacity / 100) >= worstContrast(pair.dark, color, opacity / 100) ? "light" : "dark";
   const chosen = s.outline ?? base.outline;
   const outlineForced = chosen === "none" && opacity < OUTLINE_BELOW;
-  return { source, text, background, opacity, color, outline: outlineForced ? "thin" : chosen, outlineForced, ...(s.corners ? { corners: s.corners } : {}) };
+  return { source, text, background, opacity, color, outline: outlineForced ? "thin" : chosen, outlineForced, ...(s.corners ? { corners: s.corners } : {}), ...(kit ? { fg: pair[text], ...(kit.outline ? { outlineColor: kit.outline } : {}) } : {}) };
 }
 
 export type Readability = { ok: boolean; ratio: number | null };
 /** Worst-case readability of an applied look (null look: decided by the page or its skin, which the skin checker already guarantees). */
 export function readabilityOf(a: Applied | null): Readability {
   if (!a) return { ok: true, ratio: null };
-  const r = a.background === "none" ? null : Math.round(worstContrast(FG[a.text], a.color, a.opacity / 100) * 10) / 10;
+  const r = a.background === "none" ? null : Math.round(worstContrast(a.fg ?? FG[a.text], a.color, a.opacity / 100) * 10) / 10;
   return { ok: a.outline !== "none" || (r !== null && r >= TEXT_MIN_RATIO), ratio: r };
 }
 
@@ -176,23 +189,23 @@ const ROOT = 'html[data-ov-look]:not(#ov-look)';
 /** (0.19.0) The region a composition is drawn in (compose/render.ts): the kit gives it its tokens, never its text colours or outline. */
 export const COMPOSITION = '[data-ov-region="composition"]';
 const rgba = (hex: string, alpha: number) => { const c = hexRgb(hex); return `rgba(${c.r},${c.g},${c.b},${Math.round(alpha * 100) / 100})`; };
-export function outlineShadow(kind: Applied["outline"], text: Applied["text"]): string {
+export function outlineShadow(kind: Applied["outline"], text: Applied["text"], colour?: string): string {
   if (kind === "none") return "none";
-  const c = text === "light" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)";
+  const c = colour ? rgba(colour, 0.92) : text === "light" ? "rgba(0,0,0,0.9)" : "rgba(255,255,255,0.95)";
   const d = kind === "thick" ? 2 : 1, blur = kind === "thick" ? 6 : 4;
   return `${-d}px ${-d}px 0 ${c},${d}px ${-d}px 0 ${c},${-d}px ${d}px 0 ${c},${d}px ${d}px 0 ${c},0 0 ${blur}px ${c}`;
 }
 
 /** The tokens of an applied look. */
 export function lookTokens(a: Applied): Record<string, string> {
-  const fg = FG[a.text];
+  const fg = a.fg ?? FG[a.text];
   const none = a.background === "none";
   return {
     "--ov-fg": fg,
     "--ov-muted": fg,
     "--ov-surface": none ? "transparent" : rgba(a.color, a.opacity / 100),
     "--ov-border": none ? "transparent" : a.text === "light" ? "rgba(255,255,255,0.18)" : "rgba(0,0,0,0.15)",
-    "--ov-text-shadow": outlineShadow(a.outline, a.text),
+    "--ov-text-shadow": outlineShadow(a.outline, a.text, a.outlineColor),
     ...(a.corners ? { "--ov-radius": a.corners === "round" ? "12px" : "0px" } : {}),
   };
 }

@@ -7,6 +7,8 @@ import { testActive, type OverlayPageData } from "./model";
 import { skinForPage, skinPayload, type LoadedPayload } from "./skinLoad";
 
 /** Réponse de la page de rendu, publique (par l'adresse secrète) ou d'aperçu (administration, sans secret ni interrogation). */
+/** (0.21.0) Distinct skins the elements of one page may wear besides the page's own. */
+export const MAX_ELEMENT_SKINS = 6;
 export const NOT_FOUND_HEADERS = { "Cache-Control": "no-store", "X-Robots-Tag": "noindex, nofollow", "Content-Type": "text/plain; charset=utf-8" };
 export const notFoundResponse = (): Response => new Response(null, { status: 404, headers: NOT_FOUND_HEADERS });   // empty body: nothing to show, nothing shown in OBS
 
@@ -21,9 +23,14 @@ export async function pageResponse(page: OverlayPageData, request: Request, opts
   const elements = shown.active ? await resolvePage(shown, { lang, defaultLocale: config.defaultLocale }).catch(() => []) : [];
   const skin: LoadedPayload | null = shown.active ? (opts.forceSkin !== undefined ? await skinPayload(opts.forceSkin || null, page.style.background === "opaque").catch(() => null) : (await skinForPage(page.look, now, page.style.background === "opaque")).payload) : null;
   const contextual = page.look.byContext.enabled && !opts.preview;
+  // (0.21.0) Skins worn by single elements: loaded once per distinct skin (6 at most; beyond, an element wears the page's skin).
+  const wanted = shown.active ? [...new Set(shown.elements.flatMap((e) => (typeof e.skin === "string" ? [e.skin] : [])))].slice(0, MAX_ELEMENT_SKINS) : [];
+  const elementSkins = new Map<string, LoadedPayload | null>();
+  // The retouches belong to the page's skin: an element that wears another skin (a partner's brand) keeps it untouched.
+  for (const id of wanted) elementSkins.set(id, await skinPayload(id, page.style.background === "opaque").catch(() => null));
   const nonce = crypto.randomBytes(16).toString("base64");
   const host = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim() || request.headers.get("host");
-  const html = renderPage({ page: shown, elements, t: makeTranslator(lang), lang, test, now, nonce, stateUrl: opts.stateUrl ?? "", fit: !!opts.preview || new URL(request.url).searchParams.get("fit") === "1", skin, contextual });
+  const html = renderPage({ page: shown, elements, t: makeTranslator(lang), lang, test, now, nonce, stateUrl: opts.stateUrl ?? "", fit: !!opts.preview || new URL(request.url).searchParams.get("fit") === "1", skin, contextual, ...(elementSkins.size ? { elementSkins } : {}) });
   return new Response(html, { status: 200, headers: pageHeaders(contentSecurityPolicy(nonce, frameSources(host, framePaths(elements)))) });
 }
 
