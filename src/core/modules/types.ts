@@ -362,6 +362,12 @@ export type ModuleAdminTheme = {
 
 export type ModuleApi = {
   /**
+   * (core 0.25.0; no permission) Where the overlay page elements of THIS instance are placed: `placement(element?)` gives `{ placed, onActivePage, pages: [{ name, active }] }`
+   * (visible elements only, 20 pages at most, never an address). For an honest "placed on an active overlay page" step in your own list of what is left to do.
+   * An older core has no `ctx.api.overlays`: write `await ctx.api.overlays?.placement?.("alerts")` and show nothing without it.
+   */
+  overlays?: { placement(element?: string): Promise<{ placed: boolean; onActivePage: boolean; pages: { name: string; active: boolean }[] }> };
+  /**
    * Journal central du site (cœur 0.6.0 ; aucune permission). Ne lève jamais : une ligne refusée (clé invalide) renvoie `false`. Le cœur déduit QUI agit
    * (la personne connectée, un assistant IA, le module lui-même ou le système), injecte le module et l'instance, écarte tout champ non déclaré et purge à l'écriture
    * (90 jours, 500 lignes par module). Un cœur plus ancien n'a pas `ctx.api.log` : écrire `ctx.api.log?.write(…)`.

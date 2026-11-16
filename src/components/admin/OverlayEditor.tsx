@@ -302,7 +302,8 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
       <div className="space-y-6">
         <section className="min-w-0 space-y-3" aria-label={s("ed.preview")}>
           <div className="flex flex-wrap items-center gap-2">
-            <button type="button" className={ui.btnPrimary} aria-expanded={adding} onClick={() => setAdding(!adding)} disabled={full}>{s("ed.add")}</button>
+            {/* (0.25.0) Secondary (R3): the one primary action of the page is "Save" in the save bar. */}
+            <button type="button" className={ui.btn} aria-expanded={adding} onClick={() => setAdding(!adding)} disabled={full} data-testid="ov-add">{s("ed.add")}</button>
             <button type="button" className={ui.btn} aria-pressed={live} onClick={() => setLive(!live)}>{live ? s("ed.backToEdit") : s("ed.live")}</button>
             <div role="group" aria-label={s("ed.history")} className="flex items-center gap-1">
               <button type="button" className={`${ui.btn} min-h-11 min-w-11 !px-3`} onClick={doUndo} disabled={!hist.past.length} aria-label={s("ed.undo")} title={s("ed.undoKeys")} data-testid="ov-undo"><span aria-hidden>↶</span></button>

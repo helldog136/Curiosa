@@ -11,7 +11,8 @@ import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page"
 import { TextField, Select } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
 import { createPageAction, deletePageAction, duplicatePageAction, renamePageAction, resetSecretAction, toggleActiveAction } from "./actions";
-import { overlayPageHref } from "@/core/adminLinks";
+import { OVERLAY_PAGES_HREF, OVERLAYS_OBS_HREF, overlayPageHref } from "@/core/adminLinks";
+import { LinkTabs } from "@/components/admin/LinkTabs";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
   return (
     <div className="space-y-6">
       <PageHeader title={t("ovp.title")} intro={t("ovp.intro")} />
+      <LinkTabs tabs={[{ id: "pages", href: OVERLAY_PAGES_HREF, label: t("ovp.tab.pages") }, { id: "obs", href: OVERLAYS_OBS_HREF, label: t("ovp.obs.tab") }]} current="pages" label={t("ovp.list.tabs")} />
       {ERRORS.has(e) && <Callout tone="danger">{t(`ovp.flash.${e}`, { pages: MAX_PAGES, active: MAX_ACTIVE_PAGES })}</Callout>}
       {OKS.has(ok) && <Callout tone="ok" role="status">{t(`ovp.flash.${ok}`)}</Callout>}
 
