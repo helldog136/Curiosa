@@ -103,12 +103,62 @@ export async function deletePage(id: string): Promise<StoreResult> {
   return r.count ? { ok: true } : { ok: false, error: "notFound" };
 }
 
-/** Enregistre la mise en page validée (voir pageInput.ts). `rev` augmente : OBS la remarque à son prochain contrôle. */
+// ── Saved versions (0.20.0) ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
+/** How many saved versions a page keeps, and a size bound on the whole column (a page is a few kilobytes; 30 elements at most). */
+export const MAX_VERSIONS = 10;
+const VERSIONS_MAX_CHARS = 400_000;
+/** One saved state of a page: what it looked like BEFORE a save replaced it. `at`: when that state had been saved (ms). Never the secret address, never the look. */
+export type PageVersion = { at: number; rev: number } & PageValue;
+
+/** Reads the versions column without ever throwing: a damaged row gives fewer versions, not an error. Newest first. */
+export function parseVersions(raw: string): PageVersion[] {
+  const list = parse(raw, []);
+  if (!Array.isArray(list)) return [];
+  const out: PageVersion[] = [];
+  for (const v of list.slice(0, MAX_VERSIONS)) {
+    if (!isPlainObject(v) || typeof v.at !== "number" || !Number.isFinite(v.at)) continue;
+    const name = cleanName(v.name);
+    if (!name) continue;
+    out.push({ at: v.at, rev: typeof v.rev === "number" ? Math.round(v.rev) : 0, name: name.slice(0, NAME_MAX), width: clampInt(v.width, MIN_SIDE, MAX_SIDE, DEFAULT_RESOLUTION[0]), height: clampInt(v.height, MIN_SIDE, MAX_SIDE, DEFAULT_RESOLUTION[1]), style: parseStyle(v.style), elements: parseElements(JSON.stringify(v.elements ?? [])) });
+  }
+  return out;
+}
+const sameValue = (a: PageValue, b: PageValue) => JSON.stringify([a.name, a.width, a.height, a.style, a.elements]) === JSON.stringify([b.name, b.width, b.height, b.style, b.elements]);
+/** The new versions column after a save: the state being replaced goes first, the oldest beyond 10 (or beyond the size bound) is dropped. */
+export function pushVersion(list: readonly PageVersion[], previous: PageVersion, next: PageValue): PageVersion[] {
+  if (sameValue(previous, next)) return [...list];
+  const out = [previous, ...list.filter((v) => !(v.at === previous.at && v.rev === previous.rev))].slice(0, MAX_VERSIONS);
+  while (out.length > 1 && JSON.stringify(out).length > VERSIONS_MAX_CHARS) out.pop();
+  return out;
+}
+
+export async function listVersions(id: string): Promise<PageVersion[]> {
+  if (typeof id !== "string" || id.length > 40) return [];
+  const row = await prisma.overlayPage.findUnique({ where: { id }, select: { versions: true } });
+  return row ? parseVersions(row.versions) : [];
+}
+
+/** Enregistre la mise en page validée (voir pageInput.ts). `rev` augmente : OBS la remarque à son prochain contrôle. (0.20.0) The replaced state is kept as a saved version. */
 export async function savePage(id: string, value: PageValue): Promise<StoreResult<{ page: OverlayPageData }>> {
   if (value.elements.length > MAX_ELEMENTS_PER_PAGE) return { ok: false, error: "notFound" };
-  const r = await prisma.overlayPage.updateMany({ where: { id }, data: { name: value.name, width: value.width, height: value.height, style: JSON.stringify(value.style), elements: JSON.stringify(value.elements), rev: { increment: 1 } } });
-  if (!r.count) return { ok: false, error: "notFound" };
+  const saved = await prisma.$transaction(async (tx) => {
+    const row = await tx.overlayPage.findUnique({ where: { id } });
+    if (!row) return false;
+    const before = toData(row);
+    const previous: PageVersion = { at: row.updatedAt.getTime(), rev: row.rev, name: before.name, width: before.width, height: before.height, style: before.style, elements: before.elements };
+    const versions = pushVersion(parseVersions(row.versions), previous, value);
+    await tx.overlayPage.update({ where: { id }, data: { name: value.name, width: value.width, height: value.height, style: JSON.stringify(value.style), elements: JSON.stringify(value.elements), versions: JSON.stringify(versions), rev: { increment: 1 } } });
+    return true;
+  });
+  if (!saved) return { ok: false, error: "notFound" };
   return { ok: true, page: (await getPage(id))! };
+}
+
+/** Puts a saved version back (the current state becomes a version in turn, so a restore can itself be undone). The look (skin) is not touched. */
+export async function restoreVersion(id: string, at: number): Promise<StoreResult<{ page: OverlayPageData }>> {
+  const version = (await listVersions(id)).find((v) => v.at === at);
+  if (!version) return { ok: false, error: "notFound" };
+  return savePage(id, { name: version.name, width: version.width, height: version.height, style: version.style, elements: version.elements });
 }
 
 /** Saves the look (validated by `validateLook`). `rev` does not change: the page reads the skin on its next check, without reloading. */

@@ -7,6 +7,48 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.20.0 — 2026-11-16
+
+**En bref.** L'éditeur des pages d'overlay devient plus confortable : un fond d'aperçu (vidéo sombre, vidéo claire, scène de jeu ou votre capture), des marges de sécurité, une vue daltonienne, Annuler et Rétablir, copier l'apparence d'un élément, et les 10 dernières versions enregistrées.
+
+**In short.** The overlay page editor gets more comfortable: a preview background (dark video, bright video, game scene or your screenshot), safe margins, a colour-blind view, Undo and Redo, copying an element's look, and the last 10 saved versions.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Rien dans OBS.** Vos pages d'overlay s'affichent exactement comme avant. Les nouveaux outils ne servent que dans l'éditeur.
+- **(English) Nothing in OBS.** Your overlay pages show exactly as before. The new tools only work in the editor.
+
+### Voir le résultat sur un vrai fond
+
+- **Fond d'aperçu.** Au-dessus de l'aperçu, choisissez Damier, Vidéo sombre, Vidéo claire, Scène de jeu ou Votre capture. Vous voyez tout de suite si un texte se lit mal.
+- **(English) Preview background.** Above the preview, choose Checkerboard, Dark video, Bright video, Game scene or Your screenshot. You see at once when a text reads badly.
+- **Votre capture reste chez vous.** L'image choisie reste dans votre navigateur. Elle n'est jamais envoyée au site ni à OBS.
+- **(English) Your screenshot stays with you.** The picture you choose stays in your browser. It is never sent to the site or to OBS.
+- **Marges de sécurité.** Sous « Repères et couleurs », affichez les zones à 3,5 % et 5 % des bords, ou le « Format vertical » pour un téléphone. Les cadres s'y accrochent, et un élément trop près du bord le signale.
+- **(English) Safe margins.** Under "Guides and colours", show the zones at 3.5 % and 5 % from the edges, or the "Vertical format" for a phone. Frames snap to them, and an element too close to the edge says so.
+- **Vue daltonienne.** « Voir comme une personne daltonienne » simule trois visions des couleurs, sur l'aperçu seulement.
+- **(English) Colour-blind view.** "View as a colour-blind person" simulates three colour visions, on the preview only.
+
+### Revenir en arrière
+
+- **Annuler et Rétablir.** Deux boutons près de l'aperçu, ou Ctrl+Z et Ctrl+Maj+Z. L'éditeur garde vos 50 derniers changements, un glisser comptant pour un seul.
+- **(English) Undo and Redo.** Two buttons next to the preview, or Ctrl+Z and Ctrl+Shift+Z. The editor keeps your last 50 changes, a drag counting as one.
+- **Versions enregistrées.** Sous l'éditeur, les 10 dernières mises en page remplacées. « Aperçu » les montre et « Revenir à cette version » les remet, en gardant la mise en page actuelle dans la liste.
+- **(English) Saved versions.** Below the editor, the last 10 layouts that were replaced. "Preview" shows them and "Restore this version" puts them back, keeping the current layout in the list.
+
+### Copier une apparence
+
+- **Copier, coller, appliquer à tous.** Dans l'onglet Apparence d'un élément : « Copier l'apparence », « Coller l'apparence » et « Appliquer à tous les éléments ». Seule l'apparence passe, pas la place ni les options.
+- **(English) Copy, paste, apply to all.** In the Appearance tab of an element: "Copy the look", "Paste the look" and "Apply to every element". Only the look is copied, not the place or the options.
+
+### Pour les développeurs
+
+- **View tools** (`src/core/overlays/editorView.ts`, pure): preview backgrounds drawn in CSS (no file, no address), safe zones (`safeAreas`, `safeLines`, `nearEdge`; 3.5 % / 5 %, vertical format: bottom 20 %, right 12 %), colour-blind matrices (Machado 2009, linear RGB, `cvdFilterValues`, `simulateCvd`). Editor only: the public page and its CSP do not change.
+- **Snapping**: `snapMove(rect, page, threshold, extra?)` takes extra lines (the frame's start or end snaps to them); without `extra`, the result is the same as before.
+- **Undo** reuses `src/core/compose/history.ts` (50 steps); the overlay editor document is `{ size, style, elements }` (the name keeps the text field's own undo).
+- **Saved versions**: new column `OverlayPage.versions` (migration `20261116090000_overlay_page_versions`, additive, default `[]`). `savePage` keeps the replaced state (10 at most, 400 KB bound); `listVersions`, `restoreVersion`; the admin preview takes `?version=<at>`. Versions are not in backups and never hold the secret address. An older core ignores the column.
+- **Audit**: new action `overlay.restore`. Glossary words added in `docs/TRANSLATING.md` (game scene, vertical format, colour-blind view, saved version).
+
 ## 0.19.0 — 2026-11-16
 
 **En bref.** Vous pouvez écrire la phrase d'une alerte sur son image ou son GIF, à l'endroit choisi. Le bouton « Placer le texte » ouvre un éditeur : faites glisser le texte, choisissez sa taille, puis « Utiliser ce placement ».
