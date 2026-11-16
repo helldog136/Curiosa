@@ -68,8 +68,10 @@ test("overlay.idle (advice): a page with a 'no data' text or an empty box is rep
   assert.equal(rule("overlay.idle").level, "advice", "never refuses a module");
   const res = await rule("overlay.idle").run(fakeModule({ good: PAGE.good, noData: PAGE.noData, emptyBox: PAGE.emptyBox, hiddenByScript: PAGE.hiddenByScript }));
   const text = res.join("\n");
-  assert.doesNotMatch(text, /"good"|"hiddenByScript"/);
-  assert.match(text, /"noData"/); assert.match(text, /"emptyBox"/);
+  assert.doesNotMatch(text, /"good"/);
+  assert.match(text, /"noData"/);
+  // A box drawn empty, or a panel the script hides, needs a real browser to be judged; without one (a CI runner without Chromium) the text check alone runs.
+  if ((await R.paintedAtRest("<p>x</p>")) !== null) { assert.match(text, /"emptyBox"/); assert.doesNotMatch(text, /"hiddenByScript"/); }
   assert.deepEqual(await rule("overlay.idle").run({ parsed: { ok: true, manifest: { id: "x", overlayElements: [] } }, definition: {} }), { na: "the module offers no overlay page element" });
 });
 
