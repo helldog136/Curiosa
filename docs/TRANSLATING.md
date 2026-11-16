@@ -87,6 +87,8 @@ Use the same word for the same thing everywhere.
 | preview background | fond d'aperçu | (0.19.0) checkerboard, dark or light: what the editor shows behind a transparent backdrop (the editor only) |
 | format | format | (0.19.0) the shape of a composition frame: 16:9, 9:16, 1:1, 4:3, 21:9 or the file's own |
 | entrance, exit | apparition, disparition | (0.19.0) how and when a text box appears and leaves during the alert |
+| reaction | réaction | what an event type (a follow, a raid…) shows on screen: pictures, GIFs or videos, a sentence, a sound; set in one window per type |
+| display order | ordre d'affichage | how one of several files of a reaction is picked: at random or in turn |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 
