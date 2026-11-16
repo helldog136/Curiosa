@@ -1,5 +1,6 @@
 import { audit } from "@/core/permissions";
-import { cleanAlt, DAILY_BYTES, DAILY_FILES, MAX_ALT, saveAlt, storeCheckedImage, TYPE_OF, usedToday } from "@/core/mediaMcp";
+import { cleanAlt, DAILY_BYTES, DAILY_FILES, MAX_ALT, quotaMessage, saveAlt, storeCheckedImage, TYPE_OF, usedToday } from "@/core/mediaMcp";
+import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
 import { takeSlot } from "@/core/maintenance/slots";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
@@ -16,6 +17,8 @@ import { listTrustedSources } from "@/core/trustedImageSources";
  *
  * One slot of the "content" counter per image actually fetched, and the daily quota of the site (shared with media_upload). A list of up to 10
  * images goes in one call; each one is handled in turn and reports for itself, so one failure does not lose the others.
+ * (0.28.0) While the owner has lifted the upload limits: no daily quota and one image up to 10 MB. The "content" counter, the 10 images per call, the trusted list and
+ * every check of the bytes stay. The limits are read again for each image, so a lift that ends in the middle of a batch applies to the next image.
  * Journal: `media.import` = the stored file name, its size, and the web address WITHOUT its query. Never the bytes.
  */
 export const MAX_BATCH = 10;
@@ -42,16 +45,17 @@ async function importOne(item: Item, actor: Actor, sources: Awaited<ReturnType<t
   const alt = cleanAlt(item.alt);
   checkTrustedUrl(item.url, sources); // refuses before any slot is used or any connection is made
   try { await takeSlot(actor.tokenId, "content"); } catch (error) { throw error instanceof McpToolError ? new Stop(error.message) : error; }
-  const day = await usedToday();
-  if (day.files >= DAILY_FILES || day.bytes >= DAILY_BYTES) throw new Stop(`The daily image quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
-  const got = await fetchTrustedImage(item.url, sources);
-  if (day.bytes + got.bytes.length > DAILY_BYTES) throw new Stop(`The daily image quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later, or the owner can upload in the admin.`);
+  const limits = await mediaLimitsNow();
+  const day = limits.daily ? await usedToday() : null;
+  if (day && (day.files >= DAILY_FILES || day.bytes >= DAILY_BYTES)) throw new Stop(quotaMessage("import"));
+  const got = await fetchTrustedImage(item.url, sources, limits.imageBytes);
+  if (day && day.bytes + got.bytes.length > DAILY_BYTES) throw new Stop(quotaMessage("import"));
   let clean: Buffer;
   try { clean = stripMetadata(got.bytes); } catch (error) {
     if (error instanceof UnreadableImage) throw new McpToolError("The structure of this image cannot be read safely, so its metadata (location, camera) cannot be removed. Nothing was stored. Use another file or another export of it.");
     throw error;
   }
-  const { address, name, kind, size, stored } = await storeCheckedImage(clean, "import");
+  const { address, name, kind, size, stored } = await storeCheckedImage(clean, "import", limits.imageBytes);
   await saveAlt(name, alt);
   const origin = shown(got.requested);
   const via = shown(got.from) !== origin ? ` via ${shown(got.from)}` : "";

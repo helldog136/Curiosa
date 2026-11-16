@@ -155,3 +155,4 @@ export async function removeTrustedSourceAction(label: string): Promise<void> {
   if (removed) await audit(user.email, "mcp.trusted.remove", sourceLabel(removed));
   revalidatePath(ASSISTANTS_HREF);
 }
+

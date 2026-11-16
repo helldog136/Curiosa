@@ -10,17 +10,19 @@ import { ui } from "@/components/admin/ui";
 import { setMcpEnabled } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { TrustedSources } from "./TrustedSources";
+import { UploadLiftBanner, UploadLimits } from "./UploadLimits";
 
 /**
- * "Settings" tab: what is common to all AI assistants (pause them all, the trusted image sources, technical details in advanced mode).
+ * "Settings" tab: what is common to all AI assistants (pause them all, the upload limits (owner only), the trusted image sources, technical details in advanced mode).
  * The assistants themselves (list, add, remove, rights) live in the Team page, with the people.
  */
-export async function AccessTab({ t, advanced }: { t: Translator; advanced: boolean }) {
+export async function AccessTab({ t, locale, advanced, owner }: { t: Translator; locale: string; advanced: boolean; owner: boolean }) {
   const enabled = await isMcpEnabled();
   const guide = Object.fromEntries(GUIDE_KEYS.map((k) => [k, t(k)])) as GuideTexts;
 
   return (
     <div className="space-y-8" data-testid="assistants-access">
+      {owner && <UploadLiftBanner t={t} />}
       {!enabled && (
         <Callout tone="warn" testid="assistants-off">
           <span className="flex flex-wrap items-center justify-between gap-3">
@@ -42,6 +44,8 @@ export async function AccessTab({ t, advanced }: { t: Translator; advanced: bool
           </form>
         </div>
       </Panel>
+
+      {owner && <UploadLimits t={t} locale={locale} />}
 
       <TrustedSources t={t} />
 

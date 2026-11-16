@@ -7,6 +7,29 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.28.0 — 2026-11-16
+
+**En bref.** Vous pouvez remettre à zéro le compte du jour des images envoyées par vos assistants IA, ou lever leurs limites d'envoi pendant 10, 30 ou 60 minutes.
+
+**In short.** You can start the daily count of images sent by your AI assistants over, or lift their upload limits for 10, 30 or 60 minutes.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Envoi d'images par les assistants.** Dans Assistants IA, onglet Réglages, une nouvelle carte montre les images envoyées sur les dernières 24 heures. Elle est réservée à la personne propriétaire.
+- **(English) Image uploads by assistants.** In AI assistants, Settings tab, a new card shows the images sent over the last 24 hours. Only the owner sees it.
+- **Lever les limites.** Choisissez 10, 30 ou 60 minutes : pendant ce temps, pas de compte du jour et jusqu'à 10 Mo par image. Un bandeau « Limites levées jusqu'à 14:32 » s'affiche en haut, avec « Arrêter maintenant ».
+- **(English) Lift the limits.** Choose 10, 30 or 60 minutes: meanwhile, no daily count and up to 10 MB per image. A banner "Upload limits lifted until 14:32" shows at the top, with "Stop now".
+- **Repartir de zéro.** Le compte du jour recommence à partir de maintenant. Le journal garde chaque ligne.
+- **(English) Start over from zero.** The daily count starts again from now. The journal keeps every line.
+- **Ce qui reste toujours limité.** Le contrôle du contenu des fichiers, les installations et mises à jour, les sources d'images de confiance et les droits de chaque assistant.
+- **(English) What always stays limited.** The check of the file content, installs and updates, the trusted image sources and the rights of each assistant.
+
+### Pour les développeurs
+
+- **`src/core/services/mcp/uploadLift.ts`**: settings `mcp.media.liftedUntil` and `mcp.media.quotaFrom`, read from the database on every call, no timer; the end time itself is not lifted; an end more than 60 minutes ahead is ignored. Journal: `mcp.limits.lift`, `mcp.limits.lift.stop`, `mcp.media.quota.reset`, actor the owner.
+- **While lifted**: `media_upload` skips the daily quota and its `content` counter, accepts 10 MB images (body 14 MB); `media_import` skips the daily quota and fetches up to 10 MB. Type, pixel and svg checks, the 1 MB cap of other calls, the `risky` counter, trusted sources and rights are never lifted. `saveUpload` takes an optional `imageMax`.
+- **Messages to assistants**: a refusal for size or for the daily quota says what the owner can do; `maintenance_my_access` reports `imageUploads` (read only). Details in `docs/MAINTENANCE-IA.md`. Glossary words added: lift the limits, start over from zero.
+
 ## 0.27.0 — 2026-11-16
 
 **En bref.** La fenêtre d'une réaction montre maintenant l'aperçu de l'alerte : le fichier, le texte placé et son animation, sans passer par OBS.
