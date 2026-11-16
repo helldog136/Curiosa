@@ -19,7 +19,7 @@ export const AUDIT_ACTIONS = [
   "skin.install", "skin.update", "skin.remove", "skin.refused", "skin.activate", "skin.reset", "skin.undo", "skin.options", "appearance.update", "appearance.font.add", "appearance.font.remove",
   "content.check", "media.upload", "media.import", "media.alt", "mcp.trusted.add", "mcp.trusted.remove", "mcp.limits.reset", "mcp.limits.set",
   "mail.sent", "file.claim", "file.remove", "file.erase",
-  "setting.fromText", "overlay.create", "overlay.update", "overlay.rename", "overlay.duplicate", "overlay.delete", "overlay.activate", "overlay.deactivate", "overlay.secret", "overlay.test.start", "overlay.test.extend", "overlay.test.stop",
+  "setting.fromText", "overlay.create", "overlay.update", "overlay.rename", "overlay.duplicate", "overlay.delete", "overlay.activate", "overlay.deactivate", "overlay.secret", "overlay.test.start", "overlay.test.extend", "overlay.test.stop", "overlay.restore",
 ] as const;
 
 const KNOWN = new Set<string>(AUDIT_ACTIONS);

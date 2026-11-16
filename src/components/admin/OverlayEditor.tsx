@@ -14,6 +14,10 @@ import { addElement, anchorElement, changeResolution, newUid, removeElement, reo
 import { ANCHORS, handlesFor, resizeRect, snapMove, type Anchor, type Guide, type Handle, type LayoutDecl, type Rect } from "@/core/overlays/layout";
 import { placeLabels, previewScale, ZOOMS, LABEL_HEIGHT, OUTSIDE_GAP } from "@/core/overlays/previewView";
 import { effectiveTextScale } from "@/core/overlays/textScale";
+import { HISTORY_MAX, record, redo, replace, startHistory, undo, type History } from "@/core/compose/history";
+import { nearEdge, safeLines, sameDoc } from "@/core/overlays/editorView";
+import type { ElementStyle } from "@/core/overlays/appearance";
+import { CvdFilters, PreviewToolbar, SafeOverlay, usePreviewView } from "./OverlayPreviewTools";
 import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } from "@/core/overlays/model";
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
@@ -29,13 +33,17 @@ type Props = {
   strings: Record<string, string>;
   /** (0.17.0) The page wears an overlay skin (default skin or skin per context): the readability fix of a transparent page does not apply then. */
   pageSkin?: boolean;
+  /** (0.20.0) The page id: the person's own preview screenshot is remembered per page, in this browser only. */
+  pageId?: string;
 };
+/** (0.20.0) One undo step: the size, the common style and the elements. */
+type Doc = { size: { width: number; height: number }; style: OverlayStyle; elements: EditorElement[] };
 
 const hue = (i: number) => (i * 47 + 10) % 360;
 const GRID_ANCHORS: Anchor[] = [...ANCHORS];
 const SNAP_PX = 8;
 
-export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false }: Props) {
+export function OverlayEditor({ initial, available, resolutions, limits, previewSrc, strings, pageSkin = false, pageId = "" }: Props) {
   const s = useCallback((key: string, vars?: Record<string, string | number>) => {
     let text = strings[key] ?? key;
     if (vars) for (const [k, v] of Object.entries(vars)) text = text.replaceAll(`{${k}}`, String(v));
@@ -45,11 +53,17 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const declOf = useCallback((instance: string, element: string): LayoutDecl | null => byKey.get(catalogKey(instance, element))?.layout ?? null, [byKey]);
 
   const [name, setName] = useState(initial.name);
-  const [size, setSize] = useState({ width: initial.width, height: initial.height });
+  // (0.20.0) Undo and redo: 50 steps for the time the editor is open (the same history as the composition editor). A drag is ONE step.
+  const [hist, setHist] = useState<History<Doc>>(() => startHistory({ size: { width: initial.width, height: initial.height }, style: initial.style, elements: initial.elements }));
+  const { size, style, elements } = hist.present;
+  const commit = (patch: Partial<Doc>) => setHist((h) => record(h, { ...h.present, ...patch }, sameDoc));
+  const setStyle = (next: OverlayStyle | ((cur: OverlayStyle) => OverlayStyle)) => setHist((h) => record(h, { ...h.present, style: typeof next === "function" ? next(h.present.style) : next }, sameDoc));
+  const dragBase = useRef<Doc | null>(null);
   const preset = resolutions.some(([w, h]) => w === size.width && h === size.height);
   const [custom, setCustom] = useState(!preset);
-  const [style, setStyle] = useState(initial.style);
-  const [elements, setElements] = useState<EditorElement[]>(initial.elements);
+  const pv = usePreviewView(pageId);
+  const lines = useMemo(() => safeLines(pv.view.safe, { width: size.width, height: size.height }), [pv.view.safe, size.width, size.height]);
+  const [clip, setClip] = useState<{ style: ElementStyle | null } | null>(null);
   const [selected, setSelected] = useState<string | null>(initial.elements.at(-1)?.uid ?? null);
   const [live, setLive] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -76,7 +90,24 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
 
   const data = useMemo(() => JSON.stringify({ name, width: size.width, height: size.height, style, elements: elements.map(({ missing, ...e }) => { void missing; return e; }) }), [name, size, style, elements]);
 
-  const update = (next: EditorElement[]) => setElements(next as EditorElement[]);
+  const update = (next: EditorElement[]) => commit({ elements: next as EditorElement[] });
+  const doUndo = useCallback(() => setHist((h) => { if (h.past.length) setAnnounce(s("ed.undone")); return undo(h); }), [s]);
+  const doRedo = useCallback(() => setHist((h) => { if (h.future.length) setAnnounce(s("ed.redone")); return redo(h); }), [s]);
+  const root = useRef<HTMLDivElement>(null);
+  // Ctrl+Z / Ctrl+Shift+Z (or Ctrl+Y): only when the focus is in the editor or on the page itself, never inside a text field (it has its own undo).
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey) || e.altKey) return;
+      const k = e.key.toLowerCase();
+      if (k !== "z" && k !== "y") return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.closest("input, textarea, select, [contenteditable='true']") || (t !== document.body && !root.current?.contains(t)))) return;
+      e.preventDefault();
+      if (k === "y" || e.shiftKey) doRedo(); else doUndo();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [doUndo, doRedo]);
   const titleOf = (e: EditorElement) => byKey.get(catalogKey(e.instance, e.element))?.title ?? `${e.instance} · ${e.element}`;
   const sizeNote = (e: EditorElement) => { const p = effectiveTextScale(e.textScale, style.textScale); return p === 100 ? "" : ` · ${s("ed.textSize.note", { pct: p })}`; };
 
@@ -108,15 +139,14 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     if (value === "custom") { setCustom(true); return; }
     const [w, h] = value.split("x").map(Number) as [number, number];
     setCustom(false);
-    update(changeResolution(elements, size, { width: w, height: h }, declOf));
-    setSize({ width: w, height: h });
+    commit({ elements: changeResolution(elements, size, { width: w, height: h }, declOf), size: { width: w, height: h } });
   }
   function typeResolution(axis: "width" | "height", raw: string) {
     const n = Math.round(Number(raw));
-    if (!Number.isFinite(n) || n < limits.minSide || n > limits.maxSide) { setSize((p) => ({ ...p, [axis]: Number.isFinite(n) ? n : p[axis] })); return; }
+    // A side being typed (out of bounds for now) is shown, not recorded as an undo step.
+    if (!Number.isFinite(n) || n < limits.minSide || n > limits.maxSide) { setHist((h) => replace(h, { ...h.present, size: { ...h.present.size, [axis]: Number.isFinite(n) ? n : h.present.size[axis] } })); return; }
     const to = { ...size, [axis]: n };
-    update(changeResolution(elements, size, to, declOf));
-    setSize(to);
+    commit({ elements: changeResolution(elements, size, to, declOf), size: to });
   }
 
   // ── Glisser-déposer ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -127,6 +157,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     e.stopPropagation();
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
     setSelected(uid);
+    dragBase.current = hist.present;
     drag.current = { uid, mode, x: e.clientX, y: e.clientY, start: { x: el.x, y: el.y, w: el.w, h: el.h }, scale: box.width / size.width, moved: false };
   }
   function moveDrag(e: React.PointerEvent) {
@@ -139,14 +170,20 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
     if (!el) return;
     const decl = declOf(el.instance, el.element);
     if (d.mode === "move") {
-      const snapped = snapMove({ ...d.start, x: d.start.x + dx, y: d.start.y + dy }, page, SNAP_PX / d.scale);
+      const snapped = snapMove({ ...d.start, x: d.start.x + dx, y: d.start.y + dy }, page, SNAP_PX / d.scale, lines);
       setGuides(snapped.guides);
-      update(setRect(elements, d.uid, snapped.rect));
+      setHist((h) => replace(h, { ...h.present, elements: setRect(h.present.elements, d.uid, snapped.rect) as EditorElement[] }));
     } else if (decl) {
-      update(setRect(elements, d.uid, resizeRect(decl, d.start, d.mode, dx, dy, page)));
+      const handle = d.mode;
+      setHist((h) => replace(h, { ...h.present, elements: setRect(h.present.elements, d.uid, resizeRect(decl, d.start, handle, dx, dy, page)) as EditorElement[] }));
     }
   }
-  function endDrag() { drag.current = null; setGuides([]); }
+  function endDrag() {
+    const d = drag.current, base = dragBase.current;
+    drag.current = null; dragBase.current = null; setGuides([]);
+    // The whole drag is one step: the state before it goes to the past.
+    if (d?.moved && base) setHist((h) => (sameDoc(base, h.present) ? h : { past: [...h.past, base].slice(-HISTORY_MAX), present: h.present, future: [] }));
+  }
 
   // ── Clavier sur un cadre : flèches = déplacer (Maj : 10 px) ; Alt + flèches = redimensionner ────────────────────────
   function keys(e: React.KeyboardEvent, el: EditorElement) {
@@ -189,8 +226,9 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
   const full = elements.length >= limits.elements;
 
   return (
-    <div className="space-y-6" data-admin-wide="">
+    <div ref={root} className="space-y-6" data-admin-wide="">
       <input type="hidden" name="data" value={data} />
+      <CvdFilters />
       <p role="status" aria-live="polite" className="sr-only">{announce}</p>
 
       <section className={`${ui.card} max-w-4xl space-y-5`}>
@@ -236,6 +274,10 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           <div className="flex flex-wrap items-center gap-2">
             <button type="button" className={ui.btnPrimary} aria-expanded={adding} onClick={() => setAdding(!adding)} disabled={full}>{s("ed.add")}</button>
             <button type="button" className={ui.btn} aria-pressed={live} onClick={() => setLive(!live)}>{live ? s("ed.backToEdit") : s("ed.live")}</button>
+            <div role="group" aria-label={s("ed.history")} className="flex items-center gap-1">
+              <button type="button" className={`${ui.btn} min-h-11 min-w-11 !px-3`} onClick={doUndo} disabled={!hist.past.length} aria-label={s("ed.undo")} title={s("ed.undoKeys")} data-testid="ov-undo"><span aria-hidden>↶</span></button>
+              <button type="button" className={`${ui.btn} min-h-11 min-w-11 !px-3`} onClick={doRedo} disabled={!hist.future.length} aria-label={s("ed.redo")} title={s("ed.redoKeys")} data-testid="ov-redo"><span aria-hidden>↷</span></button>
+            </div>
             <span className="text-sm text-muted">{s("ed.count", { n: elements.length, max: limits.elements })}</span>
             <div className="ml-auto flex flex-wrap items-center gap-2">
               <span className="text-sm font-medium text-muted" data-testid="overlay-scale" role="status">{s("ed.previewScale", { pct: view.percent })}</span>
@@ -247,6 +289,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
               )}
             </div>
           </div>
+          <PreviewToolbar v={pv} s={s} />
           {full && <p className={ui.help}>{s("ed.full", { max: limits.elements })}</p>}
           {autoCount > 0 && <p role="status" data-testid="look-auto-notice" className="flex items-center gap-1 text-sm text-muted">{s(autoCount === 1 ? "ed.look.autoNotice.one" : "ed.look.autoNotice", { n: autoCount })}<HelpTip help={s("ed.look.autoNoticeHelp")} name={s("ed.look.preset")} always /></p>}
           {adding && (
@@ -282,8 +325,9 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           {live ? (
             <div className="space-y-2">
               <div ref={stage} className="overflow-auto rounded-xl">
-                <div className="mx-auto overflow-hidden rounded-xl border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ width: view.width || "100%", aspectRatio: `${size.width} / ${size.height}` }}>
+                <div className="relative mx-auto overflow-hidden rounded-xl border border-line" data-testid="overlay-live" data-backdrop={pv.view.backdrop} style={{ width: view.width || "100%", aspectRatio: `${size.width} / ${size.height}`, ...pv.style, filter: pv.filter }}>
                   <iframe title={s("ed.live")} src={previewSrc} sandbox="allow-scripts allow-same-origin" className="h-full w-full border-0" />
+                  <SafeOverlay mode={pv.view.safe} page={page} />
                 </div>
               </div>
               <p className={ui.help}>{s("ed.liveHelp")}</p>
@@ -291,7 +335,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           ) : (
             <div className="space-y-2">
               <div ref={stage} className="overflow-auto rounded-xl border border-line bg-surface p-3" data-testid="overlay-stage">
-                <div ref={canvas} data-testid="overlay-canvas" className="relative mx-auto select-none rounded-md border border-line bg-[repeating-conic-gradient(#0000000f_0%_25%,transparent_0%_50%)] bg-[length:20px_20px]" style={{ width: view.width, height: view.height, touchAction: "none" }}
+                <div ref={canvas} data-testid="overlay-canvas" data-backdrop={pv.view.backdrop} className="relative mx-auto select-none rounded-md border border-line" style={{ width: view.width, height: view.height, touchAction: "none", ...pv.style, filter: pv.filter }}
                   onPointerDown={(e) => { if (e.target === e.currentTarget) setSelected(null); }}>
                   {elements.map((el, i) => {
                     const c = `hsl(${hue(i)} 70% 42%)`;
@@ -322,6 +366,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                       </div>
                     );
                   })}
+                  <SafeOverlay mode={pv.view.safe} page={page} />
                   {guides.map((g, i) => (
                     <span key={i} aria-hidden="true" className="pointer-events-none absolute bg-accent/70" style={g.axis === "x" ? { left: `${(g.at / size.width) * 100}%`, top: 0, bottom: 0, width: 1 } : { top: `${(g.at / size.height) * 100}%`, left: 0, right: 0, height: 1 }} />
                   ))}
@@ -344,6 +389,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                       <button type="button" onClick={() => setSelected(el.uid)} aria-pressed={el.uid === selected} className="min-h-9 min-w-0 flex-1 truncate text-left text-sm">
                         {info ? info.title : s("ed.gone")}
                       </button>
+                      {nearEdge(el, pv.view.safe, page) && <span className={`${ui.chipWarn} shrink-0`} data-testid="near-edge">{s("ed.nearEdge")}</span>}
                       <label className="flex items-center gap-1 text-xs text-muted"><input type="checkbox" checked={el.visible} onChange={(e) => update(elements.map((x) => (x.uid === el.uid ? { ...x, visible: e.target.checked } : x)))} className="h-4 w-4 accent-[var(--v-accent)]" aria-label={`${s("ed.visible")} — ${info?.title ?? ""}`} /><span aria-hidden>{el.visible ? "👁" : "—"}</span></label>
                     </li>
                   );
@@ -424,6 +470,15 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                       <div role="tabpanel" id="ov-tabpanel-look" aria-labelledby="ov-tab-look">
                         <OverlayLookPanel key={sel.uid} uid={sel.uid} style={sel.style ?? null} applied={selLook.applied} readable={selLook.readable} s={s}
                           onChange={(next) => update(setLook(elements, sel.uid, next) as EditorElement[])} />
+                        <div role="group" aria-label={s("ed.lookClip")} className="mt-4 flex flex-wrap gap-2 border-t border-line pt-3" data-testid="look-clip">
+                          <button type="button" className={`${ui.btn} min-h-11`} onClick={() => { setClip({ style: sel.style ?? null }); setAnnounce(s("ed.lookCopied")); }}>{s("ed.copyLook")}</button>
+                          <button type="button" className={`${ui.btn} min-h-11`} disabled={!clip} onClick={() => { if (!clip) return; update(setLook(elements, sel.uid, clip.style) as EditorElement[]); setAnnounce(s("ed.lookPasted")); }}>{s("ed.pasteLook")}</button>
+                          <button type="button" className={`${ui.btn} min-h-11`} onClick={() => {
+                            const targets = elements.filter((x) => x.uid !== sel.uid && byKey.get(catalogKey(x.instance, x.element))?.followsStyle);
+                            update(targets.reduce((list, x) => setLook(list, x.uid, sel.style ?? null), elements as PageElement[]) as EditorElement[]);
+                            setAnnounce(s(targets.length === 1 ? "ed.lookAppliedAll.one" : "ed.lookAppliedAll", { n: targets.length }));
+                          }}>{s("ed.applyLookAll")}</button>
+                        </div>
                       </div>
                     )}
                     {current === "options" && selInfo && selInfo.options.length > 0 && (

@@ -6,7 +6,9 @@ import { buildCatalog } from "@/core/overlays/catalog";
 import { defaultOf } from "@/core/overlays/options";
 import { catalogKey, MAX_ELEMENTS_PER_PAGE, MAX_SIDE, MIN_SIDE, RESOLUTIONS, nowMs, testActive } from "@/core/overlays/model";
 import { OPTIONS_FOLDED_AFTER } from "@/core/overlays/decl";
-import { getPage } from "@/core/overlays/store";
+import { getPage, listVersions } from "@/core/overlays/store";
+import { ConfirmButton } from "@/components/admin/ConfirmButton";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { localized } from "@/core/modules/types";
 import { siteTimezone } from "@/core/siteTime";
 import { floatingLabels } from "@/components/admin/floating";
@@ -15,7 +17,7 @@ import { OverlayEditor, type ClientElement, type EditorElement } from "@/compone
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Callout, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { savePageAction, testAction } from "../actions";
+import { restoreVersionAction, savePageAction, testAction } from "../actions";
 import { OVERLAY_PAGES_HREF, overlayPageHref, overlayPagePreviewHref, overlayPageSkinHref } from "@/core/adminLinks";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 
@@ -31,6 +33,9 @@ const STRINGS = [
   "look.autoNotice", "look.autoNotice.one", "look.autoNoticeHelp", "look.text", "look.text.auto", "look.text.light", "look.text.dark", "look.more", "look.background", "look.background.none", "look.background.soft",
   "look.background.solid", "look.background.glass", "look.opacity", "look.opacityBounds", "look.opacityErr", "look.color", "look.colorReset", "look.outline", "look.outlineHelp", "look.outline.none", "look.outline.thin",
   "look.outline.thick", "look.corners", "look.corners.page", "look.corners.round", "look.corners.square", "look.warn", "look.fix",
+  "history", "undo", "redo", "undoKeys", "redoKeys", "undone", "redone", "backdrop", "backdropHelp", "backdrop.checker", "backdrop.dark", "backdrop.bright", "backdrop.game", "backdrop.own", "backdrop.ownChange", "backdrop.ownTooBig",
+  "viewTools", "safe", "safeHelp", "safe.none", "safe.broadcast", "safe.vertical", "nearEdge", "cvd", "cvdHelp", "cvd.none", "cvd.deuteranopia", "cvd.protanopia", "cvd.tritanopia",
+  "lookClip", "copyLook", "pasteLook", "applyLookAll", "lookCopied", "lookPasted", "lookAppliedAll", "lookAppliedAll.one",
   "fit.scale", "fit.ratio", "fit.fluid", "anchor.tl", "anchor.tc", "anchor.tr", "anchor.ml", "anchor.c", "anchor.mr", "anchor.bl", "anchor.bc", "anchor.br",
 ] as const;
 
@@ -66,6 +71,8 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
   }));
   const initial: EditorElement[] = page.elements.map((e) => ({ ...e, ...(catalog.has(catalogKey(e.instance, e.element)) ? {} : { missing: true }) }));
   const strings = Object.fromEntries(STRINGS.map((k) => [`ed.${k}`, t(`ovp.ed.${k}`)]));
+  const versions = await listVersions(page.id);
+  const when = (at: number) => new Intl.DateTimeFormat(locale, { timeZone: tz, dateStyle: "medium", timeStyle: "short" }).format(new Date(at));
 
   return (
     <div className="space-y-6">
@@ -107,8 +114,32 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
           previewSrc={overlayPagePreviewHref(page.id)}
           strings={strings}
           pageSkin={!!(page.look.skin || page.look.byContext.enabled)}
+          pageId={page.id}
         />
       </ActionForm>
+
+      <details className="max-w-4xl rounded-2xl border border-line bg-surface" data-testid="page-versions">
+        <summary className="flex min-h-11 cursor-pointer items-center gap-2 px-4 py-2 text-sm font-semibold">
+          <span>{t("ovp.versions")}</span>
+          <span className="rounded-full bg-line/60 px-2 py-0.5 text-xs font-medium text-muted">{versions.length}</span>
+        </summary>
+        <div className="space-y-2 border-t border-line p-4">
+          <p className="flex items-center gap-1 text-sm text-muted">{versions.length ? t("ovp.versions.intro", { max: 10 }) : t("ovp.versions.empty")}<HelpTip help={t("ovp.versions.help")} name={t("ovp.versions")} /></p>
+          {versions.length > 0 && (
+            <ol className="space-y-1.5">
+              {versions.map((v) => (
+                <li key={`${v.at}-${v.rev}`} className="flex flex-wrap items-center gap-2 rounded-xl border border-line px-3 py-2" data-testid="page-version">
+                  <span className="min-w-0 flex-1 text-sm">{t("ovp.versions.row", { date: when(v.at), n: v.elements.length, size: `${v.width}×${v.height}` })}</span>
+                  <a href={overlayPagePreviewHref(page.id, { version: String(v.at) })} target="_blank" rel="noopener" className={`${ui.btn} min-h-11`}>{t("ovp.versions.preview")}</a>
+                  <form action={restoreVersionAction.bind(null, page.id, v.at)}>
+                    <ConfirmButton danger={false} message={t("ovp.versions.confirm", { date: when(v.at) })} confirmLabel={t("ovp.versions.restore")} pendingLabel={t("ovp.versions.restoring")}>{t("ovp.versions.restore")}</ConfirmButton>
+                  </form>
+                </li>
+              ))}
+            </ol>
+          )}
+        </div>
+      </details>
     </div>
   );
 }

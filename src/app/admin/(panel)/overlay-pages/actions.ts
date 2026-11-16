@@ -10,7 +10,7 @@ import { buildCatalog } from "@/core/overlays/catalog";
 import { issueMessages } from "@/core/overlays/messages";
 import { RESOLUTIONS } from "@/core/overlays/model";
 import { validatePageInput } from "@/core/overlays/pageInput";
-import { createPage, deletePage, duplicatePage, getPage, renamePage, resetPageSecret, savePage, setActive, setTest } from "@/core/overlays/store";
+import { createPage, deletePage, duplicatePage, getPage, renamePage, resetPageSecret, restoreVersion, savePage, setActive, setTest } from "@/core/overlays/store";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /**
@@ -112,4 +112,14 @@ export async function savePageAction(id: string, _prev: ActionState, formData: F
   revalidatePath(`${LIST}/${page.id}`);
   revalidatePath(LIST);
   return { ok: t("action.saved") };
+}
+
+/** (0.20.0) Puts a saved version of the page back. The current layout becomes a saved version in turn (a restore can be undone the same way). */
+export async function restoreVersionAction(id: string, at: number): Promise<void> {
+  const { user } = await adminCtx(OVERLAY_NEED);
+  const pageId = text(id, 40);
+  const r = await restoreVersion(pageId, Number(at));
+  if (r.ok) await audit(user.email, "overlay.restore", pageId);
+  revalidatePath(`${LIST}/${pageId}`);
+  revalidatePath(LIST);
 }

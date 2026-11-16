@@ -89,6 +89,10 @@ Use the same word for the same thing everywhere.
 | entrance, exit | apparition, disparition | (0.19.0) how and when a text box appears and leaves during the alert |
 | reaction | réaction | what an event type (a follow, a raid…) shows on screen: pictures, GIFs or videos, a sentence, a sound; set in one window per type |
 | display order | ordre d'affichage | how one of several files of a reaction is picked: at random or in turn |
+| game scene | scène de jeu | (0.20.0) a preview background drawn by the core, with bright and dark parts (the editor only) |
+| vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons |
+| colour-blind view | vue daltonienne | (0.20.0) "View as a colour-blind person": a filter on the editor preview only |
+| saved version | version enregistrée | (0.20.0) a layout of an overlay page that a later save replaced; "Restore this version" puts it back |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 

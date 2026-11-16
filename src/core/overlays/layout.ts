@@ -113,11 +113,13 @@ export function resizeRect(d: LayoutDecl, start: Rect, handle: Handle, dx: numbe
 
 export type Guide = { axis: "x" | "y"; at: number };
 /** Aimant léger : bords et centre de la page, à `threshold` pixels de la page au plus. */
-export function snapMove(rect: Rect, page: Size, threshold: number): { rect: Rect; guides: Guide[] } {
+export function snapMove(rect: Rect, page: Size, threshold: number, extra?: { x: readonly number[]; y: readonly number[] }): { rect: Rect; guides: Guide[] } {
   const guides: Guide[] = [];
   let { x, y } = rect;
   const tryAxis = (value: number, size: number, total: number, axis: "x" | "y"): number => {
     const cands: [number, number][] = [[0, 0], [total - size, total], [(total - size) / 2, total / 2]];
+    // (0.20.0) Extra lines (the edges of the safe margins): the frame's start OR end snaps to them.
+    for (const line of extra?.[axis] ?? []) cands.push([line, line], [line - size, line]);
     let best: [number, number] | null = null;
     for (const c of cands) if (Math.abs(value - c[0]) <= threshold && (!best || Math.abs(value - c[0]) < Math.abs(value - best[0]))) best = c;
     if (!best) return value;
