@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { isOwner } from "@/core/permissions";
 import { CREDIT_URL } from "@/core/credit";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { REQUEST_NOTICES, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
@@ -21,7 +22,7 @@ export const dynamic = "force-dynamic";
  * Les réglages techniques (adresse du serveur, liste des actions, consignes par outil) n'apparaissent qu'en mode avancé.
  */
 export default async function AssistantsPage({ searchParams }: { searchParams: Promise<{ tab?: string; notice?: string; profile?: string }> }) {
-  const { t, locale, config, advanced } = await adminCtx({ right: "core:mcp.tokens" });
+  const { t, locale, config, advanced, user } = await adminCtx({ right: "core:mcp.tokens" });
   const query = await searchParams;
   const tab = parseTab(query.tab);
   // Ancien lien « ajouter un assistant d'entretien » : le formulaire est maintenant dans l'Équipe.
@@ -39,7 +40,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
         intro={t("assistants.intro")}
       />
       <AssistantTabs t={t} current={tab} pending={pending} />
-      {tab === "access" && <AccessTab t={t} advanced={advanced} />}
+      {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} owner={isOwner(user)} />}
       {tab === "requests" && <RequestsTab t={t} locale={locale} defaultLocale={config.defaultLocale} notice={notice} />}
       {tab === "history" && <HistoryTab t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} />}
 
