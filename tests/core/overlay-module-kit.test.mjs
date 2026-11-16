@@ -83,8 +83,8 @@ test("overlay.readable (advice): the 0.16.0 alerts bug (tokens written inline on
 });
 
 // ── The modules repository, when it is next to the core ─────────────────────────────────────────────────────────────────────────────────────
-const extras = [process.env.CURIOSA_EXTRAS_DIR, path.resolve("../curiosa-extras")].filter(Boolean).find((d) => fs.existsSync(path.join(d, "modules")));
-test("modules repository: every module that offers elements passes both advice rules, except the generative maze (it always plays)", { skip: extras ? false : "modules repository not found next to the core", timeout: 300000 }, async () => {
+const extras = [process.env.CURIOSA_EXTRAS_DIR].filter(Boolean).find((d) => fs.existsSync(path.join(d, "modules")));
+test("modules repository: every module that offers elements passes both advice rules, except the generative maze (it always plays)", { skip: extras ? false : "set CURIOSA_EXTRAS_DIR to the modules repository to run it", timeout: 300000 }, async () => {
   const { loadModuleDir } = await import("../../testsupport/loader.mjs");
   const found = [];
   for (const id of fs.readdirSync(path.join(extras, "modules")).sort()) {
