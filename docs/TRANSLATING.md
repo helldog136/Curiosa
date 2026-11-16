@@ -93,6 +93,10 @@ Use the same word for the same thing everywhere.
 | vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons; (0.23.0) also the 1080 × 1920 page size |
 | Fix the text size | Corriger la taille du texte | (0.23.0) the one-click fix of a vertical overlay page made before 0.23.0, whose TV text was sized on its height |
 | addresses for OBS | adresses pour OBS | (0.26.0) the page listing every address to paste into a browser source of OBS (overlay pages and extension overlays) |
+| alert preview | aperçu de l'alerte | (0.27.0) the alert drawn under the files of a reaction window, as the overlay shows it, with a sample name; sound off at first |
+| play again | rejouer | (0.27.0) plays the alert preview again from the start |
+| all other rewards | toutes les autres récompenses | the reaction of a channel point reward that has no reaction of its own |
+| deleted on Twitch | supprimée sur Twitch | a reward that no longer exists on the channel; its reaction can be removed |
 | colour-blind view | vue daltonienne | (0.20.0) "View as a colour-blind person": a filter on the editor preview only |
 | saved version | version enregistrée | (0.20.0) a layout of an overlay page that a later save replaced; "Restore this version" puts it back |
 | default readability | lisibilité par défaut | (0.21.0) the readability preset of an overlay page, worn by every element set to "Like the page" |

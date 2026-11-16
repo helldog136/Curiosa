@@ -7,6 +7,7 @@ import {
 } from "@/core/gallery";
 import { copyPlacement, type Composition } from "@/core/compose/model";
 import { ComposeEditor, type ComposeLabels, type ComposeOption } from "./ComposeEditor";
+import { ReactionPreview, fillPhrase } from "./ReactionPreview";
 import { ui } from "./ui";
 import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
@@ -95,6 +96,7 @@ function send(file: File, kinds: GalleryKind[], onProgress: (pct: number) => voi
  * tile that opens the picker with several files at once (drag and drop too), a remove button and two move buttons on every item (tap targets of 44 px, keyboard), an optional
  * caption, an optional list of files already on the site, and per-item progress and error. The value posted with the form is the canonical JSON of the items that are on the site
  * (`[{ src, label? }]`); `<name>__gallery` tells the server which rules to check again (kinds, maximum, minimum). While files are still sending, saving waits.
+ * (0.27.0) With `compose`, the alert is previewed under the list (`ReactionPreview`): the same engine as the overlay, one file at a time.
  */
 export function GalleryField({ name, label, defaultValue, accept, max, min, itemLabel = false, library, required, help, example, labels, compose, composeLabels, testRun }: {
   name: string; label: string; defaultValue?: string; accept?: unknown; max?: unknown; min?: unknown; itemLabel?: boolean; library?: GalleryChoice[]; required?: boolean; help?: string; example?: string; labels: GalleryLabels;
@@ -165,6 +167,19 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
     form.addEventListener("submit", guard, true);
     return () => form.removeEventListener("submit", guard, true);
   }, [labels]);
+
+  // (0.27.0) The sentence of the inline preview follows the form field the module named (`phraseField`), as it is typed.
+  const [typed, setTyped] = useState<string | null>(null);
+  const phraseField = placing ? compose!.phraseField : undefined;
+  useEffect(() => {
+    const form = hidden.current?.form;
+    if (!form || !phraseField) return;
+    const read = () => { const el = form.elements.namedItem(phraseField); setTyped(el && "value" in el ? String((el as unknown as { value: unknown }).value) : null); };
+    read();
+    form.addEventListener("input", read);
+    return () => form.removeEventListener("input", read);
+  }, [phraseField]);
+  const previewPhrase = placing ? fillPhrase(typed, compose!) : "";
 
   // Leaving the page or closing the window cancels what is still sending.
   useEffect(() => () => { for (const a of aborts.current.values()) a.current?.(); }, []);
@@ -421,6 +436,10 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
           <button type="button" aria-expanded={libOpen} aria-controls={`${uid}-lib`} onClick={() => setLibOpen((v) => !v)} className={`${ui.btn} min-h-11`} data-gallery-library-toggle="">{text(labels, "gallery.library")}</button>
           {libOpen && <LibraryPicker id={`${uid}-lib`} items={library} taken={new Set(entries.map((e) => e.src))} room={Math.max(0, limit - counted)} labels={labels} onAdd={addFromLibrary} onClose={() => { setLibOpen(false); focusAfter.current = { add: true }; setEntries((l) => [...l]); }} />}
         </div>
+      )}
+      {placing && ready.some((e) => e.kind !== "audio") && (
+        <ReactionPreview items={ready.filter((e) => e.kind !== "audio").map((e) => ({ id: e.id, src: e.src!, name: e.name, ...(e.compose ? { compose: e.compose } : {}) }))}
+          option={compose!} labels={composeLabels!} phrase={previewPhrase} paused={editing !== null} />
       )}
       {note && <p role="status" data-gallery-note="" className="mt-1.5 text-[13px] leading-5 text-red-700">{note}</p>}
       <span role="status" aria-live="polite" className="sr-only" data-gallery-live="">{live}</span>

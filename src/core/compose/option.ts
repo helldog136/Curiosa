@@ -7,6 +7,7 @@
  *     formats: ["media", "16:9", …], defaultFormat: "media", maxBoxes: 4,
  *     testAction: "testReaction",   // optional: "Test on the overlay" runs this action of the module with the form
  *     video: true,                  // (0.21.0) optional: videos too (the module shows how they play and how long the alert lasts); without it, pictures only
+ *     phraseField: "text",          // (0.27.0) optional: the field of the same form that holds the sentence; the preview follows what is typed there
  *   }
  */
 import { FORMATS, LIMITS, type ComposeFormat } from "./model";
@@ -21,9 +22,12 @@ export type ComposeOption = {
   testAction?: string;
   /** (0.21.0) "Place the text" on the videos of the list too (the module said its page plays them as the engine says). */
   video?: boolean;
+  /** (0.27.0) The name of the form field whose text is the sentence (its `{word}`s filled with the samples); the inline preview follows it as it is typed. */
+  phraseField?: string;
 };
 const TOKEN = /^[a-z][a-zA-Z0-9_]{0,23}$/;
 const ACTION = /^[A-Za-z][A-Za-z0-9_-]{0,60}$/;
+const FIELD = /^[A-Za-z][A-Za-z0-9_]{0,40}$/;
 const str = (v: unknown, max: number) => (typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f]+/g, " ").trim().slice(0, max) : "");
 
 export function composeOption(raw: unknown): ComposeOption | null {
@@ -53,5 +57,6 @@ export function composeOption(raw: unknown): ComposeOption | null {
     maxBoxes: Number.isInteger(n) && n >= 1 ? Math.min(n, LIMITS.boxes) : LIMITS.boxes,
     ...(typeof o.testAction === "string" && ACTION.test(o.testAction) ? { testAction: o.testAction } : {}),
     ...(o.video === true ? { video: true } : {}),
+    ...(typeof o.phraseField === "string" && FIELD.test(o.phraseField) ? { phraseField: o.phraseField } : {}),
   };
 }
