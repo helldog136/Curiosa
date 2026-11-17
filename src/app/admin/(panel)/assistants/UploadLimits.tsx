@@ -1,5 +1,6 @@
 import type { Translator } from "@/core/i18n/dictionary";
 import { DAILY_BYTES, DAILY_FILES, usedToday } from "@/core/mediaMcp";
+import { DAILY_BYTES as FILES_DAILY_BYTES, DAILY_FILES as FILES_DAILY, usedToday as filesUsedToday } from "@/core/services/assistantUploads";
 import { dailyWindowStart, DEFAULT_LIFT_MINUTES, LIFT_MINUTES, liftDeps, liftedUntil } from "@/core/services/mcp/uploadLift";
 import { siteTimezone, timeKey } from "@/core/siteTime";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -31,20 +32,22 @@ export async function UploadLiftBanner({ t }: { t: Translator }) {
 }
 
 /**
- * "Image uploads by assistants" card (Admin > AI assistants > Settings), owner only. One task: lift the limits for a while (one choice, prefilled at 10 minutes,
- * one click). The secondary action starts the daily count over (confirmed; the journal keeps every line). The state line says what is used; the details are in the "?".
+ * "Uploads by assistants" card (Admin > AI assistants > Settings), owner only. One task: lift the limits for a while (one choice, prefilled at 10 minutes,
+ * one click). The secondary action starts the daily count over (confirmed; the journal keeps every line). Both cover the images (media_upload, media_import)
+ * AND, since 0.28.2, the files a module tool receives (ctx.api.files.upload). The state line gives the two counts; the megabytes are in its "?" (R32).
  */
 export async function UploadLimits({ t, locale }: { t: Translator; locale: string }) {
-  const [until, day, from, tz] = await Promise.all([liftedUntil(), usedToday(), dailyWindowStart(), siteTimezone()]);
+  const [until, day, files, from, tz] = await Promise.all([liftedUntil(), usedToday(), filesUsedToday(), dailyWindowStart(), siteTimezone()]);
   const since = from > liftDeps.now() - 86_400_000 + 60_000; // the owner started over within the last 24 hours
-  const usage = { files: day.files, maxFiles: DAILY_FILES, mb: mb(day.bytes, locale), maxMb: mb(DAILY_BYTES, locale) };
+  const usage = { images: day.files, maxImages: DAILY_FILES, files: files.files, maxFiles: FILES_DAILY };
+  const detail = t("uploadLimits.usage.help", { imageMb: mb(day.bytes, locale), maxImageMb: mb(DAILY_BYTES, locale), fileMb: mb(files.bytes, locale), maxFileMb: mb(FILES_DAILY_BYTES, locale) });
   return (
     <section className={`${ui.card} space-y-4`} aria-labelledby="upload-limits-title" data-testid="upload-limits">
       <h2 id="upload-limits-title" className="flex items-center gap-1 text-lg font-semibold">{t("uploadLimits.title")}<HelpTip help={t("uploadLimits.help")} name={t("uploadLimits.title")} always /></h2>
       <p className="text-sm" data-testid="upload-limits-usage">
         {until !== null
           ? <span className={ui.chipWarn}>{t("uploadLimits.lifted", { time: timeKey(new Date(until), tz) })}</span>
-          : since ? t("uploadLimits.since", { ...usage, time: timeKey(new Date(from), tz) }) : t("uploadLimits.today", usage)}
+          : <>{since ? t("uploadLimits.since", { ...usage, time: timeKey(new Date(from), tz) }) : t("uploadLimits.today", usage)}{" "}<HelpTip help={detail} name={t("uploadLimits.usage.name")} always /></>}
       </p>
       {until === null && (
         <ActionForm action={liftUploadLimitsAction} submitLabel={t("uploadLimits.lift")} pendingLabel={t("uploadLimits.lifting")} className="space-y-3">

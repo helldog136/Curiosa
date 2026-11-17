@@ -7,6 +7,32 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.28.2 — 2026-11-17
+
+**En bref.** « Lever les limites » et « Repartir de zéro » valent aussi pour les fichiers que vos assistants IA envoient à une extension, comme les vidéos des alertes.
+
+**In short.** "Lift the limits" and "Start over from zero" now also cover the files your AI assistants send to an extension, such as alert videos.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Les vidéos et sons aussi.** En 0.28.0, lever les limites ne débloquait que les images : une vidéo envoyée aux alertes restait bloquée par le quota du jour (30 fichiers ou 250 Mo). Maintenant, pendant la levée, ce quota ne compte plus, et « Repartir de zéro » le remet aussi à zéro.
+- **(English) Videos and sounds too.** In 0.28.0, lifting the limits only unblocked images: a video sent to the alerts stayed blocked by the daily quota (30 files or 250 MB). Now, while lifted, this quota no longer counts, and "Start over from zero" resets it too.
+- **La carte s'appelle « Envois des assistants ».** Elle montre les images et les fichiers du jour, par exemple « 12 images sur 100, 30 fichiers sur 30 ». Les mégaoctets sont dans la bulle « ? ».
+- **(English) The card is now called "Uploads by assistants".** It shows the images and the files of the day, for example "12 of 100 images, 30 of 30 files". The megabytes are in the "?" bubble.
+- **Ce qui reste limité.** La taille d'une vidéo (25 Mo, 30 secondes), le contrôle du contenu des fichiers et le nombre d'envois en cours. L'assistant le dit quand c'est la raison d'un refus.
+- **(English) What stays limited.** The size of a video (25 MB, 30 seconds), the check of the file content and the number of uploads in progress. The assistant says so when that is why something is refused.
+
+### Après la mise à jour
+
+- Reconnectez vos assistants IA pour qu'ils voient les nouveaux messages.
+- **(English)** Reconnect your AI assistants so they see the new messages.
+
+### Pour les développeurs
+
+- **`ctx.api.files.upload`** (`src/core/services/assistantUploads.ts`): `begin` and `finish` read `filesLimitsNow()` on every call. While lifted: no daily quota of files and no `content` slot at `begin`. `usedToday()` counts `file.upload` lines from `dailyWindowStart()`, the same start as the images. A quota refusal at `finish` keeps the staged bytes: `finish` again after the owner acts.
+- **Never lifted**: byte caps per kind, sha256, kind and container checks, 3 open uploads per access and 10 per site, 30-minute staging, module storage quota, 120 requests per minute. These refusals add "The owner's lift ... does not change ..." while a lift runs (`notLiftedNote`).
+- **Messages to assistants** name the card and its buttons (`OWNER_WHERE`). `maintenance_my_access` reports `fileUploads` (read only). Test module `demo-uploads` replays the bug through the real MCP server.
+
 ## 0.28.1 — 2026-11-17
 
 **En bref.** Mise à jour de sécurité : les briques sur lesquelles repose votre site passent à leurs dernières versions corrigées. Rien ne change à l'écran.

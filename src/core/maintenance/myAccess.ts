@@ -9,6 +9,7 @@ import { reconnectView } from "./reconnect";
 import { getApprovalMode } from "./settings";
 import { remainingSlots } from "./slots";
 import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
+import { DAILY_BYTES as FILES_DAILY_BYTES, DAILY_FILES as FILES_DAILY } from "@/core/services/assistantUploads";
 
 /**
  * `maintenance_my_access` (level 1, read): what THIS access can and cannot do, so that an assistant never assumes a tool does not exist.
@@ -76,6 +77,13 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
       maxImageMB: media.imageBytes / 1024 / 1024,
       dailyQuotaApplies: media.daily,
       meaning: t(media.until === null ? "aim.my.uploads.normal" : "aim.my.uploads.lifted"),
+    },
+    // (0.28.2) The files a module tool receives (ctx.api.files.upload): the same lift and the same "start over"; the byte caps per kind are never raised.
+    fileUploads: {
+      liftedUntil: media.until === null ? null : new Date(media.until).toISOString(),
+      dailyQuotaApplies: media.until === null,
+      dailyQuota: { files: FILES_DAILY, mb: FILES_DAILY_BYTES / 1024 / 1024 },
+      meaning: t(media.until === null ? "aim.my.files.normal" : "aim.my.files.lifted"),
     },
     granted,
     notGranted: notGranted.slice(0, 300),
