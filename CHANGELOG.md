@@ -7,6 +7,25 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.28.1 — 2026-11-17
+
+**En bref.** Mise à jour de sécurité : les briques sur lesquelles repose votre site passent à leurs dernières versions corrigées. Rien ne change à l'écran.
+
+**In short.** Security update: the building blocks your site relies on move to their latest fixed versions. Nothing changes on screen.
+
+### Sécurité
+
+- **Moteur du site à jour.** Le moteur qui affiche vos pages passe à sa dernière version corrigée. L'avertissement de sécurité affiché pendant le développement disparaît.
+- **(English) Site engine up to date.** The engine that displays your pages moves to its latest fixed version. The security warning shown during development goes away.
+- **Envoi des courriels.** La brique qui envoie vos courriels lit les adresses de façon plus stricte.
+- **(English) Sending e-mails.** The building block that sends your e-mails reads addresses more strictly.
+
+### Pour les développeurs
+
+- **Dependencies**: `next` and `eslint-config-next` 16.4.1 → 16.4.6 (GHSA-mfr8-8qww-v76h; Curiosa uses neither `'use cache'` nor `unstable_cache`), `nodemailer` ^10.0.16 → ^10.6.0 (GHSA-8c8m-p3m8-cjg8, GHSA-m943-m63m-w62w, GHSA-85x2-q946-cp5h), `typescript-eslint` 8.73.0 (dev only, GHSA-g3hv-75wg-m249 in `minimatch`).
+- **Still accepted**: GHSA-ggr8-5vv4-36mx (`deepmerge-ts` in the Prisma command-line tool only); the fix needs Prisma 7, a major upgrade planned separately.
+- **Tooling**: `.nvmrc` moves from Node 20 (end of life) to 22, the version of the Docker image, the installer and CI. The `Sécurité` workflow gets a read-only token.
+
 ## 0.28.0 — 2026-11-16
 
 **En bref.** Vous pouvez remettre à zéro le compte du jour des images envoyées par vos assistants IA, ou lever leurs limites d'envoi pendant 10, 30 ou 60 minutes.
