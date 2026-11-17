@@ -80,6 +80,17 @@ export const pollScript = (elementSkins: boolean): string => elementSkins
   ? POLL_SCRIPT.replace('if(S.css&&w.CSSStyleSheet', 'var X=f.getAttribute("data-eskin"),Q=X===null?S:(C.es[+X]||{id:"",css:""});if(Q.css&&w.CSSStyleSheet').replace("ns.replaceSync(S.css)", "ns.replaceSync(Q.css)").replace('el.setAttribute("data-ov-skin",S.id)', 'el.setAttribute("data-ov-skin",Q.id)')
   : POLL_SCRIPT;
 
+/**
+ * (0.30.0) Animation hand-off: when the page's skin (or an element's own skin) carries an animation recipe, or the skin may change by context, the page tells
+ * each element that follows the style which recipe to draw with: `window.__curiosaAnimSkin` is set in the element's window and, when the element runs the
+ * engine (`ctx.overlay.animateScript()`), `CuriosaAnimate.setSkin(recipe)` is called. Elements without the engine ignore it. A skin change (context rule) is
+ * handed over with the new sheet, so the animation style follows with no other setting. Emitted only then: other pages are unchanged byte for byte.
+ */
+const ANIM_SCRIPT = `window.__ovAnim=function(f,S){try{var C=window.__ov,X=f.getAttribute("data-eskin"),Q=X===null?S:(C.es&&C.es[+X]||{}),w=f.contentWindow,r=Q&&Q.anim||null;if(!w)return;w.__curiosaAnimSkin=r;if(w.CuriosaAnimate&&w.CuriosaAnimate.setSkin)w.CuriosaAnimate.setSkin(r)}catch(e){}};`;
+export const animPollScript = (base: string): string => base
+  .replace('f.style.opacity="1"}\nfunction applyAll', 'if(window.__ovAnim)window.__ovAnim(f,S);f.style.opacity="1"}\nfunction applyAll')
+  .replace('swap({key:k,id:s.skin.id||"",css:s.skin.css||""})', 'swap({key:k,id:s.skin.id||"",css:s.skin.css||"",anim:s.skin.anim||null})');
+
 /** (0.11.0) Opaque background: adopts the solid panel colour into each element that follows the style (only on an opaque page, so other pages are unchanged byte for byte). A skin brings its own solid colour instead. */
 const OWNER_SCRIPT = (css: string): string => `(function(){var css=${JSON.stringify(css).replace(/</g, "\\u003c")},SH=new WeakMap();function ap(f){try{var d=f.contentDocument,w=f.contentWindow;if(!d||!w||!d.documentElement||!w.CSSStyleSheet||d.adoptedStyleSheets===undefined)return;var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-owner","1")}catch(e){}}
 var f=document.querySelectorAll("iframe[data-follows]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
@@ -120,7 +131,7 @@ export function renderPage(i: RenderInput): string {
   const { page, t } = i;
   const left = i.test && page.testUntil ? Math.max(0, page.testUntil - i.now) : 0;
   // (0.21.0) Skins of single elements: one entry per distinct choice ("" = no skin), only for elements that follow the style.
-  const es: { id: string; css: string }[] = [];
+  const es: { id: string; css: string; anim?: Record<string, unknown> }[] = [];
   const esIndex = new Map<string, number>();
   /** undefined: the page's skin (also for a skin that was not loaded); null: no skin; else the loaded skin (null payload: it does not work, so no skin). */
   const chosen = (e: ResolvedElement["el"]): LoadedPayload | null | undefined => e.skin === undefined ? undefined : e.skin === null ? null : i.elementSkins?.has(e.skin) ? i.elementSkins.get(e.skin) ?? null : undefined;
@@ -128,13 +139,15 @@ export function renderPage(i: RenderInput): string {
     if (r.status !== "ok" || !r.follows || chosen(r.el) === undefined) return -1;
     const k = r.el.skin ?? "";
     let n = esIndex.get(k);
-    if (n === undefined) { const p = k ? i.elementSkins?.get(k) ?? null : null; n = es.push({ id: p?.id ?? "", css: p?.css ?? "" }) - 1; esIndex.set(k, n); }
+    if (n === undefined) { const p = k ? i.elementSkins?.get(k) ?? null : null; n = es.push({ id: p?.id ?? "", css: p?.css ?? "", ...(p?.anim ? { anim: p.anim } : {}) }) - 1; esIndex.set(k, n); }
     return n;
   };
   const ownSkins = page.active ? i.elements.map(ownSkin) : [];
-  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css } : null, ...(es.length ? { es } : {}) };
+  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css, ...(i.skin.anim ? { anim: i.skin.anim } : {}) } : null, ...(es.length ? { es } : {}) };
+  // (0.30.0) the animation hand-off, only when a recipe is worn now or a context may bring one
+  const anim = page.active && (!!i.skin?.anim || es.some((e) => !!e.anim) || !!i.contextual);
   const head = (title: string) => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>${esc(title)}</title>`;
-  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${pollScript(es.length > 0)}</script>`;
+  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${anim ? ANIM_SCRIPT + animPollScript(pollScript(es.length > 0)) : pollScript(es.length > 0)}</script>`;
   if (!page.active) {
     return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page">${i.test ? `<div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>` : ""}${script}</body></html>`;
   }

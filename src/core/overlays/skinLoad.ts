@@ -21,7 +21,8 @@ export async function usableOverlaySkinIds(): Promise<Set<string>> {
   return new Set((await listOverlaySkins()).filter((s) => s.status === "ok").map((s) => s.id));
 }
 
-export type LoadedPayload = SkinPayload & { key: string };
+/** (0.30.0) `anim`: the skin's animation recipe (already checked), handed to animated elements by the page; absent when the skin has none. */
+export type LoadedPayload = SkinPayload & { key: string; anim?: Record<string, unknown> };
 export async function skinPayload(id: string | null, opaque = false, tweaks?: SkinTweaks): Promise<LoadedPayload | null> {
   if (!id) return null;
   const row = (await readRows()).find((r) => r.id === id);
@@ -32,7 +33,7 @@ export async function skinPayload(id: string | null, opaque = false, tweaks?: Sk
   const p = compileSkin({ id, version: loaded.version, tokens: loaded.tokens.common, css: loaded.css, ...(opaque ? { opaque } : {}), ...(tw ? { tweaks: tw } : {}) });
   // (0.21.0) A retouch changes the sheet, so it changes the key (the live page switches to it like to another skin).
   const tweakKey = tw ? `:t${crypto.createHash("sha256").update(JSON.stringify(tw)).digest("hex").slice(0, 10)}` : "";
-  return { ...p, key: `${id}@${loaded.version}:${loaded.fingerprint.slice(0, 12)}${opaque ? ":solid" : ""}${tweakKey}` };
+  return { ...p, key: `${id}@${loaded.version}:${loaded.fingerprint.slice(0, 12)}${opaque ? ":solid" : ""}${tweakKey}`, ...(loaded.animation ? { anim: loaded.animation } : {}) };
 }
 
 export type PageSkin = { payload: LoadedPayload | null; value: ContextValue | null; source: "rule" | "default" | "none" };

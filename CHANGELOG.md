@@ -7,6 +7,35 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.30.0 — 2026-11-17
+
+**En bref.** Les skins d'overlay peuvent maintenant dessiner des jauges, des niveaux et des compteurs animés. Un même élément change de style quand vous changez de skin. Rien ne change pour vos pages actuelles.
+
+**In short.** Overlay skins can now draw animated gauges, levels and counters. The same element changes style when you change the skin. Nothing changes on your current pages.
+
+### Nouveautés
+
+- **Jauges, niveaux et compteurs animés.** Les extensions peuvent proposer des jauges d'objectif, des comptes à rebours, des niveaux et des compteurs qui réagissent aux événements du direct. Le cœur les dessine dans le style du skin de la page.
+- **(English) Animated gauges, levels and counters.** Extensions can offer goal gauges, countdowns, levels and counters that react to live events. The core draws them in the style of the page's skin.
+- **Un skin, tout le style.** Changer le skin d'une page d'overlay, ou une règle par contexte, change aussi l'allure de ces éléments, sans autre réglage. Un skin sans animation donne une jauge simple et lisible.
+- **(English) One skin, the whole style.** Changing the skin of an overlay page, or a rule by context, also changes how these elements look, with no other setting. A skin without animation gives a plain, readable gauge.
+- **Calme et légèreté.** Chaque élément animé peut avoir des mouvements calmes, sans éclairs ni éclats, et des effets plus légers pour un ordinateur lent. Par défaut, les effets s'allègent d'eux-mêmes si l'ordinateur ne suit pas.
+- **(English) Calm and light.** Each animated element can have calm motion, without flashes or flying pieces, and lighter effects for a slower computer. By default, effects get lighter by themselves when the computer cannot keep up.
+- **Des chiffres toujours nets.** Les nombres et les textes restent droits et contrastés, quel que soit le skin.
+- **(English) Numbers always sharp.** Numbers and texts stay straight and contrasted, whatever the skin.
+
+### Pour les développeurs
+
+- **Animation engine** `src/core/animate/` (docs/OVERLAY-ANIMATIONS.md): closed, versioned vocabulary (`ANIMATE_CONTRACT = 1`), genres `gauge`, `levels`, `counter` and their roles. Pure `view(state, t)` (burst merging, capped celebration queue, phases that end, `rebase`, `format: "time"` with `extend` highlights) and pure `frame(...)` returning a draw list.
+- **Canvas 2D output**: cached layers, incremental lit layer, flattened post effects, 30 fps at most, no frame at rest; quality `full` / `light` / `minimal` plus `auto`, calm motion.
+- **Procedural primitives** with seeds: `mosaic` (seeded Voronoi panes in a rect, arch, round arch, capsule or ellipse, welded vertices, hand-cut lead, back-lit glass), `rose`, `tube`, `trace`, `cells`, `bar`, `lead`, `outline`, ticks, texts with plates, `flash`, `ring`, `particles`, `rays`, `pulse`, `shimmer`, `flicker`, `breathe`.
+- **Effects**: `glow`, `bloom`, `vignette`, `grain`, `edgeFade`.
+- **Temporary code**: the deadline of the pre-0.1.20 restore code (`legacyOff.ts`, `Module.enabled`, `ModuleInstance.enabled`) moves from 0.29.99 to 0.32.99; its removal, with a tested migration, gets its own release after 0.31.0 (`tests/core/temporary-code.test.mjs`).
+- **Overlay skin contract 4**: `animation` in `skin.json` points to `animation.json`, checked at installation and at every reading (`checkAnimation`). Codes `overlay-contract-v4`, `animation-invalid`, `animation-text-contrast`, `animation-missing`, `animation-unreadable`, `animation-overlay-only`.
+- **Newer recipes**: a newer `animateContract` only warns (`animation-contract-newer`) and the skin installs without its animation. Site skins stay at contract 3.
+- **Hand-off**: when the worn skin has a recipe (or a context may bring one), the overlay page sets `window.__curiosaAnimSkin` in each element that follows the style and calls `CuriosaAnimate.setSkin`; the state answer carries `anim` with the sheet. Other pages render byte for byte as before.
+- **`ctx.overlay`**: `animateScript()`, `animateOptions()` (options `animQuality`, `animCalm`), `checkAnimateState()`, `checkAnimation()`, `animateKitPage()`, `animateContract`, `animateVersion`, `animateGenres`. Example element `animated` in `examples/overlay-demo`. `scripts/visual/animate-bench.mjs` (still frames, frame-time measurement).
+
 ## 0.29.0 — 2026-11-17
 
 **En bref.** Mise à jour de sécurité et de fond : la brique qui lit et écrit les données de votre site passe à sa nouvelle version. Rien ne change à l'écran et vos données restent telles quelles.

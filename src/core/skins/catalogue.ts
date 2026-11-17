@@ -15,7 +15,7 @@ import path from "node:path";
 import { DATA_DIR, DEFAULT_SKINS_REPO } from "../config";
 import { fetchCatalogueFromRepo, toHttpsRemote } from "../modules/recognized";
 import { SKIN_ID_RE } from "./allowlist";
-import { SKIN_CONTRACT, TAG_VOCABULARY } from "./constants";
+import { TAG_VOCABULARY, maxSkinContract } from "./constants";
 import type { Text } from "./messages";
 import { coreSatisfies } from "./semver";
 import { parseSkinRepoUrl } from "./source";
@@ -91,7 +91,7 @@ export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: 
       modes, requires: core ? { core } : undefined,
       previewAnim: typeof i.previewAnim === "string" && /^[\w./-]{1,150}-anim\.webp$/.test(i.previewAnim) && !i.previewAnim.includes("..") ? i.previewAnim : undefined,
       preview: typeof i.preview === "string" && /^[\w./-]{1,150}$/.test(i.preview) && !i.preview.includes("..") ? i.preview : undefined,
-      compatible: contract === undefined || contract <= SKIN_CONTRACT,
+      compatible: contract === undefined || contract <= maxSkinContract(kind),
       needsNewerCore: core && !coreSatisfies(core, coreVersion) ? core : undefined,
       origin,
     });
