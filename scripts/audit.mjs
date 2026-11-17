@@ -6,11 +6,7 @@ import { execFileSync } from "node:child_process";
 const LEVELS = ["info", "low", "moderate", "high", "critical"];
 const THRESHOLD = process.env.AUDIT_LEVEL ?? "high";
 const ACCEPTED = {
-  // Prisma command-line tool (migrations), never loaded by the running site;
-  // the fix needs Prisma 7 or later, a major upgrade planned separately.
-  "deepmerge-ts": "GHSA-ggr8-5vv4-36mx — only affects the Prisma command-line tool",
-  "@prisma/config": "depends on deepmerge-ts (see above)",
-  prisma: "depends on @prisma/config (see above)",
+  // (empty) Prisma 7 removed the last accepted case: deepmerge-ts < 8 through @prisma/config (GHSA-ggr8-5vv4-36mx).
 };
 
 let out;

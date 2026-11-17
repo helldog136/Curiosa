@@ -7,6 +7,28 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Mise à jour de sécurité et de fond : la brique qui lit et écrit les données de votre site passe à sa nouvelle version. Rien ne change à l'écran et vos données restent telles quelles.
+
+**In short.** Security and maintenance update: the building block that reads and writes your site's data moves to its new version. Nothing changes on screen and your data stays as it is.
+
+### Sécurité
+
+- **Base de données à jour.** La brique qui gère vos données passe à sa nouvelle version. Le dernier avertissement de sécurité accepté disparaît.
+- **(English) Database layer up to date.** The building block that handles your data moves to its new version. The last accepted security warning goes away.
+- **Vos données ne bougent pas.** Le même fichier est ouvert, avec le même format pour les dates. Une copie est faite avant la mise à jour, comme toujours.
+- **(English) Your data does not move.** The same file is opened, with the same format for dates. A copy is made before the update, as always.
+
+### Pour les développeurs
+
+- **Prisma 6.19.3 → 7.10.1** (`prisma`, `@prisma/client`) with the SQLite driver adapter `@prisma/adapter-better-sqlite3` 7.10.1 and `better-sqlite3` pinned to 12.9.0 (the last release with published drivers for Node.js 20, which existing sites run). Removes GHSA-ggr8-5vv4-36mx (`deepmerge-ts` < 8 via `@prisma/config`); `scripts/audit.mjs` accepts nothing any more.
+- **`prisma.config.ts`** (new, shipped in the archive): reads `.env` like Prisma 6 did (a variable already set wins), and gives the CLI an absolute SQLite path, a relative one being relative to `prisma/` as before. `url` leaves `schema.prisma`; `binaryTargets` are gone (no query engine in Prisma 7). The generator stays `prisma-client-js` (supported by Prisma 7, imports unchanged).
+- **`src/core/db.ts`**: `PrismaBetterSqlite3` with `timestampFormat: "unixepoch-ms"` (Prisma 6 stored dates as integer milliseconds; the adapter default, ISO text, would mix formats in a column). The file comes from `src/core/dbFile.ts` (`sqliteFile`, query parameters ignored); without `DATABASE_URL` the import still works and the first query fails clearly.
+- **One archive, every Node.js**: `release-pack.mjs` ships the published `better-sqlite3` driver for Node.js 20, 22 and 24 (`node_modules/better-sqlite3/prebuilds/node-v<abi>-linux-<arch>/`), `sqliteNativeBinding` picks the running one. CI runs `npm rebuild better-sqlite3` after `npm ci --ignore-scripts`, and the release smoke test also runs the archive under Node.js 20.
+- **Upgrade checks**: `tests/core/prisma7-upgrade.test.mjs` and `prisma7-data.test.mjs` (install.sh layout with a relative address, Prisma 6 migration history kept, stored values unchanged, one date format). Before merging, real databases created and filled by cores 0.6.18, 0.26.0 and 0.28.1 (Prisma 6) were upgraded: history kept, every stored value identical, reads identical to Prisma 6, backup copy complete.
+- **Dockerfile**: `PRISMA_QUERY_ENGINE_LIBRARY` removed (no query engine); the schema engine variable stays.
+
 ## 0.28.2 — 2026-11-17
 
 **En bref.** « Lever les limites » et « Repartir de zéro » valent aussi pour les fichiers que vos assistants IA envoient à une extension, comme les vidéos des alertes.

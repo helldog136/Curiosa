@@ -60,9 +60,12 @@ test("archive : le gabarit de packaging ne contient aucun module, et l'archive r
   put("package.json", JSON.stringify({ name: "curiosa", version: "9.9.9" })); put("package-lock.json", "{}"); put("next.config.mjs"); put("upgrade.json", JSON.stringify({ minFrom: "0.0.0" }));
   put("prisma/schema.prisma"); put("prisma/migrations/a/migration.sql"); put(".env.example"); put("LICENSE"); put("THIRD-PARTY-NOTICES.md");
   put(".next/BUILD_ID"); put("node_modules/next/package.json"); put("scripts/update.mjs");
-  for (const e of ["debian-openssl-1.1.x", "debian-openssl-3.0.x"]) put(`node_modules/.prisma/client/libquery_engine-${e}.so.node`);
+  put("node_modules/.prisma/client/index.js");
+  // the SQLite driver of the building Node.js, and the published ones (already downloaded: no network in tests)
+  put("node_modules/better-sqlite3/build/Release/better_sqlite3.node", "D".repeat(200_000));
+  for (const abi of [115, 127, 137]) put(`drivers/node-v${abi}-linux-${process.arch}/better_sqlite3.node`, "D".repeat(200_000));
   put("scripts/install.sh"); put("extras/modules/blog/module.json"); put("extras/catalogue/index.json"); put("extras/SOURCE.json"); put("examples/guestbook/module.json"); put("catalogue/index.json"); put("modules/blog/module.json");
-  execFileSync(process.execPath, [path.join(root, "scripts/release-pack.mjs"), "9.9.9", out], { cwd: tree, env: { ...process.env, GITHUB_REPOSITORY: "o/curiosa" }, stdio: "pipe" });
+  execFileSync(process.execPath, [path.join(root, "scripts/release-pack.mjs"), "9.9.9", out], { cwd: tree, env: { ...process.env, GITHUB_REPOSITORY: "o/curiosa", CURIOSA_SQLITE_PREBUILDS_FROM: path.join(tree, "drivers") }, stdio: "pipe" });
   const archive = fs.readdirSync(out).find((f) => f.endsWith(".tar.gz"));
   const listing = execFileSync("tar", ["-tzf", path.join(out, archive)], { encoding: "utf8" }).split("\n").filter(Boolean);
   assert.ok(listing.includes("release.json") && listing.some((f) => f.startsWith(".next/")), "l'archive contient bien le site");

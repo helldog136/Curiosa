@@ -15,6 +15,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: npm ci --ignore-scripts
+      - run: npm rebuild better-sqlite3
       - run: npm run audit
       # la release n'est possible que si le build et les tests passent aussi
       - run: npx prisma generate

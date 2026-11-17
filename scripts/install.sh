@@ -283,7 +283,8 @@ node_version_ok() { # $1 = « v22.3.0 »
   local v="${1#v}" maj min
   maj="${v%%.*}"; min="${v#*.}"; min="${min%%.*}"
   case "$maj$min" in *[!0-9]*|"") return 1 ;; esac
-  [ "$maj" -gt 20 ] || { [ "$maj" -eq 20 ] && [ "$min" -ge 9 ]; }
+  # the database layer (Prisma 7) needs 20.19+, 22.12+ or 24; the archive ships the SQLite driver of Node.js 20, 22 and 24 only
+  [ "$maj" -eq 24 ] || { [ "$maj" -eq 22 ] && [ "$min" -ge 12 ]; } || { [ "$maj" -eq 20 ] && [ "$min" -ge 19 ]; }
 }
 resolve_v4() { getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || true; }
 public_ip() {
@@ -1288,9 +1289,9 @@ d.tools_todo.one Outil à installer : {2}
 d.tools_todo.other Outils à installer : {2}
 d.node_home Node.js trouvé dans un dossier personnel ({1}) : le site ne pourrait pas l'utiliser (utilisateur dédié).
 d.node_ok Node.js {1} ({2}).
-d.node_old Node.js {1} est trop ancien (il faut 20.9 ou plus).
+d.node_old Node.js {1} est trop ancien ou pas pris en charge (il faut 20.19+, 22.12+ ou 24).
 d.node_none Node.js n'est pas installé.
-d.node_manual Node.js 20.9 ou plus est nécessaire et je ne sais pas l'installer sur {1}.
+d.node_manual Node.js 22 (22.12 ou plus) est nécessaire et je ne sais pas l'installer sur {1}.
 d.node_manual.fix installez Node.js 22 (https://nodejs.org/fr/download), puis relancez ce script. Rien n'a été modifié.
 d.web_found Serveur web déjà installé : {1} ({2})  ->  j'y AJOUTE votre site sans toucher aux autres.
 d.state_active actif
@@ -1386,7 +1387,7 @@ c.pkgs Installer les outils manquants ({1}) avec apt ?
 c.pkgs_no Sans ces outils je ne peux pas continuer.
 c.pkgs_no.fix installez-les (sudo apt-get install {1}) puis relancez.
 c.node Installer Node.js {1} depuis le dépôt officiel NodeSource ?
-c.node_no Sans Node.js 20.9 ou plus, le site ne peut pas tourner.
+c.node_no Sans Node.js 20.19+, 22.12+ ou 24, le site ne peut pas tourner.
 c.node_no.fix installez Node.js 22 (https://nodejs.org/fr/download) puis relancez.
 c.caddy Installer Caddy depuis son dépôt officiel (apt) ?
 c.caddy_no Sans serveur web je ne peux pas mettre le site en HTTPS.
@@ -1709,9 +1710,9 @@ d.tools_todo.one Tool to install: {2}
 d.tools_todo.other Tools to install: {2}
 d.node_home Node.js found in a personal folder ({1}): the site could not use it (dedicated user).
 d.node_ok Node.js {1} ({2}).
-d.node_old Node.js {1} is too old (20.9 or later is required).
+d.node_old Node.js {1} is too old or not supported (20.19+, 22.12+ or 24 is required).
 d.node_none Node.js is not installed.
-d.node_manual Node.js 20.9 or later is required and I cannot install it on {1}.
+d.node_manual Node.js 22 (22.12 or later) is required and I cannot install it on {1}.
 d.node_manual.fix install Node.js 22 (https://nodejs.org/en/download), then run this script again. Nothing was changed.
 d.web_found Web server already installed: {1} ({2})  ->  I ADD your site to it without touching the others.
 d.state_active running
@@ -1808,7 +1809,7 @@ c.pkgs_no Without these tools I cannot continue.
 c.pkgs_no.fix install them (sudo apt-get install {1}) then run again.
 c.node Install Node.js {1} from the official NodeSource repository?
 c.node_no.fix install Node.js 22 (https://nodejs.org/en/download) then run again.
-c.node_no Without Node.js 20.9 or later, the site cannot run.
+c.node_no Without Node.js 20.19+, 22.12+ or 24, the site cannot run.
 c.caddy Install Caddy from its official repository (apt)?
 c.caddy_no Without a web server I cannot put the site on HTTPS.
 c.caddy_no.fix run again with --skip-proxy for a local-only site, or install a web server then run again.
