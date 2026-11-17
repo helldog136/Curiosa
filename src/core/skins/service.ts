@@ -456,7 +456,7 @@ export async function activeSkinId(): Promise<string> {
   return row && filesPresent(row.id, row.version) ? id : BASIC_ID;
 }
 
-export type LoadedSkin = { ok: true; id: string; version: string; fingerprint: string; manifest: SkinManifest; css: string; tokens: SkinTokens; assetBase: string } | { ok: false; id: string; issues: SkinIssue[] };
+export type LoadedSkin = { ok: true; id: string; version: string; fingerprint: string; manifest: SkinManifest; css: string; tokens: SkinTokens; assetBase: string; /** (0.30.0) The overlay skin's checked animation recipe, or null. */ animation?: Record<string, unknown> | null } | { ok: false; id: string; issues: SkinIssue[] };
 const loadMemo = new Map<string, { at: number; value: LoadedSkin }>();
 const LOAD_TTL = 10 * 60_000;
 
@@ -477,7 +477,7 @@ export async function loadInstalledSkin(id: string, opts: { now?: number; module
   let value: LoadedSkin;
   if (!v.ok || !v.manifest || !v.tokens) value = { ok: false, id, issues: v.issues };
   else if (v.fingerprint !== row.fingerprint) value = { ok: false, id, issues: [makeIssue("skin-modified")] };
-  else value = { ok: true, id, version: row.version, fingerprint: row.fingerprint, manifest: v.manifest, css: v.css, tokens: v.tokens, assetBase: `/skins/${id}/${row.version}/` };
+  else value = { ok: true, id, version: row.version, fingerprint: row.fingerprint, manifest: v.manifest, css: v.css, tokens: v.tokens, assetBase: `/skins/${id}/${row.version}/`, ...(v.animation ? { animation: v.animation } : {}) };
   loadMemo.set(key, { at: now, value });
   if (loadMemo.size > 50) loadMemo.delete(loadMemo.keys().next().value!);
   return value;

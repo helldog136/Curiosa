@@ -265,6 +265,10 @@ The test opens several readers, publishes events, reads them out of order, at th
 - **Rights**: composing overlay pages needs the "Administration" tier or above. No new right to declare.
 - **Nothing is read without a bound** and no timer runs in the background.
 
+## Animated gauges, levels and counters (core 0.30.0)
+
+An element that shows a value over time (a goal bar, a countdown such as a subathon, a hype train, a session counter) should not draw itself: send a **state** to the core's engine (`ctx.overlay.animateScript()`, then `CuriosaAnimate.mount(...)` and `setState(...)`) and it is drawn in the style of the page's overlay skin, with burst merging, a celebration queue, calm motion and quality levels for free. Copy `ctx.overlay.animateOptions()` into the element's options. Full contract: [OVERLAY-ANIMATIONS.md](OVERLAY-ANIMATIONS.md), section 7; example: the `animated` element of `examples/overlay-demo`.
+
 ## 7. Adoption checklist
 
 Tick before publishing the version of your module that offers elements:

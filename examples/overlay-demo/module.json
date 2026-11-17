@@ -8,8 +8,8 @@
   "version": "1.0.0",
   "minCore": "0.5.0",
   "description": {
-    "en": "A small example of a module that offers elements to overlay pages: a clock, a board, a 3D-style scene and a live feed read by several overlay pages at once.",
-    "fr": "Un petit exemple de module qui propose des éléments aux pages d'overlay : une horloge, un tableau, une scène et un fil d'événements lu par plusieurs pages d'overlay à la fois."
+    "en": "A small example of a module that offers elements to overlay pages: a clock, a board, a 3D-style scene and a live feed read by several overlay pages at once, and an animated gauge drawn in the style of the page's skin.",
+    "fr": "Un petit exemple de module qui propose des éléments aux pages d'overlay : une horloge, un tableau, une scène et un fil d'événements lu par plusieurs pages d'overlay à la fois, et une jauge animée dessinée dans le style du skin de la page."
   },
   "author": "Curiosa",
   "license": "MIT",
@@ -189,6 +189,120 @@
           "integer": true,
           "example": "5",
           "default": 5
+        }
+      ]
+    },
+    {
+      "id": "animated",
+      "label": {
+        "en": "Animated gauge",
+        "fr": "Jauge animée"
+      },
+      "description": {
+        "en": "A gauge, levels or a counter drawn in the style of the page's skin. Each new event of the feed moves it.",
+        "fr": "Une jauge, des niveaux ou un compteur dessinés dans le style du skin de la page. Chaque événement du fil la fait avancer."
+      },
+      "fit": "fluid",
+      "minSize": {
+        "width": 320,
+        "height": 120
+      },
+      "demo": true,
+      "options": [
+        {
+          "id": "genre",
+          "type": "choice",
+          "label": {
+            "en": "Shown as",
+            "fr": "Affichage"
+          },
+          "default": "gauge",
+          "choices": [
+            {
+              "value": "gauge",
+              "label": {
+                "en": "Goal gauge",
+                "fr": "Jauge d'objectif"
+              }
+            },
+            {
+              "value": "time",
+              "label": {
+                "en": "Countdown gauge",
+                "fr": "Jauge à rebours"
+              }
+            },
+            {
+              "value": "levels",
+              "label": {
+                "en": "Levels",
+                "fr": "Niveaux"
+              }
+            },
+            {
+              "value": "counter",
+              "label": {
+                "en": "Counter",
+                "fr": "Compteur"
+              }
+            }
+          ]
+        },
+        {
+          "id": "animQuality",
+          "type": "choice",
+          "label": {
+            "en": "Effects",
+            "fr": "Effets"
+          },
+          "help": {
+            "en": "Lighter effects for a slower computer.",
+            "fr": "Des effets plus légers pour un ordinateur lent."
+          },
+          "default": "auto",
+          "choices": [
+            {
+              "value": "auto",
+              "label": {
+                "en": "Automatic",
+                "fr": "Automatiques"
+              }
+            },
+            {
+              "value": "full",
+              "label": {
+                "en": "All",
+                "fr": "Tous"
+              }
+            },
+            {
+              "value": "light",
+              "label": {
+                "en": "Light",
+                "fr": "Légers"
+              }
+            },
+            {
+              "value": "minimal",
+              "label": {
+                "en": "None",
+                "fr": "Aucun"
+              }
+            }
+          ]
+        },
+        {
+          "id": "animCalm",
+          "type": "boolean",
+          "label": {
+            "en": "Calm motion",
+            "fr": "Mouvements calmes"
+          },
+          "help": {
+            "en": "No flashes, shakes or flying pieces.",
+            "fr": "Sans éclairs, secousses ni éclats qui volent."
+          },
+          "default": false
         }
       ]
     }
