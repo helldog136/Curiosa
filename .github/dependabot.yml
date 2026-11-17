@@ -1,0 +1,15 @@
+# Dependabot version updates: only the base image of the Docker image (Dockerfile), pinned by digest.
+# Every week, a pull request on dev moves the digest of node:22-bookworm-slim when a new one exists (Node.js or Debian fixes).
+# Majors are never proposed here: moving Node.js to another major is a decision of its own (docs/DOCKER-BASE-IMAGE.md).
+version: 2
+updates:
+  - package-ecosystem: "docker"
+    directory: "/"
+    target-branch: "dev"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
+    commit-message:
+      prefix: "Docker base image"

@@ -28,6 +28,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **One archive, every Node.js**: `release-pack.mjs` ships the published `better-sqlite3` driver for Node.js 20, 22 and 24 (`node_modules/better-sqlite3/prebuilds/node-v<abi>-linux-<arch>/`), `sqliteNativeBinding` picks the running one. CI runs `npm rebuild better-sqlite3` after `npm ci --ignore-scripts`, and the release smoke test also runs the archive under Node.js 20.
 - **Upgrade checks**: `tests/core/prisma7-upgrade.test.mjs` and `prisma7-data.test.mjs` (install.sh layout with a relative address, Prisma 6 migration history kept, stored values unchanged, one date format). Before merging, real databases created and filled by cores 0.6.18, 0.26.0 and 0.28.1 (Prisma 6) were upgraded: history kept, every stored value identical, reads identical to Prisma 6, backup copy complete.
 - **Dockerfile**: `PRISMA_QUERY_ENGINE_LIBRARY` removed (no query engine); the schema engine variable stays.
+- **Docker base image pinned by digest** (`node:22-bookworm-slim@sha256:…`, the tag kept for reading): `.github/dependabot.yml` proposes the new digest on `dev` every week; manual procedure and urgent Node.js fixes in `docs/DOCKER-BASE-IMAGE.md`.
 
 ## 0.28.2 — 2026-11-17
 
