@@ -1,0 +1,33 @@
+{
+  "animateContract": 1,
+  "colors": { "pink": "#ff2bd6", "cyan": "#00e5ff", "ink": "#0b0820" },
+  "genres": {
+    "gauge": {
+      "frame": { "draw": "trace", "color": "@cyan", "alpha": 0.5, "lines": 2, "nodes": 5, "width": 0.008, "pulse": 0.8 },
+      "body": { "draw": "tube", "color": "@pink", "core": "#ffe6fb", "dim": "#3a1036", "dimAlpha": 0.6, "width": 0.16, "glow": 0.9, "thickness": 0.5 },
+      "ticks": { "draw": "notch", "color": "@cyan", "alpha": 0.8, "length": 0.6 },
+      "value": { "draw": "text", "font": "rounded", "weight": 800, "color": "#ffffff", "outline": "@ink", "outlineWidth": 0.08, "glow": 0.6, "glowColor": "@pink" },
+      "label": { "draw": "text", "font": "rounded", "weight": 700, "color": "#ffffff", "outline": "@ink", "outlineWidth": 0.08, "glow": 0.4, "glowColor": "@cyan", "size": 0.7 },
+      "step": [{ "draw": "flash", "color": "@pink", "strength": 0.5, "size": 0.6 }, { "draw": "particles", "kind": "sparks", "colors": ["@pink", "#ffffff"], "count": 10, "spread": 0.7 }],
+      "burst": [{ "draw": "flash", "color": "@pink", "strength": 0.6, "size": 1.4 }, { "draw": "ring", "color": "@cyan", "irregularity": 0, "width": 0.015 }, { "draw": "particles", "kind": "sparks", "colors": ["@pink", "@cyan", "#ffffff"], "count": 30 }],
+      "ambient": { "draw": "flicker", "strength": 0.12, "rate": 0.8 }
+    },
+    "levels": {
+      "body": { "draw": "tube", "color": "@cyan", "core": "#e6fdff", "dim": "#08303a", "segments": 5, "width": 0.16, "glow": 0.9 },
+      "value": { "draw": "text", "font": "rounded", "weight": 800, "color": "#ffffff", "outline": "@ink", "glow": 0.6, "glowColor": "@cyan" },
+      "label": { "draw": "text", "font": "rounded", "weight": 700, "color": "#ffffff", "outline": "@ink", "size": 0.7 },
+      "timer": [{ "draw": "gaugeline", "color": "@pink", "track": "#3a1036", "trackAlpha": 0.6 }],
+      "step": { "draw": "flash", "color": "@cyan", "strength": 0.5, "size": 0.6 },
+      "burst": [{ "draw": "flash", "color": "@cyan", "strength": 0.6, "size": 1.4 }, { "draw": "particles", "kind": "sparks", "colors": ["@pink", "@cyan"], "count": 24 }],
+      "ambient": { "draw": "flicker", "strength": 0.1 }
+    },
+    "counter": {
+      "frame": { "draw": "outline", "color": "@pink", "alpha": 0.9, "width": 0.015, "radius": 0.25 },
+      "value": { "draw": "text", "font": "rounded", "weight": 800, "color": "#ffffff", "outline": "@ink", "glow": 0.7, "glowColor": "@pink" },
+      "label": { "draw": "text", "font": "rounded", "weight": 700, "color": "#ffffff", "outline": "@ink", "size": 0.8 },
+      "step": { "draw": "pulse", "strength": 0.4 },
+      "burst": [{ "draw": "flash", "color": "@pink", "strength": 0.6 }, { "draw": "particles", "kind": "sparks", "colors": ["@pink", "@cyan"], "count": 20 }]
+    }
+  },
+  "effects": { "glow": { "strength": 0.7 } }
+}

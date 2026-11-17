@@ -637,7 +637,9 @@ export type ModuleContext = {
    * (core 0.19.0) Compositions of alerts (text placed on a picture): the engine for an overlay page (`composeScript()`, `composeCss()`), the checker
    * (`checkComposition`), the filling of texts (`resolveComposition`) and `copyPlacement`. Pure functions. Absent on an older core: test it and keep showing the
    * media alone. See docs/MODULES.md, "Compositions". (core 0.24.0) Also the helpers of overlay ELEMENTS: `tokens(query)` (the common-style tokens as one
-   * `:root` rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale). See docs/OVERLAY-ELEMENTS.md.
+   * `:root` rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale). See docs/OVERLAY-ELEMENTS.md. (core 0.30.0) And the ANIMATION kit: `animateScript()`
+   * (the engine that draws gauges, levels and counters in the style of the page's skin), `animateOptions()`, `checkAnimateState(state)`, `animateKitPage(opts)`.
+   * See docs/OVERLAY-ANIMATIONS.md.
    */
   overlay?: import("@/core/overlays/moduleKit").OverlayKit;
   /**

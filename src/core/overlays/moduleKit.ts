@@ -7,10 +7,12 @@
  *  - `tvFactor(query)`: the `ov-tv` factor (px of the 1080 canvas -> px of this window), 1 when absent or out of bounds.
  *  - `tvTokens(query)`: `--ov-tv` and the TV type scale `--ov-text-xs` to `--ov-text-2xl` as declarations, to put in the same rule.
  *
- * The composition kit of 0.19.0 (`composeScript`, `checkComposition`…) stays in `ctx.overlay` next to these. An older core has no `ctx.overlay.tokens`:
+ * The composition kit of 0.19.0 (`composeScript`, `checkComposition`…) stays in `ctx.overlay` next to these, and (0.30.0) the animation kit
+ * (`animateScript`, `animateOptions`, `checkAnimateState`, `animateKitPage`…: animate/kit.ts, docs/OVERLAY-ANIMATIONS.md). An older core has no `ctx.overlay.tokens`:
  * a module tests `typeof ctx.overlay?.tokens === "function"` and keeps its own copy otherwise.
  */
 import { composeKit } from "../compose/kit";
+import { animateKit } from "../animate/kit";
 import { tokenValues } from "./tokens";
 import { TV_TYPE_SCALE } from "./textScale";
 import type { OverlayStyle } from "./model";
@@ -44,6 +46,6 @@ export function tvTokens(q: Query): string {
 }
 
 export const elementKit = Object.freeze({ tokens: elementTokens, tvFactor, tvTokens, styleOf });
-/** What `ctx.overlay` is: the composition kit (0.19.0) and the element helpers (0.24.0). */
-export const overlayKit = Object.freeze({ ...composeKit, ...elementKit });
+/** What `ctx.overlay` is: the composition kit (0.19.0), the element helpers (0.24.0) and the animation kit (0.30.0). */
+export const overlayKit = Object.freeze({ ...composeKit, ...elementKit, ...animateKit });
 export type OverlayKit = typeof overlayKit;
