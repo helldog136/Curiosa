@@ -93,9 +93,9 @@ export async function recover(args, { prisma, bcrypt, out = console.log }) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
   loadEnv();
-  const { PrismaClient } = await import("@prisma/client");
+  const { openPrisma } = await import("./db-client.mjs");
   const bcrypt = (await import("bcryptjs")).default;
-  const prisma = new PrismaClient();
+  const prisma = openPrisma();
   try { process.exitCode = await recover(process.argv.slice(2), { prisma, bcrypt }); }
   catch (e) { console.error("Échec :", e?.message ?? e); process.exitCode = 1; }
   finally { await prisma.$disconnect(); }

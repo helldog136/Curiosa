@@ -4,13 +4,8 @@ import crypto from "node:crypto";
 import { DATA_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
 
-/** Fichier SQLite de DATABASE_URL (relatif = relatif au dossier prisma/, comme Prisma). */
-export function sqliteFile(url = process.env.DATABASE_URL, appDir = process.cwd()): string | null {
-  const m = /^file:(.+)$/.exec(String(url ?? ""));
-  if (!m) return null;
-  const p = m[1]!.split("?")[0]!;
-  return path.isAbsolute(p) ? p : path.resolve(appDir, "prisma", p);
-}
+export { sqliteFile } from "@/core/dbFile";
+import { sqliteFile } from "@/core/dbFile";
 
 /** Copie de sécurité de la base avant une restauration (on garde les 5 dernières). Renvoie son chemin, ou null s'il n'y a pas de fichier. */
 export function safetyCopy(label: string, dataDir = DATA_DIR, now = Date.now()): string | null {

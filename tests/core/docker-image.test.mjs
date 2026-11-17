@@ -122,26 +122,40 @@ test("workflow: image names and tags follow the shared policy; the dry run pushe
   assert.match(wf, /workflow_dispatch:[\s\S]*image_dry_run:[\s\S]*type: boolean[\s\S]*default: true/);
 });
 
-test("release-pack: the archive of this architecture carries upgrade.json and its own database engines, not the other architecture's", () => {
+test("release-pack: the archive carries upgrade.json, prisma.config.ts and the SQLite driver for every supported Node.js (existing sites run Node.js 20)", () => {
   const root = makeTempDir("curiosa-pack-");
   try {
     const arch = process.arch;
     if (!["x64", "arm64"].includes(arch)) return;
-    const own = arch === "arm64" ? ["linux-arm64-openssl-3.0.x"] : ["debian-openssl-1.1.x", "debian-openssl-3.0.x"];
-    const other = arch === "arm64" ? ["debian-openssl-3.0.x"] : ["linux-arm64-openssl-3.0.x"];
     const w = (f, c = "x") => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), c); };
     w("package.json", JSON.stringify({ name: "curiosa", version: "1.2.3" })); w(".next/BUILD_ID"); w("upgrade.json", JSON.stringify({ minFrom: "1.0.0" }));
-    w("prisma/schema.prisma"); w("prisma/migrations/001/migration.sql"); w("scripts/install.sh"); w("scripts/docker-entrypoint.mjs"); w("node_modules/x/index.js");
-    for (const e of [...own, ...other]) w(`node_modules/.prisma/client/libquery_engine-${e}.so.node`);
-    execFileSync(process.execPath, [path.resolve("scripts/release-pack.mjs"), "1.2.3", "out"], { cwd: root, env: { ...process.env, GITHUB_REPOSITORY: "owner/curiosa" }, stdio: "pipe" });
+    w("prisma.config.ts"); w("prisma/schema.prisma"); w("prisma/migrations/001/migration.sql"); w("scripts/install.sh"); w("scripts/docker-entrypoint.mjs"); w("node_modules/x/index.js");
+    w("node_modules/.prisma/client/index.js");
+    const own = "OWN-DRIVER".repeat(20_000);
+    w("node_modules/better-sqlite3/build/Release/better_sqlite3.node", own);
+    // the published drivers, already downloaded (no network in tests)
+    const from = path.join(root, "drivers");
+    for (const abi of [115, 127, 137]) w(`drivers/node-v${abi}-linux-${arch}/better_sqlite3.node`, `DRIVER-${abi}-`.repeat(20_000));
+    execFileSync(process.execPath, [path.resolve("scripts/release-pack.mjs"), "1.2.3", "out"], { cwd: root, env: { ...process.env, GITHUB_REPOSITORY: "owner/curiosa", CURIOSA_SQLITE_PREBUILDS_FROM: from }, stdio: "pipe" });
     const archive = fs.readdirSync(path.join(root, "out")).find((f) => f.endsWith(".tar.gz"));
     assert.match(archive, new RegExp(`^curiosa-v1\\.2\\.3-linux-${arch}\\.tar\\.gz$`));
     const listing = execFileSync("tar", ["-tzf", path.join(root, "out", archive)], { encoding: "utf8" }).split("\n");
     assert.ok(listing.includes("upgrade.json"), "the floor travels with the code");
+    assert.ok(listing.includes("prisma.config.ts"), "the Prisma 7 configuration: migrations at update time read it");
     assert.ok(listing.includes("scripts/docker-entrypoint.mjs"));
-    for (const e of own) assert.ok(listing.includes(`node_modules/.prisma/client/libquery_engine-${e}.so.node`), e);
-    for (const e of other) assert.ok(!listing.includes(`node_modules/.prisma/client/libquery_engine-${e}.so.node`), `${e} is the other architecture's`);
-    assert.ok(JSON.parse(fs.readFileSync(path.join(root, "release.json"), "utf8")).paths.includes("upgrade.json"));
+    for (const abi of [115, 127, 137]) assert.ok(listing.includes(`node_modules/better-sqlite3/prebuilds/node-v${abi}-linux-${arch}/better_sqlite3.node`), `driver for Node.js ABI ${abi}`);
+    assert.equal(fs.readFileSync(path.join(root, "node_modules/better-sqlite3/build/Release/better_sqlite3.node"), "utf8"), own, "the driver of the building Node.js is left as it was");
+    assert.ok(JSON.parse(fs.readFileSync(path.join(root, "release.json"), "utf8")).paths.includes("prisma.config.ts"));
+  } finally { fs.rmSync(root, { recursive: true, force: true }); }
+});
+
+test("release-pack: without the SQLite driver of the building Node.js, nothing is packed (npm ci --ignore-scripts needs npm rebuild better-sqlite3)", () => {
+  const root = makeTempDir("curiosa-pack-");
+  try {
+    const w = (f, c = "x") => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), c); };
+    w("package.json", JSON.stringify({ name: "curiosa", version: "1.2.3" })); w(".next/BUILD_ID"); w("upgrade.json", JSON.stringify({ minFrom: "1.0.0" })); w("node_modules/.prisma/client/index.js");
+    assert.throws(() => execFileSync(process.execPath, [path.resolve("scripts/release-pack.mjs"), "1.2.3", "out"], { cwd: root, env: { ...process.env, GITHUB_REPOSITORY: "owner/curiosa" }, stdio: "pipe" }), /npm rebuild better-sqlite3/);
+    assert.ok(!fs.existsSync(path.join(root, "out")));
   } finally { fs.rmSync(root, { recursive: true, force: true }); }
 });
 
@@ -189,16 +203,14 @@ test("workflow: arm64 is NON-BLOCKING for the release while unproven (and blocki
   assert.ok(legs.every(gated), "every step of the arm64 leg is skipped when no valid arm64 archive exists (unless images are rebuilt from a release)");
 });
 
-test("Dockerfile: the Prisma CLI is pointed at the engines of the archive (it ran as non-root and tried to write/download them: the first real image smoke failed there)", () => {
+test("Dockerfile: the Prisma CLI is pointed at the schema engine of the archive (it ran as non-root and tried to write/download it: the first real image smoke failed there)", () => {
   // One stage per architecture sets the engine name; the CLI then never looks for (or downloads) anything.
-  assert.match(lines, /FROM node:22-bookworm-slim AS target-amd64\s+ENV PRISMA_ENGINE_TARGET=debian-openssl-3\.0\.x/);
-  assert.match(lines, /FROM node:22-bookworm-slim AS target-arm64\s+ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3\.0\.x/);
+  assert.match(lines, /FROM node:22-bookworm-slim@sha256:[0-9a-f]{64} AS target-amd64\s+ENV PRISMA_ENGINE_TARGET=debian-openssl-3\.0\.x/);
+  assert.match(lines, /FROM node:22-bookworm-slim@sha256:[0-9a-f]{64} AS target-arm64\s+ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3\.0\.x/);
   assert.match(lines, /FROM target-\$\{TARGETARCH\}/);
   assert.match(lines, /ENV PRISMA_SCHEMA_ENGINE_BINARY=\/app\/node_modules\/@prisma\/engines\/schema-engine-\$\{PRISMA_ENGINE_TARGET\}/);
-  assert.match(lines, /ENV PRISMA_QUERY_ENGINE_LIBRARY=\/app\/node_modules\/\.prisma\/client\/libquery_engine-\$\{PRISMA_ENGINE_TARGET\}\.so\.node/);
-  // The names match what the archive carries: the client engine per release-pack, the schema engine per the installed Prisma.
-  const pack = read("scripts/release-pack.mjs");
-  assert.ok(pack.includes('"debian-openssl-3.0.x"') && pack.includes('"linux-arm64-openssl-3.0.x"'));
+  // Prisma 7 has no query engine library: the site uses the SQLite driver of the archive (src/core/db.ts), and the old variable is gone.
+  assert.ok(!/PRISMA_QUERY_ENGINE_LIBRARY/.test(lines), "no query engine in Prisma 7");
   if (process.arch === "x64") assert.ok(fs.existsSync("node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"), "the schema engine file name the Dockerfile expects");
 });
 
@@ -220,4 +232,19 @@ test("workflow: images can be rebuilt for an EXISTING release from its published
   assert.deepEqual(imageTagsForExisting("0.6.13", ["v0.6.14", "v0.6.13", "v0.5.0"]), ["0.6.13"], "an older patch moves neither 0.6 nor latest");
   assert.deepEqual(imageTagsForExisting("0.6.14", ["0.6.14", "0.7.0"]), ["0.6.14", "0.6"], "newest of its series, not of everything");
   assert.deepEqual(imageTagsForExisting("0.8.0-rc.1", ["0.7.0"]), ["0.8.0-rc.1"]);
+});
+
+test("Dockerfile: the base image is pinned by digest (same digest for both architectures, tag kept for reading), and the way to move it is written down", () => {
+  const froms = [...lines.matchAll(/^FROM (\S+)/gm)].map((m) => m[1]).filter((f) => !f.startsWith("target-"));
+  assert.ok(froms.length >= 2);
+  for (const f of froms) assert.match(f, /^node:22-bookworm-slim@sha256:[0-9a-f]{64}$/, `${f}: tag AND digest`);
+  assert.equal(new Set(froms).size, 1, "one digest for both architectures (a multi-architecture index)");
+  // Node.js security releases still come in: Dependabot proposes the new digest on dev every week, and the procedure is documented.
+  const bot = read(".github/dependabot.yml");
+  assert.match(bot, /package-ecosystem: "?docker"?/);
+  assert.match(bot, /target-branch: "?dev"?/);
+  assert.match(bot, /interval: "?weekly"?/);
+  const doc = read("docs/DOCKER-BASE-IMAGE.md");
+  assert.match(doc, /imagetools inspect node:22-bookworm-slim/);
+  assert.match(docker, /docs\/DOCKER-BASE-IMAGE\.md/);
 });
