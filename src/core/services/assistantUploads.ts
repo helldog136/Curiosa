@@ -7,6 +7,7 @@ import { audit } from "@/core/permissions";
 import { takeSlot } from "@/core/maintenance/slots";
 import { filesUsage, FILES_QUOTA_BYTES, FILES_QUOTA_COUNT, type FileOwner } from "@/core/services/files";
 import { storeUpload } from "@/core/services/uploads";
+import { dailyWindowStart, filesLimitsNow, notLiftedNote, OWNER_WHERE, utcTime } from "@/core/services/mcp/uploadLift";
 import { ASSISTANT_KINDS, ASSISTANT_MAX_BYTES, CHUNK_BYTES, checkAssistantFile, HTTP_PART_BYTES, STAGING_TTL_MS, type AssistantKind } from "./assistantUploadCheck";
 export { CHUNK_BYTES, HTTP_PART_BYTES, STAGING_TTL_MS };
 
@@ -26,12 +27,16 @@ export { CHUNK_BYTES, HTTP_PART_BYTES, STAGING_TTL_MS };
  * Who can: only an MCP call (never a page, route, task or service), of a tool that declares `"uploads": true` (manifest refuses it on a read-only or
  * default-on tool, and without the `files` permission), granted by the owner to this access (write tools are off by default). Replaying `finish` returns the
  * same file (`already: true`), never a second one. Unfinished slots are swept (no timer: at each begin, piece and finish).
+ *
+ * The owner's "Start over from zero" and "Lift the limits" (services/mcp/uploadLift.ts, 0.28.2) cover the daily quota of files and the "content" counter
+ * of begin, read on every begin AND finish (a lift that ended between the two no longer counts). Never lifted: the byte caps per kind, the checks, the
+ * open-upload caps, the 30-minute staging, the module's storage quota. A refusal that a running lift does not cover says so.
  */
 export const STAGING_DIR = path.join(DATA_DIR, "assistant-uploads");
 export const MAX_TOTAL_BYTES = Math.max(...Object.values(ASSISTANT_MAX_BYTES));
 export const OPEN_PER_ACCESS = 3;
 export const OPEN_PER_SITE = 10;
-/** For the whole site, all assistants together, over 24 hours (counted from the journal, nothing else to keep). */
+/** For the whole site, all assistants together, over 24 hours or since the owner started over (counted from the journal, nothing else to keep). */
 export const DAILY_FILES = 30;
 export const DAILY_BYTES = 250 * 1024 * 1024;
 
@@ -88,11 +93,18 @@ export async function sweep(): Promise<Session[]> {
   return open;
 }
 
-/** What assistants stored in the last 24 hours (from the journal). */
+/** What assistants stored in the last 24 hours, or since the owner started the count over if that is more recent (from the journal, same start as the images). */
 export async function usedToday(): Promise<{ files: number; bytes: number }> {
-  const rows = await prisma.auditLog.findMany({ where: { action: "file.upload", actorKind: "assistant", createdAt: { gt: new Date(deps.now() - 86_400_000) } }, select: { target: true }, take: DAILY_FILES * 4 });
+  const from = await dailyWindowStart();
+  const rows = await prisma.auditLog.findMany({ where: { action: "file.upload", actorKind: "assistant", createdAt: { gt: new Date(from) } }, select: { target: true }, take: DAILY_FILES * 4 });
   return { files: rows.length, bytes: rows.reduce((n, r) => n + Number(/ (\d+) bytes/.exec(r.target)?.[1] ?? 0), 0) };
 }
+
+const MB = (n: number) => Math.round((n / 1024 / 1024) * 10) / 10;
+/** The refusal of the daily quota of files: what is counted, what the owner can do and where (the button names of the card), and what the assistant can do. */
+export const filesQuotaMessage = (day: { files: number; bytes: number }) =>
+  `The daily upload quota of the site for files sent by assistants is used up (${DAILY_FILES} files or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together; ${day.files} files and ${MB(day.bytes)} MB counted now). The owner can press "Lift the limits" (10, 30 or 60 minutes) or "Start over from zero" ${OWNER_WHERE}, then you can try again. Otherwise try again later.`;
+const roomMessage = (until: number | null) => `This module has no room left for files. The owner can delete unused files in its library.${notLiftedNote(until, "the room of a module")}`;
 
 /** A label for the journal and the module (the name the assistant gives): letters, digits, space, dot, dash, underscore, apostrophe; 60 characters. */
 export const cleanLabel = (v: unknown): string => (typeof v === "string" ? v.normalize("NFKC").split(/[\\/]/).pop()!.replace(/[^\p{L}\p{N} ._'-]+/gu, " ").replace(/\s+/g, " ").replace(/^[.\s]+/, "").trim().slice(0, 60) : "");
@@ -103,17 +115,22 @@ export async function beginUpload(who: UploadWho, owner: FileOwner, input: { byt
   const max = Math.max(...accept.map((k) => ASSISTANT_MAX_BYTES[k]));
   const bytes = input.bytes;
   if (typeof bytes !== "number" || !Number.isInteger(bytes) || bytes < 1) return no("invalid", "Give the exact size of the file in bytes, for example 2104331 (stat -c %s file.webm).");
-  if (bytes > max) return no("size", `The file is ${(bytes / 1024 / 1024).toFixed(1)} MB; ${Math.round(max / 1024 / 1024)} MB at most here (pictures 5 MB, sounds 10 MB, videos 25 MB). Compress it first.`);
+  // The limits are read on every call: a lift that ended a second ago no longer counts.
+  const limits = await filesLimitsNow();
+  if (bytes > max) return no("size", `The file is ${(bytes / 1024 / 1024).toFixed(1)} MB; ${Math.round(max / 1024 / 1024)} MB at most here (pictures 5 MB, sounds 10 MB, videos 25 MB). Compress it first.${notLiftedNote(limits.until, "the size of one file")}`);
   const hash = typeof input.sha256 === "string" ? input.sha256.trim().toLowerCase() : "";
   if (!/^[0-9a-f]{64}$/.test(hash)) return no("invalid", "Give the sha256 of the file as 64 hexadecimal characters, for example the first word of: sha256sum file.webm.");
   const open = await sweep();
-  if (open.filter((s) => s.tokenId === who.tokenId).length >= OPEN_PER_ACCESS) return no("busy", `This access already has ${OPEN_PER_ACCESS} uploads in progress. Finish them (or wait 30 minutes for them to expire) before starting another one.`);
-  if (open.length >= OPEN_PER_SITE) return no("busy", "Too many uploads are in progress on this site. Try again in a few minutes.");
-  const day = await usedToday();
-  if (day.files >= DAILY_FILES || day.bytes + bytes > DAILY_BYTES) return no("quota", `The daily upload quota for assistants is used up (${DAILY_FILES} files or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again tomorrow, or the owner can upload in the admin.`);
+  const openNote = notLiftedNote(limits.until, "the number of uploads in progress");
+  if (open.filter((s) => s.tokenId === who.tokenId).length >= OPEN_PER_ACCESS) return no("busy", `This access already has ${OPEN_PER_ACCESS} uploads in progress. Finish them (or wait 30 minutes for them to expire) before starting another one.${openNote}`);
+  if (open.length >= OPEN_PER_SITE) return no("busy", `Too many uploads are in progress on this site. Try again in a few minutes.${openNote}`);
+  if (limits.daily) {
+    const day = await usedToday();
+    if (day.files >= DAILY_FILES || day.bytes + bytes > DAILY_BYTES) return no("quota", filesQuotaMessage(day));
+  }
   const used = await filesUsage(owner.moduleId);
-  if (used.files + 1 > FILES_QUOTA_COUNT || used.bytes + bytes > FILES_QUOTA_BYTES) return no("quota", "This module has no room left for files. The owner can delete unused files in its library.");
-  try { await takeSlot(who.tokenId, "content"); } catch (error) { return no("busy", (error as Error).message); }
+  if (used.files + 1 > FILES_QUOTA_COUNT || used.bytes + bytes > FILES_QUOTA_BYTES) return no("quota", roomMessage(limits.until));
+  if (limits.contentCounter) { try { await takeSlot(who.tokenId, "content"); } catch (error) { return no("busy", (error as Error).message); } }
   const id = crypto.randomBytes(16).toString("hex");
   const secret = crypto.randomBytes(32).toString("base64url");
   await fs.mkdir(STAGING_DIR, { recursive: true, mode: 0o700 });
@@ -128,7 +145,7 @@ async function mine(who: UploadWho, owner: FileOwner, upload: unknown): Promise<
   const id = typeof upload === "string" ? upload.trim() : "";
   const s = await load(id);
   if (!s || s.tokenId !== who.tokenId || s.instanceId !== owner.instanceId) return no("unknown", "Unknown upload. Use the upload value returned by the begin step of this same tool, within 30 minutes.");
-  if (expired(s)) { await drop(s.id); return no("expired", "This upload expired (30 minutes). Start a new one."); }
+  if (expired(s)) { await drop(s.id); return no("expired", `This upload expired (30 minutes). Start a new one.${notLiftedNote((await filesLimitsNow()).until, "the 30 minutes of an upload")}`); }
   return s;
 }
 
@@ -216,10 +233,14 @@ export async function finishUpload(who: UploadWho, owner: FileOwner, input: { up
     }
     const checked = await checkAssistantFile(buf, s.accept);
     if (!checked.ok) { await drop(s.id); return no(checked.reason, checked.message); }
-    const day = await usedToday();
-    if (day.files >= DAILY_FILES || day.bytes + buf.length > DAILY_BYTES) return no("quota", `The daily upload quota for assistants is used up (${DAILY_FILES} files or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours). Try again tomorrow.`);
+    const limits = await filesLimitsNow();
+    if (limits.daily) {
+      // The slot is kept (30 minutes): once the owner lifts the limits or starts over, finish again with the same upload, nothing to send again.
+      const day = await usedToday();
+      if (day.files >= DAILY_FILES || day.bytes + buf.length > DAILY_BYTES) return no("quota", `${filesQuotaMessage(day)} The bytes already sent stay until ${utcTime(s.createdAt + STAGING_TTL_MS)}: after the owner's action, call the finish step again with the same upload, nothing to send again.`);
+    }
     const used = await filesUsage(owner.moduleId);
-    if (used.files + 1 > FILES_QUOTA_COUNT || used.bytes + buf.length > FILES_QUOTA_BYTES) return no("quota", "This module has no room left for files. The owner can delete unused files in its library.");
+    if (used.files + 1 > FILES_QUOTA_COUNT || used.bytes + buf.length > FILES_QUOTA_BYTES) return no("quota", roomMessage(limits.until));
     const url = await storeUpload(buf, checked.ext);
     const name = url.slice("/uploads/".length);
     const now = new Date(deps.now());

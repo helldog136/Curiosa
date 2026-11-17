@@ -11,7 +11,7 @@ import { saveUpload, sniffImage } from "@/core/services/uploads";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { takeSlot } from "@/core/maintenance/slots";
-import { dailyWindowStart, LIFTED_MEDIA_BODY, LIFTED_MEDIA_BYTES, MEDIA_BYTES, mediaLimitsNow } from "@/core/services/mcp/uploadLift";
+import { dailyWindowStart, LIFTED_MEDIA_BODY, LIFTED_MEDIA_BYTES, MEDIA_BYTES, mediaLimitsNow, OWNER_WHERE } from "@/core/services/mcp/uploadLift";
 
 /**
  * MEDIA FOR AN AI: `media_upload`, `media_list` (read) and `media_set_alt`. No deletion tool.
@@ -74,9 +74,9 @@ export function cleanAlt(v: unknown): string {
 const label = (v: unknown): string => (typeof v === "string" ? v.split(/[\\/]/).pop()!.replace(/[^\p{L}\p{N} ._-]+/gu, "").replace(/^\.+/, "").trim().slice(0, 60) : "");
 
 /** What the AI is told when the size or the quota refuses an image: what to do, and what the owner can do. */
-export const OWNER_CAN_LIFT = "The owner can lift the upload limits for a few minutes in Admin > AI assistants > Settings.";
+export const OWNER_CAN_LIFT = `The owner can lift the upload limits for a few minutes ("Lift the limits", 10, 30 or 60 minutes) ${OWNER_WHERE}.`;
 const tooBig = (max: number, lifted: boolean) => `The image is larger than ${max / 1024 / 1024} MB. Resize or compress it (for example a 1600 pixel wide jpeg or webp) and send it again.${lifted ? "" : ` ${OWNER_CAN_LIFT}`}`;
-export const quotaMessage = (via: "upload" | "import") => `The daily ${via === "upload" ? "upload" : "image"} quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later. The owner can start the count over, or lift the upload limits for a few minutes, in Admin > AI assistants > Settings.`;
+export const quotaMessage = (via: "upload" | "import") => `The daily ${via === "upload" ? "upload" : "image"} quota of the site is used up (${DAILY_FILES} images or ${DAILY_BYTES / 1024 / 1024} MB per 24 hours, all assistants together). Try again later. The owner can start the count over ("Start over from zero"), or lift the upload limits for a few minutes ("Lift the limits"), ${OWNER_WHERE}.`;
 
 function decode(raw: string, max: number, lifted: boolean): Buffer {
   const b64 = raw.replace(/\s+/g, "");
