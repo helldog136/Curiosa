@@ -38,6 +38,7 @@ Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in
 - Previews: `previews/overlay-640.webp` (still, 150 KB at most) and optionally `previews/overlay-anim.webp` (a looping animated webp of the same scene, 640 x 360, 450 KB at most; the catalogue entry names it in `previewAnim`). The catalogue shows the animated one when the card is on screen and the animation budget allows, and falls back to the still one; both are read once from the repository, checked on their bytes, kept on the site and served by the site itself.
 - Catalogue: official overlay skins are listed in `catalogue/overlay-skins.json` of the skins repository (same entry format as `catalogue/index.json`), a separate file so that older cores never see them.
 - Check with `npm run skin:check -- <folder>`: the same function (`validateSkinFolder`) serves the install, the update and the check.
+- **Animation (contract 4, core 0.30.0)**: an overlay skin may add `"animation": "animation.json"` (with `"skinContract": 4` and `"minCore": "0.30.0"`) to say how animated gauges, levels and counters look in this skin: stained glass, neon tubes, a plain bar… It is data only (procedural primitives with parameters and seeds, no code, no image). Without it, those elements use a basic rendering that follows the skin's `--ov-*` tokens. The whole contract, with a worked stained-glass example: [OVERLAY-ANIMATIONS.md](OVERLAY-ANIMATIONS.md).
 
 ### `tokens.json`
 

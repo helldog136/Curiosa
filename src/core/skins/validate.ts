@@ -21,7 +21,9 @@ import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
 import { sanitizeOverlayCss } from "../overlays/skinCss";
 import { checkSkinTokens } from "../overlays/skinSheet";
-import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3 } from "./constants";
+import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4 } from "./constants";
+import { checkAnimation } from "../animate/recipe";
+import { RECIPE_LIMITS } from "../animate/spec";
 import { coreSatisfies } from "./semver";
 
 export type ValidateOptions = {
@@ -48,7 +50,7 @@ export type ValidateOptions = {
   advice?: boolean;
 };
 
-export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme";
+export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme" | "animation";
 export type ValidatedFile = { path: string; bytes: number; sha256: string; kind: FileKind };
 
 export type SkinTokens = {
@@ -73,6 +75,11 @@ export type SkinValidation = {
   installFiles: { path: string; content: Buffer }[];
   fingerprint: string;
   totalBytes: number;
+  /**
+   * (core 0.30.0) The overlay skin's animation recipe, checked (animate/recipe.ts): null when the skin has none, or when it declares a recipe contract newer
+   * than this core's (the animation is then off, the basic rendering applies, and the rest of the skin works as usual).
+   */
+  animation?: Record<string, unknown> | null;
 };
 
 const ROOT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -163,6 +170,7 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if ((m.previews ?? []).length === 0) add("manifest-no-preview");
   if ((m.previews ?? []).length > FILE_LIMITS.previews) add("previews-too-many", { max: FILE_LIMITS.previews });
   if (m.kind === "overlay" && m.skinContract < OVERLAY_SKIN_CONTRACT) add("overlay-contract");
+  if (m.kind !== "overlay" && m.animation) add("animation-overlay-only");
   if (hasErrors(issues)) return fail();   // le reste dépend d'un manifeste sain
   if (m.kind === "overlay") return runOverlay(m, found, byRel, issues, fail);
 
@@ -406,6 +414,8 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   const hasTokens = declare(m.tokens, "tokens", TOKENS_FILE_RE, "tokens-missing");
   const hasSheet = m.stylesheet ? declare(m.stylesheet, "stylesheet", SHEET_FILE_RE, "stylesheet-missing") : false;
   const previews = (m.previews ?? []).filter((p) => declare(p.file, "preview", PREVIEW_PATH_RE, "asset-missing"));
+  const hasAnimation = m.animation ? declare(m.animation, "animation", TOKENS_FILE_RE, "animation-missing") : false;
+  if (m.animation && m.skinContract < OVERLAY_SKIN_CONTRACT_V4) add("overlay-contract-v4");
   for (const f of found) {
     if (kinds.has(f.rel)) continue;
     if (README_RE.test(f.rel) || OWN_LICENSE_RE.test(f.rel) || LICENSE_FILE_RE.test(f.rel)) kinds.set(f.rel, README_RE.test(f.rel) ? "readme" : "license");
@@ -437,6 +447,24 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
       else add("overlay-contrast", { pair: i.pair!, ratio: i.ratio! });
     }
   }
+  // (core 0.30.0) the animation recipe: data checked with the closed grammar of animate/spec.ts
+  let animation: Record<string, unknown> | null = null;
+  if (hasAnimation) {
+    if (sizeOf(m.animation!) > RECIPE_LIMITS.bytes) add("file-too-large", { file: m.animation!, size: kb(sizeOf(m.animation!)), max: kb(RECIPE_LIMITS.bytes) });
+    else {
+      let raw: unknown;
+      try { raw = JSON.parse(read(m.animation!).toString("utf8").replace(/^\uFEFF/, "")); } catch { add("animation-unreadable"); }
+      if (raw !== undefined) {
+        const r = checkAnimation(raw);
+        for (const i of r.issues.slice(0, 12)) {
+          if (i.code === "contract-newer") add("animation-contract-newer");
+          else if (i.severity === "warning") add("animation-ignored", { detail: i.path });
+          else add(i.code === "text-contrast" ? "animation-text-contrast" : "animation-invalid", { detail: `${i.code} ${i.path}` });
+        }
+        animation = r.ok ? r.recipe : null;
+      }
+    }
+  }
   let css = "";
   if (hasSheet && sizeOf(m.stylesheet!) <= 40 * 1024) {
     const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id);
@@ -456,5 +484,5 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   }
   const ok = !hasErrors(issues);
   if (!ok) return { ...fail(), issues: unique(issues) };
-  return { ok, issues: unique(issues), manifest: m, css, tokens: { light: {}, dark: {}, common: tokens, modules: {} }, readability: [], files, installFiles, fingerprint: fingerprintOf(files), totalBytes };
+  return { ok, issues: unique(issues), manifest: m, css, tokens: { light: {}, dark: {}, common: tokens, modules: {} }, readability: [], files, installFiles, fingerprint: fingerprintOf(files), totalBytes, animation };
 }

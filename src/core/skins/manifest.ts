@@ -6,7 +6,7 @@
  */
 import { z } from "zod";
 import { SKIN_ID_RE } from "./allowlist";
-import { HEADER_LAYOUTS, SKIN_CONTRACT, TAG_VOCABULARY } from "./constants";
+import { HEADER_LAYOUTS, TAG_VOCABULARY, maxSkinContract } from "./constants";
 import { makeIssue, type SkinIssue } from "./messages";
 import { SEMVER_RE } from "./semver";
 
@@ -64,6 +64,8 @@ export const skinManifestSchema = z.object({
   modes: z.array(z.enum(["light", "dark"])).min(1).max(2).refine((m) => new Set(m).size === m.length, "duplicate mode").optional(),
   tokens: z.string().min(1).max(100),
   stylesheet: z.string().min(1).max(100).optional(),
+  /** (core 0.30.0, overlay skins of contract 4) The animation recipe file (docs/OVERLAY-ANIMATIONS.md): data only, checked by animate/recipe.ts. */
+  animation: z.string().min(1).max(100).optional(),
   previews: z.array(preview).max(40).optional(),
   assets: z.array(asset).max(200).optional(),
   defaults: z.object({
@@ -93,8 +95,9 @@ export function parseSkinManifest(json: unknown): ManifestParse {
   const raw = json as Record<string, unknown>;
   const issues: SkinIssue[] = [];
   const contract = raw.skinContract;
-  if (Number.isInteger(contract) && (contract as number) > SKIN_CONTRACT) {
-    return { ok: false, issues: [makeIssue("manifest-contract-newer", { max: SKIN_CONTRACT })] };
+  const max = maxSkinContract(raw.kind);
+  if (Number.isInteger(contract) && (contract as number) > max) {
+    return { ok: false, issues: [makeIssue("manifest-contract-newer", { max })] };
   }
   const parsed = skinManifestSchema.safeParse(raw);
   if (!parsed.success) {

@@ -1,0 +1,33 @@
+{
+  "animateContract": 1,
+  "colors": { "amber": "#e2a35e", "honey": "#c98c51", "rust": "#b3541f", "garnet": "#8a1d24", "moss": "#2f5d3a", "cream": "#fff3e0", "lead": "#120c09", "warm": "#ffb347" },
+  "genres": {
+    "gauge": {
+      "body": { "draw": "mosaic", "shape": "arch", "pattern": "voronoi", "cells": 34, "jitter": 0.8, "seed": 136, "order": "x", "palette": ["@amber", "@honey", "@rust", "@garnet", "@moss", "#e6e2d3"], "unlit": 0.25, "tint": 0.6, "bubbles": 0.5, "streaks": 0.5, "mottle": 0.6, "lead": "@lead", "leadWidth": 0.026, "irregularity": 2, "glow": 0.6, "glowColor": "@warm" },
+      "ticks": { "draw": "node", "color": "#5a4a3a", "lit": "#ffd45e", "size": 0.06, "irregularity": 2 },
+      "value": { "draw": "text", "font": "serif", "weight": 800, "color": "@cream", "outline": "@lead", "outlineWidth": 0.1, "plate": "lead", "plateColor": "#1a0f0a", "plateAlpha": 0.9, "plateEdge": "@lead" },
+      "label": { "draw": "text", "font": "serif", "weight": 700, "color": "@cream", "outline": "@lead", "outlineWidth": 0.1, "size": 0.75 },
+      "timer": { "draw": "gaugeline", "color": "@warm", "track": "#5a4a3a", "trackAlpha": 0.5 },
+      "step": [{ "draw": "flash", "color": "#fff3c4", "strength": 0.45, "size": 0.7 }, { "draw": "particles", "kind": "shards", "colors": ["@amber", "@rust", "#e6e2d3"], "count": 8, "spread": 0.6, "gravity": 0.6, "size": 0.012 }],
+      "burst": [{ "draw": "flash", "color": "#fff1c4", "strength": 0.7, "size": 1.6 }, { "draw": "ring", "color": "#ffd45e", "irregularity": 3, "width": 0.02 }, { "draw": "particles", "kind": "shards", "colors": ["@amber", "@garnet", "@moss", "#e6e2d3"], "count": 36, "spread": 1.4, "gravity": 0.5, "size": 0.016 }],
+      "ambient": [{ "draw": "shimmer", "color": "#fff6e0", "strength": 0.1, "period": 9 }, { "draw": "rays", "color": "#fff1c4", "count": 4, "strength": 0.08, "angle": 35 }]
+    },
+    "levels": {
+      "body": { "draw": "rose", "rings": 2, "segments": 11, "seed": 21, "irregularity": 2, "palette": ["@amber", "@rust", "@garnet", "@moss", "@honey"], "lead": "@lead", "glowColor": "@warm", "center": "#e6e2d3" },
+      "value": { "draw": "text", "font": "serif", "weight": 900, "color": "@cream", "outline": "@lead", "outlineWidth": 0.12 },
+      "label": { "draw": "text", "font": "serif", "weight": 700, "color": "@cream", "outline": "@lead", "outlineWidth": 0.1, "size": 0.75 },
+      "timer": [{ "draw": "gaugeline", "color": "@warm", "track": "#5a4a3a", "trackAlpha": 0.5 }],
+      "step": [{ "draw": "flash", "color": "#fff3c4", "strength": 0.5, "size": 0.6 }, { "draw": "pulse", "strength": 0.4 }],
+      "burst": [{ "draw": "flash", "color": "#fff1c4", "strength": 0.5, "size": 1 }, { "draw": "rays", "color": "#fff1c4", "count": 7, "strength": 0.16 }, { "draw": "particles", "kind": "shards", "colors": ["@amber", "@garnet", "@moss"], "count": 30, "spread": 1.2 }],
+      "ambient": { "draw": "breathe", "strength": 0.15, "period": 6 }
+    },
+    "counter": {
+      "frame": { "draw": "lead", "color": "@lead", "width": 0.045, "irregularity": 2, "backing": "#1a0f0a", "backingAlpha": 0.88 },
+      "value": { "draw": "text", "font": "serif", "weight": 900, "color": "@cream", "outline": "@lead", "outlineWidth": 0.06, "glow": 0.4, "glowColor": "@warm" },
+      "label": { "draw": "text", "font": "serif", "weight": 700, "color": "@amber", "outline": "@lead", "outlineWidth": 0.1, "size": 0.8 },
+      "step": [{ "draw": "flash", "color": "#fff3c4", "strength": 0.4 }, { "draw": "particles", "kind": "shards", "colors": ["@amber", "@rust", "#e6e2d3"], "count": 10, "spread": 0.8 }],
+      "burst": [{ "draw": "flash", "color": "#fff1c4", "strength": 0.7, "size": 1.5 }, { "draw": "ring", "color": "#ffd45e", "irregularity": 3 }, { "draw": "particles", "kind": "shards", "colors": ["@amber", "@garnet", "@moss"], "count": 28 }]
+    }
+  },
+  "effects": { "glow": { "strength": 0.5 }, "bloom": { "strength": 0.25 }, "vignette": { "strength": 0.22, "color": "#1a0a05" }, "grain": { "amount": 0.05 }, "edgeFade": { "left": 0.02, "right": 0.02, "bottom": 0.04 } }
+}
