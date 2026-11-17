@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## 0.29.0-rc.1 — 2026-11-17
+## 0.29.0 — 2026-11-17
 
 **En bref.** Mise à jour de sécurité et de fond : la brique qui lit et écrit les données de votre site passe à sa nouvelle version. Rien ne change à l'écran et vos données restent telles quelles.
 
