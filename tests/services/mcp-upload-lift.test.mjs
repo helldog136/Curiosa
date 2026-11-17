@@ -59,7 +59,7 @@ const fillQuota = (at = new Date(Date.now() - 3_600_000), n = MM.DAILY_FILES) =>
 test("reset: the count starts over from now; every journal line stays; a line before the reset is ignored, a line after it counts", async () => {
   const { token } = await access();
   await fillQuota();
-  assert.match((await upload(token)).error, /daily upload quota.*start the count over, or lift the upload limits.*Admin > AI assistants > Settings/);
+  assert.match((await upload(token)).error, /daily upload quota.*start the count over \("Start over from zero"\), or lift the upload limits for a few minutes \("Lift the limits"\), in Admin > AI assistants > Settings, card "Uploads by assistants"/);
   const before = await db.prisma.auditLog.count();
   await L.resetDailyQuota();
   assert.equal(await db.prisma.auditLog.count(), before, "nothing deleted or changed in the journal");
@@ -200,7 +200,7 @@ test("media_import while lifted: a 5 MB image from a trusted source and the dail
     assert.match((await imp()).error, /not a png, jpeg, webp or gif/);
     await L.stopLift();
     body = png(16, 12);
-    assert.match((await imp()).error, /daily image quota.*start the count over/);
+    assert.match((await imp()).error, /daily image quota.*start the count over \("Start over from zero"\)/);
   } finally {
     F.resetImportDeps(); delete process.env.CURIOSA_TEST_IMPORT_LOCAL; delete process.env.NODE_ENV;
     server.closeAllConnections(); await new Promise((r) => server.close(r));
@@ -243,8 +243,8 @@ test("owner only, journalled with the owner as actor; no MCP tool and no other f
 test("texts: EN and FR in exact parity (keys and variables); the journal lines have a label", () => {
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
-  const keys = Object.keys(en).filter((k) => /^(uploadLimits\.|aim\.my\.uploads\.|audit\.action\.mcp\.(limits\.lift|media\.quota))/.test(k));
-  assert.equal(keys.length, 20);
+  const keys = Object.keys(en).filter((k) => /^(uploadLimits\.|aim\.my\.(uploads|files)\.|audit\.action\.mcp\.(limits\.lift|media\.quota))/.test(k));
+  assert.equal(keys.length, 24);
   for (const k of keys) {
     assert.ok(k in fr, `${k} missing in fr`);
     assert.deepEqual([...en[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), [...fr[k].matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort(), `${k} variables`);
