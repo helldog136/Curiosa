@@ -74,8 +74,9 @@ test("Connections is a collapsed group (open on its own pages, state kept in the
 
 test("pages of an unpinned instance stay under Extensions, whatever section they would have had", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /const shown = new Set\(\[\.\.\.menu\.content, \.\.\.menu\.community, \.\.\.menu\.tools, \.\.\.menu\.connections, \.\.\.treeItems\]\)/);
-  assert.match(layout, /nav\.filter\(\(m\) => !shown\.has\(m\)\)/);
+  assert.match(layout, /const shown = new Set<Entry>\(\[\.\.\.menu\.content, \.\.\.menu\.community, \.\.\.menu\.tools, \.\.\.menu\.connections, \.\.\.treeItems\]\)/);
+  // (0.31.0) allNav: a module that moved to places is not in the sidebar, its pages stay under Extensions.
+  assert.match(layout, /allNav\.filter\(\(m\) => !shown\.has\(m\)\)/);
 });
 
 test("the Extensions list says Tools too, and its overlay family is \"OBS helpers\" (R12: not the same word as the Overlay pages entry)", () => {

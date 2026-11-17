@@ -53,6 +53,9 @@ import { HISTORY_TAB, groupTabs, initialTab, panelTab, planTabs, settingArea, se
 import { JournalView } from "@/components/admin/JournalView";
 import { Panel } from "@/components/admin/Page";
 import { AUDIT_HREF, entriesHref } from "@/core/adminLinks";
+import { WhereSettings } from "@/components/admin/PlacedNotice";
+import { moduleSections } from "@/core/modules/places";
+import { currentVocabulary } from "@/core/modules/placesLoad";
 
 const PLACE_LABEL = { menu: "placement.pin", integrations: "placement.park", overlays: "placement.parkOverlays" } as const;
 
@@ -376,6 +379,8 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
           </p>
         )}
         <p className="max-w-[70ch]">{L(mod.manifest.description)}</p>
+        {/* (0.31.0) Per-module view: where this module's settings now live (places), each with a direct link. */}
+        <WhereSettings t={t} locale={locale} sections={moduleSections(mod.manifest, currentVocabulary().aliases)} instanceKey={instance.key} />
         {manage && <MissingBox title={t("missing.title")} items={missingItems} />}
         {manage && dataStatus && (
           <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">

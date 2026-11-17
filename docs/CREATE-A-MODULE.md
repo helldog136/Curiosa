@@ -407,6 +407,33 @@ export default {
 La donnée reste chez vous ; la section n'apparaît que si votre module est installé et actif et que l'entrée correspond ; elle s'enregistre sans quitter la page (aucune redirection). Droits : ceux d'un éditeur d'entrée.
 Permission : `admin`. Le détail est dans [MODULES.md](MODULES.md) (« Ajouter une section à l'éditeur d'un autre module »).
 
+### Place your settings where people look for them (`place`, `places`, `placeSections`, core 0.31.0)
+
+Instead of a page of its own, your module can say **where** its settings and lists go: a place `group.page[.tab]` such as `"live.alerts.look"`.
+The core builds the page, gathers there what other modules add, and gives one « Enregistrer » bar for the whole tab.
+
+```jsonc
+// module.json
+"place": "community.games",                                    // the "use" panel and the "settings" tab
+"places": [
+  { "id": "look", "place": "live.alerts.look", "settings": ["visual", "accentColor"] },
+  { "id": "rewards", "place": "live.rewards", "fromTab": "rewards", "order": 200 },
+  { "id": "journal", "place": "live.alerts.rules", "blocks": true, "level": "advanced",
+    "title": { "en": "Journal", "fr": "Journal" }, "summary": { "en": "The last events", "fr": "Les derniers événements" } }
+]
+```
+
+```js
+export default {
+  placeSections: {
+    journal: { render: async (ctx, { advanced, query }) => [{ type: "table", columns: ["When", "Event"], rows: [] }] },  // forms run your adminActions
+  },
+};
+```
+
+Pick places from `catalogue/places.json` (names, order and intros); a new place can be defined inline with `define`. Keep `adminMenu` for older cores
+during the transition. Contract, limits and merge rules: [PLACES.md](PLACES.md).
+
 ## 12. Actions MCP pour les assistants
 
 Le cœur héberge un serveur MCP : un assistant IA (avec un **jeton** créé par la personne propriétaire) peut appeler les actions que vos modules déclarent. Rien n'est codé en dur dans le cœur.

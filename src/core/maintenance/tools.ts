@@ -8,6 +8,7 @@ import { INSTANCE_ADD_ARG } from "./instances";
 import { MAX_BUNDLE } from "./install";
 import { myAccess } from "./myAccess";
 import { CONFIGURE_INPUT, SETTINGS_INPUT, readSettings } from "./moduleSettings";
+import { PLACES_INPUT, PLACE_SETTINGS_INPUT, listPlaces, readPlaceSettings } from "./places";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
 import { contentCheckView } from "./content/service";
 import { legacyReportForAssistant } from "@/core/modules/legacyReport";
@@ -133,6 +134,7 @@ const DEFS: Def[] = [
   },
   { name: "skin_status", level: 1, title: "Appearance of the site", description: "The skin in use, whether the owner adjusted colors, glow, background or header, the font of titles and of text (with tips, and the fonts that can be chosen), whether visitors get a Light / Dark button, and colors that were adjusted so they can be read. Start here for any question about how the site looks. Nothing here can be changed without the owner's approval.", input: NONE, run: () => skinStatus() },
   { name: "skin_list", level: 1, title: "Skins installed and available", description: "The skins installed on this site, and the skins of the official catalogue that it does not have yet (name, description, author, light / dark modes). A skin only changes the look, never the content. Use it to guide the owner. To act you need maintenance_skin_install or maintenance_skin_activate (both are requests the owner approves) and they are only in your list when the owner granted them: if they are missing, call maintenance_my_access.", input: SKIN_LIST_INPUT, run: (args) => skinList(args) },
+  { name: "places", level: 1, title: "Where settings live", description: "The places of this site's admin (core 0.31.0): each page built from what the modules declare (id such as live.alerts, title, the sentence that says what it is for, its address), its tabs, and for each tab the sections in order (instance, module, section id, anchor, setting keys, basic or advanced). No value is read. Use it to tell the owner where a setting is (« En direct › Alertes › Apparence ») and to read one place with maintenance_place_settings.", input: PLACES_INPUT, run: (args) => listPlaces(args) },
   { name: "content_check", level: 1, title: "Content check result", description: "The result of the last check of the site's content (images without text, titles, descriptions for search engines, missing translations, menu entries and links that lead nowhere, outside links). READ-ONLY: it shows the last result and contacts no site. Each remark has an importance (important / advised / info), a short sentence, why it matters and, where there is one, the admin screen that fixes it. Never a score.", input: NONE, run: () => contentCheckView() },
 
   { name: "check_updates", level: 2, title: "Check for updates again", description: "Clears the version caches and checks the core and the modules again (the admin's \"Check again\" button)."+' Long action: it answers at once when it is quick; otherwise it answers {status:"started", requestId} and goes on in the background (your connection does not matter): follow it with maintenance_request_status until done or failed.', input: NONE, run: level2("check_updates") },
@@ -145,6 +147,11 @@ const DEFS: Def[] = [
     name: "module_settings", level: 2, readOnly: true, title: "Settings of a module instance",
     description: "The settings of one instance (key from maintenance_modules): label, help, type, current value, what values are allowed with an example, whether it needs a value and which tool can change it. A SECRET setting never shows its value, only isSet true/false and where the owner types it in the admin. Addresses are shown without their private part. Read-only, but values can be personal, so the owner grants it separately.",
     input: SETTINGS_INPUT, run: (args) => readSettings(args),
+  },
+  {
+    name: "place_settings", level: 2, readOnly: true, title: "Settings of one place",
+    description: "Every setting of one place (id from maintenance_places, for example live.alerts or live.alerts.look), across the modules that add something there, grouped by instance and section: the same details as maintenance_module_settings (label, type, value, allowed values, example, which tool changes it). A SECRET setting never shows its value. Read-only, but values can be personal, so the owner grants it separately. Change values per instance with maintenance_module_configure.",
+    input: PLACE_SETTINGS_INPUT, run: (args) => readPlaceSettings(args),
   },
   {
     name: "module_configure", level: 2, title: "Change settings of a module",

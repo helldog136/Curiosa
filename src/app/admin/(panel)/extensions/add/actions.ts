@@ -23,10 +23,11 @@ import { opIdOf, trackOperation } from "@/core/operations/run";
 
 /** Après une installation : la liste des extensions, avec « vos données ont été retrouvées » si celles d'une désinstallation précédente sont revenues. */
 async function afterInstall(id: string, restored: string[] | undefined, locale: string, defaultLocale: string, user: string): Promise<string> {
-  if (!restored?.length) return EXTENSIONS_HREF;
+  // (0.31.0) `placed`: Extensions then says where the new module's settings are (« Réglages ajoutés dans : … → »).
+  if (!restored?.length) return `${EXTENSIONS_HREF}?placed=${encodeURIComponent(id)}`;
   await audit(user, "module.restore", id);
   const mod = await getModule(id).catch(() => null);
-  return removalNoticeHref(EXTENSIONS_HREF, { notice: "restored", name: mod ? localized(mod.manifest.name, locale, defaultLocale) : id });
+  return `${removalNoticeHref(EXTENSIONS_HREF, { notice: "restored", name: mod ? localized(mod.manifest.name, locale, defaultLocale) : id })}&placed=${encodeURIComponent(id)}`;
 }
 
 export async function installFromCatalogueAction(id: string): Promise<void> {

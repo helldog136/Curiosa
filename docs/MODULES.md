@@ -127,6 +127,19 @@ A module says where its entry sits in the admin sidebar as a **path of groups**,
 
 **A module with a path is pinned to the menu by default** (it says where it wants to be); the person can still unpin it, and the choice wins. A module without `adminMenu` keeps its place, byte for byte. Groups are collapsed by default, the group holding the current page opens by itself, and the open or closed state is remembered like the other groups (cookie `curiosa_nav_groups`, read by the server so the menu does not jump).
 
+##### Places: `place`, `places`, `placeSections` (core 0.31.0)
+
+A module can say **where its settings and lists go** instead of having a page of its own: a **place** `group.page[.tab]` (`"live.alerts.look"`). The core builds the sidebar entry, the page and its tabs, and gathers what several modules add to the same place. Full contract, limits, merge rules and threat model: [PLACES.md](PLACES.md).
+
+| Key | Role |
+|---|---|
+| `place` | `"community.games"`: the "use" panel and the "settings" tab of the module go there (section `main`). An older core ignores it. |
+| `tabs[].place` | `"community.games.covers"`: everything of that tab (section = the tab id). **A core older than 0.31.0 refuses this key** (tabs are strict): declare `"minCore": "0.31.0"` or use `places[].fromTab`. |
+| `places` | Full form, one entry per section: `id`, `place`, `order` (100 to 999), `level` (`basic` / `advanced`), `title`, `summary`, `seeAlso` (place ids), `settings` (keys), `fromTab` (a tab of the module page whose panel blocks show here), `blocks: true` (code below), `advancedOnly`, `define` (titles of a place the vocabulary does not know). An older core ignores it. |
+| `placeSections` (code) | `{ <sectionId>: { render(ctx, { advanced, query }) } }` returns the blocks of a section declared with `blocks: true`; its forms run the module's `adminActions`. |
+
+A module that places everything it shows leaves the sidebar on a core 0.31.0 or later (its page stays in Extensions, with "Where its settings are" at the top); on an older core it keeps its `adminMenu` entry: ship both during the transition. Settings of `sources` and `general` are never placed. `rare` and `advanced` settings fold into one « Réglages avancés » per section.
+
 **Familles (Extensions > Installées).** Chaque module est rangé dans une famille, déduite elle aussi du manifeste seul (`extensionFamily`) : **Outils pour OBS** (type ou permission `overlay`) ; **Outils** (seulement par `menuGroup`) ; **Réseaux et connexions** (type `social` ou `integration`, `platform` déclarée,
 ou simple liste de liens vers l'extérieur) ; **Contenu** (module à `content`) ; **Communauté** (le reste). Les modules en erreur ou à configurer passent en tête de leur famille. Pour un overlay, la carte affiche **l'adresse à coller dans OBS**
 (`<SITE_URL>/overlays/<clé>`, avec un bouton « Copier » ; la route publique est inchangée).

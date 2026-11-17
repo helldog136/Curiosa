@@ -184,6 +184,8 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`settings.refersToChoice`](#settingsreferstochoice) | conseil | Un réglage qui désigne un élément existant est un « choix parmi » |
 | [`settings.textNamesExisting`](#settingstextnamesexisting) | conseil | On ne fait pas taper le nom d'un élément qui existe déjà |
 | [`secrets.hidden`](#secretshidden) | obligatoire | Les secrets ne s'affichent ni ne se journalisent jamais |
+| [`places.valid`](#placesvalid) | obligatoire | Places are valid |
+| [`places.budget`](#placesbudget) | conseil | Placed sections stay short, and older cores keep working |
 | [`html.escaped`](#htmlescaped) | obligatoire | Les textes venus de l'extérieur sont échappés dans les pages |
 | [`links.safe`](#linkssafe) | obligatoire | Les liens venus de l'extérieur sont vérifiés |
 | [`blocks.valid`](#blocksvalid) | obligatoire | Ce que le module renvoie a la bonne forme |
@@ -233,7 +235,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
 
-48 exigences obligatoires et 36 conseils.
+49 exigences obligatoires et 37 conseils.
 
 ### Le fichier module.json
 
@@ -534,6 +536,22 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Une valeur de réglage « secret » (clé d'API, mot de passe, code) ne ressort dans aucune page, section, overlay, panneau d'administration, réponse de route, résultat MCP, message d'erreur ni journal. Le test donne une valeur-piège au secret et cherche où elle réapparaît.
 - **Pourquoi.** Une page publique, un journal ou une réponse MCP qui contient un secret le livre à n'importe qui. Un secret ne sert qu'à parler au service qui l'a émis.
 - **Comment corriger.** Ne mettez jamais la valeur du secret dans un bloc, un message, une réponse ou console.log. Affichez plutôt « enregistré » / « manquant ». Un message d'erreur court suffit.
+
+#### `places.valid`
+
+**Places are valid** — niveau : **obligatoire**
+
+- **Ce qui est vérifié.** The `place`, `tabs[].place` and `places` keys follow the contract of docs/PLACES.md: group.page[.tab] in lower-case ASCII, no group of the core (admin, account, settings…), at most 12 sections, 3 per page and 1 new group, order from 100 to 999, seeAlso as place ids only, EN and FR titles, no title that reads like a page of the core.
+- **Pourquoi.** A place is a public, frozen address shown to the owner. A wrong one is refused at install; a misleading one could look like a page of the core (password, team, backup).
+- **Comment corriger.** Read the message: it names the section and the rule. Pick a place from catalogue/places.json, or define a new one inline with plain titles.
+
+#### `places.budget`
+
+**Placed sections stay short, and older cores keep working** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).
+- **Pourquoi.** A shared page gathers several modules: one long section pushes the others down. During the transition, sites on an older core still need the module's own entry.
+- **Comment corriger.** Mark rare settings `rare: true`, split a long section, keep `adminMenu` until minCore 0.33.0, or move tabs[].place to places[].fromTab.
 
 ### Sécurité et forme des pages
 

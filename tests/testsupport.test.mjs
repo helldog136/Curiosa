@@ -142,6 +142,8 @@ const FAULTS = {
   "i18n.complete.known": (f) => editManifest(f, (m) => { m.description = "A plain English description without a language"; }), // a known gap (listed in the baseline) is advice
   "admin.ergonomics.known": (f) => editManifest(f, (m) => { m.settings[0].label.fr = "Titre de la page :"; }), // sans base : l'écart est un avertissement
   "routes.visitorIp": null, // vérifié à part : demande un cœur 0.2.6 (voir plus bas)
+  "places.valid": (f) => editManifest(f, (m) => { m.place = "settings.users"; }),
+  "places.budget": (f) => editManifest(f, (m) => { m.tabs = [...(m.tabs ?? []), { id: "extra", label: { en: "Extra", fr: "En plus" }, panel: true, place: "live.alerts" }]; m.minCore = "0.19.0"; }),
   "srp.single": null, // voir plus bas : demande un voisin
   "srp.coupling": (f) => append(f, "index.mjs", 'export const peek = (ctx) => ctx.api.instances.list({ module: "contacts" });'),
 };

@@ -411,7 +411,8 @@ test("ctx.can est faux hors administration : route publique, MCP, tâche planifi
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /forViewer\(/.test(read(p))) users.push(p); } };
   walk("src");
   // dependencies.ts : le `create` d'un réglage `choice` (contrats 1 et 6), appelé pour la personne connectée ; seul choice.ts lui passe `viewer`.
-  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/adminTransferDeps.ts", "src/core/modules/dependencies.ts", "src/core/modules/entryPanelsLoad.ts"]);
+  assert.deepEqual(users.sort(), [`${PANEL}/entries/panel-actions.ts`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`, "src/core/modules/adminTransferDeps.ts", "src/core/modules/dependencies.ts", "src/core/modules/entryPanelsLoad.ts", "src/core/modules/placesLoad.ts"]);
+  // (0.31.0) placesLoad.ts: the sections of a place page, rendered for the person who opens it (same rule as entryPanelsLoad.ts).
   const viewers = [];
   const walk2 = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk2(p); else if (/\.(ts|tsx)$/.test(e.name) && /callService\([^;]*\{\s*viewer\b/.test(read(p))) viewers.push(p); } };
   walk2("src");
@@ -557,6 +558,8 @@ test("les sites qui s'ouvrent à « tout accès » (member) sont connus : aucune
   walk("src/app");
   assert.deepEqual(out.sort(), [
     "src/app/admin/(auth)/choose-password/actions.ts", "src/app/admin/(auth)/choose-password/page.tsx",
+    // (0.31.0) A place page opens to any access: each section checks its own right (settings: Administration; blocks: `<module>:open`), and a page with nothing visible is a 404.
+    `${PANEL}/[group]/[page]/[[...tab]]/page.tsx`,
     `${PANEL}/account/actions.ts`, `${PANEL}/account/page.tsx`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`,
     `${PANEL}/layout.tsx`, `${PANEL}/mode/actions.ts`, `${PANEL}/mode/page.tsx`, `${PANEL}/page.tsx`,
   ]);

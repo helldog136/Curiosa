@@ -23,6 +23,10 @@ export const KNOWN_GROUPS: readonly KnownGroup[] = [
   { id: "community", en: "Community", fr: "Communauté", icon: "🙌", aliases: ["communaute"] },
   { id: "tools", en: "Tools", fr: "Outils", icon: "🧰", aliases: ["outils"] },
   { id: "connections", en: "Connections", fr: "Connexions", icon: "🔌", aliases: ["connexions"] },
+  // (0.31.0) The open groups of the places vocabulary (places.ts BUILTIN_VOCABULARY), in its order: a module path or a place with these words lands in one group.
+  { id: "live", en: "Live", fr: "En direct", icon: "🔴", aliases: ["en-direct"] },
+  { id: "calendar", en: "Calendar", fr: "Agenda", icon: "📅", aliases: ["agenda"] },
+  { id: "obs", en: "OBS", fr: "OBS", icon: "🎥" },
   { id: "networks", en: "Networks", fr: "Réseaux", icon: "🌐", aliases: ["network", "reseaux", "reseau"] },
   { id: "twitch", en: "Twitch", fr: "Twitch", icon: "🟣" },
   { id: "youtube", en: "YouTube", fr: "YouTube", icon: "▶️" },

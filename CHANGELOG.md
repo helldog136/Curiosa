@@ -7,6 +7,34 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Les extensions peuvent maintenant ranger leurs réglages par tâche (« En direct › Alertes », « En direct › Récompenses ») au lieu d'avoir chacune sa page : le site réunit sur une seule page ce que plusieurs extensions y ajoutent. Les extensions actuelles ne changent pas tant qu'elles ne le demandent pas.
+
+**In short.** Extensions can now put their settings by task (« Live › Alerts », « Live › Rewards ») instead of each having its own page: the site gathers on one page what several extensions add there. Today's extensions do not change until they ask for it.
+
+### Nouveau
+
+- **Des pages par tâche.** Une extension peut dire où vont ses réglages et ses listes. Le menu gagne alors une entrée par tâche, et une page n'existe que si une extension y ajoute quelque chose.
+- **(English) Pages by task.** An extension can say where its settings and lists go. The menu then gets one entry per task, and a page exists only when an extension adds something to it.
+- **Une seule barre « Enregistrer ».** Sur ces pages, chaque bloc s'enregistre à part : une erreur dans un bloc ne bloque pas les autres. Chaque bloc dit de quelle extension il vient quand il y en a plusieurs.
+- **(English) One "Save" bar.** On these pages each block saves on its own: an error in one block never holds the others. Each block says which extension it comes from when there are several.
+- **Une extension en panne ne casse plus la page.** Un bloc trop lent ou en erreur affiche « Section indisponible » avec un lien vers son extension ; le reste de la page fonctionne.
+- **(English) A broken extension no longer breaks the page.** A block that is too slow or fails shows "Section unavailable" with a link to its extension; the rest of the page works.
+- **Où sont ses réglages.** La page d'une extension liste les endroits où se trouvent ses réglages, et l'installation se termine par « Réglages ajoutés dans : … ».
+- **(English) Where its settings are.** The page of an extension lists the places that hold its settings, and an install ends with "Settings added in: …".
+- **Pour votre assistant IA.** Il peut dire où se trouve un réglage et lire tous les réglages d'une même page, avec votre accord.
+- **(English) For your AI assistant.** It can tell where a setting is and read every setting of one page, with your permission.
+
+### Pour les développeurs
+
+- **Places** (`docs/PLACES.md`): `place`, `tabs[].place` (refused by older cores: `minCore` 0.31.0) and `places[]` (`order`, `level`, `seeAlso`, `settings`, `fromTab`, `blocks`, `define`) in `module.json`; `placeSections` in code. Grammar, reserved groups, limits and spoofing guards in `src/core/modules/places.ts` (pure); route `/admin/<group>/<page>[/<tab>]`, anchors `#<instance>.<section>`.
+- **Vocabulary**: `catalogue/places.json` is fetched with the catalogue (memory and disk copy); the core ships its own places (`BUILTIN_VOCABULARY`). Titles: vocabulary, then inline `define` by weight, then derived. 5 tabs per page is a soft guideline (warning), 8 a hard anti-flooding limit; at most 2 unknown groups, the rest in « Autres réglages ».
+- **Sidebar**: place pages join `buildMenuTree` (`KNOWN_GROUPS` gains `live`, `calendar`, `obs`); a module that places everything it shows leaves the sidebar (dual mode), `adminMenu` stays valid; runtime R12 (`qualifyLabels`) qualifies « Pages d'overlay » next to a « Pages » list.
+- **Saving**: `savePlaceSection` re-resolves the section on the server and writes only its keys, through the same checks as the module page (`applySettings`); audit `module.<instance>.place.<section>.save` with the changed keys. Sections load side by side with a 1.5 s budget each.
+- **MCP**: `maintenance_places` (level 1), `maintenance_place_settings` (level 2, read-only), `place` filter on `maintenance_module_settings`. Kit: `places.valid`, `places.budget`, and `tabs[].place` in `compat.minCore`.
+- **Tests**: `tests/core/places.test.mjs` (menus of four real sites, upgrade from the 45 module versions they run, threat model, R12, anchors, isolation); pilot fixtures `tests/fixtures/places/modules/places-demo-*`.
+
 ## 0.29.0 — 2026-11-17
 
 **En bref.** Mise à jour de sécurité et de fond : la brique qui lit et écrit les données de votre site passe à sa nouvelle version. Rien ne change à l'écran et vos données restent telles quelles.

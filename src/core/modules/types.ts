@@ -796,6 +796,11 @@ export type ModuleDefinition = {
    * Les données restent chez le module qui fournit la section (sa clé : `entry.id`) ; le module hôte n'en sait rien.
    */
   entryPanels?: Record<string, EntryPanel>;
+  /**
+   * (core 0.31.0) Code of the place sections declared with `places[].blocks: true`, by section id. `render` returns the blocks of the section (the core adds the
+   * declared settings itself); their forms and row buttons run the module's `adminActions`, as on its own page. Rendering `[]` hides the section when it has no setting.
+   */
+  placeSections?: Record<string, PlaceSectionCode>;
   /** Implémentation des actions MCP déclarées dans `mcp` du manifeste. */
   mcp?: Record<string, McpHandler>;
   /**
@@ -842,6 +847,9 @@ export type EntryPanelTarget = {
 };
 /** Qui regarde la fiche : mode avancé et rôle (« owner », « admin » ou « editor » ; une personne d'un rôle personnalisé qui modifie les contenus vaut « editor »). Pour un droit précis, utilisez `ctx.can`. */
 export type EntryPanelView = { advanced: boolean; role: "owner" | "admin" | "editor" };
+/** (core 0.31.0) A place section rendered by the module's code (see `placeSections`). `query`: the address parameters of the place page. */
+export type PlaceSectionView = { advanced: boolean; query: Record<string, string> };
+export type PlaceSectionCode = { render(ctx: ModuleContext, view: PlaceSectionView): Block[] | Promise<Block[]> };
 export type EntryPanelActionHandler = (ctx: ModuleContext, entry: EntryPanelTarget, values: Record<string, string>) => AdminActionResult | Promise<AdminActionResult>;
 export type EntryPanel = {
   /**
