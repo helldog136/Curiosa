@@ -332,12 +332,13 @@ test("empaquetage : release-pack refuse une version qui ne correspond pas à pac
   assert.ok(!/["']data["']|\.env["'],|prisma\/data/.test(src.split("const PATHS")[1].split("].filter")[0]), "ni data/, ni .env, ni prisma/data dans l'archive");
 });
 
-test("empaquetage : le moteur de base de données est livré pour OpenSSL 1.1 (Ubuntu 20.04, Debian ≤ 11) ET 3.0 — une archive compilée une fois doit tourner partout", () => {
+test("packaging: an archive compiled once runs on every supported Node.js — the SQLite driver is shipped for Node.js 20, 22 and 24 (Prisma 7 has no query engine any more)", () => {
   const schema = fs.readFileSync("prisma/schema.prisma", "utf8");
-  assert.match(schema, /binaryTargets\s*=\s*\[[^\]]*"debian-openssl-1\.1\.x"[^\]]*"debian-openssl-3\.0\.x"|binaryTargets\s*=\s*\[[^\]]*"debian-openssl-3\.0\.x"[^\]]*"debian-openssl-1\.1\.x"/);
-  assert.match(schema, /binaryTargets\s*=\s*\[[^\]]*"linux-arm64-openssl-3\.0\.x"/, "ARM: the engine of the arm64 archive");
+  assert.ok(!/binaryTargets/.test(schema), "Prisma 7: no query engine to ship per OpenSSL version");
   const pack = fs.readFileSync("scripts/release-pack.mjs", "utf8");
-  assert.ok(pack.includes("debian-openssl-1.1.x") && pack.includes("debian-openssl-3.0.x"));
+  for (const abi of [115, 127, 137]) assert.match(pack, new RegExp(`abi: ${abi}`), `Node.js ABI ${abi}`);
+  const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+  assert.match(pkg.dependencies["better-sqlite3"], /^\d+\.\d+\.\d+$/, "better-sqlite3 pinned: the last version with a published driver for Node.js 20");
 });
 
 /* ───────────── Mise à jour en plusieurs versions : les étapes exigées par la cible sont installées d'abord ───────────── */

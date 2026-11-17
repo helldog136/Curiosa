@@ -9,8 +9,14 @@ import { makeTempDir } from "../helpers/tmp.mjs";
 
 const root = process.cwd();
 const MIGRATION = "20261022090000_redirections_2";
-const sqlite = (db, sql) => execFileSync("node", ["-e", `const {PrismaClient}=require(${JSON.stringify(path.join(root, "node_modules/@prisma/client"))});const p=new PrismaClient({datasources:{db:{url:${JSON.stringify("file:" + db)}}}});(async()=>{const q=${JSON.stringify(sql)};const rows=await p.$queryRawUnsafe(q);console.log(JSON.stringify(rows,(k,v)=>typeof v==="bigint"?Number(v):v));await p.$disconnect()})()`], { encoding: "utf8" });
-const deploy = (schema, db) => execFileSync("npx", ["prisma", "migrate", "deploy", "--schema", schema], { cwd: root, env: { ...process.env, DATABASE_URL: `file:${db}` }, stdio: "pipe" });
+// Raw SQL through the Prisma 7 client of the scripts (scripts/db-client.mjs: same driver and date format as the site).
+const sqlite = (db, sql) => execFileSync("node", ["--input-type=module", "-e", `const { openPrisma } = await import(${JSON.stringify(path.join(root, "scripts/db-client.mjs"))});const p=openPrisma({ url: ${JSON.stringify("file:" + db)} });const q=${JSON.stringify(sql)};const rows=await p.$queryRawUnsafe(q);console.log(JSON.stringify(rows,(k,v)=>typeof v==="bigint"?Number(v):v));await p.$disconnect()`], { encoding: "utf8" });
+// Prisma 7 reads the migrations folder from prisma.config.ts (next to prisma/): an older state is a copy of the app with fewer migrations.
+const deploy = (schema, db) => {
+  const app = path.dirname(path.dirname(schema));
+  if (app !== root) { fs.copyFileSync(path.join(root, "prisma.config.ts"), path.join(app, "prisma.config.ts")); if (!fs.existsSync(path.join(app, "node_modules"))) fs.symlinkSync(path.join(root, "node_modules"), path.join(app, "node_modules")); }
+  return execFileSync(process.execPath, [path.join(root, "node_modules/prisma/build/index.js"), "migrate", "deploy", "--config", path.join(app, "prisma.config.ts")], { cwd: app, env: { ...process.env, DATABASE_URL: `file:${db}`, CHECKPOINT_DISABLE: "1" }, stdio: "pipe" });
+};
 
 test("migration : la base d'avant garde ses redirections (chemin, destination, total) ; colonnes et table ajoutées seulement", () => {
   createRequire(import.meta.url);
