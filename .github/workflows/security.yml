@@ -5,6 +5,8 @@ on:
   pull_request:
   schedule:
     - cron: "17 5 * * 1" # chaque lundi : de nouvelles failles apparaissent sans qu'on touche au code
+permissions:
+  contents: read
 jobs:
   audit:
     runs-on: ubuntu-latest
