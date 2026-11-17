@@ -1,13 +1,18 @@
 import { prisma } from "@/core/db";
 
 /**
- * UPLOAD LIMITS OF THE AI ASSISTANTS: the owner may start the daily count over, or lift the upload limits for 10, 30 or 60 minutes (core 0.28.0).
+ * UPLOAD LIMITS OF THE AI ASSISTANTS: the owner may start the daily count over, or lift the upload limits for 10, 30 or 60 minutes (core 0.28.0;
+ * since 0.28.2 both settings also cover the files a module tool receives through `ctx.api.files.upload`, services/assistantUploads.ts).
  *
  * Two settings, written ONLY by the owner in Admin > AI assistants > Settings (no MCP tool reads or writes them), read from the database on every call:
- *   - `mcp.media.quotaFrom`   (epoch ms) the daily quota counts the journal lines after max(now - 24 h, this). Nothing in the journal is deleted or changed.
+ *   - `mcp.media.quotaFrom`   (epoch ms) the two daily quotas (images: media.upload/media.import; files: file.upload) count the journal lines after
+ *     max(now - 24 h, this). Nothing in the journal is deleted or changed.
  *   - `mcp.media.liftedUntil` (epoch ms) while now < this end, for media_upload and media_import: no daily quota, one image up to 10 MB (the media_upload body
  *     up to 14 MB); for media_upload also no "content" hourly counter. The end is compared on every call, with NO timer: a restart neither extends nor forgets it.
  *     A stored end further than 60 minutes ahead is not trusted (treated as not lifted).
+ *     For `ctx.api.files.upload` (0.28.2): no daily quota of files (30 files / 250 MB) and no "content" hourly counter at begin. NOT lifted for files: the
+ *     per-kind byte caps (videos 25 MB, 30 s, 1920x1080; pictures 5 MB; sounds 10 MB), the sha256 and container checks, 3 open uploads per access and 10 per
+ *     site, the 30-minute staging, the module's storage quota, the 120 requests per minute of an access.
  * Never lifted: the type read from the bytes, the pixel limit, the svg cleaning, the 1 MB cap of every other call, the "risky" counter, the trusted sources list,
  * the rights per tool. "Lifted" is a higher bound, never "unlimited": the body of an upload is read into memory.
  */
@@ -82,6 +87,19 @@ export async function mediaLimitsNow(): Promise<{ until: number | null; imageByt
     ? { until, imageBytes: MEDIA_BYTES, bodyBytes: MEDIA_BODY, daily: true, contentCounter: true }
     : { until, imageBytes: LIFTED_MEDIA_BYTES, bodyBytes: LIFTED_MEDIA_BODY, daily: false, contentCounter: false };
 }
+
+/** The limits that apply now to `ctx.api.files.upload` (begin and finish read them on every call, 0.28.2). Byte caps are never raised. */
+export async function filesLimitsNow(): Promise<{ until: number | null; daily: boolean; contentCounter: boolean }> {
+  const until = await liftedUntil();
+  return { until, daily: until === null, contentCounter: until === null };
+}
+
+/** Where the owner acts, in the words of the card (Admin > AI assistants > Settings), for the messages to assistants. */
+export const OWNER_WHERE = 'in Admin > AI assistants > Settings, card "Uploads by assistants"';
+/** "14:32 UTC": the end of a lift in the messages to assistants (an assistant does not know the site's time zone). */
+export const utcTime = (ms: number) => `${new Date(ms).toISOString().slice(11, 16)} UTC`;
+/** Appended to a refusal that a running lift does not cover, so that nobody believes the lift failed. Empty when nothing is lifted. */
+export const notLiftedNote = (until: number | null, what: string) => (until === null ? "" : ` The owner's lift of the upload limits is on until ${utcTime(until)}, but it does not change ${what}.`);
 
 /** Tests: the real clock again. */
 export function resetLiftDeps(): void { liftDeps.now = () => Date.now(); }

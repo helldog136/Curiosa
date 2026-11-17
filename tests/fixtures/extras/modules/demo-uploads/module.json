@@ -1,0 +1,22 @@
+{
+  "apiVersion": 2,
+  "id": "demo-uploads",
+  "name": { "en": "Demo uploads", "fr": "Démo envois" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "minCore": "0.18.0",
+  "description": { "en": "Demo uploads: a test module whose MCP tools receive a file from an assistant, like the media upload of the alerts overlay.", "fr": "Démo envois : un module de test dont les outils MCP reçoivent un fichier d'un assistant, comme l'envoi de médias des alertes." },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "📦",
+  "permissions": ["mcp", "files"],
+  "settings": [],
+  "mcp": [
+    { "name": "clip_upload_begin", "description": "Starts adding a clip: its exact size in bytes and its sha256.", "uploads": true,
+      "input": { "type": "object", "properties": { "bytes": { "type": "integer" }, "sha256": { "type": "string" } }, "required": ["bytes", "sha256"] } },
+    { "name": "clip_upload_chunk", "description": "Sends one base64 piece of a clip.", "uploads": true,
+      "input": { "type": "object", "properties": { "upload": { "type": "string" }, "index": { "type": "integer" }, "data": { "type": "string" } }, "required": ["upload", "index", "data"] } },
+    { "name": "clip_upload_finish", "description": "Checks and keeps the clip.", "uploads": true,
+      "input": { "type": "object", "properties": { "upload": { "type": "string" } }, "required": ["upload"] } }
+  ]
+}
