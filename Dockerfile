@@ -3,15 +3,20 @@
 #
 # Build context (made by .github/workflows/release.yml): archive-amd64.tar.gz and archive-arm64.tar.gz, the curiosa-vX.Y.Z-linux-<arch>.tar.gz release archives.
 #   docker buildx build --platform linux/amd64,linux/arm64 --build-arg VERSION=0.8.0 <context>
-# The Prisma CLI (used for migrations at start) must use the engines that ship in the archive and must never try to download or write them: the site
-# runs as a non-root user and may have no network. Their file names depend on the architecture, hence one tiny stage per architecture.
+# The Prisma CLI (used for migrations at start) must use the schema engine that ships in the archive and must never try to download or write it: the
+# site runs as a non-root user and may have no network. Its file name depends on the architecture, hence one tiny stage per architecture.
+# The site itself opens the database with the SQLite driver of the archive (Prisma 7, src/core/db.ts): the one built for this image's Node.js.
+#
+# Base image PINNED BY DIGEST (tag node:22-bookworm-slim, multi-architecture index read on 2026-11-17): every build of a given commit uses exactly
+# the same Node.js and Debian. Node.js and Debian security fixes come in by moving this digest: Dependabot proposes it every week on dev
+# (.github/dependabot.yml), or by hand. How, and how to check it: docs/DOCKER-BASE-IMAGE.md. Both lines below always carry the same digest.
 ARG TARGETARCH
-FROM node:22-bookworm-slim AS target-amd64
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS target-amd64
 ENV PRISMA_ENGINE_TARGET=debian-openssl-3.0.x
-FROM node:22-bookworm-slim AS target-arm64
+FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc3cdf566e8ba3ab21ee AS target-arm64
 ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3.0.x
 FROM target-${TARGETARCH}
-# git: installing modules from the admin. openssl: the database engine. ca-certificates: https.
+# git: installing modules from the admin. openssl: the Prisma schema engine (migrations). ca-certificates: https.
 RUN apt-get update && apt-get install -y --no-install-recommends git openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 ARG TARGETARCH
 ARG VERSION=unknown
@@ -31,7 +36,6 @@ ENV NODE_ENV=production PORT=3000 DATA_DIR=/app/data DATABASE_URL=file:/app/data
 # The site writes Next's cache here whatever user it runs as (PUID/PGID or `user:`).
 RUN mkdir -p /app/data /app/.next/cache && chmod 1777 /app/.next/cache && chown 1000:1000 /app/data
 ENV PRISMA_SCHEMA_ENGINE_BINARY=/app/node_modules/@prisma/engines/schema-engine-${PRISMA_ENGINE_TARGET}
-ENV PRISMA_QUERY_ENGINE_LIBRARY=/app/node_modules/.prisma/client/libquery_engine-${PRISMA_ENGINE_TARGET}.so.node
 VOLUME /app/data
 EXPOSE 3000
 # Migrations and the first start can take a while: a generous start period. Same route and port as the update's health wait.

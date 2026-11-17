@@ -14,7 +14,8 @@ import os from "node:os";
 import path from "node:path";
 
 // Caches que Node lui-même range dans TMPDIR (ce ne sont pas des dossiers de test) : ignorés par le garde-fou, supprimés avec la racine.
-const TOOL_CACHES = new Set(["node-compile-cache"]);
+// "jiti": the cache of the loader the Prisma 7 CLI uses to read prisma.config.ts (every `prisma migrate deploy` of the tests).
+const TOOL_CACHES = new Set(["node-compile-cache", "jiti"]);
 const keep = process.env.KEEP_TEST_TMP === "1";
 const repo = path.resolve(import.meta.dirname, "..");
 const runRoot = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-tests-"));

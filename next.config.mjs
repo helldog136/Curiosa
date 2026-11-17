@@ -25,7 +25,7 @@ const nextConfig = {
   images: { unoptimized: true },
   // Les modules installés vivent dans data/modules et sont chargés à l'exécution :
   // ils ne doivent jamais être analysés ni embarqués par le bundler.
-  serverExternalPackages: ["@prisma/client", "bcryptjs", "sharp"],
+  serverExternalPackages: ["@prisma/client", "@prisma/adapter-better-sqlite3", "better-sqlite3", "bcryptjs", "sharp"],
   /**
    * Language prefix (/fr/blog -> /blog) and the "link ended" page (410), as CONFIG rewrites with a path-only destination. They used to be
    * `NextResponse.rewrite(absoluteUrl)` in src/proxy.ts, and the server only treats an absolute rewrite as internal when its origin equals the one it

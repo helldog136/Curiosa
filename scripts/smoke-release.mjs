@@ -31,11 +31,13 @@ for (const dir of ["node_modules/@prisma/client/runtime", "node_modules/prisma",
   check(left.length === 0, `l'archive n'embarque pas les variantes inutiles de « ${dir} »`);
 }
 {
-  // x64 : les deux moteurs Debian (OpenSSL 1.1 et 3.0) ; arm64 : le moteur OpenSSL 3.0 d'ARM. L'autre architecture n'est pas embarquée.
-  const engines = process.arch === "arm64" ? ["linux-arm64-openssl-3.0.x"] : ["debian-openssl-1.1.x", "debian-openssl-3.0.x"];
-  const foreign = process.arch === "arm64" ? ["debian-openssl-1.1.x", "debian-openssl-3.0.x"] : ["linux-arm64-openssl-3.0.x"];
-  check(engines.every((e) => fs.existsSync(path.join(app, `node_modules/.prisma/client/libquery_engine-${e}.so.node`))), `le moteur de base de données du client de cette architecture reste (${engines.join(", ")})`);
-  check(foreign.every((e) => !fs.existsSync(path.join(app, `node_modules/.prisma/client/libquery_engine-${e}.so.node`))), "les moteurs de l'autre architecture ne sont pas embarqués");
+  // Prisma 7 : le pilote SQLite (better-sqlite3) de CHAQUE Node.js pris en charge (20, 22, 24), pour cette architecture seulement ; et la configuration de Prisma.
+  const drivers = [115, 127, 137].map((abi) => `node_modules/better-sqlite3/prebuilds/node-v${abi}-linux-${process.arch}/better_sqlite3.node`);
+  check(drivers.every((f) => fs.existsSync(path.join(app, f))), "le pilote SQLite est livré pour Node.js 20, 22 et 24 (les sites existants tournent sous Node.js 20)");
+  check(fs.readdirSync(path.join(app, "node_modules/better-sqlite3/prebuilds")).every((d) => d.endsWith(`-linux-${process.arch}`)), "aucun pilote d'une autre architecture");
+  check(fs.existsSync(path.join(app, "prisma.config.ts")), "la configuration de Prisma 7 (prisma.config.ts) est dans l'archive : les migrations la lisent");
+  const own = path.join(app, `node_modules/better-sqlite3/prebuilds/node-v${process.versions.modules}-linux-${process.arch}/better_sqlite3.node`);
+  check(fs.existsSync(own), `ce Node.js (${process.version}) a son pilote SQLite dans l'archive`);
 }
 check(fs.existsSync(path.join(app, "upgrade.json")) && fs.existsSync(path.join(app, "scripts/docker-entrypoint.mjs")), "upgrade.json (plancher de mise à jour) et le démarrage du conteneur sont dans l'archive");
 check(fs.existsSync(path.join(app, "next.config.mjs")) && !fs.existsSync(path.join(app, "next.config.ts")), "la configuration de Next est du JavaScript (next.config.mjs)");
@@ -65,7 +67,11 @@ async function boot(name, prepare) {
   for (let i = 0; i < 60; i++) { try { await fetch(base); break; } catch { await new Promise((r) => setTimeout(r, 500)); } }
   return { base, data, env, log: () => log, stop: () => { try { process.kill(-child.pid); } catch { /* déjà arrêté */ } } };
 }
-const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app, env, encoding: "utf8" }).trim();
+const q = (env, code) => execFileSync(process.execPath, ["-e", `${CLIENT}\n${code}`], { cwd: app, env, encoding: "utf8" }).trim();
+// The client opened as the site opens it (src/core/db.ts): the SQLite driver of THIS Node.js from the archive, dates in milliseconds.
+const CLIENT = `const { PrismaClient } = require("@prisma/client"); const { PrismaBetterSqlite3 } = require("@prisma/adapter-better-sqlite3");
+const nativeBinding = require("path").join(process.cwd(), "node_modules/better-sqlite3/prebuilds", "node-v" + process.versions.modules + "-linux-" + process.arch, "better_sqlite3.node");
+const client = () => new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: process.env.DATABASE_URL.replace(/^file:/, ""), nativeBinding }, { timestampFormat: "unixepoch-ms" }) });`;
 
 // ── 2. installation neuve ──
 {
@@ -86,7 +92,7 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
 {
   const s = await boot("upgrade", async (env) => {
     q(env, `
-      const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient();
+      const p = client();
       (async () => {
         await p.user.create({ data: { email: "o@example.org", name: "O", role: "owner", passwordHash: "x" } });
         await p.setting.create({ data: { key: "setup.completed", locale: "", value: "true" } });
@@ -101,9 +107,9 @@ const q = (env, code) => execFileSync(process.execPath, ["-e", code], { cwd: app
     const html = await res.text();
     check(res.status === 200, "mise à jour : le site d'avant répond (200)");
     check(html.includes("Site d&#x27;avant") || html.includes("Site d'avant"), "mise à jour : le nom du site est affiché");
-    const owner = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); p.user.findUnique({ where: { email: "o@example.org" } }).then((u) => console.log(u ? u.role + ":" + u.sessionVersion + ":" + u.totpEnabledAt : "absent")).finally(() => p.$disconnect())`);
+    const owner = q(s.env, `const p = client(); p.user.findUnique({ where: { email: "o@example.org" } }).then((u) => console.log(u ? u.role + ":" + u.sessionVersion + ":" + u.totpEnabledAt : "absent")).finally(() => p.$disconnect())`);
     check(owner === "owner:0:null", "mise à jour : le compte propriétaire est intact, sans double vérification imposée");
-    const tables = q(s.env, `const { PrismaClient } = require("@prisma/client"); const p = new PrismaClient(); Promise.all([p.authLock.count(), p.passkey.count(), p.recoveryCode.count(), p.passkeyChallenge.count()]).then((r) => console.log(r.join(","))).finally(() => p.$disconnect())`);
+    const tables = q(s.env, `const p = client(); Promise.all([p.authLock.count(), p.passkey.count(), p.recoveryCode.count(), p.passkeyChallenge.count()]).then((r) => console.log(r.join(","))).finally(() => p.$disconnect())`);
     check(tables === "0,0,0,0", "mise à jour : les tables de sécurité (verrouillage, clés d'accès, codes de secours) existent");
     // Conditions de production : `next start -H 127.0.0.1` (ci-dessus) derrière un serveur web en HTTPS (X-Forwarded-Proto: https). Une page sous le préfixe
     // de la seconde langue ne doit jamais répondre 500 (réécriture absolue non interne) ; une adresse inconnue sous ce préfixe est un 404.
