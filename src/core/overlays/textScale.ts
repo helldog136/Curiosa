@@ -1,4 +1,3 @@
-import { isPlainObject } from "./model";
 
 /**
  * TEXT SIZE OF OVERLAY ELEMENTS (core 0.11.0). Pure: no database, no Next.
@@ -74,7 +73,3 @@ export const tvTextTooLarge = (page: { width: number; height: number; style?: { 
 /** Size of a TV step in CSS px of an element's window (what `calc(<px> * var(--ov-tv))` gives). */
 export const tvStepPx = (step: TvStep, factor: number): number => Math.round(TV_TYPE_SCALE[step] * factor * 100) / 100;
 
-/** Reads the percentage of an element object coming from stored data (never throws). */
-export function elementScaleOf(raw: unknown): number | null {
-  return isPlainObject(raw) ? parseTextScale(raw.textScale) : null;
-}

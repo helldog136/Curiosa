@@ -90,7 +90,8 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
 
       {refusalText && <Callout tone="danger" role="alert"><span data-testid="module-error">{refusalText}</span></Callout>}
       {blocked && blocked.to !== row.version && <Callout tone="warn" role="status"><span data-testid="module-blocked">{t("modules.blockedNotice", { version: blocked.to, date: new Date(blocked.at).toLocaleDateString(locale, { dateStyle: "long" }), current: row.version })}</span></Callout>}
-      {update && <Callout role="status">{update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}</Callout>}
+      {/* A status, not a banner (R32): one word in a chip, the full sentence in its tooltip. */}
+      {update && <p><span role="status" className={update === "yes" ? ui.chipWarn : ui.chipOk} title={update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}>{update === "yes" ? t("modules.chip.update") : t("modules.chip.upToDate")}</span></p>}
       {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
 
       <section className={`${ui.card} space-y-3`}>

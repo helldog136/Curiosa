@@ -308,7 +308,7 @@ export async function installModule(input: string, opts: {
       fs.renameSync(checkout, moduleDir(m.id));
     }
     await prisma.module.create({
-      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version, enabled: true },
+      data: { id: m.id, source: "git", repoUrl: url, ref: ref ?? null, commit, subdir: subdir ?? null, tree, version: m.version },
     });
     // Et dans le processus du site, depuis une copie neuve : c'est ce que le site exécutera. Échec : rien n'est laissé (ni module, ni fournisseurs).
     const verdict = await verifyModuleLoad({ id: m.id, version: m.version, commit });

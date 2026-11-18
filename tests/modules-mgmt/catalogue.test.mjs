@@ -71,7 +71,7 @@ test("installation d'un module du catalogue : cloné à l'étiquette épinglée,
   await cat.fixtures(["demo-planner"]);
   assert.deepEqual(withoutI18nNote(await installFromCatalogue("demo-planner", { firstInstance: false })), { ok: true, id: "demo-planner" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo-planner" } });
-  assert.deepEqual([row.source, row.enabled, row.repoUrl, row.subdir], ["git", true, cat.https, "modules/demo-planner"]);
+  assert.deepEqual([row.source, !!row, row.repoUrl, row.subdir], ["git", true, cat.https, "modules/demo-planner"]);
   assert.ok(row.commit);
   assert.ok(fs.existsSync(path.join(MODULES_DIR, "demo-planner", "module.json")) && fs.existsSync(path.join(MODULES_DIR, "demo-planner", "index.mjs")));
   assert.ok((await R.getInstalledModules()).some((m) => m.manifest.id === "demo-planner"), "il est chargé et actif");

@@ -56,11 +56,11 @@ export async function useTestDb() {
     dir,
     prisma,
     /** Installe un module de test (tests/fixtures/extras/modules/<id>) : fichiers copiés + ligne en base, activé. La ligne est `bundled` : un site ancien (compatibilité), dossier déjà sur le disque. */
-    async fixture(id, enabled = true) {
+    async fixture(id) {
       const { installFixtureFiles } = await import("./fixtureModules.mjs");
       installFixtureFiles(dir, id);
       const version = JSON.parse(fs.readFileSync(path.join(dir, "modules", id, "module.json"), "utf8")).version;
-      return prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version, enabled }, update: { enabled } });
+      return prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version }, update: {} });
     },
     /** Vide toutes les tables (entre deux tests). Les migrations de mise à jour repassent à la demande. */
     async reset() {

@@ -166,7 +166,7 @@ test("installer un consommateur installe le fournisseur du catalogue, l'active e
   bundled("cons", { requires: [{ service: SVC }] });
   const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
-  assert.deepEqual([(await row("prov")).enabled, (await row("cons")).enabled], [true, true], "installé = actif");
+  assert.deepEqual([!!(await row("prov")), !!(await row("cons"))], [true, true], "installé = actif");
   const mine = await insts("prov");
   assert.equal(mine.length, 1);
   assert.equal(await Auto.hasUserData("prov"), false);
@@ -195,7 +195,7 @@ test("mise en place : fournisseur installé sans instance → instance créée ;
   assert.equal((await I.installFromCatalogue("cons", { firstInstance: false, dependencies: false })).ok, true);
   let r = await I.repairRequirements("cons");
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
-  assert.deepEqual([(await row("prov")).enabled, (await insts("prov")).length], [true, 1]);
+  assert.deepEqual([!!(await row("prov")), (await insts("prov")).length], [true, 1]);
   const auto = (await Auto.readAuto()).prov;
   assert.deepEqual([auto.module, auto.for], [false, ["cons"]], "installé par l'admin : seule l'instance est automatique");
   assert.equal(auto.instances.length, 1);
@@ -234,7 +234,7 @@ test("catalogue reconnu : l'index annonce offers/requires → le fournisseur est
   assert.equal(view.adds, true);
   const r = await I.installFromCatalogue("cons", { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["rprov"]]);
-  assert.deepEqual([(await row("rprov")).source, (await row("rprov")).enabled, (await insts("rprov")).length], ["git", true, 1]);
+  assert.deepEqual([(await row("rprov")).source, !!(await row("rprov")), (await insts("rprov")).length], ["git", true, 1]);
   assert.deepEqual((await Auto.readAuto()).rprov.module, true);
 });
 
@@ -252,7 +252,7 @@ test("dépôt personnel : son installation résout aussi ses besoins (fournisseu
   const perso = makeRepo({ "module.json": manifestOf("perso", { requires: [{ service: SVC }] }), "index.mjs": "export default {};" });
   const r = await I.installModule(perso.url, { firstInstance: false });
   assert.deepEqual([r.ok, r.provided], [true, ["prov"]]);
-  assert.deepEqual([(await row("prov")).enabled, (await row("perso")).enabled], [true, true]);
+  assert.deepEqual([!!(await row("prov")), !!(await row("perso"))], [true, true]);
 });
 
 test("choix du fournisseur : un module déjà installé d'abord, puis le premier du catalogue (dans l'ordre de l'index)", () => {
@@ -296,7 +296,7 @@ test("profondeur : trois fournisseurs enchaînés passent, quatre sont refusés 
   const ok = await I.installFromCatalogue("m0", { firstInstance: false });
   assert.equal(ok.ok, true);
   assert.deepEqual(await allModules(), ["m0", "m1", "m2", "m3"]);
-  assert.deepEqual([(await row("m3")).enabled, (await insts("m3")).length], [true, 1], "chaque maillon actif a son instance");
+  assert.deepEqual([!!(await row("m3")), (await insts("m3")).length], [true, 1], "chaque maillon actif a son instance");
   await db.reset(); listed.clear(); publishIndex();
   chain(4);
   const refused = await I.installFromCatalogue("m0", { firstInstance: false });
@@ -431,7 +431,7 @@ test("mise à jour qui ajoute un requires : le fournisseur disponible est instal
   publish(repo, "gcons", "1.1.0", { requires: [{ service: SVC }] });
   const r = await I.updateModule("gcons");
   assert.deepEqual([r.ok, r.provided, r.missing], [true, ["prov"], undefined]);
-  assert.deepEqual([(await row("prov")).enabled, (await insts("prov")).length], [true, 1]);
+  assert.deepEqual([!!(await row("prov")), (await insts("prov")).length], [true, 1]);
   assert.deepEqual((await Auto.readAuto()).prov.for, ["gcons"]);
 });
 
@@ -447,7 +447,7 @@ test("mise à jour qui ajoute un requires IMPOSSIBLE à satisfaire : refusée pr
   assert.equal((await row("gcons")).version, "1.0.0", "ancienne version gardée");
   assert.equal(JSON.parse(fs.readFileSync(path.join(db.dir, "modules", "gcons", "module.json"), "utf8")).version, "1.0.0", "fichiers remis");
   assert.deepEqual((await db.prisma.moduleRecord.findMany({ where: { instanceId: inst.id } })).map((x) => JSON.parse(x.data)), [{ n: 1 }], "données intactes");
-  assert.equal((await row("gcons")).enabled, true, "toujours actif");
+  assert.equal(!!(await row("gcons")), true, "toujours actif");
   assert.deepEqual(await allModules(), ["gcons"], "rien d'installé à moitié");
 });
 
@@ -477,7 +477,7 @@ const fakeBackup = (modules) => ({
   manifest: { createdAt: "2026-01-01T00:00:00Z", frameworkVersion: "1.0.0", site: { name: "S" }, counts: {}, modules, files: [], format: "curiosa-backup", formatVersion: 1 },
   data: { users: [{ id: "u1", email: "o@x.org", name: "O", role: "owner", passwordHash: "h", createdAt: "2026-01-01T00:00:00Z", updatedAt: "2026-01-01T00:00:00Z", advanced: false, locale: null }], settings: [], modules, instances: [], instanceTranslations: [], entries: [], entryTranslations: [], redirects: [], records: [] }, uploads: [],
 });
-const bm = (id, enabled = true) => ({ id, source: "bundled", origin: "catalogue", name: id, version: "1.0.0", enabled, repoUrl: null, ref: null, commit: null });
+const bm = (id) => ({ id, source: "bundled", origin: "catalogue", name: id, version: "1.0.0", repoUrl: null, ref: null, commit: null });
 const spyInstallers = (calls) => ({
   fromCatalogue: async (id) => { calls.push(id); return I.installFromCatalogue(id, { firstInstance: false, dependencies: false }); },
   fromRepo: async (url) => I.installModule(url, { firstInstance: false, dependencies: false }),
@@ -501,7 +501,7 @@ test("restauration : fournisseur absent de la sauvegarde mais disponible → ins
   bundled("cons", { requires: [{ service: SVC }] });
   const report = await Rs.applyRestore(fakeBackup([bm("cons")]), { confirmCustom: [], actor: "o", installers: spyInstallers([]) });
   assert.deepEqual([report.ok, report.provided, report.dependencies], [true, ["prov"], []]);
-  assert.deepEqual([(await row("prov")).enabled, (await insts("prov")).length, (await row("cons")).enabled], [true, 1, true]);
+  assert.deepEqual([!!(await row("prov")), (await insts("prov")).length, !!(await row("cons"))], [true, 1, true]);
 });
 
 test("restauration : fournisseur introuvable → le consommateur est restauré (activé comme sauvegardé) et le bilan dit « il manque »", async () => {
@@ -512,16 +512,7 @@ test("restauration : fournisseur introuvable → le consommateur est restauré (
   const report = await Rs.applyRestore(backup, { confirmCustom: [], actor: "o", installers: spyInstallers([]) });
   assert.equal(report.ok, true, "la restauration n'est jamais interrompue");
   assert.deepEqual(report.dependencies.map((d) => [d.id, d.missing[0].service]), [["cons", SVC]]);
-  assert.equal((await row("cons")).enabled, true, "l'état de la sauvegarde est respecté");
-});
-
-test("restauration : un module « éteint » dans une ancienne sauvegarde est désinstallé en gardant ses données, sans rien réparer", async () => {
-  bundled("prov", { offers: [{ service: SVC }] });
-  bundled("cons", { requires: [{ service: SVC }] });
-  const backup = fakeBackup([bm("cons", false), bm("prov")]);
-  assert.equal((await Rs.planModules(backup.data.modules)).every((p) => !p.missing), true);
-  const report = await Rs.applyRestore(backup, { confirmCustom: [], actor: "o", installers: spyInstallers([]) });
-  assert.deepEqual([await row("cons"), report.dependencies], [null, []], "plus d'état éteint : désinstallé (ses données seraient gardées)");
+  assert.equal(!!(await row("cons")), true, "l'état de la sauvegarde est respecté");
 });
 
 test("restauration : ordre topologique stable, cycles et inconnus gardent leur place", () => {

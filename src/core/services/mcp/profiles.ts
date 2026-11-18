@@ -98,9 +98,3 @@ export function applyProfile(profile: AccessProfile, tools: (ProfileTool & ToolA
   }
   return { grants, blocked };
 }
-
-/** Which profile, if any, exactly matches this state (tool name -> on/off) over these tools. Ignores tools the ceiling blocks. */
-export function matchingProfile(state: Record<string, boolean>, tools: ProfileTool[], scope: Scope): AccessProfile | null {
-  return ACCESS_PROFILES.find((p) => tools.every((t) => (!withinCeiling(t, scope) && profileAllows(p, t) ? true : (state[t.name] ?? false) === profileAllows(p, t)))) ?? null;
-}
-

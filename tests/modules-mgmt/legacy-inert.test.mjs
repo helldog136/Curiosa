@@ -23,7 +23,7 @@ async function module(id, manifest = {}) {
   const full = { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", ...manifest };
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(full));
   fs.writeFileSync(path.join(dir, "index.mjs"), "export default {};");
-  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version, enabled: true } });
+  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version } });
   R.forgetModule(id);
 }
 async function instance(id, nickname) {

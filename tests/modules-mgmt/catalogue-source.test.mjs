@@ -47,7 +47,7 @@ async function legacySite(id, over = {}, marker = "v1") {
   fs.mkdirSync(d, { recursive: true });
   fs.writeFileSync(path.join(d, "module.json"), JSON.stringify(man(id, over)));
   fs.writeFileSync(path.join(d, "index.mjs"), code(marker));
-  await db.prisma.module.create({ data: { id, source: "bundled", version: man(id, over).version, enabled: true } });
+  await db.prisma.module.create({ data: { id, source: "bundled", version: man(id, over).version } });
 }
 /** Dépôt du catalogue : un vrai dépôt git, un dossier par module, une étiquette épinglée. Renvoie le dépôt et l'entrée d'index. */
 function catalogueRepo(id, { over = { version: "1.1.0" }, marker = "v2", files = {}, entry = {}, manifest } = {}) {
@@ -98,7 +98,7 @@ test("ligne `bundled` restée d'une des premières versions : plus de conversion
   assert.equal((await X.reinstallModule("theta")).error, "modules.error.unknownSource");
   const hash = X.fingerprintDir(dir("theta")).hash;
   const after = await row("theta");
-  assert.deepEqual([after.source, after.version, after.repoUrl, after.ref, after.subdir, after.commit, after.tree, after.enabled], ["bundled", "1.0.0", null, null, null, null, null, true], "la ligne n'a pas bougé");
+  assert.deepEqual([after.source, after.version, after.repoUrl, after.ref, after.subdir, after.commit, after.tree, !!after], ["bundled", "1.0.0", null, null, null, null, null, true], "la ligne n'a pas bougé");
   assert.equal(X.fingerprintDir(dir("theta")).hash, hash, "les fichiers non plus");
   assert.equal(await getSetting(`instance.${inst.id}.titre`), "Mon carnet");
   assert.equal((await R.getModule("theta")).def.marker, "v1", "et il continue de fonctionner");
@@ -116,7 +116,7 @@ test("assistant de configuration : depuis le catalogue seulement, jamais de copi
   await setIndex(xi.entry, om.entry);
   assert.equal(await S.provisionModule("xi"), true);
   const r = await row("xi");
-  assert.deepEqual([r.source, r.version, r.enabled], ["git", "1.1.0", true]);
+  assert.deepEqual([r.source, r.version, !!r], ["git", "1.1.0", true]);
   fs.rmSync(om.repo.dir, { recursive: true, force: true });
   const warn = console.warn; console.warn = () => {};
   try { assert.equal(await S.provisionModule("omicron"), false); } finally { console.warn = warn; }

@@ -50,15 +50,15 @@ export async function linksFor(ids: string[], catalogue?: CatalogueEntry[]): Pro
   return out;
 }
 
-/** Aperçu (rien n'est modifié) : les modules ACTIFS de la sauvegarde dont un besoin ne sera couvert par personne. */
-export async function previewMissing(modules: { id: string; enabled: boolean; status: string }[], catalogue?: CatalogueEntry[]): Promise<DependencyIssue[]> {
+/** Aperçu (rien n'est modifié) : les modules de la sauvegarde dont un besoin ne sera couvert par personne. */
+export async function previewMissing(modules: { id: string; status: string }[], catalogue?: CatalogueEntry[]): Promise<DependencyIssue[]> {
   const market = catalogue ?? (await getCatalogue().catch(() => []));
   const live = modules.filter((m) => m.status !== "unavailable");
   const links = await linksFor(live.map((m) => m.id), market);
   const installed = await installedViews();
   const issues: DependencyIssue[] = [];
   for (const m of live) {
-    if (!m.enabled || m.status === "custom") continue;   // un dépôt personnel n'est lu qu'une fois confirmé : on ne devine pas
+    if (m.status === "custom") continue;   // un dépôt personnel n'est lu qu'une fois confirmé : on ne devine pas
     const missing: Missing[] = [];
     for (const need of links.get(m.id)?.needs ?? []) {
       if (need.optional) continue;   // facultatif : jamais un manque

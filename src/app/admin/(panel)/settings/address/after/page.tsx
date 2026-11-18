@@ -7,7 +7,7 @@ import { siteUrl } from "@/core/config";
 import { buildChecklist } from "@/core/domainChecklist";
 import { afterTasks, getAfterTicks, runAfterChecks, type AfterTask, type CheckResult } from "@/core/domainChecks";
 import { hostOfUrl, parseLegacyHosts } from "@/core/siteAddress";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { PageHeader, Panel } from "@/components/admin/Page";
 import { CopyBlock } from "@/components/admin/CopyBlock";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { TaskTick } from "@/components/admin/TaskTick";
@@ -63,7 +63,7 @@ export default async function AfterChangePage({ searchParams }: { searchParams: 
       </Panel>
 
       <Panel title={t("domain.after.tasks")} help={tasks.length > 0 ? t("domain.after.tasksHelp", { n: left }) : undefined} testid="domain-after-tasks">
-        {tasks.length === 0 ? <Callout tone="ok" role="status">✔ {t("domain.after.tasksNone")}</Callout> : (
+        {tasks.length === 0 ? <p><span role="status" className={ui.chipOk} title={t("domain.after.tasksNone")}>✔ {t("domain.after.tasksNoneChip")}</span></p> : (
           <ul className="divide-y divide-line rounded-2xl border border-line">
             {tasks.map((task) => {
               const r = task.kind === "returns" ? checklist.returns.find((x, i) => task.id === `return:${x.instanceKey}:${i}`) : undefined;
