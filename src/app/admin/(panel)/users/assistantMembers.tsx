@@ -5,7 +5,6 @@ import { abilities, accessState, splitAccesses } from "@/core/services/mcp/acces
 import { accessHref, assistantsTabHref } from "@/core/services/mcp/assistantsLinks";
 import { assistantFlags, assistantHistoryHref, lastActivity, memberFilter, summarizeRights } from "@/core/services/mcp/teamView";
 import { isMcpEnabled } from "@/core/services/mcp/tokens";
-import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { getApprovalModes } from "@/core/maintenance/settings";
 import { listRequests } from "@/core/maintenance/requests";
 import type { Translator } from "@/core/i18n/dictionary";
@@ -23,7 +22,7 @@ import { revokeTokenAction } from "../assistants/actions";
  */
 export async function assistantMembers({ t, locale, canHistory }: { t: Translator; locale: string; canHistory: boolean }) {
   const now = new Date();
-  const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
+  const [enabled, rows, catalogue, requests, modes] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes()]);
   const { active, inactive } = splitAccesses(rows, now);
   // Dernière activité : la plus récente entre l'usage de l'accès et une ligne du Journal central signée de son nom (une seule requête groupée, aucun minuteur).
   const journal = active.length === 0 ? [] : await prisma.auditLog.groupBy({ by: ["actor"], where: { actor: { in: active.map((k) => `mcp:${k.name}`) } }, _max: { createdAt: true } });
@@ -33,8 +32,7 @@ export async function assistantMembers({ t, locale, canHistory }: { t: Translato
   const date = (d: Date) => d.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" });
 
   const tableRows: TableRow[] = active.map((k) => {
-    const full = k.scope === "write" && fullIds.includes(k.id);
-    const token = { scope: k.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(k.grants), fullPowers: full };
+    const token = { scope: k.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(k.grants) };
     const can = abilities(catalogue.filter((x) => !x.instanceOptedOut && canUse(x, token)).map((x) => ({ readOnly: x.readOnly, destructive: x.destructive, source: x.source })));
     const summary = summarizeRights(can);
     const rightsText = [t(`team.rights.${summary.level}`), summary.canDelete && t("team.rights.delete")].filter(Boolean).join(" · ");
@@ -47,18 +45,17 @@ export async function assistantMembers({ t, locale, canHistory }: { t: Translato
     return {
       key: `ai:${k.id}`,
       testid: "assistant-row",
-      search: [k.name, t("team.type.assistant"), rightsText, direct && t("assistants.chip.direct"), full && t("fullpowers.chip"), ...flags.map((f) => t(`team.flag.${f}`))],
+      search: [k.name, t("team.type.assistant"), rightsText, direct && t("assistants.chip.direct"), ...flags.map((f) => t(`team.flag.${f}`))],
       filters: { who: memberFilter("assistant") },
       titles: { person: k.name, role: can.map((a) => t(`assistants.can.${a}`)).join(" ") },
       cells: {
         person: <span className="block break-words font-medium">{k.name}</span>,
         type: <Badge tone="accent" testid="member-type">{t("team.type.assistant")}</Badge>,
         role: <span data-testid="assistant-rights" className="block">{rightsText}</span>,
-        state: flags.length === 0 && !direct && !full ? null : (
+        state: flags.length === 0 && !direct ? null : (
           <span className="flex flex-wrap gap-1.5" data-testid="assistant-flags">
             {flags.includes("paused") && <span className={ui.chipWarn}>{t("team.flag.paused")}</span>}
             {flags.includes("waiting") && <a href={assistantsTabHref("requests")} className={`${ui.chipWarn} underline`}>{t("team.flag.waiting")}</a>}
-            {full && <a href={accessHref(k.id)} className={`${ui.chipDanger} underline`} data-testid="fullpowers-chip">{t("fullpowers.chip")}</a>}
             {direct && <span className={ui.chipWarn}>{t("assistants.chip.direct")}</span>}
           </span>
         ),

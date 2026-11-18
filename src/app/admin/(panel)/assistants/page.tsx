@@ -6,11 +6,6 @@ import { adminBugReportUrl } from "@/core/bugReport";
 import { REQUEST_NOTICES, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { markSeen } from "@/core/maintenance/settings";
-import { accessesWithFullPowers } from "@/core/services/mcp/fullPowers";
-import { accessHref } from "@/core/services/mcp/assistantsLinks";
-import { PendingButton } from "@/components/admin/PendingButton";
-import { ui } from "@/components/admin/ui";
-import { turnOffFullPowersAction } from "./fullPowersActions";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { PageHeader } from "@/components/admin/Page";
 import { AccessTab } from "./AccessTab";
@@ -33,8 +28,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
   // Ancien lien « ajouter un assistant d'entretien » : le formulaire est maintenant dans l'Équipe.
   if (tab === "access" && query.profile === "maintenance") redirect(newAccessHref(true));
   const notice = REQUEST_NOTICES.find((n) => n === query.notice);
-  const [{ pending }, bugUrl, fullPowers] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t), accessesWithFullPowers()]);
-  const owner = isOwner(user);
+  const [{ pending }, bugUrl] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t)]);
   // Voir les demandes ou l'historique = avoir vu ce que les IA ont fait : la pastille du menu repart de zéro (les demandes en attente, elles, restent).
   if (tab !== "access") await markSeen();
 
@@ -45,19 +39,6 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
         title={<>{t("assistants.title")}{advanced && <span className="ml-3 text-lg font-normal text-muted" data-testid="assistants-subtitle">{t("assistants.subtitle")}</span>}</>}
         intro={t("assistants.intro")}
       />
-      {fullPowers.length > 0 && (
-        <div role="alert" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-danger/50 bg-danger/10 p-3.5 text-sm" data-testid="fullpowers-banner">
-          <span className={ui.chipDanger}>{t("fullpowers.chip")}</span>
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {fullPowers.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2" data-testid="fullpowers-banner-item">
-                <a href={accessHref(a.id)} className="font-medium underline underline-offset-2">{a.name}</a>
-                {owner && <form action={turnOffFullPowersAction.bind(null, a.id)}><PendingButton testid="fullpowers-banner-off">{t("fullpowers.turnOff")}<span className="sr-only"> {a.name}</span></PendingButton></form>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
       <AssistantTabs t={t} current={tab} pending={pending} />
       {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} owner={isOwner(user)} />}
       {tab === "requests" && <RequestsTab t={t} locale={locale} defaultLocale={config.defaultLocale} notice={notice} />}

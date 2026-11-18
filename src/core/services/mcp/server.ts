@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/core/db";
 import { getSiteConfig } from "@/core/settings";
-import { canUse, dangerousUnderFullPowers } from "./access";
+import { canUse } from "./access";
 import { recordListSeen, revisionNow } from "./listSeen";
 import { authenticate, authenticateByUrl, isMcpEnabled, rateLimited, type AuthedToken } from "./tokens";
 import type { McpTool } from "./types";
@@ -83,9 +83,6 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools,
       const tool = (await listTools({ name })).find((t) => t.name === name);
       // Même réponse que l'outil existe ou non : un jeton ne découvre rien de ce qu'on ne lui a pas accordé.
       if (!tool || !canUse(tool, token)) return rpcError(rpc.id, -32602, `Unknown tool: ${name}`);
-      // Under full powers, each dangerous action leaves its own journal line, written BEFORE it runs (a crash still leaves the trace). It says "under full powers"
-      // whether or not the box of that action was also ticked: the owner sees what the switch was used for.
-      if (token.fullPowers && dangerousUnderFullPowers(tool)) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: "mcp.fullpowers.action", target: tool.name, module: tool.moduleId ?? "", instance: tool.moduleId ? tool.source : "" } }).catch(() => {});
       try {
         const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name, tokenId: token.id });
         if (!tool.readOnly && !tool.audited) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: `mcp.${tool.name}`, target: tool.source, module: tool.moduleId ?? "", instance: tool.moduleId ? tool.source : "" } }).catch(() => {});

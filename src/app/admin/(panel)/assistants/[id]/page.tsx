@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
-import { isOwner } from "@/core/permissions";
 import { prisma } from "@/core/db";
 import { listInstances } from "@/core/instances";
 import { getInstanceLabeler } from "@/core/modules/labels";
@@ -14,9 +13,6 @@ import { TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getApprovalMode } from "@/core/maintenance/settings";
 import { MAINTENANCE_TOOLS } from "@/core/maintenance/tools";
 import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
-import { hasFullPowers } from "@/core/services/mcp/fullPowers";
-import { FullPowersWindow } from "@/components/admin/FullPowersWindow";
-import { HelpTip } from "@/components/admin/HelpTip";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { ApprovalChoice } from "@/components/admin/ApprovalChoice";
 import { GrantsEditor } from "@/components/admin/GrantsEditor";
@@ -27,8 +23,6 @@ import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
 import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { applyGrantsAction, resetGrantsAction, revokeTokenAction, setUrlAccessAction } from "../actions";
-import { setFullPowersAction, turnOffFullPowersAction } from "../fullPowersActions";
-import { fullPowersLabels } from "../fullPowersLabels";
 import { resetLimitsAction, saveLimitsAction, setApprovalAction } from "../requestsActions";
 import { remainingSlots } from "@/core/maintenance/slots";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -40,15 +34,12 @@ export const dynamic = "force-dynamic";
 
 /** Un accès : ce qu'il peut faire, comment les actions à risque sont validées, et (en mode avancé) chaque action de chaque module. Modifiable en direct. */
 export default async function AccessPage({ params }: { params: Promise<{ id: string }> }) {
-  const { t, locale, config, advanced, user } = await adminCtx({ right: "core:mcp.tokens" });
+  const { t, locale, config, advanced } = await adminCtx({ right: "core:mcp.tokens" });
   const { id } = await params;
   const row = await prisma.apiToken.findUnique({ where: { id } });
   if (!row) notFound();
+  const token = { scope: row.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(row.grants) };
   const revoked = !!row.revokedAt;
-  const writes = row.scope === "write";
-  const fullPowers = !revoked && writes && (await hasFullPowers(id));
-  const token = { scope: writes ? ("write" as const) : ("read" as const), grants: parseGrants(row.grants), fullPowers };
-  const owner = isOwner(user);
   const urlOn = !revoked && (await isUrlAccessEnabled(id));
   const approval = await getApprovalMode(id);
   const slots = await remainingSlots(id);
@@ -151,24 +142,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         </section>
       )}
 
-      {!revoked && (fullPowers || owner) && (
-        <section className={`${ui.card} space-y-3`} aria-labelledby="fullpowers-title" data-testid="fullpowers-card">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 id="fullpowers-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold">
-              {t("fullpowers.title")}
-              <HelpTip name={t("fullpowers.title")} help={t(writes ? "fullpowers.help" : "fullpowers.readOnly")} always />
-              {fullPowers && <span className={ui.chipDanger} data-testid="fullpowers-chip">{t("fullpowers.stateOn")}</span>}
-            </h2>
-            {owner && writes && (fullPowers
-              ? <form action={turnOffFullPowersAction.bind(null, id)}><PendingButton testid="fullpowers-off">{t("fullpowers.turnOff")}</PendingButton></form>
-              : <FullPowersWindow name={row.name} labels={fullPowersLabels(t, row.name)} grant={setFullPowersAction.bind(null, id, true)} />)}
-          </div>
-          {fullPowers && <p className="text-[15px]" data-testid="fullpowers-all">{t("fullpowers.allGranted")}</p>}
-        </section>
-      )}
-
-      {!fullPowers && <GrantsEditor sections={sections} labels={grantsLabels(t)} save={applyGrantsAction.bind(null, id)}
-        riskyApproval={t(approval === "human" ? "grants.risky.approval.human" : "grants.risky.approval.direct")} />}
+      <GrantsEditor sections={sections} labels={grantsLabels(t)} save={applyGrantsAction.bind(null, id)}
+        riskyApproval={t(approval === "human" ? "grants.risky.approval.human" : "grants.risky.approval.direct")} />
 
       {!revoked && (
         <section className={`${ui.card} space-y-3`} aria-labelledby="limits-title" data-testid="access-limits">
