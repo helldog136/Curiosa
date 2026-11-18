@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.31.0 — 2026-11-18
 
 **En bref.** Les extensions peuvent maintenant ranger leurs réglages par tâche (« En direct › Alertes », « En direct › Récompenses ») au lieu d'avoir chacune sa page : le site réunit sur une seule page ce que plusieurs extensions y ajoutent. Les extensions actuelles ne changent pas tant qu'elles ne le demandent pas.
 
