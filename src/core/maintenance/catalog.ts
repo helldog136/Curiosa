@@ -14,10 +14,7 @@ import { hasPage, type ParsedManifest } from "@/core/modules/manifest";
 import { isOverlayManifest } from "@/core/modules/menuPlacement";
 import { missingSettings } from "@/core/modules/missingSettings";
 import { privacyByLanguage } from "@/core/modules/privacyDeclarations";
-import { getInstalledModules, getModule, listModuleRows } from "@/core/modules/registry";
-import { entryTopics, filterByTopic } from "@/core/modules/catalogueFacets";
-import { parseTopic } from "@/core/modules/places";
-import { currentVocabulary } from "@/core/modules/placesLoad";
+import { getModule, listModuleRows } from "@/core/modules/registry";
 import { normalizeNeeds, normalizeOffers, type ServiceNeed } from "@/core/modules/serviceVersions";
 import { planTabs, settingTab } from "@/core/modules/tabs";
 import { localized } from "@/core/modules/types";
@@ -53,7 +50,6 @@ export const CATALOG_LIST_INPUT: JsonSchemaLite = {
     include: { type: "string", enum: ["not_installed", "all"], description: "not_installed (default): only the modules this site does not have yet. all: every module of the catalogue, with the installed ones marked installed: true." },
     platform: { type: "string", maxLength: 31, description: "Only the modules about this platform, as written in the list (for example twitch or discord)." },
     provides: { type: "string", maxLength: 41, description: "Only the modules that provide this topic (for example social.link, a link to a social network)." },
-    topic: { type: "string", maxLength: 64, description: "Only the modules that add settings to this page of the admin, as a place id from maintenance_places (for example live.alerts or live.rewards). Items say where they add settings in addsSettingsTo." },
     limit: { type: "integer", minimum: 1, maximum: MAX_LIST, description: `How many modules to return (default 20, at most ${MAX_LIST}).` },
     offset: { type: "integer", minimum: 0, maximum: MAX_OFFSET, description: "How many modules to skip, to read the next page (use nextOffset from the previous answer)." },
   },
@@ -124,9 +120,6 @@ export async function catalogList(args: Record<string, unknown>) {
   const provides = typeof a.provides === "string" && a.provides ? a.provides : undefined;
   if (platform && !PLATFORM_RE.test(platform)) throw new McpToolError('argument "platform" must be a lowercase platform name such as twitch');
   if (provides && !TOPIC_RE.test(provides)) throw new McpToolError('argument "provides" must be a topic such as social.link');
-  const topicRaw = typeof a.topic === "string" && a.topic ? a.topic : undefined;
-  const topic = topicRaw ? parseTopic(topicRaw) : null;
-  if (topicRaw && !topic) throw new McpToolError('argument "topic" must be a place id such as live.alerts (see maintenance_places)');
   const all = a.include === "all";
   const limit = Math.min(MAX_LIST, Math.max(1, Math.trunc(Number(a.limit ?? 20))));
   const offset = Math.min(MAX_OFFSET, Math.max(0, Math.trunc(Number(a.offset ?? 0))));
@@ -135,12 +128,9 @@ export async function catalogList(args: Record<string, unknown>) {
   if (!cat.ok) return cat.reply;
   const { locale, main } = await lang();
   const installed = new Map((await listModuleRows()).map((r) => [r.id, r.version]));
-  const vocab = currentVocabulary();
-  const manifests = new Map((await getInstalledModules()).map((m) => [m.manifest.id, m.manifest] as const));
-  const topicsByEntry = new Map(cat.entries.map((e) => [e.id, entryTopics(e, manifests.get(e.id), vocab.aliases)] as const));
 
   const searchable = (e: CatalogueEntry) => foldText([e.id, localized(e.name, locale, main), localized(e.description, locale, main), e.platform ?? "", ...(e.provides ?? []), ...(e.offers ?? []).map((o) => o.service), ...(e.needs ?? []).map((n) => n.service)].join(" "));
-  const matches = filterByTopic(cat.entries, topic, topicsByEntry)
+  const matches = cat.entries
     .filter((e) => (all || !installed.has(e.id)) && (!platform || e.platform === platform) && (!provides || (e.provides ?? []).includes(provides)) && (!query || matchesQuery(searchable(e), query)))
     // Les suggérés d'abord, puis les modules vérifiés, puis par nom : un ordre stable, sans hasard.
     .sort((x, y) => Number(!!y.suggested) - Number(!!x.suggested) || Number(x.origin === "extra") - Number(y.origin === "extra") || localized(x.name, locale, main).localeCompare(localized(y.name, locale, main)));
@@ -164,7 +154,6 @@ export async function catalogList(args: Record<string, unknown>) {
       ...(e.needs?.length ? { needsServices: e.needs.map((n) => ({ service: n.service, optional: n.optional === true })) } : {}),
       ...(e.offers?.length ? { offersServices: e.offers.map((o) => o.service) } : {}),
       ...(e.requires?.core ? { minCore: e.requires.core } : {}),
-      ...((topicsByEntry.get(e.id) ?? []).length ? { addsSettingsTo: topicsByEntry.get(e.id) } : {}),
     };
   });
   return {

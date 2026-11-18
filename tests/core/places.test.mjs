@@ -133,8 +133,7 @@ test("threat model: spoofing core pages and other modules", () => {
 test("threat model: flooding, order hijacking, trapped links, rights escalation by place", () => {
   const many = Array.from({ length: 13 }, (_, i) => ({ id: `s${String(i).padStart(2, "0")}`, place: `live.p${String(i).padStart(2, "0")}` }));
   assert.ok(P.placeIssues(man({ places: many })).some((m) => /at most 12 sections/.test(m)));
-  // Since 0.34.0 the per-page limit is a guideline: not a refusal (see places-034.test.mjs).
-  assert.ok(!P.placeIssues(man({ places: [1, 2, 3, 4].map((i) => ({ id: `s${i}x`, place: `live.alerts.t${i}x` })) })).some((m) => /sections on one page/.test(m)));
+  assert.ok(P.placeIssues(man({ places: [1, 2, 3, 4].map((i) => ({ id: `s${i}x`, place: `live.alerts.t${i}x` })) })).some((m) => /at most 3 sections on one page/.test(m)));
   assert.ok(P.placeIssues(man({ places: [{ id: "aa", place: "shop.orders" }, { id: "bb", place: "games2.orders" }] })).some((m) => /at most 1 new group/.test(m)));
   for (const order of [0, 50, 99, 1000, 12.5]) assert.ok(P.placeIssues(man({ places: [{ id: "aa", place: "site.general.identity", order }] })).some((m) => /order must be/.test(m)), `order ${order}`);
   for (const link of ["https://evil.example/reconnect", "/admin/users", "javascript:alert(1)", "live.alerts.look"]) assert.ok(P.placeIssues(man({ places: [{ id: "aa", place: "live.rewards", seeAlso: [link] }] })).some((m) => /seeAlso/.test(m)), link);
@@ -146,7 +145,7 @@ test("threat model: flooding, order hijacking, trapped links, rights escalation 
   assert.ok(idx.warnings.some((w) => /zeta/.test(w)));
   // Tabs: more than 5 warns (soft guideline, owner decision E15), more than 8 join the first tab.
   const tabs = (n) => P.buildPlaceIndex(contrib("m", Array.from({ length: n }, (_, i) => sec(`t${i}x`, `shop.page.t${i}x`, { order: 100 + i }))), VOCAB, "en");
-  assert.equal(tabs(5).warnings.filter((w) => !/ adds \d+ sections/.test(w)).length, 0, "5 tabs: no tab warning (the section guideline is tested in places-034)");
+  assert.equal(tabs(5).warnings.length, 0);
   assert.ok(tabs(6).warnings.some((w) => /6 tabs/.test(w)));
   assert.equal(P.findPage(tabs(6), "shop", "page").tabs.length, 6, "a soft guideline: the sixth tab still shows");
   const ten = P.findPage(tabs(10), "shop", "page");

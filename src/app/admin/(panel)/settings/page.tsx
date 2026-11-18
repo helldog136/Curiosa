@@ -32,23 +32,15 @@ import Link from "next/link";
 import { I18nStatusCard } from "@/components/admin/I18nStatusCard";
 import { i18nStatus } from "@/core/i18n/status";
 import { LegacyHash } from "@/components/admin/LegacyHash";
-import { APPEARANCE_HREF, NAVIGATION_HEADER_HREF, SETTINGS_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_AI_HREF } from "@/core/adminLinks";
+import { APPEARANCE_HREF, NAVIGATION_HEADER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_AI_HREF } from "@/core/adminLinks";
 import { Suspense } from "react";
 import { AiVisibilityPanel } from "./AiVisibilityPanel";
 import { siteUrl } from "@/core/config";
-import { HostedSections } from "@/components/admin/HostedSections";
-import { CoreAnchors } from "@/components/admin/CoreAnchors";
-import { coreAnchorMap, plainQuery } from "@/core/modules/coreSections";
-
-/** Vocabulary tab of `site.general` -> the tab id of this page. */
-const HOSTED_TAB: Record<string, string> = { identity: "site", visibility: "search" };
-const CORE_ANCHORS = coreAnchorMap(SETTINGS_HREF);
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
 
-export default async function SettingsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
+export default async function SettingsPage() {
   const { t, config, advanced, user, locale } = await adminCtx("admin");
-  const hostQuery = plainQuery(await searchParams);
   const search = await getSearchSettings();
   const searchTypes = await searchableTypes(locale);
   const mail = await getMailConfig();
@@ -88,7 +80,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
         <h1 className={ui.pageTitle}>{t("nav.settings")}</h1>
         <p className={ui.pageIntro}>{t("settings.intro")}</p>
       </header>
-      <CoreAnchors map={CORE_ANCHORS} />
       <LegacyHash map={{ appearance: APPEARANCE_HREF, header: NAVIGATION_HEADER_HREF }} />
       <Tabs tabs={[{ id: "site", label: t("settings.identity") }, { id: "languages", label: t("settings.languages") }, { id: "privacy", label: t("settings.privacy") }, { id: "search", label: t("settings.search") }, { id: "sound", label: t("settings.sound") }, { id: "ai", label: t("settings.ai") }, ...(hasRole(user, "owner") ? [{ id: "mail", label: t("settings.mail") }] : []), ...(advanced ? [{ id: "address", label: t("settings.address") }] : [])]}>
       <div data-tab="site languages privacy">
@@ -332,8 +323,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
           </div>
         </section>
       )}
-        {/* (0.34.0) Sections that modules add to this page (places `site.general.*`), in the tab they name. */}
-        <HostedSections page="site.general" base={SETTINGS_HREF} query={hostQuery} wrap={(tab, children) => <div data-tab={HOSTED_TAB[tab] ?? tab}>{children}</div>} />
       </Tabs>
     </div>
   );

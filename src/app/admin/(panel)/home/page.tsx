@@ -1,5 +1,3 @@
-import { HOME_HREF } from "@/core/adminLinks";
-import { HostedSections } from "@/components/admin/HostedSections";
 import { BLOCK_KINDS, CORE_INSTANCE, CORE_SECTION, normalizeBlockDef, type BlockKind } from "@/core/homeBlocks";
 import { localeName } from "@/core/i18n/locales";
 import { BLOCK_LABEL_KEYS } from "@/components/admin/blockLabels";
@@ -67,8 +65,6 @@ export default async function HomeAdminPage() {
             sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />
         {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
-      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
-      <HostedSections page="site.home" base={HOME_HREF} tabs={["home", "banners"]} />
     </div>
   );
 }

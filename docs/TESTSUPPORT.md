@@ -541,7 +541,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Places are valid** — niveau : **obligatoire**
 
-- **Ce qui est vérifié.** The `place`, `tabs[].place` and `places` keys follow the contract of docs/PLACES.md: group.page[.tab] in lower-case ASCII, no group of the core (admin, account, settings…), at most 12 sections and 1 new group, order from 100 to 999, seeAlso as place ids only, EN and FR titles, no title that reads like a page of the core.
+- **Ce qui est vérifié.** The `place`, `tabs[].place` and `places` keys follow the contract of docs/PLACES.md: group.page[.tab] in lower-case ASCII, no group of the core (admin, account, settings…), at most 12 sections, 3 per page and 1 new group, order from 100 to 999, seeAlso as place ids only, EN and FR titles, no title that reads like a page of the core.
 - **Pourquoi.** A place is a public, frozen address shown to the owner. A wrong one is refused at install; a misleading one could look like a page of the core (password, team, backup).
 - **Comment corriger.** Read the message: it names the section and the rule. Pick a place from catalogue/places.json, or define a new one inline with plain titles.
 
@@ -549,7 +549,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Placed sections stay short, and older cores keep working** — niveau : **conseil**
 
-- **Ce qui est vérifié.** Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). More than 3 sections of the module on one page is a guideline, not a refusal (core 0.34.0): the vocabulary page can write why it is fine. A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).
+- **Ce qui est vérifié.** Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).
 - **Pourquoi.** A shared page gathers several modules: one long section pushes the others down. During the transition, sites on an older core still need the module's own entry.
 - **Comment corriger.** Mark rare settings `rare: true`, split a long section, keep `adminMenu` until minCore 0.33.0, or move tabs[].place to places[].fromTab.
 

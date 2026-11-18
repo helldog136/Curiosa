@@ -40,7 +40,7 @@ export const RESERVED_GROUPS: readonly string[] = ["admin", "account", "administ
  */
 export const ADMIN_ROUTE_SEGMENTS: readonly string[] = [
   "account", "ai-visibility", "appearance", "assistants", "audit", "backup", "catalogue", "drafts", "entries", "extensions", "home", "instances", "integrations",
-  "maintenance", "maintenance-ia", "mcp", "mode", "modules", "navigation", "overlay-pages", "overlays", "redirects", "search", "settings", "social", "updates", "users",
+  "maintenance", "maintenance-ia", "mcp", "mode", "modules", "navigation", "overlay-pages", "overlays", "redirects", "settings", "social", "updates", "users",
   "choose-password", "login", "no-access", "setup", "bug-report",
 ];
 
@@ -65,8 +65,6 @@ export type VocabPage = Texts & {
   href?: string;
   /** More than 5 tabs is allowed with a written reason (owner decision E15: the cap is a soft guideline). */
   tabsReason?: string;
-  /** (0.34.0) More than 3 sections of one module on this page is allowed with a written reason (owner decision 2026-11-18: the limit is a soft guideline). */
-  sectionsReason?: string;
 };
 export type Vocabulary = { version: 1; groups: VocabGroup[]; pages: VocabPage[]; aliases: Record<string, string>; deprecated: Record<string, string> };
 
@@ -98,7 +96,7 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
   pages: [
     { id: "site.home", en: "Home and menu", fr: "Accueil et menu", href: HOME_HREF, tabs: [{ id: "home", en: "Home", fr: "Accueil" }, { id: "menu", en: "Menu", fr: "Menu" }, { id: "header", en: "Link and button", fr: "Lien et bouton" }, { id: "social", en: "Social buttons", fr: "Boutons sociaux" }, { id: "banners", en: "Banners", fr: "Bandeaux" }] },
     { id: "site.appearance", en: "Appearance", fr: "Apparence", href: APPEARANCE_HREF, tabs: [{ id: "skin", en: "Skin", fr: "Skin" }, { id: "colors", en: "Colours", fr: "Couleurs" }, { id: "fonts", en: "Fonts", fr: "Polices" }, { id: "background", en: "Background", fr: "Fond" }, { id: "sound", en: "Sound", fr: "Son" }] },
-    { id: "site.general", en: "General", fr: "Général", href: SETTINGS_HREF, tabs: [{ id: "identity", en: "Name and logo", fr: "Nom et logo" }, { id: "languages", en: "Languages", fr: "Langues" }, { id: "privacy", en: "Privacy", fr: "Confidentialité" }, { id: "visibility", en: "Visibility", fr: "Visibilité" }, { id: "mail", en: "E-mail", fr: "E-mail" }, { id: "sound", en: "Sound", fr: "Son" }, { id: "ai", en: "AI robots", fr: "Robots IA" }, { id: "address", en: "Address", fr: "Adresse" }] },
+    { id: "site.general", en: "General", fr: "Général", href: SETTINGS_HREF, tabs: [{ id: "identity", en: "Name and logo", fr: "Nom et logo" }, { id: "languages", en: "Languages", fr: "Langues" }, { id: "privacy", en: "Privacy", fr: "Confidentialité" }, { id: "visibility", en: "Visibility", fr: "Visibilité" }, { id: "mail", en: "E-mail", fr: "E-mail" }] },
     { id: "site.links", en: "Short links", fr: "Liens courts", href: REDIRECTS_HREF },
     { id: "obs.pages", en: "Overlay pages", fr: "Pages d'overlay", href: OVERLAY_PAGES_HREF, intro: { en: "The pages to add to OBS and what they show.", fr: "Les pages à ajouter dans OBS et ce qu'elles montrent." }, tabs: [{ id: "main", en: "Pages", fr: "Pages" }, { id: "skins", en: "Styles", fr: "Styles" }, { id: "addresses", en: "Addresses for OBS", fr: "Adresses pour OBS" }] },
     { id: "admin.extensions", en: "Extensions", fr: "Extensions", href: EXTENSIONS_HREF },
@@ -149,8 +147,7 @@ export function sanitizeVocabulary(raw: unknown): Vocabulary {
     }
     const intro = texts(raw.intro, INTRO_MAX);
     const reason = clip(raw.tabsReason, 300);
-    const sectionsReason = clip(raw.sectionsReason, 300);
-    out.pages.push({ id: pageId(parsed), ...t, ...(intro ? { intro } : {}), ...(tabs.length ? { tabs } : {}), ...(reason ? { tabsReason: reason } : {}), ...(sectionsReason ? { sectionsReason } : {}) });
+    out.pages.push({ id: pageId(parsed), ...t, ...(intro ? { intro } : {}), ...(tabs.length ? { tabs } : {}), ...(reason ? { tabsReason: reason } : {}) });
   }
   for (const key of ["aliases", "deprecated"] as const) {
     const map = r[key];
@@ -184,8 +181,6 @@ export function mergeVocabulary(builtin: Vocabulary, catalogue: Vocabulary | nul
     if (pages.some((p) => p.id === pageId(old) && (!old.tab || (p.tabs ?? []).some((t) => t.id === old.tab)))) continue;
     aliases[from] = to;
   }
-  // A damaged table never breaks an address: loops, chains over 3 steps and reserved groups are dropped here (the vocabulary test reports them).
-  for (const bad of aliasProblems(aliases)) delete aliases[bad.from];
   return { version: 1, groups, pages, aliases, deprecated: { ...(catalogue?.deprecated ?? {}), ...builtin.deprecated } };
 }
 
@@ -210,10 +205,6 @@ export const groupStatus = (id: string, vocab: Vocabulary): GroupStatus =>
 /* ───────────── Manifest contract ───────────── */
 
 export const SECTION_ID_RE = /^[a-z][a-z0-9-]{1,23}$/;
-/**
- * Hard limits (a manifest that breaks one is refused): 12 sections per module, 1 new group, text lengths. `perPage` is a SOFT guideline since core 0.34.0
- * (owner decision 2026-11-18): more than 3 sections of one module on one page only warns, unless the vocabulary page writes a `sectionsReason`.
- */
 export const LIMITS = { sections: 12, perPage: 3, inlineGroups: 1, title: 40, summary: 60, intro: 120, seeAlso: 3 } as const;
 
 export type PlaceDefine = { group?: { title: Texts; icon?: string }; page?: { title: Texts; intro?: Texts }; tab?: { title: Texts }; weight?: number };
@@ -336,6 +327,7 @@ export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCAB
   ];
   if (decls.length > LIMITS.sections) issues.push(`at most ${LIMITS.sections} sections (places, tabs with a place and the module place)`);
   const ids = new Set<string>();
+  const perPage = new Map<string, number>();
   const newGroups = new Set<string>();
   const titleKeys = vocabularyTitleKeys(vocab);
   const plan = planTabs(m.tabs);
@@ -356,6 +348,7 @@ export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCAB
       else if (target.tab && !(vp.tabs ?? []).some((t) => t.id === target.tab)) issues.push(`${where}: "${target.tab}" is not a tab of ${pageId(target)}: a module cannot add a tab to a core page`);
       if (d?.define) issues.push(`${where}: "define" is not allowed on a core page`);
     }
+    perPage.set(pageId(target), (perPage.get(pageId(target)) ?? 0) + 1);
     if (!vocab.groups.some((g) => g.id === target.group)) newGroups.add(target.group);
     if (!d) continue;
     if (d.order !== undefined && (!Number.isInteger(d.order) || d.order <= CORE_ORDER_MAX || d.order > 999)) issues.push(`${where}: order must be a whole number from 100 to 999 (0 to 99 belong to the core)`);
@@ -392,48 +385,10 @@ export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCAB
       claimed.set(k, id);
     }
   }
+  for (const [page, n] of perPage) if (n > LIMITS.perPage) issues.push(`at most ${LIMITS.perPage} sections on one page (${page} has ${n})`);
   if (newGroups.size > LIMITS.inlineGroups) issues.push(`at most ${LIMITS.inlineGroups} new group (${[...newGroups].join(", ")})`);
   return issues;
 }
-
-/**
- * Advice about a manifest's places (core 0.34.0): what the ergonomic guidelines would flag, never a refusal. Today: more than 3 sections of this module on one page
- * (soft limit, owner decision 2026-11-18). A vocabulary page may write a `sectionsReason` to say why it is fine (`live.alerts` has 5 tabs).
- */
-export function placeAdvice(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCABULARY): string[] {
-  const out: string[] = [];
-  const perPage = new Map<string, number>();
-  for (const s of moduleSections(m, vocab.aliases)) perPage.set(pageId(s.place), (perPage.get(pageId(s.place)) ?? 0) + 1);
-  for (const [page, n] of perPage) {
-    if (n <= LIMITS.perPage) continue;
-    const reason = vocab.pages.find((p) => p.id === page)?.sectionsReason;
-    if (!reason) out.push(`${n} sections on ${page} (guideline: ${LIMITS.perPage} per module per page); the vocabulary entry of the page can write why it is fine (sectionsReason)`);
-  }
-  return out;
-}
-
-/** Problems of an alias table, per alias: a side that is not a place, an alias to itself, a loop, a chain longer than 3 steps, a reserved group. */
-export function aliasProblems(aliases: Record<string, string>): { from: string; message: string }[] {
-  const out: { from: string; message: string }[] = [];
-  for (const [from, to] of Object.entries(aliases)) {
-    const a = parsePlace(from), b = parsePlace(to);
-    if (!a || !b) { out.push({ from, message: `alias "${from}" -> "${to}": both sides must be places` }); continue; }
-    if (from === to) { out.push({ from, message: `alias "${from}" points to itself` }); continue; }
-    if (RESERVED_GROUPS.includes(a.group) || RESERVED_GROUPS.includes(b.group)) { out.push({ from, message: `alias "${from}" -> "${to}": a reserved group is never aliased` }); continue; }
-    let cur = to;
-    const seen = new Set([from]);
-    for (let i = 0; i < 4; i++) {
-      if (seen.has(cur)) { out.push({ from, message: `alias "${from}": loop through "${cur}"` }); break; }
-      seen.add(cur);
-      const next = aliases[cur];
-      if (!next) break;
-      cur = next;
-      if (i === 3) out.push({ from, message: `alias "${from}": more than 3 steps` });
-    }
-  }
-  return out;
-}
-export const aliasIssues = (aliases: Record<string, string>): string[] => aliasProblems(aliases).map((p) => p.message);
 
 /* ───────────── Merge: the place index ───────────── */
 
@@ -547,13 +502,6 @@ export function buildPlaceIndex(contribs: readonly Contribution[], vocab: Vocabu
       return own;
     };
     let tabs: IndexedTab[] = tabIds.map((t) => ({ id: t, title: tabTitle(t), sections: list.filter((c) => tabIdOf(c) === t).sort(sortSections).map((c) => ({ ...c, anchor: sectionAnchor(c.instanceKey, c.section.id), title: sectionTitle(c) })) }));
-    // Soft limit (owner decision 2026-11-18): more than 3 sections of one module on one page only warns, unless the vocabulary page says why it is fine.
-    if (!vp?.sectionsReason) {
-      for (const moduleId of modules) {
-        const n = new Set(list.filter((c) => c.moduleId === moduleId).map((c) => c.section.id)).size;
-        if (n > LIMITS.perPage) warnings.push(`${id}: module ${moduleId} adds ${n} sections (guideline: ${LIMITS.perPage}; a reason can be written in the vocabulary)`);
-      }
-    }
     if (tabs.length > TABS_SOFT_MAX && !vp?.tabsReason) warnings.push(`${id} has ${tabs.length} tabs (guideline: ${TABS_SOFT_MAX}; a reason can be written in the vocabulary)`);
     if (tabs.length > TABS_HARD_MAX) {
       const extra = tabs.slice(TABS_HARD_MAX);
@@ -627,71 +575,3 @@ export function addedInList(sections: readonly PlaceSection[], vocab: Vocabulary
 
 /** Is this page a core page (it keeps its own address; module sections show there from core 0.32.0)? */
 export const isCorePage = (place: ParsedPlace, vocab: Vocabulary): boolean => !!vocab.pages.find((p) => p.id === pageId(place))?.href;
-
-/* ───────────── Badges carried onto place pages (core 0.34.0) ───────────── */
-
-export type PlaceBadge = {
-  /** What this page shows: the sum of the badges of the instances that have a section here. */
-  count: number;
-  /** Badge of each instance counted (instance id -> number): the group total counts an instance once, however many pages host it. */
-  keys: Record<string, number>;
-  /** Names of the modules behind the number, for the tooltip. */
-  modules: string[];
-};
-
-/**
- * The notification badge (`adminBadge`) of a module is carried onto every place page that hosts one of its sections (owner decision 2026-11-18): a module that placed
- * everything it shows has no sidebar entry any more, and its number must not vanish. A page with no badge is absent from the map.
- */
-export function placeBadges(index: PlaceIndex, badgeOf: (instanceId: string) => number): Map<string, PlaceBadge> {
-  const out = new Map<string, PlaceBadge>();
-  for (const g of index.groups) {
-    for (const p of g.pages) {
-      const keys: Record<string, number> = {};
-      const modules = new Set<string>();
-      for (const t of p.tabs) {
-        for (const s of t.sections) {
-          const n = badgeOf(s.instanceId);
-          if (n > 0) { keys[s.instanceId] = n; modules.add(s.siblings ? `${s.moduleName} · ${s.instanceLabel}` : s.moduleName); }
-        }
-      }
-      const count = Object.values(keys).reduce((a, b) => a + b, 0);
-      if (count > 0) out.set(p.id, { count, keys, modules: [...modules] });
-    }
-  }
-  return out;
-}
-
-/* ───────────── Topics: what a module adds settings to (catalogue facets, AI) ───────────── */
-
-/**
- * The place pages a module adds settings or lists to, from its manifest alone (so it is true for a catalogue module that is not installed, once the catalogue
- * entry carries them, and for an installed one before any page is drawn). Page ids (`live.alerts`), in declaration order, without duplicates and without
- * reserved groups; core pages are included (« Ajoute des réglages à : Apparence »).
- */
-export function moduleTopics(m: PlacesManifest, aliases: Record<string, string> = {}): string[] {
-  const seen = new Set<string>();
-  for (const s of moduleSections(m, aliases)) if (groupStatus(s.place.group, BUILTIN_VOCABULARY) !== "reserved") seen.add(pageId(s.place));
-  return [...seen];
-}
-
-/** Title of a page id for the facet: the vocabulary's, else derived from the id. Breadcrumb-free: « Alertes ». */
-export function topicTitle(topic: string, vocab: Vocabulary, locale: string): string {
-  const vp = vocab.pages.find((p) => p.id === topic);
-  if (vp) return L(vp, locale);
-  const p = parsePlace(topic);
-  return p ? titleCase(p.page) : topic;
-}
-
-/** Group of a page id for the facet grouping: « En direct », « Agenda »… */
-export function topicGroupTitle(topic: string, vocab: Vocabulary, locale: string): string {
-  const p = parsePlace(topic);
-  const g = p ? vocab.groups.find((x) => x.id === p.group) : null;
-  return g ? L(g, locale) : p ? titleCase(p.group) : "";
-}
-
-/** Normalises a topic coming from an index entry or an AI query: a page id or a place id, lower case; null when it is not one. */
-export function parseTopic(raw: unknown): string | null {
-  const p = parsePlace(typeof raw === "string" ? raw.trim().toLowerCase() : raw);
-  return p ? pageId(p) : null;
-}

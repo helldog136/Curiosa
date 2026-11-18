@@ -1,5 +1,3 @@
-import { NAVIGATION_HREF } from "@/core/adminLinks";
-import { HostedSections } from "@/components/admin/HostedSections";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
@@ -65,8 +63,6 @@ export default async function NavigationPage() {
           strings={strings}
         />
       </ActionForm>
-      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
-      <HostedSections page="site.home" base={NAVIGATION_HREF} tabs={["menu"]} />
     </div>
   );
 }

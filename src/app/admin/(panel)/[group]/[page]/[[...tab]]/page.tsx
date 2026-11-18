@@ -1,9 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { instanceHref } from "@/core/adminLinks";
-import { findPage, pageId, parsePlace, placeHref, placeId, resolveAlias, type IndexedPage } from "@/core/modules/places";
-import { coreSectionHref } from "@/core/modules/coreSections";
-import { sectionQuery } from "@/core/modules/placeScope";
+import { findPage, parsePlace, placeHref, resolveAlias, type IndexedPage } from "@/core/modules/places";
 import { currentVocabulary, placeIndexFor } from "@/core/modules/placesLoad";
 import { getActiveInstances } from "@/core/modules/registry";
 import { LinkTabs } from "@/components/admin/LinkTabs";
@@ -28,31 +26,28 @@ export default async function PlacePage({ params, searchParams }: { params: Prom
   const vocab = currentVocabulary();
   // A renamed place (alias) keeps working: its old address leads to the new one.
   const { place, aliased } = resolveAlias(asked, vocab.aliases);
-  const sp = await searchParams;
-  // The parameters of the old address are kept (a bookmark with `?acme.edit=3` still opens the same window); the fragment is kept by the browser.
-  const carried = new URLSearchParams(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v] as [string, string]] : []))).toString();
-  if (aliased) redirect(`${placeHref(place.group, place.page, place.tab)}${carried ? `?${carried}` : ""}`);
+  if (aliased) redirect(placeHref(place.group, place.page, place.tab));
   const index = await placeIndexFor(user, advanced, locale, config.defaultLocale);
   const found = findPage(index, place.group, place.page);
   if (!found) notFound();
   // A core page keeps its own address (bookmarks, mails): its place id leads there.
-  if (found.core) redirect(`${coreSectionHref(place.tab ? placeId(place) : pageId(place)) ?? found.href}`);
+  if (found.core) redirect(found.href);
   const current = place.tab ? found.tabs.find((x) => x.id === place.tab) : found.tabs[0];
   if (!current) redirect(placeHref(place.group, place.page));
+  const sp = await searchParams;
   const query = Object.fromEntries(Object.entries(sp).flatMap(([k, v]) => (typeof v === "string" ? [[k, v]] : [])));
   const actives = await getActiveInstances();
   // Sections load side by side, each within its own time budget: a slow or broken module never holds the page.
   const loaded = (await Promise.all(current.sections.map(async (s) => {
     const active = actives.find((a) => a.instance.id === s.instanceId);
-    // (0.34.0) Each module reads its own namespaced parameters only (docs/PLACES.md, « Parameters »).
-    return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, found.modules.length === 1) }) : null;
+    return active ? loadPlaceSection(s, active, user, { locale, advanced, query }) : null;
   }))).filter((x): x is NonNullable<typeof x> => x !== null);
   const showOrigin = (p: IndexedPage, siblings: boolean) => p.modules.length > 1 || siblings || p.inline;
   const tabHref = (id: string, i: number) => (i === 0 ? placeHref(place.group, place.page) : placeHref(place.group, place.page, id));
 
   const body = loaded.length > 0 ? (
     <div className="space-y-6">
-      {loaded.map((l) => <PlaceSectionCard key={l.section.anchor} loaded={l} t={t} locale={locale} config={config} advanced={advanced} showOrigin={showOrigin(found, l.section.siblings)} base={tabHref(current.id, found.tabs.indexOf(current))} />)}
+      {loaded.map((l) => <PlaceSectionCard key={l.section.anchor} loaded={l} t={t} locale={locale} config={config} advanced={advanced} showOrigin={showOrigin(found, l.section.siblings)} />)}
       {seeAlso(found, current.sections.flatMap((s) => s.section.seeAlso), index, t)}
     </div>
   ) : (

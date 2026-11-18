@@ -1,4 +1,3 @@
-import { HostedSections } from "@/components/admin/HostedSections";
 import Link from "next/link";
 import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
@@ -69,8 +68,6 @@ export default async function ObsAddressesPage() {
           </ul>
         </section>
       )}
-      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
-      <HostedSections page="obs.pages" base={OVERLAYS_OBS_HREF} tabs={["addresses"]} />
     </div>
   );
 }
