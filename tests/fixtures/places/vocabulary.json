@@ -1,0 +1,410 @@
+{
+ "version": 1,
+ "groups": [],
+ "pages": [
+  {
+   "id": "content.faq",
+   "en": "FAQ",
+   "fr": "Questions fréquentes",
+   "intro": {
+    "en": "Your audience's questions and your answers.",
+    "fr": "Les questions de votre public et vos réponses."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Questions",
+     "fr": "Questions"
+    },
+    {
+     "id": "inbox",
+     "en": "Received",
+     "fr": "Reçues"
+    }
+   ]
+  },
+  {
+   "id": "content.press-kit",
+   "en": "Press kit",
+   "fr": "Kit presse",
+   "intro": {
+    "en": "What the press finds about you.",
+    "fr": "Ce que la presse trouve sur vous."
+   }
+  },
+  {
+   "id": "live.alerts",
+   "en": "Alerts",
+   "fr": "Alertes",
+   "intro": {
+    "en": "What shows on screen when something happens.",
+    "fr": "Ce qui s'affiche à l'écran quand il se passe quelque chose."
+   },
+   "tabs": [
+    {
+     "id": "events",
+     "en": "Events",
+     "fr": "Événements"
+    },
+    {
+     "id": "look",
+     "en": "Appearance",
+     "fr": "Apparence"
+    },
+    {
+     "id": "rules",
+     "en": "Rules",
+     "fr": "Règles"
+    },
+    {
+     "id": "voice",
+     "en": "Voice",
+     "fr": "Voix"
+    },
+    {
+     "id": "media",
+     "en": "Media",
+     "fr": "Médias"
+    }
+   ]
+  },
+  {
+   "id": "live.rewards",
+   "en": "Rewards",
+   "fr": "Récompenses",
+   "intro": {
+    "en": "Your channel point rewards and what they trigger.",
+    "fr": "Vos récompenses de points de chaîne et ce qu'elles déclenchent."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Rewards",
+     "fr": "Récompenses"
+    },
+    {
+     "id": "home",
+     "en": "Smart home",
+     "fr": "Maison connectée"
+    }
+   ]
+  },
+  {
+   "id": "live.chat",
+   "en": "Chat",
+   "fr": "Chat",
+   "intro": {
+    "en": "What chat can ask and what it is told.",
+    "fr": "Ce que le chat peut demander et ce qu'on lui répond."
+   },
+   "tabs": [
+    {
+     "id": "commands",
+     "en": "Commands",
+     "fr": "Commandes"
+    },
+    {
+     "id": "timers",
+     "en": "Timers",
+     "fr": "Timers"
+    },
+    {
+     "id": "youtube",
+     "en": "YouTube",
+     "fr": "YouTube"
+    }
+   ]
+  },
+  {
+   "id": "live.participation",
+   "en": "Audience games",
+   "fr": "Participation",
+   "intro": {
+    "en": "Polls, rooms and draws with your audience.",
+    "fr": "Sondages, salles et tirages au sort avec votre public."
+   },
+   "tabs": [
+    {
+     "id": "polls",
+     "en": "Polls",
+     "fr": "Sondages"
+    },
+    {
+     "id": "rooms",
+     "en": "Rooms and nicknames",
+     "fr": "Salles et pseudos"
+    },
+    {
+     "id": "draw",
+     "en": "Draw",
+     "fr": "Tirage au sort"
+    }
+   ]
+  },
+  {
+   "id": "live.raid",
+   "en": "Raid",
+   "fr": "Raid",
+   "intro": {
+    "en": "The channels to raid and the chosen moment.",
+    "fr": "La liste des chaînes à raider et le moment choisi."
+   },
+   "tabs": [
+    {
+     "id": "list",
+     "en": "My list",
+     "fr": "Ma liste"
+    },
+    {
+     "id": "featured",
+     "en": "Featured",
+     "fr": "Sélection du moment"
+    }
+   ]
+  },
+  {
+   "id": "live.golive",
+   "en": "Going live",
+   "fr": "Passage en direct",
+   "intro": {
+    "en": "What happens on the site and elsewhere when the live starts.",
+    "fr": "Ce qui se passe sur le site et ailleurs quand le live commence."
+   }
+  },
+  {
+   "id": "calendar.schedule",
+   "en": "Schedule",
+   "fr": "Planning",
+   "intro": {
+    "en": "Your coming streams and where they show.",
+    "fr": "Vos streams à venir et où ils s'affichent."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Slots",
+     "fr": "Créneaux"
+    },
+    {
+     "id": "look",
+     "en": "Appearance",
+     "fr": "Apparence"
+    },
+    {
+     "id": "sources",
+     "en": "Online calendars",
+     "fr": "Agendas en ligne"
+    },
+    {
+     "id": "streams",
+     "en": "Typed by hand",
+     "fr": "Saisis à la main"
+    }
+   ]
+  },
+  {
+   "id": "calendar.story",
+   "en": "Announcement story",
+   "fr": "Story d'annonce",
+   "intro": {
+    "en": "The video that announces your next streams.",
+    "fr": "La vidéo qui annonce vos prochains streams."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Story",
+     "fr": "Story"
+    },
+    {
+     "id": "styles",
+     "en": "My styles",
+     "fr": "Mes styles"
+    }
+   ]
+  },
+  {
+   "id": "calendar.notebook",
+   "en": "Content notebook",
+   "fr": "Cahier de contenu",
+   "intro": {
+    "en": "Your content ideas and your pace.",
+    "fr": "Vos idées de contenu et votre rythme."
+   }
+  },
+  {
+   "id": "community.contacts",
+   "en": "Contacts",
+   "fr": "Contacts",
+   "intro": {
+    "en": "The people you know and your contact form.",
+    "fr": "Les personnes que vous connaissez et votre formulaire de contact."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Contacts",
+     "fr": "Contacts"
+    },
+    {
+     "id": "form",
+     "en": "Form",
+     "fr": "Formulaire"
+    }
+   ]
+  },
+  {
+   "id": "community.partners",
+   "en": "Partners",
+   "fr": "Partenaires",
+   "intro": {
+    "en": "Your partners and what you show for them.",
+    "fr": "Vos partenaires et ce que vous affichez pour eux."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Partners",
+     "fr": "Partenaires"
+    },
+    {
+     "id": "sponsors",
+     "en": "Sponsors",
+     "fr": "Sponsors"
+    }
+   ]
+  },
+  {
+   "id": "community.reviews",
+   "en": "Reviews",
+   "fr": "Témoignages",
+   "intro": {
+    "en": "What your audience says about you.",
+    "fr": "Ce que votre public dit de vous."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Reviews",
+     "fr": "Témoignages"
+    },
+    {
+     "id": "share",
+     "en": "Share",
+     "fr": "Partager"
+    }
+   ]
+  },
+  {
+   "id": "community.games",
+   "en": "Games",
+   "fr": "Jeux",
+   "intro": {
+    "en": "The games your audience suggests and the daily game.",
+    "fr": "Les jeux proposés par votre public et le jeu du jour."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Suggestions",
+     "fr": "Suggestions"
+    },
+    {
+     "id": "daily",
+     "en": "Daily game",
+     "fr": "Jeu du jour"
+    },
+    {
+     "id": "covers",
+     "en": "Covers",
+     "fr": "Jaquettes"
+    }
+   ]
+  },
+  {
+   "id": "obs.overlays",
+   "en": "Ready-made overlays",
+   "fr": "Overlays tout prêts",
+   "intro": {
+    "en": "The overlays that work on their own in OBS.",
+    "fr": "Les overlays qui fonctionnent seuls dans OBS."
+   },
+   "tabs": [
+    {
+     "id": "maze",
+     "en": "Maze",
+     "fr": "Labyrinthe"
+    },
+    {
+     "id": "sponsors",
+     "en": "Sponsors",
+     "fr": "Sponsors"
+    },
+    {
+     "id": "ticker",
+     "en": "Ticker",
+     "fr": "Bandeau défilant"
+    }
+   ]
+  },
+  {
+   "id": "networks.twitch",
+   "en": "Twitch",
+   "fr": "Twitch",
+   "intro": {
+    "en": "Your connection to Twitch and your channels.",
+    "fr": "Votre connexion à Twitch et vos chaînes."
+   }
+  },
+  {
+   "id": "networks.youtube",
+   "en": "YouTube",
+   "fr": "YouTube",
+   "intro": {
+    "en": "Your connection to YouTube and your channels.",
+    "fr": "Votre connexion à YouTube et vos chaînes."
+   }
+  },
+  {
+   "id": "networks.discord",
+   "en": "Discord",
+   "fr": "Discord",
+   "intro": {
+    "en": "Your Discord server and your announcements.",
+    "fr": "Votre serveur Discord et vos annonces."
+   }
+  },
+  {
+   "id": "networks.accounts",
+   "en": "Other accounts",
+   "fr": "Autres comptes",
+   "intro": {
+    "en": "Your accounts on other networks.",
+    "fr": "Vos comptes sur les autres réseaux."
+   },
+   "tabs": [
+    {
+     "id": "main",
+     "en": "Accounts",
+     "fr": "Comptes"
+    },
+    {
+     "id": "other",
+     "en": "Other platforms",
+     "fr": "Autres plateformes"
+    }
+   ]
+  },
+  {
+   "id": "networks.stats",
+   "en": "Figures",
+   "fr": "Chiffres",
+   "intro": {
+    "en": "The figures followed on your networks.",
+    "fr": "Les chiffres suivis sur vos réseaux."
+   }
+  }
+ ],
+ "aliases": {},
+ "deprecated": {}
+}

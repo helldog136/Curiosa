@@ -1,0 +1,224 @@
+{
+ "helldog136": {
+  "alerts-overlay": [
+   "alerts-overlay"
+  ],
+  "audience": [
+   "audience"
+  ],
+  "blog": [
+   "blog"
+  ],
+  "calendar-ical": [
+   "agenda-en-ligne"
+  ],
+  "community-stats": [
+   "community-stats"
+  ],
+  "contact-form": [
+   "contact-form"
+  ],
+  "contacts": [
+   "contacts"
+  ],
+  "discord": [
+   "discord"
+  ],
+  "discord-announcer": [
+   "discord-announcer"
+  ],
+  "faq": [
+   "faq"
+  ],
+  "game-covers": [
+   "game-covers"
+  ],
+  "game-suggestions": [
+   "game-suggestions"
+  ],
+  "github": [
+   "github"
+  ],
+  "hero": [
+   "objectif",
+   "communaute",
+   "accueil"
+  ],
+  "home-assistant": [
+   "home-assistant"
+  ],
+  "instagram": [
+   "instagram"
+  ],
+  "links": [
+   "links"
+  ],
+  "live-status": [
+   "live-status"
+  ],
+  "maze-overlay": [
+   "labyrinthe-all"
+  ],
+  "pages": [
+   "pages"
+  ],
+  "partnerships": [
+   "partnerships"
+  ],
+  "planning": [
+   "planning"
+  ],
+  "polls": [
+   "polls"
+  ],
+  "press-kit": [
+   "press-kit"
+  ],
+  "sponsor-ticker": [
+   "sponsors"
+  ],
+  "sponsors": [
+   "sponsoring"
+  ],
+  "stream-story": [
+   "stream-story"
+  ],
+  "tiktok": [
+   "tiktok"
+  ],
+  "twitch-bot": [
+   "twitch-bot"
+  ],
+  "twitch-channel": [
+   "twitch-channel"
+  ],
+  "twitch-connector": [
+   "twitch-connector"
+  ],
+  "twitch-events": [
+   "twitch-events"
+  ],
+  "twitch-raid": [
+   "twitch-raid"
+  ],
+  "youtube-channel": [
+   "youtube-channel"
+  ],
+  "youtube-connector": [
+   "youtube-connector"
+  ]
+ },
+ "rosaliax": {
+  "blog": [
+   "blog",
+   "blog-2"
+  ],
+  "contact-form": [
+   "contact-form"
+  ],
+  "contacts": [
+   "contacts"
+  ],
+  "hero": [
+   "hero"
+  ],
+  "instagram": [
+   "instagram",
+   "instagram-rascane"
+  ],
+  "links": [
+   "links"
+  ],
+  "live-status": [
+   "live-status"
+  ],
+  "pages": [
+   "pages"
+  ],
+  "press-kit": [
+   "press-kit"
+  ],
+  "ticker-overlay": [
+   "ticker-overlay"
+  ],
+  "twitch-channel": [
+   "twitch-channel",
+   "twitch-rascane"
+  ],
+  "twitch-connector": [
+   "twitch-connector"
+  ],
+  "youtube-channel": [
+   "youtube-channel",
+   "youtube-rascane"
+  ],
+  "youtube-connector": [
+   "youtube-connector"
+  ]
+ },
+ "curiosa": {
+  "blog": [
+   "blog",
+   "modules"
+  ],
+  "contact-form": [
+   "contact-form"
+  ],
+  "contacts": [
+   "contacts"
+  ],
+  "github": [
+   "github"
+  ],
+  "hero": [
+   "hero"
+  ],
+  "legal-pages": [
+   "legal-pages"
+  ],
+  "links": [
+   "links"
+  ],
+  "pages": [
+   "pages"
+  ],
+  "press-kit": [
+   "press-kit"
+  ]
+ },
+ "ccd": {
+  "blog": [
+   "blog"
+  ],
+  "contacts": [
+   "contacts"
+  ],
+  "content-planner": [
+   "content-planner"
+  ],
+  "discord": [
+   "discord"
+  ],
+  "faq": [
+   "faq"
+  ],
+  "instagram": [
+   "instagram"
+  ],
+  "links": [
+   "links"
+  ],
+  "pages": [
+   "pages"
+  ],
+  "partnerships": [
+   "partnerships"
+  ],
+  "stream-story": [
+   "stream-story"
+  ],
+  "testimonials": [
+   "testimonials"
+  ]
+ }
+}

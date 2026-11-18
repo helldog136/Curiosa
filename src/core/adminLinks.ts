@@ -142,3 +142,6 @@ export const overlaySkinSampleHref = (skinId: string): string => `${OVERLAY_PAGE
 export function isAdminPath(to: string): boolean {
   return (to === ADMIN_HREF || to.startsWith("/admin/") || to.startsWith("/admin?")) && !to.startsWith("//");
 }
+
+/** (core 0.31.0) A place page built by the core from what modules declare (docs/PLACES.md): `/admin/<group>/<page>[/<tab>]`. */
+export const placePageHref = (group: string, page: string, tab?: string | null): string => `/admin/${group}/${page}${tab ? `/${tab}` : ""}`;

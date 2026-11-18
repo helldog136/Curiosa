@@ -19,6 +19,6 @@ export function InstallButton({ id, name, labels, redirectTo = EXTENSIONS_HREF }
     <AnimatedActionButton look="hero" icon="⬇" testid="install-button" track="install" trackKey={`install:${id}`}
       labels={{ idle: labels.install, working: labels.installing, done: labels.done, failed: labels.failed }}
       run={async (opId) => { const r = await installModuleAction(id, opId); if (r.ok) restored.current = r.restored > 0; return r.ok ? { ok: true } : { ok: false, error: r.error }; }}
-      onDone={() => { router.push(restored.current ? `${redirectTo}?notice=restored&name=${encodeURIComponent(name.slice(0, 80))}` : redirectTo); router.refresh(); }} />
+      onDone={() => { router.push(restored.current ? `${redirectTo}?notice=restored&name=${encodeURIComponent(name.slice(0, 80))}&placed=${encodeURIComponent(id)}` : `${redirectTo}?placed=${encodeURIComponent(id)}`); router.refresh(); }} />
   );
 }

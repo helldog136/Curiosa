@@ -10,11 +10,12 @@ import { ui } from "@/components/admin/ui";
 import { parseFamily } from "@/core/modules/extensionFamilies";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstalled } from "./loadInstalled";
+import { PlacedNotice } from "@/components/admin/PlacedNotice";
 
 export const dynamic = "force-dynamic";
 
 /** Extensions > Installées : tout ce qui est installé sur le site, par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec son état, ses réglages et « épingler au menu ». */
-export default async function ExtensionsPage({ searchParams }: { searchParams: Promise<NoticeQuery & { family?: string }> }) {
+export default async function ExtensionsPage({ searchParams }: { searchParams: Promise<NoticeQuery & { family?: string; placed?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = canDo(user, "core:modules.install"); // peut installer / mettre à jour des modules
   const query = await searchParams;
@@ -25,6 +26,7 @@ export default async function ExtensionsPage({ searchParams }: { searchParams: P
     <div className="space-y-8">
       <ExtensionsHeader t={t} advanced={advanced} isOwner={isOwner} current="installed" intro={advanced ? t("extensions.intro") : t("extensions.introSimple")} />
       <ExtensionsNotices t={t} locale={locale} defaultLocale={config.defaultLocale} isOwner={isOwner} query={query} />
+      {typeof query.placed === "string" && <PlacedNotice t={t} locale={locale} moduleId={query.placed} />}
       {total === 0 && (
         <EmptyState icon="🧩" title={t("modules.emptyTitle")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("modules.emptyAction")}</a>}>{t("modules.emptyHelp")}</EmptyState>
       )}

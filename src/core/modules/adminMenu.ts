@@ -56,3 +56,14 @@ export function administrationEntries({ role, advanced, overlays = true }: { rol
 export function navItemVisible(item: { content: boolean; moduleId: string }, can: (right: string) => boolean): boolean {
   return item.content ? can("core:entries.edit") : can(`${item.moduleId}:open`);
 }
+
+/**
+ * (0.31.0) Translation keys of the core sidebar entries and headings, for the runtime R12 check of the layout (places.ts `qualifyLabels`).
+ * Kept here so that the layout reads them without repeating its own literals (tests read the layout's markup by its literal keys).
+ */
+export const SIDEBAR_R12_KEYS = {
+  sections: { content: "nav.content", community: "nav.community", tools: "nav.tools", connections: "nav.connections" },
+  site: { heading: "nav.site", entries: [["homeMenu", "nav.homeMenu"], ["appearance", "nav.appearance"], ["settings", "nav.settings"], ["redirects", "nav.redirects"]] },
+  admin: { heading: "nav.admin", entries: { extensions: "nav.extensions", overlays: "nav.overlayPages", assistants: "nav.assistants", users: "nav.users", maintenance: "nav.maintenance" } satisfies Record<AdminEntry, string> },
+  account: { heading: "nav.account", entries: [["myAccount", "nav.myAccount"], ["viewSite", "nav.viewSite"]] },
+} as const;

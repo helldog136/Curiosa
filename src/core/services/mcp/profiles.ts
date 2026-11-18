@@ -28,7 +28,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "site_info",
     "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit",
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
-    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan",
+    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan", "maintenance_places",
     "navigation_get", "home_sections_list",
     "redirects_list", "redirects_stats", "redirects_summary",
     "media_list", "site_settings_get",
@@ -36,7 +36,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
   ],
   assistant: [
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
-    "maintenance_module_settings", "maintenance_module_configure",
+    "maintenance_module_settings", "maintenance_place_settings", "maintenance_module_configure",
     "navigation_set", "home_sections_set",
     "redirects_create", "redirects_update",
     "media_upload", "media_set_alt", "site_settings_set",

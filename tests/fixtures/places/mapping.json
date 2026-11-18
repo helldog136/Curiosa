@@ -1,0 +1,130 @@
+{
+ "alerts-overlay": [
+  "live.alerts.look",
+  "live.alerts.rules",
+  "live.alerts.voice",
+  "live.alerts.media"
+ ],
+ "twitch-events": [
+  "live.alerts.events",
+  "live.rewards"
+ ],
+ "audience": [
+  "live.participation.rooms",
+  "live.participation.draw"
+ ],
+ "calendar-ical": [
+  "calendar.schedule.sources"
+ ],
+ "community-stats": [
+  "networks.stats"
+ ],
+ "contact-form": [
+  "community.contacts.form"
+ ],
+ "contacts": [
+  "community.contacts"
+ ],
+ "content-planner": [
+  "calendar.notebook"
+ ],
+ "discord": [
+  "networks.discord",
+  "networks.stats"
+ ],
+ "discord-announcer": [
+  "networks.discord",
+  "live.golive"
+ ],
+ "faq": [
+  "content.faq",
+  "content.faq.inbox"
+ ],
+ "game-covers": [
+  "community.games.covers"
+ ],
+ "game-suggestions": [
+  "community.games"
+ ],
+ "github": [
+  "networks.accounts",
+  "networks.stats"
+ ],
+ "hero": [
+  "site.home.banners"
+ ],
+ "home-assistant": [
+  "live.rewards.home"
+ ],
+ "instagram": [
+  "networks.accounts"
+ ],
+ "tiktok": [
+  "networks.accounts"
+ ],
+ "legal-pages": [
+  "site.general.privacy"
+ ],
+ "live-status": [
+  "live.golive"
+ ],
+ "maze-overlay": [
+  "obs.overlays.maze"
+ ],
+ "partnerships": [
+  "community.partners"
+ ],
+ "planning": [
+  "calendar.schedule",
+  "calendar.schedule.look"
+ ],
+ "polls": [
+  "live.participation.polls"
+ ],
+ "press-kit": [
+  "content.press-kit"
+ ],
+ "sponsor-ticker": [
+  "obs.overlays.sponsors"
+ ],
+ "sponsors": [
+  "community.partners.sponsors"
+ ],
+ "stream-story": [
+  "calendar.story",
+  "calendar.story.styles"
+ ],
+ "testimonials": [
+  "community.reviews",
+  "community.reviews.share"
+ ],
+ "ticker-overlay": [
+  "obs.overlays.ticker"
+ ],
+ "twitch-bot": [
+  "live.chat.commands",
+  "live.chat.timers",
+  "live.rewards"
+ ],
+ "twitch-channel": [
+  "networks.twitch",
+  "networks.stats"
+ ],
+ "twitch-connector": [
+  "networks.twitch"
+ ],
+ "twitch-raid": [
+  "live.raid.list",
+  "live.raid.featured"
+ ],
+ "youtube-channel": [
+  "networks.youtube",
+  "networks.stats"
+ ],
+ "youtube-connector": [
+  "networks.youtube"
+ ],
+ "blog": [],
+ "links": [],
+ "pages": []
+}

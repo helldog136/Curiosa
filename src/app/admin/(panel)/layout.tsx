@@ -12,13 +12,15 @@ import { LegacyBanner } from "@/components/admin/LegacyBanner";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
-import { buildMenuTree, nodeEntries } from "@/core/modules/menuPath";
+import { buildMenuTree, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
+import { fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
+import { qualifyLabels } from "@/core/modules/places";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
 import { overlaysUseful } from "@/core/overlays/presence";
 import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
@@ -38,7 +40,17 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Tout accès suffit pour entrer (un rôle personnalisé peut n'ouvrir qu'un module) ; chaque page vérifie ensuite son propre palier ou droit.
   const { user, t, locale, config, advanced } = await adminCtx("member");
   // Le menu ne montre que ce que cette personne peut ouvrir (droit relu en base à chaque requête).
-  const nav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  // (0.31.0) A module that places everything it shows (docs/PLACES.md) leaves the sidebar: its place pages replace its own entry (its page stays in Extensions).
+  const placedAway = await fullyPlacedInstances();
+  const allNav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  const nav = allNav.filter((m) => !placedAway.has(m.id));
+  // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
+  const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
+  type PlaceItem = TreeItem & { href: string; place: true };
+  const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({
+    id: `place:${p.id}`, name: p.title, badge: 0, error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
+    groupLabels: { [g.id]: { en: g.title, fr: g.title } }, moduleId: "", href: p.href, place: true as const,
+  })));
   const editor = hasRole(user, "editor");
   const canManage = hasRole(user, "admin");
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
@@ -52,15 +64,21 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const bugUrl = await adminBugReportUrl(t);
   const menu = buildMenuLayout(nav);
   // (0.13.0) Entries whose module declares a menu path (`adminMenu`) leave their section for their own groups; without any, `tree` is empty and the sidebar is unchanged.
-  const tree = buildMenuTree(nav, locale);
+  type Entry = (typeof nav)[number] | PlaceItem;
+  const tree = buildMenuTree<Entry>([...nav, ...placeItems], locale);
   const treeItems = [...Object.values(tree.sections).flatMap((n) => (n ? nodeEntries(n) : [])), ...tree.groups.flatMap(nodeEntries)];
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
-  const entryHref = (m: (typeof nav)[number]) => (m.content ? entriesHref(m.key) : instanceHref(m.id));
-  const entryAlso = (m: (typeof nav)[number]) => (m.content ? [instanceHref(m.id)] : []);
-  const entryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
-  const treeTargets = (m: (typeof nav)[number]) => [entryHref(m), ...entryAlso(m)];
-  const treeEntryLink = (m: (typeof nav)[number]) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{m.icon} {m.name}</NavLink>;
-  const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={treeEntryLink} badgeLabel={t("nav.badge.todo")} />);
+  const isPlace = (m: Entry): m is PlaceItem => "place" in m;
+  const entryHref = (m: Entry) => (isPlace(m) ? m.href : m.content ? entriesHref(m.key) : instanceHref(m.id));
+  const entryAlso = (m: Entry) => (isPlace(m) ? [] : m.content ? [instanceHref(m.id)] : []);
+  const entryText = (m: Entry) => (isPlace(m) ? q(m.id, m.name) : `${m.icon} ${q(m.id, m.name)}`);
+  const entryLink = (m: Entry) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{entryText(m)}</NavLink>;
+  const treeTargets = (m: Entry) => [entryHref(m), ...entryAlso(m)];
+  const treeEntryLink = (m: Entry) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{entryText(m)}</NavLink>;
+  // (0.31.0) A group made of one place page shows that page directly, without a heading.
+  const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => (n.children.length === 0 && n.entries.length === 1 && isPlace(n.entries[0]!)
+    ? <div key={n.id} data-testid={`nav-tree-${n.id}`}>{entryLink(n.entries[0]!)}</div>
+    : <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={treeEntryLink} badgeLabel={t("nav.badge.todo")} />));
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
   const toSetUp = [...(statuses?.values() ?? [])].filter((s) => s.state === "setup" || s.state === "error").length;
@@ -69,17 +87,32 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const setupList = nav.flatMap((m) => { const s = statuses?.get(m.id); return s?.state === "setup" && s.missing.length > 0 ? [`${m.name} (${s.missing.map(shortLabel).join(", ")})`] : []; });
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
-  const shown = new Set([...menu.content, ...menu.community, ...menu.tools, ...menu.connections, ...treeItems]);
-  const unpinnedPages = nav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
+  const shown = new Set<Entry>([...menu.content, ...menu.community, ...menu.tools, ...menu.connections, ...treeItems]);
+  const unpinnedPages = allNav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
   // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
   const adminEntries = administrationEntries({ role: user.level, advanced, overlays: canManage ? await overlaysUseful() : false });
   // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
   const maintenanceTabList = maintenanceTabs({ role: user.level, advanced });
   const maintenanceBadge = (maintenanceTabList.includes("updates") && updateAvailable ? 1 : 0) + (maintenanceTabList.includes("upkeep") && upkeep?.state === "todo" ? upkeep.todo : 0);
+  // (0.31.0) R12 at runtime: no two sidebar entries share a name or a first word; the later one gets its group as a qualifier (places.ts `qualifyLabels`).
+  const r12: { id: string; label: string; group: string }[] = [];
+  const K = SIDEBAR_R12_KEYS;
+  for (const id of ["content", "community", "tools"] as const) {
+    const extra = tree.sections[id];
+    for (const m of [...menu[id], ...(extra ? nodeEntries(extra) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections[id]) });
+  }
+  for (const n of tree.groups) for (const m of nodeEntries(n)) r12.push({ id: m.id, label: m.name, group: n.title });
+  for (const m of [...menu.connections, ...(tree.sections.connections ? nodeEntries(tree.sections.connections) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections.connections) });
+  for (const [id, key] of K.site.entries) r12.push({ id: `core:${id}`, label: t(key), group: t(K.site.heading) });
+  for (const id of adminEntries) r12.push({ id: `core:${id}`, label: t(K.admin.entries[id]), group: t(K.admin.heading) });
+  for (const [id, key] of K.account.entries) r12.push({ id: `core:${id}`, label: t(key), group: t(K.account.heading) });
+  const qualified = qualifyLabels(r12).labels;
+  function q(id: string, text: string): string { return qualified.get(id) ?? text; }
+
   const adminLinks: Record<AdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
-    overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{t("nav.overlayPages")}</NavLink>,
+    overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{q("core:overlays", t("nav.overlayPages"))}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
     maintenance: <NavLink key="maintenance" href={maintenanceTabList.length > 0 ? MAINTENANCE_TAB_HREFS[maintenanceTabList[0]!] : HEALTH_HREF} also={maintenanceTabList.map((id) => MAINTENANCE_TAB_HREFS[id])} badge={maintenanceBadge} badgeLabel={t("nav.badge.maintenance")}>{t("nav.maintenance")}</NavLink>,

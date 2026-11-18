@@ -150,7 +150,7 @@ test("the old layout is unchanged without a path, and an entry with a path leave
 
 test("sidebar markup: the tree is built once, in the sections and before Connections, with 44 px entries and the same remembered state", () => {
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /const tree = buildMenuTree\(nav, locale\)/);
+  assert.match(layout, /const tree = buildMenuTree<Entry>\(\[\.\.\.nav, \.\.\.placeItems\], locale\)/, "(0.31.0) module entries and place pages in one tree");
   assert.match(layout, /data-testid="nav-tree"/);
   assert.ok(layout.indexOf('data-testid="nav-tree"') < layout.indexOf('data-testid="nav-section-connections"'), "networks sit before Connections");
   assert.match(layout, /\.\.\.treeItems\]\)/, "pages of an unpinned instance stay under Extensions, tree entries are not among them");
