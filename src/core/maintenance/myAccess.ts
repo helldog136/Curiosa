@@ -87,6 +87,8 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     },
     granted,
     notGranted: notGranted.slice(0, 300),
+    // (0.33.0) Present only when the owner gave this access full powers: every tool of the catalogue is granted, now and later, except what is kept out (accesses, secrets).
+    ...(token.fullPowers ? { fullPowers: { on: true, meaning: t("aim.my.fullPowers"), keptOut: t("aim.my.fullPowers.out") } } : {}),
     howToGetMore: notGranted.length ? t("aim.my.howToGetMore") : t("aim.my.nothingMissing"),
     ...(inEnglish.length ? { textsNotInYourLanguage: { count: inEnglish.length, tools: inEnglish.slice(0, 10), note: t("aim.my.lang.gap", { n: inEnglish.length, lang: wanted }) } } : {}),
     reconnect: t("aim.my.reconnect"),

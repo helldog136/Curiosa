@@ -1,6 +1,7 @@
 import { prisma } from "@/core/db";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { canUse, parseGrants } from "@/core/services/mcp/access";
+import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { accessHref, newAccessHref } from "@/core/services/mcp/assistantsLinks";
 import { isMailConfigured } from "@/core/services/mail";
 import { listRequests } from "@/core/maintenance/requests";
@@ -19,9 +20,9 @@ import { PendingButton } from "@/components/admin/PendingButton";
  * (qui décide pour chaque assistant d'entretien, comment être prévenu). Propriétaire seulement (la page l'exige).
  */
 export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Translator; locale: string; defaultLocale: string; notice?: string }) {
-  const [requests, names, notify, mailOk, approval, catalogue, tokens] = await Promise.all([
+  const [requests, names, notify, mailOk, approval, catalogue, tokens, fullIds] = await Promise.all([
     listRequests(), moduleNames(locale, defaultLocale), getNotifyMode(), isMailConfigured(), getApprovalModes(),
-    listMcpToolCatalogue(), prisma.apiToken.findMany({ where: { revokedAt: null }, orderBy: { createdAt: "desc" } }),
+    listMcpToolCatalogue(), prisma.apiToken.findMany({ where: { revokedAt: null }, orderBy: { createdAt: "desc" } }), fullPowersIds(),
   ]);
   const name = (id: string) => names.get(id) ?? id;
   const when = (ms: number) => new Date(ms).toLocaleString(locale);
@@ -30,7 +31,7 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
   // Les accès qui ont au moins une action d'entretien autorisée (type « Entretien du site » ou droit accordé à la main).
   const upkeepTools = catalogue.filter((x) => x.source === "maintenance" || x.request);
   const mine = tokens
-    .map((k) => ({ row: k, token: { scope: k.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(k.grants) } }))
+    .map((k) => ({ row: k, token: { scope: k.scope === "write" ? ("write" as const) : ("read" as const), grants: parseGrants(k.grants), fullPowers: k.scope === "write" && fullIds.includes(k.id) } }))
     .filter((k) => upkeepTools.some((x) => canUse(x, k.token)))
     .map((k) => ({ ...k, risky: upkeepTools.some((x) => (x.destructive || x.request) && canUse(x, k.token)) }));
 
