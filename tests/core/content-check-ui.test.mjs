@@ -92,7 +92,7 @@ test("pas de note chiffrée : le verdict est un mot ; seules les remarques « im
   assert.equal(verdictOf({ important: 0, advised: 1, info: 0 }), "look");
   assert.equal(verdictOf({ important: 2, advised: 0, info: 0 }), "look");
   for (const k of ["content.verdict.good", "content.verdict.look", "content.verdict.none", "content.verdict.goodHelp", "content.verdict.lookHelp"]) for (const d of [fr, en]) assert.ok(!/\d+\s*(\/|%)|score|note\b|grade/i.test(d[k]), `${k} : ${d[k]}`);
-  assert.equal(fr["content.verdict.good"], "Tout va bien.");
+  assert.equal(fr["content.verdict.good"], "Aucun point à revoir.");
   assert.equal(fr["content.verdict.look"], "Quelques petites choses à regarder.");
 });
 

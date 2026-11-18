@@ -81,7 +81,8 @@ export async function HealthPill({ c }: { c: BlockCtx }) {
   const h = await loadHealth(c.user, c.t).catch(() => null);
   if (!h) return null;
   const { t } = c;
-  if (h.ok) return <p data-testid="dash-health" className={`${ui.chipOk} min-h-8`} role="status">✅ {t("dash.health.ok")}</p>;
+  // R33: when everything is fine, nothing is shown (no chip, no sentence that says it is fine).
+  if (h.ok) return null;
   const label = t("dash.health.points", { n: h.points.length });
   return (
     <details data-testid="dash-health" className="group">
@@ -159,23 +160,21 @@ export async function TodoBlock({ c }: { c: BlockCtx }) {
     moduleTasks(env(c)).catch(() => []),
   ]);
   const items = mergeTodo(core, mods);
+  // R33: an empty "to do" card shows nothing.
+  if (items.length === 0) return null;
   return (
     <section aria-labelledby="dash-todo" data-testid="todo" className={`${ui.card} space-y-2`}>
       <h2 id="dash-todo" className="text-lg font-semibold">{t("dash.todo.title")}</h2>
-      {items.length === 0 ? (
-        <p className="text-sm text-muted" data-testid="todo-none">✅ {t("dash.todo.none")}</p>
-      ) : (
-        <ul className="space-y-1">
-          {items.map((i) => (
-            <li key={i.id}>
-              <a href={i.href} data-testid={i.kind === "setup" ? "todo-setup" : undefined} className={`${row} flex-wrap`}>
-                <span className="min-w-0 flex-1 basis-56"><span aria-hidden="true">{i.icon} </span>{i.label}{i.detail && <span className="block text-xs text-muted">{i.detail}</span>}</span>
-                <span className="inline-flex items-center gap-2 text-sm font-medium text-accent">{i.count ? <span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.count}</span> : null}{t("dash.todo.open")}{ARROW}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="space-y-1">
+        {items.map((i) => (
+          <li key={i.id}>
+            <a href={i.href} data-testid={i.kind === "setup" ? "todo-setup" : undefined} className={`${row} flex-wrap`}>
+              <span className="min-w-0 flex-1 basis-56"><span aria-hidden="true">{i.icon} </span>{i.label}{i.detail && <span className="block text-xs text-muted">{i.detail}</span>}</span>
+              <span className="inline-flex items-center gap-2 text-sm font-medium text-accent">{i.count ? <span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.count}</span> : null}{t("dash.todo.open")}{ARROW}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -186,11 +185,13 @@ export async function CreateBlock({ c }: { c: BlockCtx }) {
   const { t } = c;
   const declared = await moduleActions(env(c)).catch(() => []);
   const actions = mergeQuick(declared, coreQuickActions({ user: c.user, t, advanced: c.advanced, nav: c.nav, declared }));
+  // R33 / R18: with no creation button there is only one thing to do, and only an administrator can do it: the link. Other people see nothing.
+  if (actions.length === 0 && !hasRole(c.user, "admin")) return null;
   return (
     <section aria-labelledby="dash-create" data-testid="dash-create" className="space-y-3">
       <h2 id="dash-create" className="text-lg font-semibold">{t("dash.create.title")}</h2>
       {actions.length === 0 ? (
-        <p className="text-sm text-muted" data-testid="create-none">{t("dash.create.none")}{hasRole(c.user, "admin") && <> <a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("dash.create.add")}{ARROW}</a></>}</p>
+        <p className="text-sm" data-testid="create-none"><a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("dash.create.add")}{ARROW}</a></p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {actions.map((a) => <li key={a.id}><a href={a.href} className={`${ui.btn} min-h-11`}><span aria-hidden="true">{a.icon}</span>{a.label}</a></li>)}
@@ -206,24 +207,22 @@ export async function ActivityBlock({ c }: { c: BlockCtx }) {
   const { t, locale } = c;
   const { lines, fullJournal } = await recentActivity(c.user, { t, locale, defaultLocale: c.defaultLocale, advanced: c.advanced });
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
+  // R33: no recent activity, nothing to show.
+  if (lines.length === 0) return null;
   return (
     <section aria-labelledby="dash-activity" data-testid="dash-activity" className={`${ui.card} space-y-3`}>
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <h2 id="dash-activity" className="text-lg font-semibold">{t("dash.activity.title")}</h2>
         {fullJournal && c.advanced && <a href={AUDIT_HREF} className="text-sm underline hover:text-accent">{t("dash.activity.all")}{ARROW}</a>}
       </div>
-      {lines.length === 0 ? (
-        <p className="text-sm text-muted" data-testid="activity-none">{t("dash.activity.none")}</p>
-      ) : (
-        <ul className="divide-y divide-line">
-          {lines.map((l) => (
-            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
-              <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.target && <span className="text-muted"> · {l.target}</span>}</span>
-              <span className="text-xs text-muted">{t("dash.activity.by", { who: l.who })} · <time dateTime={l.when.toISOString()}>{when.format(l.when)}</time></span>
-            </li>
-          ))}
-        </ul>
-      )}
+      <ul className="divide-y divide-line">
+        {lines.map((l) => (
+          <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
+            <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.target && <span className="text-muted"> · {l.target}</span>}</span>
+            <span className="text-xs text-muted">{t("dash.activity.by", { who: l.who })} · <time dateTime={l.when.toISOString()}>{when.format(l.when)}</time></span>
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }
@@ -302,6 +301,7 @@ export async function VisitsBlock({ c }: { c: BlockCtx }) {
 // ── Cartes des extensions ───────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function CardsBlock({ c, max }: { c: BlockCtx; max: number }) {
+  // R33: a list card with no row and no sentence of its own is already left out by `moduleCards`; an empty card always has the module's own sentence.
   const cards = (await moduleCards(env(c)).catch(() => [])).slice(0, max);
   if (cards.length === 0) return null;
   return (
@@ -313,7 +313,7 @@ export async function CardsBlock({ c, max }: { c: BlockCtx; max: number }) {
             {card.data.type === "counter" ? (
               <><p className="mt-1 text-3xl font-bold">{card.data.value}</p>{card.data.detail && <p className="text-sm text-muted">{card.data.detail}</p>}</>
             ) : card.data.rows.length === 0 ? (
-              <p className="mt-1 text-sm text-muted">{card.empty ?? c.t("dash.cards.empty")}</p>
+              <p className="mt-1 text-sm text-muted">{card.empty}</p>
             ) : (
               <ul className="mt-2 space-y-1 text-sm">
                 {card.data.rows.map((r, i) => (

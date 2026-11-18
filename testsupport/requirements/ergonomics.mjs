@@ -30,7 +30,7 @@ function inspect(m) {
 
 /** Un résumé par règle (le détail complet : `node scripts/ergonomics-baseline.mjs --report` dans le dépôt des modules). */
 function summary(gaps) {
-  const rules = [...new Set(gaps.map((g) => g.rule))].sort((a, b) => Number(a.slice(1)) - Number(b.slice(1)));
+  const rules = [...new Set(gaps.map((g) => g.rule))].sort((a, b) => parseInt(a.slice(1), 10) - parseInt(b.slice(1), 10) || a.localeCompare(b));
   return rules.map((r) => {
     const list = gaps.filter((g) => g.rule === r);
     return `${r} — ${RULES[r]} : ${list.length} écart${list.length > 1 ? "s" : ""}. Par exemple ${list[0].where} : ${list[0].message}`;
@@ -41,7 +41,7 @@ const requirements = [
   {
     id: "admin.ergonomics", level: "mandatory", group: "ergonomics",
     title: "Aucun nouvel écart d'ergonomie dans les réglages et les textes",
-    what: "Le manifeste (module.json) et les textes (locales/fr.json, en.json) respectent les règles automatiques de docs/ERGONOMIE-ADMIN.md : R5 (7 réglages simples au plus par onglet), R9 (aucun mot du code), R10 (libellés de 60 caractères au plus, sans « : »), R11 (aides courtes avec un exemple pour tout champ libre), R13 (vouvoiement, sans « ! », sans « Veuillez », sans majuscules criardes, phrases de 20 mots au plus), R17 (pas de bouton « Activer / désactiver »), R19 (pas de liste pour un booléen, pas de case négative) et R29 (FR et EN à parité exacte : mêmes clés, mêmes {variables}). Les écarts déjà connus d'un module, listés dans tests/ergonomics-baseline.json, sont tolérés (voir admin.ergonomics.known) ; tout NOUVEL écart (nouveau réglage, nouveau texte) échoue, et un écart connu qui a disparu doit être retiré de la base.",
+    what: "Le manifeste (module.json) et les textes (locales/fr.json, en.json) respectent les règles automatiques de docs/ERGONOMIE-ADMIN.md : R5 (7 réglages simples au plus par onglet), R9 (aucun mot du code), R10 (libellés de 60 caractères au plus, sans « : »), R11 (aides courtes avec un exemple pour tout champ libre), R13 (vouvoiement, sans « ! », sans « Veuillez », sans majuscules criardes, phrases de 20 mots au plus), R17 (pas de bouton « Activer / désactiver »), R19 (pas de liste pour un booléen, pas de case négative), R29 (FR et EN à parité exacte : mêmes clés, mêmes {variables}) et R33 (R33a mot d'état interne, R33b secret ou identifiant visible une fois configuré, R33e formulation conditionnelle, R33g phrase de remplissage). Les écarts déjà connus d'un module, listés dans tests/ergonomics-baseline.json, sont tolérés (voir admin.ergonomics.known) ; tout NOUVEL écart (nouveau réglage, nouveau texte) échoue, et un écart connu qui a disparu doit être retiré de la base.",
     why: "Une personne qui crée du contenu juge une page de réglages en dix secondes. Les règles sont mesurées pour que la page ne se dégrade pas : la base ne peut que rétrécir, jamais grossir.",
     fix: "Corrigez le texte ou le réglage signalé (le message dit la règle et l'endroit). Pour un écart « disparu », retirez sa ligne de la base : node scripts/ergonomics-baseline.mjs --write. Ne rajoutez jamais une ligne à la base pour faire taire un nouvel écart ; pour un mot qui est le bon mot (un tiers l'impose), ajoutez une entrée JUSTIFIÉE à JARGON_WHITELIST en tête de testsupport/ergonomics.mjs.",
     run(m) {

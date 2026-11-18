@@ -341,7 +341,7 @@ test("visibilité : la page appelle les vraies fonctions de robots.txt, du plan 
     const variants = c.id === "training" ? ["blocked", "allowed"] : c.id === "languages" ? ["ok", "single"] : c.id === "structured" ? ["ok"] : ["ok", "todo"];
     for (const v of variants) assert.ok(fr[`ai.check.${c.id}.${v}`] && en[`ai.check.${c.id}.${v}`], `${c.id}.${v}`);
   }
-  assert.match(fr["ai.intro"], /Rien ne garantit d'être cité/);
+  assert.match(fr["ai.intro"], /aide les IA à lire et citer votre site/);
   assert.ok(!/\d+\s*\/\s*100|score/i.test(fr["ai.summary.todo"] + fr["ai.summary.done"] + fr["ai.intro"]), "pas de score chiffré");
   assert.match(read("src/app/admin/(panel)/settings/page.tsx"), /<AiVisibilityPanel \/>/, "la page est un onglet des réglages");
   assert.match(read("src/app/admin/(panel)/ai-visibility/page.tsx"), /redirect\(SETTINGS_AI_HREF\)/, "l'ancienne adresse y mène");

@@ -6,7 +6,7 @@ import { fakeCtx } from "../fakeCtx.mjs";
 import { makeCtx, observe } from "../probes.mjs";
 import { NET_RULES_LEVEL, compareVersions, stripComments, walkValue, whereOf } from "./util.mjs";
 
-const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "entryContent", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "netHealth", "suggestInstall", "download", "refreshWhile"];
+const KNOWN_BLOCKS = ["markdown", "html", "banner", "links", "entries", "entryContent", "hero", "panel", "embed", "form", "table", "copy", "downloads", "gridEditor", "head", "heading", "swatches", "adminForm", "connection", "netHealth", "suggestInstall", "download", "refreshWhile"];
 export { KNOWN_BLOCKS };
 
 /** (core 0.14.0) What the core needs from the `gallery` fields of an `adminForm`: the options it reads, and the one address shape per kind. The kit stays standalone: same rules as src/core/gallery.ts. */

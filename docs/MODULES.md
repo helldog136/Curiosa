@@ -1454,7 +1454,8 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `html` | `html` — **brut**, sous la responsabilité du module : échappez tout ce qui vient d'une personne qui visite |
 | `heading` | `text` |
 | `swatches` | `items: [{ name, hex, role? }]` — pastilles de couleur avec code copiable |
-| `netHealth` | `items: [{ host, label, lastGoodAt? }]` — **panneau d'admin seulement** : santé des services externes appelés par `ctx.api.net`, une phrase simple par service écrite par le cœur en FR/EN (« répond normalement », « répond lentement depuis 10:42 ; les données affichées datent de 10:30 », « trop de demandes, pause jusqu'à 11:00 », « quota du jour épuisé, reprise à 09:00 », « ne répond pas ») et, en cas de souci, « Un service externe ne répond pas : le site affiche les dernières données connues ». `label` : nom lisible du service (le cœur n'en connaît aucun) ; `lastGoodAt` : date ISO des données affichées |
+| `netHealth` | `items: [{ host, label, lastGoodAt? }]` — **admin panel only**: health of the external services called through `ctx.api.net`. **Silent when everything answers** (no card, no sentence, nothing for a host that was never contacted). A host with a problem gets one line written by the core in EN/FR ("responds slowly since 10:42; the data shown is from 10:30", "too many requests, paused until 11:00", "daily quota used up, back at 09:00", "is not responding since 10:15"); hosts with the same problem since the same time share ONE line ("A and B are not responding since 10:15"); the detail ("recovers by itself") is in a "?" bubble. `label` is the module's readable name (the core knows no provider). Prefer `connection.net` (below) when the page has a connection block: the problem then shows in its state. |
+| `connection` | (core 0.36.0, `minCore` 0.36.0) The one-line state of an application, a connection or a feature, see "Connection block" below. **Admin panel of an instance only.** |
 | `downloads` | `items: [{ src, label, detail? }]` — images à télécharger, avec aperçu |
 | `copy` | `text`, `label?` — texte à copier d'un clic |
 | `hero` | `title`, `text?`, `image?`, `eyebrow?`, `button?` (`label`, `href`), `video?` (fichier envoyé sur le site), `videoPoster?`, `videoSound?` |
@@ -1604,6 +1605,52 @@ async adminPanel(ctx) {
   ];
 },
 ```
+
+##### Connection block (`connection`), `valueHint` and `kind: "secret"` (core 0.36.0, R33)
+
+Everything a person sees about an application, a connection or a feature has ONE shape: a title, a chip with one of three words written by the core (**Configured**, **Degraded**, **Not configured**), what is configured on one line, and ONE "Edit" button that opens the module's form in a window. Nothing else is shown once the setup is done (rule R33 in `docs/ERGONOMIE-ADMIN.md`). Additive: an older core ignores the block (declare `"minCore": "0.36.0"` in a module that needs it); a module that does not use it keeps working unchanged.
+
+| State | The core shows | Never shown |
+|---|---|---|
+| `configured` | chip + `summary` + **Edit** (+ the "⋯" menu) | `setup`, `reason`, `primary` (the core drops them) |
+| `degraded` | the same + `reason` (one line, "since 15 November" when `since`) + the fix `primary` + the accounts of `rows` that are not fine | `setup` |
+| `notConfigured` | chip + `reason` (what is missing) + `setup` blocks + `primary` | the edit button (the setup is the edit), `summary` |
+
+```js
+async adminPanel(ctx, { query }) {
+  const set = Boolean(ctx.setting("clientId"));
+  return [
+    {
+      type: "connection", id: "app", title: "Streaming application",
+      state: !set ? "notConfigured" : accountsToRenew.length ? "degraded" : "configured",
+      summary: `Client …${tail} · ${n} accounts connected`,                    // configured / degraded: ONE line of what is configured
+      reason: !set ? "No application is registered yet" : "2 accounts must be authorised again", // degraded / notConfigured: in the person's words
+      primary: { label: "Authorise again", href: authorizeUrl },               // the fix: a link, or { label, action } for an adminAction
+      edit: { href: "?edit=app" },                                             // opens the window below
+      menu: [{ label: "Disconnect", action: "disconnect", confirm: "The modules that use it stop until the next connection.", danger: true }],
+      setup: [{ type: "copy", label: "Address to paste", text: redirectUrl }], // shown ONLY while notConfigured
+      rows: [{ text: "lune_douce (bot)", state: "degraded", reason: "To renew", primary: { label: "Renew", href: renewUrl } }], // only the ones that are not fine are shown
+      net: [{ host: "api.example.org", label: "Streaming service" }],          // a host that is down turns a configured connection into degraded, with one line
+    },
+    ...(query.edit === "app" ? [{
+      type: "adminForm", action: "saveApp", presentation: "dialog", cancelHref: "?", submitLabel: "Save the application",
+      fields: [
+        { name: "clientId", label: "Application", kind: "text", valueHint: "kept", valueTail: tail },
+        { name: "secret", label: "Secret code", kind: "secret", valueHint: "kept" },
+      ],
+    }] : []),
+  ];
+}
+```
+
+- `state` is computed by the module at render time (the core cannot know it); the three words are written by the core in the person's language (no free chip text).
+- `title`: a short noun phrase. `summary`: ONE line, 200 characters at most. `reason`: one line, in the person's words (R9), never an internal word ("Taken over", "Legacy"). `primary`: `href` (a page of the admin, `?query` of the same page, or an `https` address) or an `action` of the module, with a verb as label (R3).
+- `menu`: 4 entries at most; each `{ label, action, confirm?, danger?, id? }` runs an adminAction. A destructive entry says what will be lost in `confirm` (R24).
+- `rows`: accounts or sources; the core shows only the ones that are not `configured` (the summary says how many are fine). `net`: same items as `netHealth`; when every host answers, nothing is added.
+- `setup` blocks may not contain a `connection`. Several `connection` blocks on one page stack as cards of the same height.
+- **Test it in the three states** with the kit: `assertConnectionStates({ notConfigured, configured, degraded })` (the blocks `adminPanel` returns in each fixture) from `testsupport/ergonomics.mjs`; it applies R33a (state model), R33b (no filled form left visible), R33c (no duplicate line), R33d, R33f (no setup instruction once configured) to each state.
+
+**`valueHint` on `adminForm` fields.** A value that IS set but must not be shown: a secret never looks like an empty field. `kind: "secret"` is a password field (hidden characters, no password manager; `value` is never sent to the page). `valueHint: "kept"` shows dots (a `text` shows `…` and the last 1 to 4 characters given in `valueTail`, never for a secret) and writes under the field "Leave empty to keep the current one"; `valueHint: "carried"` adds "Taken from {valueSource}" for a value carried over from elsewhere. Leave `value` empty and treat an empty posted value as "keep". A `required` field with a `valueHint` is no longer required. The manifest `secret` settings get the same sentence once they are set, with no key to add.
 
 ##### Vignette dans une cellule (`image`, cœur 0.6.5)
 

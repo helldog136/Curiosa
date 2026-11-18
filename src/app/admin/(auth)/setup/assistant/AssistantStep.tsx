@@ -96,7 +96,6 @@ export function AssistantStep({ baseUrl, backHref, manageHref, guide, profiles, 
               <a href={backHref} className="inline-flex min-h-11 items-center px-1 text-sm text-muted underline underline-offset-2" data-testid="setup-assistant-skip">{texts.skip}</a>
               <PendingButton variant="primary" pending={pending}>{texts.create}</PendingButton>
             </div>
-            <p className="text-sm text-muted">{texts.skipNote}</p>
           </form>
         )}
       </div>

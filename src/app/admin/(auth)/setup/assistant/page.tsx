@@ -25,7 +25,7 @@ export default async function SetupAssistantPage({ searchParams }: { searchParam
       guide={guide}
       profiles={ACCESS_PROFILES.map((p) => ({ id: p, name: t(`ai.profile.${p}`), lines: text(profileLines(p)) }))}
       texts={Object.fromEntries(
-        ["title", "optional", "intro", "name", "nameExample", "nameDefault", "profile", "allows", "create", "skip", "skipNote", "created", "address", "code", "once", "remove",
+        ["title", "optional", "intro", "name", "nameExample", "nameDefault", "profile", "allows", "create", "skip", "created", "address", "code", "once", "remove",
           "how.title", "how.l1", "how.l2", "how.l3", "how.l4", "how.ready", "reconnect", "next.title", "next", "dashboard", "manage"].map((k) => [k, t(`setup.ai.${k}`)]),
       )}
       always={t("ai.profile.always")}
