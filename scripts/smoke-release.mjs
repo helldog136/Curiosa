@@ -82,7 +82,7 @@ const client = () => new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: 
     check(res.status === 200, "installation neuve : l'assistant répond (200)");
     check(!html.includes('name="presets"'), "installation neuve, catalogue injoignable : aucun module n'est proposé (pas de copie locale)");
     check(html.includes("catalogue n&#x27;est pas joignable") || html.includes("catalogue n'est pas joignable") || html.includes("catalogue cannot be reached"), "installation neuve, catalogue injoignable : l'assistant le dit simplement");
-    check(html.includes("sans aucun risque") || html.includes("without any risk"), "installation neuve : l'étape des modules dit qu'on peut la passer sans risque");
+    check(html.includes("Passer cette étape") || html.includes("Skip this step"), "installation neuve : l'étape des modules offre de la passer");
     check(!/Application error|Internal Server Error/.test(html), "installation neuve : pas d'erreur côté serveur");
     check(!/swc|sharp/i.test(s.log()), "installation neuve : le serveur ne cherche ni le compilateur ni sharp (rien à télécharger au démarrage)");
   } finally { s.stop(); }
