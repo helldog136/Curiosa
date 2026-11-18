@@ -1,6 +1,6 @@
 import { toolDescriptionLang, toolGrantedByDefault } from "@/core/modules/mcpProvider";
 import type { ParsedManifest } from "@/core/modules/manifest";
-import { MAINTENANCE_PROFILE, withinCeiling, type Grants, type Scope } from "@/core/services/mcp/access";
+import { MAINTENANCE_PROFILE, neverUnderFullPowers, withinCeiling, type Grants, type Scope } from "@/core/services/mcp/access";
 import type { Translator } from "@/core/i18n/dictionary";
 
 /**
@@ -31,7 +31,7 @@ const firstSentence = (text: string, max: number): string => {
 };
 
 /** `access`: the caller's ceiling and grants, when known. `wanted`: the site language (a text found in another language is flagged). */
-export function declaredTools(manifest: Pick<ParsedManifest, "mcp" | "i18n">, opts: { locale: string; main: string; access?: { scope: Scope; grants: Grants } | null; instanceKey?: string }): DeclaredTool[] {
+export function declaredTools(manifest: Pick<ParsedManifest, "mcp" | "i18n">, opts: { locale: string; main: string; access?: { scope: Scope; grants: Grants; fullPowers?: boolean } | null; instanceKey?: string }): DeclaredTool[] {
   return (manifest.mcp ?? []).slice(0, 40).map((decl) => {
     const { text, lang } = toolDescriptionLang(manifest, decl.name, decl.description, opts.locale, opts.main);
     const readOnly = decl.readOnly === true;
@@ -40,7 +40,7 @@ export function declaredTools(manifest: Pick<ParsedManifest, "mcp" | "i18n">, op
     // A token with the "maintenance" marker never has module tools on by default; every other token follows the module.
     const access = opts.access;
     const explicit = access && opts.instanceKey ? access.grants[`${opts.instanceKey}__${decl.name}`] : undefined;
-    const enabledByDefault = explicit ?? (access && access.grants[MAINTENANCE_PROFILE] === true ? false : byDefault);
+    const enabledByDefault = access?.fullPowers === true && !neverUnderFullPowers({ name: `${opts.instanceKey ?? "x"}__${decl.name}` }) ? true : explicit ?? (access && access.grants[MAINTENANCE_PROFILE] === true ? false : byDefault);
     const forYourAccess: DeclaredTool["forYourAccess"] | undefined = !access ? undefined : !withinCeiling({ readOnly }, access.scope) ? "access_is_read_only" : enabledByDefault ? "granted_once_installed" : "owner_must_tick";
     return {
       name: decl.name,

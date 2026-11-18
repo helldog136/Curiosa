@@ -48,9 +48,43 @@ export function isGranted(tool: ToolAccessInfo, grants: Grants): boolean {
   return grants[tool.name] ?? defaultFor(tool, grants);
 }
 
+/**
+ * FULL POWERS (core 0.35.0, fullPowers.ts). One switch per access, set ONLY by the owner in the admin (never by a tool, never by an access):
+ * the access then holds every right of the CURRENT catalogue, computed on each request, so a tool added by an update or a new module is granted at once.
+ * What stays outside, because it protects the core itself: see `neverUnderFullPowers`. The ceiling stays (a read-only access is never raised), the approval
+ * setting, the hourly limits and the upload limits are separate checks that this file does not touch.
+ */
+export type AccessToken = { scope: Scope; grants: Grants; fullPowers?: boolean };
+
+/**
+ * Tools that no switch grants, by name (the short name for a module tool, `<instance>__<tool>`). They would let an access manage accesses, rights or
+ * full powers, or reach a secret. No such tool exists today (a test fails if one appears under one of these words and is not listed in `FULL_POWERS_KEPT_OUT`):
+ * the rule is here so that a tool added later with such a purpose is NOT granted automatically and stays a one-by-one choice of the owner.
+ * `maintenance_my_access` only reads what this access can do: it is not management.
+ */
+const NEVER_UNDER_FULL_POWERS = /(^|_)(token|tokens|secret|secrets|credential|credentials|password|passwords|oauth|grant|grants|rights|permission|permissions|fullpowers|full_powers|access_create|access_revoke|access_set|approval)(_|$)/;
+/** Reads of the own access that the word list above would catch by mistake. */
+const MANAGEMENT_LOOKALIKES = new Set(["maintenance_my_access", "maintenance_request_status"]);
+export const neverUnderFullPowers = (tool: Pick<ToolAccessInfo, "name">): boolean => {
+  if (MANAGEMENT_LOOKALIKES.has(tool.name)) return false;
+  const short = tool.name.includes("__") ? tool.name.split("__").slice(1).join("__") : tool.name;
+  return NEVER_UNDER_FULL_POWERS.test(short.replace(/^maintenance_/, ""));
+};
+
+/** Does full powers grant this tool? The ceiling still applies, and so does the exclusion list. */
+export function grantedByFullPowers(tool: ToolAccessInfo, token: AccessToken): boolean {
+  return token.fullPowers === true && withinCeiling(tool, token.scope) && !neverUnderFullPowers(tool);
+}
+
 /** Le jeton peut-il voir et appeler cette action ? */
-export function canUse(tool: ToolAccessInfo, token: { scope: Scope; grants: Grants }): boolean {
-  return withinCeiling(tool, token.scope) && isGranted(tool, token.grants);
+export function canUse(tool: ToolAccessInfo, token: AccessToken): boolean {
+  return grantedByFullPowers(tool, token) || (withinCeiling(tool, token.scope) && isGranted(tool, token.grants));
+}
+
+/** An action worth a journal line of its own under full powers: it deletes, asks for a change of the site's code, or publishes. */
+export function dangerousUnderFullPowers(tool: { name: string; readOnly: boolean; destructive?: boolean; request?: boolean; instanceId?: string }): boolean {
+  if (tool.readOnly) return false;
+  return tool.destructive === true || tool.request === true || (!!tool.instanceId && /__(publish|unpublish|update_published_meta)$/.test(tool.name));
 }
 
 /** Nouvelle table de surcharges après avoir accordé/retiré une action (une surcharge égale au défaut est supprimée). */
