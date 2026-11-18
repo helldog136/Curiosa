@@ -1,3 +1,5 @@
+import { SOCIAL_HREF } from "@/core/adminLinks";
+import { HostedSections } from "@/components/admin/HostedSections";
 import { pickText } from "@/core/i18n/audit.mjs";
 import { adminCtx } from "@/core/admin";
 import { can as canDo } from "@/core/auth/access";
@@ -198,6 +200,8 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           </>
         )}
       </section>
+      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      <HostedSections page="site.home" base={SOCIAL_HREF} tabs={["social"]} />
     </div>
   );
 }
