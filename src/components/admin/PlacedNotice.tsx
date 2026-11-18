@@ -31,24 +31,18 @@ export async function PlacedNotice({ t, locale, moduleId }: { t: Translator; loc
  */
 export function WhereSettings({ t, locale, sections, instanceKey }: { t: Translator; locale: string; sections: PlaceSection[]; instanceKey: string }) {
   const vocab = currentVocabulary();
-  const shown = sections.filter((s) => groupStatus(s.place.group, vocab) !== "reserved");
+  // R33: shown only when it tells the person something to act on, i.e. the module has settings or lists on other pages; one compact line of links, no frame.
+  const shown = sections.filter((s) => groupStatus(s.place.group, vocab) !== "reserved" && (s.settings.length > 0 || s.panelTabs.length > 0 || s.blocks));
   if (!shown.length) return null;
   const lines = [...new Map(shown.map((s) => [`${pageId(s.place)}.${s.place.tab ?? ""}`, s])).values()];
   return (
-    <nav aria-label={t("places.where")} className="rounded-xl border border-line bg-surface p-3.5 text-sm" data-testid="where-settings">
-      <p className="font-medium">{t("places.where")}</p>
-      <ul className="mt-1.5 space-y-1">
-        {lines.map((s) => {
-          const core = isCorePage(s.place, vocab);
-          const href = core ? vocab.pages.find((p) => p.id === pageId(s.place))!.href! : `${placeHref(s.place.group, s.place.page, s.place.tab)}#${sectionAnchor(instanceKey, s.id)}`;
-          return (
-            <li key={`${pageId(s.place)}.${s.place.tab ?? ""}`}>
-              <a href={href} className="underline hover:text-accent">{placeBreadcrumb(s.place, vocab, locale)} →</a>
-              {core && <span className="ml-2 text-muted">{t("places.coreLater")}</span>}
-            </li>
-          );
-        })}
-      </ul>
-    </nav>
+    <p className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm" data-testid="where-settings">
+      <span className="text-muted">{t("places.where")}</span>
+      {lines.map((s, i) => {
+        const core = isCorePage(s.place, vocab);
+        const href = core ? `${vocab.pages.find((p) => p.id === pageId(s.place))!.href!}#${sectionAnchor(instanceKey, s.id)}` : `${placeHref(s.place.group, s.place.page, s.place.tab)}#${sectionAnchor(instanceKey, s.id)}`;
+        return <span key={`${pageId(s.place)}.${s.place.tab ?? ""}`}>{i > 0 && <span aria-hidden className="mr-2 text-muted">·</span>}<a href={href} className="inline-flex min-h-8 items-center underline hover:text-accent">{placeBreadcrumb(s.place, vocab, locale)} →</a></span>;
+      })}
+    </p>
   );
 }

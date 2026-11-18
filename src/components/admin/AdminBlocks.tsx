@@ -27,7 +27,8 @@ import { askConfirm } from "./confirmDialog";
 import { EditDialog, DialogLink } from "./EditDialog";
 import { useModalWindow, type DiscardGuard } from "./ModalWindow";
 import { SAVED_EVENT, type SavedDetail } from "./savedEvent";
-import { runModuleAdminAction } from "@/app/admin/(panel)/instances/module-actions";
+import { runModuleAdminAction, runPlaceAdminAction } from "@/app/admin/(panel)/instances/module-actions";
+import { usePlaceReturn } from "./PlaceReturn";
 import { runEntryPanelAction } from "@/app/admin/(panel)/entries/panel-actions";
 import type { ActionState } from "./ActionForm";
 
@@ -38,8 +39,8 @@ const mbOf = (bytes: number) => String(Math.round((bytes / 1048576) * 10) / 10).
 
 /** Section ajoutée à l'éditeur d'une entrée : les actions passent par `runEntryPanelAction` (droits d'éditeur, aucune redirection) au lieu des actions du panneau d'une instance. */
 export type EntryScope = { panelId: string; entryId: string };
-const runner = (instanceId: string, action: string, entry?: EntryScope): ((prev: ActionState, formData: FormData) => Promise<ActionState>) =>
-  entry ? runEntryPanelAction.bind(null, instanceId, entry.panelId, entry.entryId, action) : runModuleAdminAction.bind(null, instanceId, action);
+const runner = (instanceId: string, action: string, entry?: EntryScope, back?: string | null): ((prev: ActionState, formData: FormData) => Promise<ActionState>) =>
+  entry ? runEntryPanelAction.bind(null, instanceId, entry.panelId, entry.entryId, action) : back ? runPlaceAdminAction.bind(null, instanceId, action, back) : runModuleAdminAction.bind(null, instanceId, action);
 
 type FormBlock = Extract<Block, { type: "adminForm" }>;
 
@@ -220,7 +221,8 @@ export function AdminBlockForm({ instanceId, block, entry, fileLabels, labels }:
 }
 
 function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: string; block: FormBlock; entry?: EntryScope; labels?: FormLabels }) {
-  const [state, action, pending] = useActionState(runner(instanceId, block.action, entry), null);
+  const back = usePlaceReturn();
+  const [state, action, pending] = useActionState(runner(instanceId, block.action, entry, back), null);
   const formRef = useRef<HTMLFormElement>(null);
   const c = useCropLabels();
   const [extra, setExtra] = useState<ExtraResult>(null);
@@ -234,13 +236,13 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
   return (
     <form ref={formRef} onSubmit={submitKeepingValues(action)} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
-      <FormRun.Provider value={(a, data) => runner(instanceId, a, entry)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
+      <FormRun.Provider value={(a, data) => runner(instanceId, a, entry, back)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       <ExtraStatus result={extra} />
       <div className="flex flex-wrap items-center gap-3">
         <PendingButton pending={pending} variant={block.submitStyle === "secondary" ? "btn" : "primary"}>{block.submitLabel}</PendingButton>
-        {extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action, entry)} formRef={formRef} onResult={setExtra} />)}
+        {extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action, entry, back)} formRef={formRef} onResult={setExtra} />)}
         {block.cancelHref && <a href={block.cancelHref} className={ui.btn} aria-label={c("cancel")}>↩</a>}
       </div>
     </form>
@@ -253,10 +255,11 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
  * (it submits the form through the `form` attribute); a success closes the window, announces itself near the saved row (see `savedEvent`) and shows the list again.
  */
 function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: string; block: FormBlock; labels: FormLabels; dialog: DialogLabels }) {
-  const [state, action, pending] = useActionState(runner(instanceId, block.action), null);
+  const back = usePlaceReturn();
+  const [state, action, pending] = useActionState(runner(instanceId, block.action, undefined, back), null);
   // (core 0.12.0) The optional destructive button of the footer: the same fields go to ITS action, after a confirmation.
   const secondary = block.secondaryAction;
-  const [secondState, secondRun, secondPending] = useActionState(runner(instanceId, secondary?.action ?? ""), null);
+  const [secondState, secondRun, secondPending] = useActionState(runner(instanceId, secondary?.action ?? "", undefined, back), null);
   const formRef = useRef<HTMLFormElement>(null);
   const formId = useId();
   const [extra, setExtra] = useState<ExtraResult>(null);
@@ -267,7 +270,7 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
   return (
     <EditDialog title={title} closeLabel={dialog.close} closeHref={block.cancelHref} guard={dialog.discard}
       footer={<DialogFooter formId={formId} submitLabel={block.submitLabel} cancel={dialog.cancel} cancelHref={block.cancelHref} pending={pending} danger={block.danger === true} secondaryStyle={block.submitStyle === "secondary"} error={error}
-        status={<ExtraStatus result={extra} />} extras={extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action)} formRef={formRef} onResult={setExtra} />)} />}
+        status={<ExtraStatus result={extra} />} extras={extraOf(block).map((a, i) => <ExtraActionButton key={a.action} index={i} label={a.label} run={runner(instanceId, a.action, undefined, back)} formRef={formRef} onResult={setExtra} />)} />}
       secondary={secondary ? (
         <PendingButton type="button" variant="danger" pending={secondPending} testid="edit-dialog-secondary"
           onClick={async () => {
@@ -281,7 +284,7 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
       <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
       {secondary && <DialogOutcome state={secondState} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />}
       <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
-        <FormRun.Provider value={(a, data) => runner(instanceId, a)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
+        <FormRun.Provider value={(a, data) => runner(instanceId, a, undefined, back)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       </form>
     </EditDialog>
   );
@@ -326,7 +329,8 @@ function DialogOutcome({ state, formRef, instanceId, saved }: { state: ActionSta
 export function RowActionButton({ instanceId, label, action, href, id, confirm: confirmText, danger, entry, presentation }: {
   instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope; presentation?: "dialog";
 }) {
-  const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry), null);
+  const back = usePlaceReturn();
+  const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry, back), null);
   if (href) return presentation === "dialog" && !entry ? <DialogLink href={href} className={ui.btn}>{label}</DialogLink> : <a href={href} className={ui.btn}>{label}</a>;
   return (
     <form onSubmit={submitKeepingValues(formAction)}>
@@ -353,13 +357,14 @@ export function RowActionButton({ instanceId, label, action, href, id, confirm: 
 export function RowSwitch({ instanceId, action, id, on, label, onText, offText, entry, failedText, savedText }: {
   instanceId: string; action: string; id?: string; on: boolean; label: string; onText?: string; offText?: string; entry?: EntryScope; failedText: string; savedText: string;
 }) {
+  const back = usePlaceReturn();
   return (
     <Switch label={label} checked={on} onText={onText} offText={offText} failedText={failedText} disabled={!id}
       onToggle={async (next) => {
         const data = new FormData();
         data.set("id", id ?? "");
         data.set("enabled", next ? "1" : "0");
-        const res = await runner(instanceId, action, entry)(null, data);
+        const res = await runner(instanceId, action, entry, back)(null, data);
         const problem = res?.error ?? (res?.errors ? Object.values(res.errors)[0] : undefined);
         return problem ? { error: problem } : { ok: res?.ok ?? savedText };
       }} />
@@ -370,7 +375,8 @@ export function RowSwitch({ instanceId, action, id, on, label, onText, offText, 
 export function RowMenuItem({ instanceId, label, action, href, id, confirm: confirmText, danger, entry, presentation }: {
   instanceId: string; label: string; action?: string; href?: string; id?: string; confirm?: string; danger?: boolean; entry?: EntryScope; presentation?: "dialog";
 }) {
-  const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry), null);
+  const back = usePlaceReturn();
+  const [state, formAction, pending] = useActionState(runner(instanceId, action ?? "", entry, back), null);
   const item = `flex min-h-11 w-full items-center px-4 text-left text-sm transition-colors hover:bg-bg disabled:cursor-progress disabled:opacity-60 ${danger ? "font-medium text-red-700" : ""}`;
   if (href) return presentation === "dialog" && !entry ? <DialogLink href={href} role="menuitem" className={item}>{label}</DialogLink> : <a href={href} role="menuitem" className={item}>{label}</a>;
   return (

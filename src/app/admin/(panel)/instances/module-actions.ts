@@ -12,6 +12,7 @@ import type { AdminActionHandler } from "@/core/modules/types";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { PERIOD_MARK, periodErrorKey } from "@/core/adminkit/values";
 import { sanitizeFieldErrors } from "@/core/fieldErrors";
+import { returnTarget } from "@/core/modules/placeScope";
 import { boundFormValues, checkGalleryValues } from "@/core/gallery";
 import { parseGeneratedGrid, type GridData } from "@/core/gridEditor";
 
@@ -30,6 +31,18 @@ async function allowedHandler(user: AdminUser, active: ActiveInstance | undefine
  * Forme fonction : administrateurs ; forme objet : le droit déclaré (voir `allowedHandler`). Le module ne fait jamais lui-même le contrôle d'accès.
  */
 export async function runModuleAdminAction(instanceId: string, action: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return execAdminAction(instanceId, action, formData, null);
+}
+
+/**
+ * (core 0.34.0) The same action, run from a PLACE page (or a core page that hosts the section): `returnBase` is that page's address, so a `redirect: "?…"` answer comes
+ * back to it, with the module's own namespaced parameters, instead of leading to the module page. The address comes from the browser: it is re-checked (`returnTarget`).
+ */
+export async function runPlaceAdminAction(instanceId: string, action: string, returnBase: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  return execAdminAction(instanceId, action, formData, returnBase);
+}
+
+async function execAdminAction(instanceId: string, action: string, formData: FormData, returnBase: string | null): Promise<ActionState> {
   const { user, t, locale } = await adminCtx("member");
   const active = (await getActiveInstances()).find((a) => a.instance.id === instanceId);
   const handler = await allowedHandler(user, active, action);
@@ -63,7 +76,8 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
   revalidatePath(ADMIN_HREF, "layout");
   if (result.redirect) {
     // Un module ne peut rediriger que dans l'admin : "?x=y" reste sur la page de l'instance, "/admin/…" va ailleurs dans l'admin.
-    const to = result.redirect.startsWith("?") ? instanceHref(instanceId, result.redirect) : result.redirect;
+    const back = returnBase && result.redirect.startsWith("?") ? returnTarget(returnBase, result.redirect, active.instance.key) : null;
+    const to = back ?? (result.redirect.startsWith("?") ? instanceHref(instanceId, result.redirect) : result.redirect);
     if (isAdminPath(to)) redirect(to);
   }
   return { ok: result.ok, error: result.error, errors: sanitizeFieldErrors(result.errors) };

@@ -15,7 +15,9 @@ import type { ActiveInstance } from "@/core/modules/registry";
 import { getSettingByLocale, getSiteConfig, themeExtraOf } from "@/core/settings";
 import type { SettingField } from "@/core/modules/types";
 import { savePlaceSection } from "@/app/admin/(panel)/instances/actions";
+import { fieldNamespace } from "@/core/modules/placeScope";
 import { ActionForm } from "./ActionForm";
+import { PlaceReturnProvider } from "./PlaceReturn";
 import { floatingLabels } from "./floating";
 import { HelpTip } from "./HelpTip";
 import { ModuleSettings } from "./ModuleSettings";
@@ -41,8 +43,10 @@ export async function loadPlaceSection(section: IndexedSection, active: ActiveIn
  * Two disclosure levels at most: the basic settings, then ONE "Advanced settings" fold (rare + advanced). Each section saves on its own (its own form, its own
  * transaction); the page has one floating "Save" bar that saves every modified section (ActionForm).
  */
-export async function PlaceSectionCard({ loaded, t, locale, config, advanced, showOrigin }: {
+export async function PlaceSectionCard({ loaded, t, locale, config, advanced, showOrigin, base }: {
   loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean; showOrigin: boolean;
+  /** (0.34.0) Address of the page that shows the section (`/admin/live/alerts`, or the core page that hosts it): the module's actions come back to it. */
+  base: string;
 }) {
   const { section, active } = loaded;
   const anchor = section.anchor;
@@ -74,7 +78,7 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
               {t("places.unavailable", { module: section.moduleName })} <a href={instanceHref(section.instanceId)} className="font-medium underline">{t("places.openModule")} →</a>
             </p>
           )}
-          {loaded.blocks.length > 0 && <Blocks blocks={loaded.blocks} locale={locale} kit={adminKit} adminInstanceId={section.instanceId} />}
+          {loaded.blocks.length > 0 && <PlaceReturnProvider value={base}><Blocks blocks={loaded.blocks} locale={locale} kit={adminKit} adminInstanceId={section.instanceId} /></PlaceReturnProvider>}
           {loaded.fields.length > 0 && <SectionSettings loaded={loaded} t={t} locale={locale} config={config} advanced={advanced} />}
         </div>
       </details>
@@ -103,7 +107,7 @@ async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded
   const flat = (f: SettingField): SettingField => ({ ...f, rare: undefined, advanced: undefined, group: undefined });
   const basic = loaded.fields.filter((f) => !isFolded(f)).map(flat);
   const more = loaded.fields.filter(isFolded).map(flat);
-  const common = { t, locale, defaultLocale: config.defaultLocale, locales: config.locales, allFields: manifest.settings, groups: manifest.optionalGroups ?? [], stored, siteByLocale, theme, missing, instanceId: instance.id, choices, advanced, tabbed: true } as const;
+  const common = { t, locale, defaultLocale: config.defaultLocale, locales: config.locales, allFields: manifest.settings, groups: manifest.optionalGroups ?? [], stored, siteByLocale, theme, missing, instanceId: instance.id, choices, advanced, tabbed: true, ns: fieldNamespace(instance.key, section.section.id) } as const;
   const anyMoreSet = more.some((f) => Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
   return (
     <ActionForm action={savePlaceSection} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6 [&>div[aria-hidden]]:hidden">

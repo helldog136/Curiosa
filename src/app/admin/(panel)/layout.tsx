@@ -14,7 +14,9 @@ import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
 import { buildMenuTree, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
 import { fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
-import { qualifyLabels } from "@/core/modules/places";
+import { placeBadges, qualifyLabels } from "@/core/modules/places";
+import { SettingsSearch } from "@/components/admin/SettingsSearch";
+import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
@@ -46,9 +48,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
   const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
-  type PlaceItem = TreeItem & { href: string; place: true };
+  type PlaceItem = TreeItem & { href: string; place: true; badgeTip: string };
+  // (0.34.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
+  const instanceBadge = new Map(allNav.map((m) => [m.id, m.badge] as const));
+  const carried = placeBadges(placeIndex, (instanceId) => instanceBadge.get(instanceId) ?? 0);
   const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({
-    id: `place:${p.id}`, name: p.title, badge: 0, error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
+    id: `place:${p.id}`, name: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
     groupLabels: { [g.id]: { en: g.title, fr: g.title } }, moduleId: "", href: p.href, place: true as const,
   })));
   const editor = hasRole(user, "editor");
@@ -72,9 +77,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const entryHref = (m: Entry) => (isPlace(m) ? m.href : m.content ? entriesHref(m.key) : instanceHref(m.id));
   const entryAlso = (m: Entry) => (isPlace(m) ? [] : m.content ? [instanceHref(m.id)] : []);
   const entryText = (m: Entry) => (isPlace(m) ? q(m.id, m.name) : `${m.icon} ${q(m.id, m.name)}`);
-  const entryLink = (m: Entry) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{entryText(m)}</NavLink>;
+  const badgeText = (m: Entry) => (isPlace(m) && m.badgeTip ? `${t("nav.badge.todo")} — ${m.badgeTip}` : t("nav.badge.todo"));
+  const entryLink = (m: Entry) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
   const treeTargets = (m: Entry) => [entryHref(m), ...entryAlso(m)];
-  const treeEntryLink = (m: Entry) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={t("nav.badge.todo")}>{entryText(m)}</NavLink>;
+  const treeEntryLink = (m: Entry) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
   // (0.31.0) A group made of one place page shows that page directly, without a heading.
   const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => (n.children.length === 0 && n.entries.length === 1 && isPlace(n.entries[0]!)
     ? <div key={n.id} data-testid={`nav-tree-${n.id}`}>{entryLink(n.entries[0]!)}</div>
@@ -125,7 +131,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="flex flex-1 flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
-          <div className="mt-4"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
+          <div className="mt-4 px-1"><SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" advancedMode={advanced} /></div>
+          <div className="mt-3"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
           {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => {
             const extra = tree.sections[id];
             return (items.length > 0 || extra) && (

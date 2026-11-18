@@ -3,7 +3,11 @@ import { EXTENSIONS_ADD_DETAILS_HREF, withQuery } from "@/core/adminLinks";
 import { can as canDo } from "@/core/auth/access";
 import { getCatalogue, getCatalogueSource } from "@/core/modules/catalogue";
 import { getCoreVersion } from "@/core/modules/compat";
-import { listModuleRows } from "@/core/modules/registry";
+import { getInstalledModules, listModuleRows } from "@/core/modules/registry";
+import { entryTopics, facetList, filterByTopic } from "@/core/modules/catalogueFacets";
+import { currentVocabulary } from "@/core/modules/placesLoad";
+import { parseTopic, topicTitle } from "@/core/modules/places";
+import { TopicFacets } from "@/components/admin/TopicFacets";
 import { listRetired } from "@/core/modules/retired";
 import { groupByModule } from "@/core/modules/retiredPlan";
 import { eraseRetiredAction } from "../../modules/actions";
@@ -19,7 +23,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { discoverModules, isTruncated, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
 import { buildNames, viewPlan, type PlanView } from "@/core/modules/dependencyView";
 import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
-import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
+import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
 
@@ -27,9 +31,10 @@ export const dynamic = "force-dynamic";
 
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
+export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
-  const { error } = await searchParams;
+  const { error, topic: rawTopic } = await searchParams;
+  const topic = parseTopic(rawTopic);
   const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
   const entries = await getCatalogue();
   const source = await getCatalogueSource();
@@ -44,7 +49,13 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const names = await buildNames(locale, config.defaultLocale, entries);
   const plans = new Map<string, PlanView>();
   for (const e of entries) if (!installed.has(e.id) && e.compatible && (e.needs?.length ?? 0) > 0) plans.set(e.id, await viewPlan(e.id, e.needs!, names, entries));
-  const groups = [{ id: "recognized", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: entries }];
+  // (0.34.0) Topics as facets: what each module adds settings to (index, or the manifest when installed), and the filter by topic.
+  const vocab = currentVocabulary();
+  const manifests = new Map((await getInstalledModules()).map((m) => [m.manifest.id, m.manifest] as const));
+  const topicsByEntry = new Map(entries.map((e) => [e.id, entryTopics(e, manifests.get(e.id), vocab.aliases)] as const));
+  const facets = facetList(topicsByEntry, vocab, locale);
+  const shown = filterByTopic(entries, topic, topicsByEntry);
+  const groups = [{ id: "recognized", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: shown }];
   // Sans réseau ni dernière copie reçue, la liste est vide : on le dit (jamais une copie locale), et « Actualiser » réessaie.
   const unreachable = source.source === "none" && entries.length === 0;
 
@@ -63,6 +74,8 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       )}
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
 
+      <TopicFacets t={t} facets={facets} current={topic} />
+
       <CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} />
 
       {groups.map((g) => g.list.length > 0 && (
@@ -70,7 +83,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           <h2 className="text-xl font-semibold">{g.title}</h2>
           <ul className="grid gap-4 sm:grid-cols-2">
             {g.list.map((e) => (
-              <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id}`)} className={`${ui.card} flex flex-col gap-4`}>
+              <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id} ${(topicsByEntry.get(e.id) ?? []).map((x) => topicTitle(x, vocab, locale)).join(" ")}`)} className={`${ui.card} flex flex-col gap-4`}>
                 <div className="flex items-start gap-4">
                   <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{e.icon ?? "🧩"}</span>
                   <div className="min-w-0">
@@ -79,6 +92,12 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     {advanced && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                   </div>
                 </div>
+                {(topicsByEntry.get(e.id) ?? []).length > 0 && (
+                  <p className="text-sm text-muted" data-testid={`topics-${e.id}`}>
+                    {t("catalogue.addsTo")}{" "}
+                    {(topicsByEntry.get(e.id) ?? []).map((x, i) => <span key={x}>{i > 0 ? ", " : ""}<a href={`${EXTENSIONS_ADD_HREF}?topic=${x}`} className="underline hover:text-accent">{topicTitle(x, vocab, locale)}</a></span>)}
+                  </p>
+                )}
                 {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
@@ -131,6 +150,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           {isOwner && <form action={refreshCatalogueAction}><PendingButton variant="link" pendingLabel={t("progress.checking")} className="underline">{t("catalogue.refresh")}</PendingButton></form>}
         </div>
       )}
+      {topic && shown.length === 0 && entries.length > 0 && <p className="text-muted" data-testid="topic-none">{t("catalogue.topicNone")} <a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("catalogue.topicClear")}</a></p>}
       {entries.length === 0 && !unreachable && <p className="text-muted">{t("catalogue.empty")}</p>}
 
       {isOwner && advanced && (

@@ -45,6 +45,8 @@ export type CatalogueEntry = {
   /** Services offerts / exigés (index du catalogue) : lus SANS installer, pour dire ce que l'installation apportera. */
   offers?: ServiceOffer[];
   needs?: ServiceNeed[];
+  /** (core 0.34.0) Place pages the module adds settings to (`live.alerts`): facets of the catalogue and of the AI query by topic. Written by the index; an installed module also reads them from its manifest. */
+  topics?: string[];
   /** Visuels annoncés par l'index (légende, texte alternatif, type) : sert à dire qu'il y en a, sans rien télécharger. Les images viennent du dépôt du module, lues par le cœur (previewServe.ts). */
   previews?: PreviewDecl[];
   /**
@@ -63,7 +65,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
     id: c.id, name: entryText(c, "name"), description: entryText(c, "description"), version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
     kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
-    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews,
+    offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews, topics: c.places,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
   };
 }
