@@ -13,6 +13,7 @@ import { sanitizePreviews, type PreviewDecl } from "./previews";
 import { rawBase, rawGet } from "./rawRead";
 import { LANG_CODE_RE } from "../i18n/audit.mjs";
 import { sanitizeProfiles, type SetupProfile } from "./profiles";
+import { sanitizeVocabulary, type Vocabulary } from "./places";
 
 /** Name and description of a catalogue entry in one language. */
 export type EntryTexts = { name?: string; description?: string };
@@ -54,13 +55,16 @@ export type RecognizedItem = {
 
 /** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
 export type RecognizedSource = "repository" | "cache" | "none";
-export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null; /** Identifiants que le dépôt du catalogue suggère (`catalogue/suggested.json`). */ suggested: string[]; /** Profils de départ de l'assistant (`catalogue/profiles.json`, facultatif). */ profiles: SetupProfile[] };
+export type RecognizedResult = { items: RecognizedItem[]; source: RecognizedSource; fetchedAt: number | null; origin: string | null; /** Identifiants que le dépôt du catalogue suggère (`catalogue/suggested.json`). */ suggested: string[]; /** Profils de départ de l'assistant (`catalogue/profiles.json`, facultatif). */ profiles: SetupProfile[]; /** (core 0.31.0) Places vocabulary (`catalogue/places.json`, optional), sanitized. */ places?: Vocabulary };
 
 const run = promisify(execFile);
 const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 const INDEX_PATH = "catalogue/index.json";
 const SUGGESTED_PATH = "catalogue/suggested.json";
 const PROFILES_PATH = "catalogue/profiles.json";
+/** (core 0.31.0) The places vocabulary: names, order and intros of the known places (docs/PLACES.md). Optional. */
+const PLACES_PATH = "catalogue/places.json";
+const MAX_PLACES_BYTES = 256 * 1024;
 /** (core 0.8.0) Overlay skins are listed in their own optional file, so an older core never sees them. */
 const OVERLAY_SKINS_PATH = "catalogue/overlay-skins.json";
 const TTL = 15 * 60_000;
@@ -140,7 +144,7 @@ export function resolveIndexRepo(): string | null {
 }
 
 /** Lit `catalogue/index.json` et `catalogue/suggested.json` (facultatif) dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
-export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit, withOverlaySkins = false): Promise<{ index: unknown; suggested: unknown; profiles?: unknown; overlaySkins?: unknown }> {
+export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit, withOverlaySkins = false): Promise<{ index: unknown; suggested: unknown; profiles?: unknown; overlaySkins?: unknown; places?: unknown }> {
   if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
@@ -152,9 +156,11 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
     try { suggested = JSON.parse(await git(["show", `FETCH_HEAD:${SUGGESTED_PATH}`], tmp)); } catch { /* pas de liste : rien n'est suggéré */ }
     let profiles: unknown = [];
     try { profiles = JSON.parse(await git(["show", `FETCH_HEAD:${PROFILES_PATH}`], tmp)); } catch { /* pas de fichier : aucun profil de départ */ }
+    let places: unknown = null;
+    try { const raw = await git(["show", `FETCH_HEAD:${PLACES_PATH}`], tmp); if (raw.length <= MAX_PLACES_BYTES) places = JSON.parse(raw); } catch { /* no vocabulary: inline definitions and derived titles */ }
     let overlaySkins: unknown = [];
     if (withOverlaySkins) try { overlaySkins = JSON.parse(await git(["show", `FETCH_HEAD:${OVERLAY_SKINS_PATH}`], tmp)); } catch { /* no overlay skins listed */ }
-    return { index: JSON.parse(text), suggested, profiles, overlaySkins };
+    return { index: JSON.parse(text), suggested, profiles, overlaySkins, places };
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -164,17 +170,19 @@ export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: Ind
  * Les deux fichiers du catalogue lus DIRECTEMENT (deux requêtes sur raw.githubusercontent.com, voir rawRead.ts) au lieu d'un dépôt récupéré : bien plus rapide.
  * null = pas applicable (dépôt hors GitHub) ou impossible (panne, limite de débit, fichier absent) : la récupération par git prend alors le relais.
  */
-async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ index: unknown; suggested: unknown; profiles?: unknown } | null> {
+async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ index: unknown; suggested: unknown; profiles?: unknown; places?: unknown } | null> {
   const base = rawBase(url, ref === "HEAD" ? undefined : ref);
   if (!base) return null;
   try {
-    const [i, s, pr] = await Promise.all([rawGet(`${base}/${INDEX_PATH}`, MAX_INDEX_BYTES), rawGet(`${base}/${SUGGESTED_PATH}`, 64 * 1024).catch(() => null), rawGet(`${base}/${PROFILES_PATH}`, 64 * 1024).catch(() => null)]);
+    const [i, s, pr, pl] = await Promise.all([rawGet(`${base}/${INDEX_PATH}`, MAX_INDEX_BYTES), rawGet(`${base}/${SUGGESTED_PATH}`, 64 * 1024).catch(() => null), rawGet(`${base}/${PROFILES_PATH}`, 64 * 1024).catch(() => null), rawGet(`${base}/${PLACES_PATH}`, MAX_PLACES_BYTES).catch(() => null)]);
     if (!i) return null;
     let suggested: unknown = [];
     try { if (s) suggested = JSON.parse(s.toString("utf8")); } catch { /* pas de liste : rien n'est suggéré */ }
     let profiles: unknown = [];
     try { if (pr) profiles = JSON.parse(pr.toString("utf8")); } catch { /* pas de fichier : aucun profil de départ */ }
-    return { index: JSON.parse(i.toString("utf8")), suggested, profiles };
+    let places: unknown = null;
+    try { if (pl) places = JSON.parse(pl.toString("utf8")); } catch { /* no vocabulary */ }
+    return { index: JSON.parse(i.toString("utf8")), suggested, profiles, places };
   } catch { return null; }
 }
 
@@ -182,10 +190,10 @@ async function fetchCatalogueOverHttps(url: string, ref: string): Promise<{ inde
 export const sanitizeSuggested = (raw: unknown): string[] => (Array.isArray(raw) ? raw.filter((id): id is string => typeof id === "string" && ID_RE.test(id)) : []);
 
 const cacheFile = () => path.join(DATA_DIR, "cache", "recognized-index.json");
-function readPersisted(): { items: RecognizedItem[]; suggested: string[]; profiles: SetupProfile[]; fetchedAt: number; origin: string | null } | null {
+function readPersisted(): { items: RecognizedItem[]; suggested: string[]; profiles: SetupProfile[]; fetchedAt: number; origin: string | null; places?: Vocabulary } | null {
   try {
     const raw = JSON.parse(fs.readFileSync(cacheFile(), "utf8"));
-    return { items: sanitizeEntries(raw), suggested: sanitizeSuggested(raw.suggested), profiles: sanitizeProfiles(raw.profiles), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null };
+    return { items: sanitizeEntries(raw), suggested: sanitizeSuggested(raw.suggested), profiles: sanitizeProfiles(raw.profiles), fetchedAt: Number(raw.fetchedAt) || 0, origin: typeof raw.origin === "string" ? raw.origin : null, ...(raw.places ? { places: sanitizeVocabulary(raw.places) } : {}) };
   } catch { return null; }
 }
 
@@ -202,7 +210,21 @@ export function readRecognizedCacheOffline(): RecognizedItem[] {
 /** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
 const FAILED_TTL = 20_000;
 let memo: { at: number; key: string; result: RecognizedResult } | null = null;
-export function clearRecognizedCache(): void { memo = null; inflight = null; }
+export function clearRecognizedCache(): void { memo = null; inflight = null; peeked = null; }
+
+/**
+ * (core 0.31.0) The places vocabulary of the catalogue WITHOUT waiting for the network (the sidebar of every page reads it): the last index read in memory, else the
+ * last copy kept on disk (only if it comes from the catalogue configured today), else null. Never throws.
+ */
+export function peekPlacesVocabulary(): Vocabulary | null {
+  if (memo?.result.places) return memo.result.places;
+  if (peeked && Date.now() - peeked.at < 60_000) return peeked.value;
+  const kept = readPersisted();
+  const value = kept?.places && kept.origin && kept.origin === resolveIndexRepo() ? kept.places : null;
+  peeked = { at: Date.now(), value };
+  return value;
+}
+let peeked: { at: number; value: Vocabulary | null } | null = null;
 
 export type RecognizedOptions = {
   fetchImpl?: typeof fetch; git?: IndexGit; now?: () => number;
@@ -255,16 +277,17 @@ async function readRecognized(opts: RecognizedOptions, key: string): Promise<Rec
       const items = sanitizeEntries(got.index);
       const suggested = sanitizeSuggested(got.suggested);
       const profiles = sanitizeProfiles(got.profiles);
-      base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested, profiles };
+      const places = got.places ? sanitizeVocabulary(got.places) : undefined;
+      base = { items, source: "repository", fetchedAt: now(), origin: repo, suggested, profiles, ...(places ? { places } : {}) };
       try {
         fs.mkdirSync(path.dirname(cacheFile()), { recursive: true });
-        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items, suggested, profiles }));
+        fs.writeFileSync(cacheFile(), JSON.stringify({ version: 1, fetchedAt: base.fetchedAt, origin: repo, modules: items, suggested, profiles, ...(base.places ? { places: base.places } : {}) }));
       } catch { /* la copie locale est un plus */ }
     } catch { /* injoignable : on retombe sur la dernière copie reçue */ }
   }
   if (base.source === "none") {
     const kept = readPersisted();
-    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested, profiles: kept.profiles };
+    if (kept && kept.items.length + (kept.fetchedAt ? 1 : 0) > 0) base = { items: kept.items, source: "cache", fetchedAt: kept.fetchedAt, origin: kept.origin, suggested: kept.suggested, profiles: kept.profiles, ...(kept.places ? { places: kept.places } : {}) };
   }
 
   // Le dépôt du catalogue (ou sa dernière copie reçue, qui ne contient que lui) : « official ». L'index supplémentaire : « extra ».

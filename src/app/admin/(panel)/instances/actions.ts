@@ -36,6 +36,8 @@ import { searchSettingKey } from "@/core/content/search";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { planTabs, settingTab } from "@/core/modules/tabs";
+import { resolvePlaceSection } from "@/core/modules/placesLoad";
+import { placeId } from "@/core/modules/places";
 
 function parseFieldSchema(raw: string) {
   const out: { key: string; label: string; type: "text" | "url" | "number" | "boolean" | "ref"; topic?: string }[] = [];
@@ -140,12 +142,40 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const instance = await prisma.moduleInstance.findUnique({ where: { id } });
   const mod = instance ? await getModule(instance.moduleId) : null;
   if (!instance || !mod) return { error: t("error.generic") };
-
-  const adv = formData.get("__adv") === "1";
   // Page en onglets (0.2.2) : chaque onglet envoie SES réglages (`__tab`) ; seuls ceux-là sont lus, les autres gardent leur valeur. Sans `__tab` : tous, comme avant.
   const tab = formData.get("__tab");
   const plan = planTabs(mod.manifest.tabs);
-  const inForm = (f: { tab?: string }) => typeof tab !== "string" || settingTab(plan, f) === tab;
+  const result = await applySettings({ t, config, id, mod, formData, inForm: (f) => typeof tab !== "string" || settingTab(plan, f) === tab });
+  if (!result.saved) return result.state;
+  await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
+  return result.state;
+}
+
+/**
+ * (core 0.31.0) One section of a place page (/admin/<group>/<page>): only the settings this section declares are read and written, in their own transaction
+ * (a failure here never rolls back another section of the page). The section is resolved again on the server: the instance is active, it declares this section,
+ * and the section holds the setting keys; nothing else is trusted from the browser.
+ */
+export async function savePlaceSection(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, config } = await adminCtx("admin");
+  const id = String(formData.get("id") ?? "");
+  const sectionId = String(formData.get("__section") ?? "");
+  const found = await resolvePlaceSection(id, sectionId);
+  if (!found) return { error: t("error.generic") };
+  const keys = new Set(found.section.settings);
+  const result = await applySettings({ t, config, id, mod: found.mod, formData, inForm: (f) => keys.has((f as { key?: string }).key ?? "") });
+  if (!result.saved) return result.state;
+  // The journal names the place and the keys that changed (never a value: a secret never reaches it).
+  await audit(user.email, `module.${found.instanceKey}.place.${sectionId}.save`, `${placeId(found.section.place)} (${result.changed.join(", ")})`.slice(0, 300), { module: found.mod.manifest.id, instance: found.instanceKey });
+  return result.state;
+}
+
+type Applied = { saved: false; state: ActionState } | { saved: true; state: ActionState; changed: string[] };
+
+/** Checks then writes the settings of `id` that `inForm` selects (everything is checked before anything is written: an error saves nothing). */
+async function applySettings({ t, config, id, mod, formData, inForm }: { t: Awaited<ReturnType<typeof adminCtx>>["t"]; config: Awaited<ReturnType<typeof adminCtx>>["config"]; id: string; mod: NonNullable<Awaited<ReturnType<typeof getModule>>>; formData: FormData; inForm: (f: { tab?: string; key?: string }) => boolean }): Promise<Applied> {
+  const done = (state: ActionState): Applied => ({ saved: false, state });
+  const adv = formData.get("__adv") === "1";
   const fields = mod.manifest.settings.filter(inForm);
   const L = (v: Parameters<typeof localized>[0]) => localized(v, config.defaultLocale, config.defaultLocale);
   const siteByLocale = Object.fromEntries(await Promise.all(config.locales.map(async (l) => { const c = await getSiteConfig(l); return [l, { name: c.name, tagline: c.tagline }] as const; })));
@@ -174,7 +204,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       const message = t("instances.error.groupRequired", { group: L(group.label), fields: names });
       // Sous chaque champ manquant (nom du champ dans le formulaire) ; le message dit aussi lesquels.
       const errors = Object.fromEntries(verdict.missing.map((k) => { const f = mod.manifest.settings.find((x) => x.key === k); return [f?.translatable ? `s__${k}__${config.defaultLocale}` : `s__${k}`, message]; }));
-      return { errors };
+      return done({ errors });
     }
     if (verdict.action === "clear") {
       for (const key of group.fields) { cleared.add(key); ops.push({ key: instanceSettingKey(id, key), del: true }); }
@@ -204,7 +234,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (!checked.ok) {
         const n = checked.reason === "multichoiceMin" ? field.minChoices ?? 0 : field.maxChoices ?? (field.options ?? []).length;
         const message = checked.reason === "multichoice" ? t("instances.error.multiUnknown", { field: L(field.label) }) : t(checked.reason === "multichoiceMin" ? "instances.error.multiMin" : "instances.error.multiMax", { field: L(field.label), n });
-        return { errors: { [`s__${field.key}__group`]: message } };
+        return done({ errors: { [`s__${field.key}__group`]: message } });
       }
       ops.push({ key: instanceSettingKey(id, field.key), locale: "", value: checked.value });
       continue;
@@ -219,7 +249,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       const raw = String(formData.get(name) ?? "").trim();
       // Couleur qui suit le thème du site : on ne garde aucune valeur propre, le thème s'applique en direct.
       if (field.type === "color" && themeRef(field.default) && formData.get(`${name}__theme`) === "on") { del(); continue; }
-      if (field.type === "color" && raw !== "" && !isHexColor(raw)) return { errors: { [name]: t("error.generic") } };
+      if (field.type === "color" && raw !== "" && !isHexColor(raw)) return done({ errors: { [name]: t("error.generic") } });
       // Un secret laissé vide est conservé tel quel.
       if (field.type === "secret" && raw === "") continue;
       // Vide, ou identique au défaut qui suit le site (nom, accroche) : rien n'est enregistré, le champ continue de suivre le site.
@@ -228,13 +258,13 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
       if (!checked.ok) {
         const { reason } = checked;
         // Un nombre, une durée, une période ou une date : le message dit les bornes et donne un exemple (R22).
-        if (reason === "period" && field.openEnded !== true && isHalfPeriod(raw)) return { errors: { [name]: t("period.errorHalf") } };
+        if (reason === "period" && field.openEnded !== true && isHalfPeriod(raw)) return done({ errors: { [name]: t("period.errorHalf") } });
         if (reason === "number" || reason === "range" || reason === "duration" || reason === "period" || reason === "datetime") {
           const e = valueErrorKey(reason, field, t);
-          return { errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } };
+          return done({ errors: { [name]: t(e.key, { field: L(field.label), ...e.vars }) } });
         }
         // Sous le champ fautif (et l'onglet qui le contient s'ouvre de lui-même s'il était caché).
-        return { errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "audio" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } };
+        return done({ errors: { [name]: reason === "link" ? t("instances.error.link", { field: L(field.label) }) : reason === "video" || reason === "audio" || reason === "image" || reason === "url" ? t("error.badUrl") : t("error.generic") } });
       }
       // Réseau social : l'adresse du profil est vérifiée AVANT d'être enregistrée, sous le champ, avec un exemple (R22) ; la réussite montre le bouton qui s'affichera.
       if (isSocialProfileField(mod, field.key)) {
@@ -242,7 +272,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
         const button = view ? await previewSocialButton(mod, view, raw, config.defaultLocale) : null;
         if (!button) {
           const example = field.example ? L(field.example) : "";
-          return { errors: { [name]: t(example ? "social.error.profile" : "social.error.profileNoExample", { network: L(mod.manifest.name), example }) } };
+          return done({ errors: { [name]: t(example ? "social.error.profile" : "social.error.profileNoExample", { network: L(mod.manifest.name), example }) } });
         }
         socialButton = button.label;
       }
@@ -252,11 +282,11 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   // Le navigateur n'envoie qu'un identifiant : on revérifie qu'il est une option actuelle (3 s par champ, 5 s en tout). Délai dépassé : on n'enregistre RIEN.
   if (choices.length) {
     const view = await getInstanceById(id);
-    if (!view) return { error: t("error.generic") };
+    if (!view) return done({ error: t("error.generic") });
     const checks = await validateChoices({ mod, instance: view }, choices.map((c) => ({ field: c.field, raw: c.raw })), { locale: config.defaultLocale });
     for (const c of choices) {
       const check = checks.get(c.field.key);
-      if (!check?.ok) return { errors: { [`s__${c.field.key}`]: t(check?.reason === "timeout" ? "choice.error.verify" : "choice.error.unknown", { field: L(mod.manifest.settings.find((f) => f.key === c.field.key)?.label) }) } };
+      if (!check?.ok) return done({ errors: { [`s__${c.field.key}`]: t(check?.reason === "timeout" ? "choice.error.verify" : "choice.error.unknown", { field: L(mod.manifest.settings.find((f) => f.key === c.field.key)?.label) }) } });
       // L'unique option n'est jamais écrite : elle reste résolue à l'exécution (une deuxième option fera réapparaître le sélecteur).
       ops.push(check.store === null ? { key: c.key, locale: "", del: true } : { key: c.key, locale: "", value: check.store });
     }
@@ -275,7 +305,7 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
     if (changed && enabled) {
       const name = wantedName(shortLink, shortLink.name ? await valueOf(shortLink.name) : undefined);
       const problem = await shortLinkNameProblem(id, name, true);
-      if (problem) return { errors: { [`s__${shortLink.name && sent(shortLink.name) ? shortLink.name : shortLink.enabled}`]: t(`shortlink.error.${problem}`, { name, example: `${name}-2` }) } };
+      if (problem) return done({ errors: { [`s__${shortLink.name && sent(shortLink.name) ? shortLink.name : shortLink.enabled}`]: t(`shortlink.error.${problem}`, { name, example: `${name}-2` }) } });
     }
   }
   for (const o of ops) {
@@ -287,11 +317,11 @@ export async function saveInstanceSettings(_prev: ActionState, formData: FormDat
   const managed = shortLink ? await reconcileManaged() : null;
   const alias = managed && (await managedRedirectOf(id).catch(() => null));
   const aliasMade = alias && [...managed.created, ...managed.updated].includes(alias.path) ? alias : null;
-  await audit(user.email, "instance.settings", instance.key, { module: instance.moduleId, instance: instance.key });
   revalidatePath("/", "layout");
   revalidatePath(REDIRECTS_HREF);
   const saved = socialButton ? t("social.saved", { button: socialButton }) : t("action.saved");
-  return { ok: aliasMade ? `${saved} ${t((await isMeasureEnabled()) ? "shortlink.ready" : "shortlink.readyHint", { address: redirectShortUrl(aliasMade.path) })}` : saved };
+  const changed = [...new Set(ops.map((o) => o.key.slice(o.key.lastIndexOf(".") + 1)))];
+  return { saved: true, changed, state: { ok: aliasMade ? `${saved} ${t((await isMeasureEnabled()) ? "shortlink.ready" : "shortlink.readyHint", { address: redirectShortUrl(aliasMade.path) })}` : saved } };
 }
 
 /** « Réessayer » : relance la migration des données d'une instance mise à l'écart. */

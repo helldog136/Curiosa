@@ -1,0 +1,177 @@
+{
+  "apiVersion": 2,
+  "id": "places-demo-alerts",
+  "name": {
+    "en": "Demo alerts",
+    "fr": "Alertes de démo"
+  },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": {
+    "en": "On-screen alerts that place their settings in Live (test fixture).",
+    "fr": "Des alertes à l'écran qui rangent leurs réglages dans En direct (module de test)."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🔔",
+  "permissions": [
+    "storage",
+    "admin"
+  ],
+  "adminMenu": "Networks.Twitch",
+  "settings": [
+    {
+      "key": "visual",
+      "type": "select",
+      "label": {
+        "en": "Look",
+        "fr": "Style"
+      },
+      "default": "card",
+      "display": "segmented",
+      "options": [
+        {
+          "value": "card",
+          "label": {
+            "en": "Card",
+            "fr": "Carte"
+          }
+        },
+        {
+          "value": "banner",
+          "label": {
+            "en": "Banner",
+            "fr": "Bandeau"
+          }
+        }
+      ]
+    },
+    {
+      "key": "accentColor",
+      "type": "color",
+      "label": {
+        "en": "Accent colour",
+        "fr": "Couleur d'accent"
+      },
+      "default": "#7c3aed"
+    },
+    {
+      "key": "durationSeconds",
+      "type": "number",
+      "label": {
+        "en": "Time on screen",
+        "fr": "Durée à l'écran"
+      },
+      "default": 6,
+      "min": 2,
+      "max": 60,
+      "unit": {
+        "en": "seconds",
+        "fr": "secondes"
+      }
+    },
+    {
+      "key": "minGapSeconds",
+      "type": "number",
+      "label": {
+        "en": "Pause between two alerts",
+        "fr": "Pause entre deux alertes"
+      },
+      "default": 2,
+      "min": 0,
+      "max": 60,
+      "unit": {
+        "en": "seconds",
+        "fr": "secondes"
+      },
+      "rare": true
+    },
+    {
+      "key": "ignoreNames",
+      "type": "text",
+      "label": {
+        "en": "Names to ignore",
+        "fr": "Noms à ignorer"
+      },
+      "example": {
+        "en": "etoile_nord, lune_douce",
+        "fr": "etoile_nord, lune_douce"
+      },
+      "optional": true
+    },
+    {
+      "key": "soundVolume",
+      "type": "number",
+      "label": {
+        "en": "Sound volume",
+        "fr": "Volume du son"
+      },
+      "default": 80,
+      "min": 0,
+      "max": 100,
+      "unit": {
+        "en": "%",
+        "fr": "%"
+      },
+      "advanced": true
+    }
+  ],
+  "tabs": [
+    {
+      "id": "use",
+      "hidden": true
+    },
+    {
+      "id": "rewards",
+      "label": {
+        "en": "Rewards",
+        "fr": "Récompenses"
+      },
+      "panel": true
+    }
+  ],
+  "places": [
+    {
+      "id": "look",
+      "place": "live.alerts.look",
+      "settings": [
+        "visual",
+        "accentColor",
+        "durationSeconds"
+      ],
+      "seeAlso": [
+        "live.rewards"
+      ]
+    },
+    {
+      "id": "rules",
+      "place": "live.alerts.rules",
+      "settings": [
+        "minGapSeconds",
+        "ignoreNames",
+        "soundVolume"
+      ]
+    },
+    {
+      "id": "journal",
+      "place": "live.alerts.rules",
+      "order": 600,
+      "blocks": true,
+      "level": "advanced",
+      "title": {
+        "en": "Journal",
+        "fr": "Journal"
+      },
+      "summary": {
+        "en": "The last events received",
+        "fr": "Les derniers événements reçus"
+      }
+    },
+    {
+      "id": "rewards",
+      "place": "live.rewards",
+      "fromTab": "rewards",
+      "order": 200
+    }
+  ]
+}

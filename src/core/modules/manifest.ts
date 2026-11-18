@@ -14,6 +14,7 @@ import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logE
 import { SERVICE_RE } from "./serviceVersions";
 import { NO_CREATE_REFERS, REFERS_TO } from "./choiceValues";
 import { MAX_TAB_ENTRIES, TAB_ID_RE, TAB_LABEL_MAX, tabIssues } from "./tabs";
+import { placeIssues } from "./places";
 import { moduleSkinIssues, moduleSkinSchema } from "./skinDecl";
 import { overlayElementIssues, overlayElementsSchema } from "../overlays/decl";
 import { overlayContextIssues, overlayContextsSchema } from "../overlays/contextDecl";
@@ -296,7 +297,31 @@ export const manifestSchema = z.object({
    * Une entrée AJOUTE un onglet (`{ id, label }`), RENOMME un onglet par défaut (`{ id: "use", label }`) ou en RETIRE un (`{ id: "use", hidden: true }` : son contenu
    * rejoint un autre onglet, rien n'est perdu). Un cœur ancien ignore la clé : déclarez `minCore: "0.2.2"`.
    */
-  tabs: z.array(z.object({ id: z.string().regex(TAB_ID_RE), label: tabLabel.optional(), hidden: z.literal(true).optional(), panel: z.literal(true).optional() }).strict()).max(MAX_TAB_ENTRIES).optional(),
+  tabs: z.array(z.object({ id: z.string().regex(TAB_ID_RE), label: tabLabel.optional(), hidden: z.literal(true).optional(), panel: z.literal(true).optional(),
+    /** (core 0.31.0) Place of this tab's content (short form, see places.ts). A core older than 0.31.0 REFUSES this key (the tab object is strict): declare `minCore: "0.31.0"`, or use `places[].fromTab` for dual mode. */
+    place: z.string().max(64).optional() }).strict()).max(MAX_TAB_ENTRIES).optional(),
+  /** (core 0.31.0) Place of the "use" panel and the "settings" tab (short form): `"community.games"`. An older core ignores the key. See docs/PLACES.md. */
+  place: z.string().max(64).optional(),
+  /** (core 0.31.0) Full form: sections placed one by one (settings, a tab's panel with `fromTab`, or code with `blocks: true`). An older core ignores the key. */
+  places: z.array(z.object({
+    id: z.string().max(24),
+    place: z.string().max(64),
+    order: z.number().int().optional(),
+    level: z.enum(["basic", "advanced"]).optional(),
+    title: z.object({ en: z.string().max(200), fr: z.string().max(200) }).optional(),
+    summary: z.object({ en: z.string().max(200), fr: z.string().max(200) }).optional(),
+    seeAlso: z.array(z.string().max(200)).max(10).optional(),
+    settings: z.array(z.string().max(41)).max(60).optional(),
+    fromTab: z.string().max(24).optional(),
+    blocks: z.literal(true).optional(),
+    advancedOnly: z.boolean().optional(),
+    define: z.object({
+      group: z.object({ title: z.object({ en: z.string().max(200), fr: z.string().max(200) }), icon: z.string().max(16).optional() }).strict().optional(),
+      page: z.object({ title: z.object({ en: z.string().max(200), fr: z.string().max(200) }), intro: z.object({ en: z.string().max(400), fr: z.string().max(400) }).optional() }).strict().optional(),
+      tab: z.object({ title: z.object({ en: z.string().max(200), fr: z.string().max(200) }) }).strict().optional(),
+      weight: z.number().int().optional(),
+    }).strict().optional(),
+  }).strict()).max(24).optional(),
   /** Réglages facultatifs regroupés derrière un bouton « Ajouter… » (voir `groupIssues` pour les règles). */
   optionalGroups: z
     .array(z.object({
@@ -445,6 +470,8 @@ export const manifestSchema = z.object({
     if (f.type === "choice" && f.source && !required.has(f.source.service)) ctx.addIssue({ code: "custom", path: ["settings", i, "source", "service"], message: `the choice source "${f.source.service}" must be declared in requires` });
   }
   for (const message of tabIssues(m.tabs, m.settings, m.optionalGroups ?? [])) ctx.addIssue({ code: "custom", path: ["tabs"], message });
+  // (core 0.31.0) Places: grammar, reserved groups, limits, spoofing checks (places.ts).
+  for (const message of placeIssues(m)) ctx.addIssue({ code: "custom", path: ["places"], message });
   for (const [i, sec] of m.sections.entries()) {
     for (const [j, o] of (sec.options ?? []).entries()) if (o.tab !== undefined) ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "tab"], message: "tab is only for instance settings, not for section options" });
     for (const [j, o] of (sec.options ?? []).entries()) if ((o.type === "choice" || o.type === "multichoice")) ctx.addIssue({ code: "custom", path: ["sections", i, "options", j, "type"], message: `a ${o.type} is only for instance settings, not for section options` });

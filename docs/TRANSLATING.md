@@ -105,6 +105,21 @@ Use the same word for the same thing everywhere.
 | skin retouches | retouches du skin | (0.21.0) accent, panel colour, font and corners changed for one overlay page, without changing the installed skin |
 | skin of this element | skin de cet élément | (0.21.0) an overlay skin worn by one element instead of the page's skin |
 
+| place | emplacement | (0.31.0) where a module's settings show in the admin, written `group.page.tab` (`live.alerts.look`); not to be confused with a topic (sujet), which is a data channel |
+| group | groupe | (0.31.0) a heading of the admin sidebar that holds pages (En direct, Agenda, Communauté…) |
+| tab | onglet | a part of an admin page with its own address |
+| section | section | (0.31.0) what one extension adds to a tab of a place page: a card with its title, its origin and its settings |
+| vocabulary | vocabulaire | (0.31.0) the list of known places with their names, order and intro (`catalogue/places.json`) |
+| Live | En direct | (0.31.0) the group of what happens during a live: alerts, rewards, chat, audience games, raid, going live |
+| Calendar | Agenda | (0.31.0) the group of schedules, events, countdowns and announcement stories |
+| Other settings | Autres réglages | (0.31.0) the group where pages of more than two unknown groups are folded |
+| Advanced settings | Réglages avancés | (0.31.0) the one fold of a section that holds its rare and technical settings |
+| Added by | Ajouté par | (0.31.0) the origin of a section, when a page has sections from several extensions |
+| Section unavailable | Section indisponible | (0.31.0) a section that failed or took too long; the rest of the page works |
+| Where its settings are | Où sont ses réglages | (0.31.0) the list of places of an extension, at the top of its page |
+| Settings added in | Réglages ajoutés dans | (0.31.0) the message after an install that links to the places of the new extension |
+| overlay page (sidebar) | Pages d'overlay | kept as is (owner decision E10); next to a content list named « Pages » the sidebar qualifies it at runtime: « Pages d'overlay · Administration » |
+
 A new word must be added to this glossary (and to the repository glossary) before it is used.
 
 ## Official or community, complete or partial

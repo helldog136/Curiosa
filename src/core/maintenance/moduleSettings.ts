@@ -8,6 +8,8 @@ import { hasValue } from "@/core/modules/groups";
 import { getModule, type LoadedModule } from "@/core/modules/registry";
 import { checkFieldInput, checkMultiInput, followsSite, resolveDefault, shouldStore, siteDefaultRef } from "@/core/modules/settingValues";
 import { planTabs, settingTab } from "@/core/modules/tabs";
+import { moduleSections, pageId, parsePlace } from "@/core/modules/places";
+import { currentVocabulary } from "@/core/modules/placesLoad";
 import { localized, type JsonSchemaLite, type SettingField } from "@/core/modules/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { deleteSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
@@ -38,6 +40,7 @@ export const SETTINGS_INPUT: JsonSchemaLite = {
   properties: {
     instance: { type: "string", maxLength: 31, description: "Instance key, as listed by maintenance_modules (for example blog)." },
     tab: { type: "string", maxLength: 24, description: "Optional: only the settings shown in this tab of the admin page (settings, general, sources or a tab of the module)." },
+    place: { type: "string", maxLength: 64, description: "Optional (core 0.31.0): only the settings this instance shows in this place (id from maintenance_places, for example live.alerts or live.alerts.look)." },
   },
   required: ["instance"],
 };
@@ -133,7 +136,11 @@ export async function readSettings(args: Record<string, unknown>) {
   const c = await context(a.instance);
   const only = typeof a.tab === "string" && a.tab ? a.tab : null;
   const plan = planTabs(c.mod.manifest.tabs);
-  const fields = c.mod.manifest.settings.slice(0, MAX_FIELDS).filter((f) => !only || settingTab(plan, f) === only);
+  // (0.31.0) `place`: the keys of the sections this instance declares at that place (page, or page and tab).
+  const wanted = typeof a.place === "string" && a.place ? parsePlace(a.place) : null;
+  if (typeof a.place === "string" && a.place && !wanted) throw new McpToolError('argument "place" must be a place id such as live.alerts (see maintenance_places)');
+  const inPlace = wanted ? new Set(moduleSections(c.mod.manifest, currentVocabulary().aliases).filter((s) => pageId(s.place) === pageId(wanted) && (!wanted.tab || s.place.tab === wanted.tab)).flatMap((s) => s.settings)) : null;
+  const fields = c.mod.manifest.settings.slice(0, MAX_FIELDS).filter((f) => (!only || settingTab(plan, f) === only) && (!inPlace || inPlace.has(f.key)));
   const site = Object.fromEntries(await Promise.all(c.locales.map(async (l) => { const cfg = await getSiteConfig(l); return [l, { name: cfg.name, tagline: cfg.tagline }] as const; })));
   const grouped = new Set((c.mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
 
@@ -187,7 +194,7 @@ export async function readSettings(args: Record<string, unknown>) {
     name: c.L(c.mod.manifest.name),
     languages: c.locales,
     count: out.length,
-    ...(c.mod.manifest.settings.length > fields.length ? { note: only ? `Only the "${only}" tab is shown.` : `Only the first ${MAX_FIELDS} settings are shown.` } : {}),
+    ...(c.mod.manifest.settings.length > fields.length ? { note: wanted ? `Only the settings shown in ${a.place} are listed.` : only ? `Only the "${only}" tab is shown.` : `Only the first ${MAX_FIELDS} settings are shown.` } : {}),
     settings: out,
     reminder: "Secret settings never show their value: tell the owner where to type them. Change values with maintenance_module_configure.",
   };

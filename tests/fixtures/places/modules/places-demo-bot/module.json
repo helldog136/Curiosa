@@ -1,0 +1,30 @@
+{
+  "apiVersion": 2,
+  "id": "places-demo-bot",
+  "name": { "en": "Demo bot", "fr": "Bot de démo" },
+  "version": "1.0.0",
+  "main": "index.mjs",
+  "description": { "en": "A chat bot that places its commands, timers and rewards in Live (test fixture).", "fr": "Un bot de chat qui range ses commandes, timers et récompenses dans En direct (module de test)." },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🤖",
+  "permissions": ["storage", "admin"],
+  "adminMenu": "Networks.Twitch",
+  "settings": [
+    { "key": "prefix", "type": "text", "label": { "en": "Command sign", "fr": "Signe des commandes" }, "default": "!", "example": { "en": "!", "fr": "!" }, "tab": "commands" },
+    { "key": "rewardsOn", "type": "boolean", "label": { "en": "Answer rewards in chat", "fr": "Répondre aux récompenses dans le chat" }, "default": true, "tab": "rewards" },
+    { "key": "timezone", "type": "text", "label": { "en": "Time zone", "fr": "Fuseau horaire" }, "default": "Europe/Brussels", "example": { "en": "Europe/Paris", "fr": "Europe/Paris" }, "advanced": true }
+  ],
+  "tabs": [
+    { "id": "use", "hidden": true },
+    { "id": "commands", "label": { "en": "Commands", "fr": "Commandes" } },
+    { "id": "timers", "label": { "en": "Timers", "fr": "Timers" }, "panel": true },
+    { "id": "rewards", "label": { "en": "Rewards", "fr": "Récompenses" } }
+  ],
+  "places": [
+    { "id": "commands", "place": "live.chat.commands", "fromTab": "commands" },
+    { "id": "timers", "place": "live.chat.timers", "fromTab": "timers" },
+    { "id": "rewards", "place": "live.rewards", "fromTab": "rewards", "order": 300, "seeAlso": ["live.alerts"] },
+    { "id": "main", "place": "live.chat.commands", "settings": ["timezone"], "level": "advanced", "order": 900, "title": { "en": "Time", "fr": "Heure" }, "summary": { "en": "Time zone of the timers", "fr": "Fuseau horaire des timers" } }
+  ]
+}
