@@ -13,7 +13,7 @@ import { sanitizePreviews, type PreviewDecl } from "./previews";
 import { rawBase, rawGet } from "./rawRead";
 import { LANG_CODE_RE } from "../i18n/audit.mjs";
 import { sanitizeProfiles, type SetupProfile } from "./profiles";
-import { sanitizeVocabulary, type Vocabulary } from "./places";
+import { parseTopic, sanitizeVocabulary, type Vocabulary } from "./places";
 
 /** Name and description of a catalogue entry in one language. */
 export type EntryTexts = { name?: string; description?: string };
@@ -49,6 +49,8 @@ export type RecognizedItem = {
   needs?: { service: string; min?: number; optional?: true }[];
   /** Visuels annoncés par l'index (copie de `previews` du manifeste, 6 au plus) : permet d'annoncer « 3 visuels » SANS télécharger le module. Les images, elles, sont lues par le cœur dans le dépôt du module. Facultatif. */
   previews?: PreviewDecl[];
+  /** (core 0.34.0) The place pages the module adds settings or lists to (`live.alerts`…), written by the index when it knows them: the catalogue offers them as facets without downloading the module. Facultatif. */
+  places?: string[];
   /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
   catalogueOrigin?: "official" | "extra";
 };
@@ -94,6 +96,13 @@ export function entryText(item: Pick<RecognizedItem, "name" | "description" | "i
   return Object.keys(record).length ? record : plain;
 }
 
+/** (core 0.34.0) Topics of an index entry: page ids (`live.alerts`), at most 12, no duplicate; anything else is dropped. */
+export function sanitizeTopics(value: unknown): string[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const out = [...new Set(value.map((v) => parseTopic(v)).filter((x): x is string => x !== null))].slice(0, 12);
+  return out.length ? out : undefined;
+}
+
 /** Valide une liste d'entrées (tableau, ou `{ modules: [...] }`) : identifiant, dépôt https sur un hôte autorisé, doublons écartés. */
 export function sanitizeEntries(json: unknown): RecognizedItem[] {
   const list = Array.isArray(json) ? json : Array.isArray((json as { modules?: unknown })?.modules) ? (json as { modules: unknown[] }).modules : [];
@@ -117,6 +126,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
       offers: sanitizeServiceList(i.offers, "version"),
       needs: sanitizeServiceList(Array.isArray(i.requires) ? i.requires : i.needs, "min"),
       previews: sanitizePreviews(i.previews),
+      places: sanitizeTopics(i.places),
     });
     if (items.length >= 300) break;
   }

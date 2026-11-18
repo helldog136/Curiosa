@@ -113,7 +113,7 @@ export function groupStateId(ids: readonly string[]): string {
 
 // ─── Tree ───────────────────────────────────────────────────────────────────
 
-export type TreeItem = { id: string; name: string; badge: number; error: boolean; placement: string; menuPath?: MenuSegment[] | null; menuOrder?: number; connector?: boolean; groupLabels?: GroupLabels; moduleId?: string };
+export type TreeItem = { id: string; name: string; badge: number; /** (0.34.0) An entry that shows the badge of modules hosted on it (a place page): instance id -> number. A group counts each instance once, however many of its pages carry it. */ badgeKeys?: Record<string, number>; error: boolean; placement: string; menuPath?: MenuSegment[] | null; menuOrder?: number; connector?: boolean; groupLabels?: GroupLabels; moduleId?: string };
 export type MenuNode<T extends TreeItem> = { id: string; /** Ids from the root to this group. */ path: string[]; title: string; icon: string; entries: T[]; children: MenuNode<T>[]; badge: number; count: number };
 export type MenuTree<T extends TreeItem> = {
   /** Groups whose root is one of the existing sections: they are added inside that section (after its own entries). `entries` are the entries declared with the section alone. */
@@ -164,11 +164,19 @@ export function buildMenuTree<T extends TreeItem>(items: readonly T[], locale: s
     }
     node.entries.push(item);
   }
+  const keys = new Map<MenuNode<T>, Map<string, number>>();
+  const plainOf = new Map<MenuNode<T>, number>();
   const finish = (n: MenuNode<T>): void => {
     n.entries = sortEntries(n.entries, locale);
     n.children.forEach(finish);
     sortGroups(n.children, locale);
-    n.badge = n.entries.reduce((s, e) => s + e.badge, 0) + n.children.reduce((s, c) => s + c.badge, 0);
+    const keyed = new Map<string, number>(keys.get(n) ?? []);
+    let plain = 0;
+    for (const e of n.entries) { if (e.badgeKeys) for (const [k, v] of Object.entries(e.badgeKeys)) keyed.set(k, v); else plain += e.badge; }
+    for (const c of n.children) { for (const [k, v] of keys.get(c) ?? []) keyed.set(k, v); plain += plainOf.get(c) ?? 0; }
+    keys.set(n, keyed);
+    plainOf.set(n, plain);
+    n.badge = plain + [...keyed.values()].reduce((a, b) => a + b, 0);
     n.count = n.entries.length + n.children.reduce((s, c) => s + c.count, 0);
   };
   finish(root);

@@ -9,7 +9,7 @@ const requirements = [
   {
     id: "places.valid", level: "mandatory", group: "settings",
     title: "Places are valid",
-    what: "The `place`, `tabs[].place` and `places` keys follow the contract of docs/PLACES.md: group.page[.tab] in lower-case ASCII, no group of the core (admin, account, settings…), at most 12 sections, 3 per page and 1 new group, order from 100 to 999, seeAlso as place ids only, EN and FR titles, no title that reads like a page of the core.",
+    what: "The `place`, `tabs[].place` and `places` keys follow the contract of docs/PLACES.md: group.page[.tab] in lower-case ASCII, no group of the core (admin, account, settings…), at most 12 sections and 1 new group, order from 100 to 999, seeAlso as place ids only, EN and FR titles, no title that reads like a page of the core.",
     why: "A place is a public, frozen address shown to the owner. A wrong one is refused at install; a misleading one could look like a page of the core (password, team, backup).",
     fix: "Read the message: it names the section and the rule. Pick a place from catalogue/places.json, or define a new one inline with plain titles.",
     run(m) {
@@ -22,7 +22,7 @@ const requirements = [
   {
     id: "places.budget", level: "advice", group: "settings",
     title: "Placed sections stay short, and older cores keep working",
-    what: "Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).",
+    what: "Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). More than 3 sections of the module on one page is a guideline, not a refusal (core 0.34.0): the vocabulary page can write why it is fine. A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).",
     why: "A shared page gathers several modules: one long section pushes the others down. During the transition, sites on an older core still need the module's own entry.",
     fix: "Mark rare settings `rare: true`, split a long section, keep `adminMenu` until minCore 0.33.0, or move tabs[].place to places[].fromTab.",
     run(m) {
@@ -35,6 +35,8 @@ const requirements = [
         if (n > 7) out.push(`section "${s.id}" (${s.declared}) shows ${n} simple settings (R5: 7 at most)`);
         else if (n > 5) out.push(`section "${s.id}" (${s.declared}) shows ${n} fields (R4: 5 visible at most, fold the rare ones)`);
       }
+      // Soft limit (core 0.34.0): advice only, never a refusal.
+      if (m.core.places.placeAdvice) out.push(...m.core.places.placeAdvice(m.manifest));
       const usesTabPlace = (m.manifest.tabs ?? []).some((t) => t.place !== undefined);
       const mc = String(m.manifest.minCore ?? "0.0.0").split(".").map(Number);
       if (usesTabPlace && (mc[0] ?? 0) === 0 && (mc[1] ?? 0) < 31) out.push(`tabs[].place is refused by a core older than 0.31.0: declare "minCore": "0.31.0" or use places[].fromTab`);

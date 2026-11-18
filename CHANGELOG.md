@@ -7,6 +7,49 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.34.0 — 2026-11-18
+
+**En bref.** Une recherche dans tous les réglages, la même pour le site et pour les extensions. Les pages de réglages du site (Réglages, Apparence, Accueil et menu, Liens courts, Pages d'overlay) accueillent les sections que les extensions y ajoutent. Le catalogue se filtre par page de réglages, et les pastilles des extensions suivent leurs pages.
+
+**In short.** A search across all settings, the same for the site and for extensions. The site's settings pages (Settings, Appearance, Home and menu, Short links, Overlay pages) now show the sections that extensions add to them. The catalogue can be filtered by settings page, and extension badges follow their pages.
+
+### Nouveau
+
+- **Rechercher un réglage.** Un champ en haut du menu trouve un réglage dès que vous tapez un mot, sans accent ni majuscule. Chaque résultat dit où il se trouve (« En direct › Alertes ») et ouvre la bonne section, avec des filtres.
+- **(English) Search a setting.** A box at the top of the menu finds a setting as you type, ignoring accents and capitals. Each result says where it is ("Live › Alerts") and opens the right section, with filters.
+- **Le catalogue se filtre par page de réglages.** Sur la page « Ajouter » des extensions, la ligne « Ajoute des réglages à » liste les pages (Alertes, Récompenses…) avec le nombre d'extensions, et chaque fiche dit où l'extension ajoute ses réglages. Un assistant IA peut poser la même question.
+- **(English) The catalogue can be filtered by settings page.** On the extensions "Add" page, the "Adds settings to" line lists the pages (Alerts, Rewards…) with the number of extensions, and each card says where the extension adds its settings. An AI assistant can ask the same question.
+- **Les extensions peuvent ajouter des sections aux pages du site.** Une extension peut ranger un réglage dans l'onglet « Confidentialité » des Réglages ou dans « Couleurs » de l'Apparence. La section porte son nom et s'enregistre seule, sans changer les adresses du site.
+- **(English) Extensions can add sections to the site's pages.** An extension can put a setting in the "Privacy" tab of Settings or in "Colours" of Appearance. The section carries its name and saves on its own, with no change to the site's addresses.
+- **La pastille d'une extension suit ses pages.** Quand une extension a rangé tous ses réglages dans des pages communes, son chiffre « à regarder » s'affiche sur chacune de ces pages, et le groupe du menu le compte une seule fois.
+- **(English) An extension's badge follows its pages.** When an extension has put all its settings on shared pages, its "to review" number shows on each of those pages, and the menu group counts it once.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Plus de limite stricte à trois sections par page.** Une extension peut mettre plus de trois sections sur une même page quand c'est justifié (les alertes en ont cinq onglets). Cela reste un conseil, jamais un refus.
+- **(English) No hard limit of three sections per page.** An extension can put more than three sections on one page when it makes sense (alerts have five tabs). It stays advice, never a refusal.
+- **Deux extensions sur la même page ne se gênent plus.** Les fenêtres de modification, les retours après un clic et les champs portant le même nom restent propres à chaque extension : un clic revient sur la page où vous étiez.
+- **(English) Two extensions on the same page no longer get in each other's way.** Edit windows, the return after a click and fields with the same name stay specific to each extension: a click comes back to the page where you were.
+- **Une page renommée garde ses anciennes adresses.** L'ancienne adresse d'une page ou d'un onglet mène à la nouvelle, avec ses paramètres.
+- **(English) A renamed page keeps its old addresses.** The old address of a page or a tab leads to the new one, with its parameters.
+
+### Après la mise à jour
+
+- Rien à faire. Les adresses existantes continuent de fonctionner.
+- **(English)** Nothing to do. Existing addresses keep working.
+
+### Pour les développeurs
+
+- **Search**: `placeSearch.ts` (pure: entries, `@module:` `@path:` `@advanced` `@modified`, ranking), `placeSearchLoad.ts` (index of one person: breadcrumb, deep link `/admin/<group>/<page>[/<tab>]#<instance>.<section>`, never a value), route `GET /api/admin/settings-search`, page `/admin/search`, component `SettingsSearch` (menu and page shapes). `search` joins `ADMIN_ROUTE_SEGMENTS`.
+- **Core pages as contributors**: `coreSections.ts` declares the core's sections (`core.<id>` anchors, `coreAnchorMap`); `HostedSections` shows module sections on `site.general`, `site.appearance`, `site.home`, `site.links`, `obs.pages`. New tabs in the core vocabulary for `site.general` (sound, ai, address).
+- **Facets**: index entries may carry `places` (page ids); `catalogueFacets.ts`, `TopicFacets`, `?topic=` on Extensions › Add; `maintenance_catalog_list { topic }` and `addsSettingsTo`.
+- **Limits fixed**: `placeScope.ts` (`sectionQuery`, `scopeBlocks`, `returnTarget`, `fieldNamespace`); `runPlaceAdminAction`; `ModuleSettings` takes `ns`; `Tabs` opens the tab that holds a `#<instance>.<section>` anchor.
+- **Aliases**: `aliasProblems` / `aliasIssues` drop loops, chains over 3 steps and reserved groups when the vocabulary is merged; the old address keeps its query parameters.
+- **Soft limit**: `placeAdvice`, `sectionsReason` in a vocabulary page, index warning; the hard caps (12 sections per module, 8 tabs) stay. Kit `places.budget` reports the advice; `places.valid` no longer mentions 3 per page.
+- **Badges**: `placeBadges` and `TreeItem.badgeKeys` (a group counts an instance once).
+- **Docs**: PLACES.md, MODULES.md, catalogue/README.md (`places`), ERGONOMIE-ADMIN.md (R33 and its checklist line).
+- **Tests**: `tests/core/places-034.test.mjs`.
+
 ## 0.33.0 — 2026-11-18
 
 **En bref.** Les jauges et compteurs animés des overlays apprennent un vocabulaire de mouvement : un skin peut demander un mouvement « vif », « fluide », « doux » ou « rebondissant », et un rythme plus ou moins rapide. Rien ne change pour les skins existants.

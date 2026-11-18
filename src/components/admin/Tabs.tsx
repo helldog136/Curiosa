@@ -32,6 +32,17 @@ export function Tabs({ tabs, initial, children }: { tabs: TabDef[]; initial?: st
     return () => el?.removeEventListener("invalid", onInvalid, true);
   }, [tabs]);
 
+  // (0.34.0) A deep link to a section hosted on this page (`#<instance>.<section>`): open the tab that holds it, then bring it into view.
+  useEffect(() => {
+    if (!hash || known(hash)) return;
+    const el = document.getElementById(hash);
+    const id = el?.closest<HTMLElement>("[data-tab]")?.dataset.tab?.split(" ").find((x) => tabs.some((t) => t.id === x));
+    if (!el || !id) return;
+    const frame = requestAnimationFrame(() => { setPicked(id); requestAnimationFrame(() => el.scrollIntoView({ block: "start" })); });
+    return () => cancelAnimationFrame(frame);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hash]);
+
   const choose = (id: string) => { setPicked(id); try { window.history.replaceState(null, "", `#${id}`); } catch { /* sans historique : tant pis */ } };
   // Masquage par CSS (et non par rendu) : pas de clignotement au chargement, et tous les champs restent dans le formulaire.
   const css = tabs.map((t) => `[data-tabs-root][data-active="${t.id}"] [data-tab]:not([data-tab~="${t.id}"]){display:none}`).join("");
