@@ -49,7 +49,7 @@ export function isGranted(tool: ToolAccessInfo, grants: Grants): boolean {
 }
 
 /**
- * FULL POWERS (core 0.34.0, fullPowers.ts). One switch per access, set ONLY by the owner in the admin (never by a tool, never by an access):
+ * FULL POWERS (core 0.35.0, fullPowers.ts). One switch per access, set ONLY by the owner in the admin (never by a tool, never by an access):
  * the access then holds every right of the CURRENT catalogue, computed on each request, so a tool added by an update or a new module is granted at once.
  * What stays outside, because it protects the core itself: see `neverUnderFullPowers`. The ceiling stays (a read-only access is never raised), the approval
  * setting, the hourly limits and the upload limits are separate checks that this file does not touch.

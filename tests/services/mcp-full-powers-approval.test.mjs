@@ -6,7 +6,7 @@ import { useTestDb } from "../helpers/db.mjs";
 import { createCatalogue } from "../helpers/catalogue.mjs";
 import { makeTempDir } from "../helpers/tmp.mjs";
 
-// Full powers (core 0.34.0) leave the owner's approval setting alone: installs wait for the owner even when the access "acts without asking",
+// Full powers (core 0.35.0) leave the owner's approval setting alone: installs wait for the owner even when the access "acts without asking",
 // and a core update still waits (or refuses a release candidate) exactly as for any access. Real tools, real database, a local catalogue.
 // eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb is not a React hook
 const db = await useTestDb();

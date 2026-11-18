@@ -8,6 +8,7 @@ import { peekPlacesVocabulary } from "./recognized";
 import { getActiveInstances, type ActiveInstance } from "./registry";
 import { panelTab, planTabs } from "./tabs";
 import { localized, type Block } from "./types";
+import { scopeBlocks } from "./placeScope";
 import {
   BUILTIN_VOCABULARY, buildPlaceIndex, fullyPlaced, isCorePage, mergeVocabulary, moduleSections, type Contribution, type PlaceIndex, type PlaceSection, type Vocabulary,
 } from "./places";
@@ -98,7 +99,8 @@ export async function loadSectionBlocks(active: ActiveInstance, section: PlaceSe
     return out;
   };
   const got = await withBudget(run(), opts.budgetMs ?? SECTION_BUDGET_MS);
-  return got.ok ? { blocks: Array.isArray(got.value) ? got.value : [], state: "ok" } : { blocks: [], state: got.reason };
+  // (0.34.0) Every `?…` link of the module is moved to its own namespace: two modules on one page never read each other's parameters.
+  return got.ok ? { blocks: Array.isArray(got.value) ? scopeBlocks(got.value, active.instance.key) : [], state: "ok" } : { blocks: [], state: got.reason };
 }
 
 /** One call of a module's `adminPanel` per request, shared by its sections. */

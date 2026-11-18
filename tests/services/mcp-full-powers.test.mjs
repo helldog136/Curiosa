@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { useTestDb } from "../helpers/db.mjs";
 
-// Full powers of an AI access (core 0.34.0): the real MCP server, the real tools, the real database. Nothing is mocked.
+// Full powers of an AI access (core 0.35.0): the real MCP server, the real tools, the real database. Nothing is mocked.
 // A tool of a module "installed later" is a provider pushed on the real provider list while the test runs.
 // eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb is not a React hook
 const db = await useTestDb();

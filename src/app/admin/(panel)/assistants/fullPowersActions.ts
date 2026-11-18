@@ -10,7 +10,7 @@ import { removalConfirmed } from "@/components/admin/removalConfirm";
 import type { ActionState } from "@/components/admin/ActionForm";
 
 /**
- * FULL POWERS of an access (core 0.34.0, services/mcp/fullPowers.ts): OWNER only, in the admin, and ONLY here. Not the technical coordination (which holds
+ * FULL POWERS of an access (core 0.35.0, services/mcp/fullPowers.ts): OWNER only, in the admin, and ONLY here. Not the technical coordination (which holds
  * `core:mcp.tokens`), and never an assistant: no MCP tool and no module reaches `setFullPowers`. Kept in its own file so that actions.ts stays on core:mcp.tokens.
  *
  * Turning it on needs the typed name of the access (checked here again, not only in the window). Both ways are journalled with the owner as actor, the name of the

@@ -32,7 +32,7 @@ type Site = { name: string; tagline: string };
  * quand le site n'a qu'une langue, sinon une ligne par langue) et groupes facultatifs. Composant serveur : les champs sont rendus
  * ici, seuls les groupes facultatifs (OptionalGroup) ont besoin du navigateur.
  */
-export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing, instanceId = "", choices = {}, advanced = false, tabbed = false }: {
+export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allFields, groups, stored, siteByLocale, theme, missing, instanceId = "", choices = {}, advanced = false, tabbed = false, ns = "" }: {
   t: Translator;
   /** Langue de l'admin (pour les libellés du manifeste). */
   locale: string;
@@ -54,6 +54,8 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   advanced?: boolean;
   /** Dans un onglet (page en onglets, 0.2.2) : un bloc seul n'a pas besoin de titre visible. */
   tabbed?: boolean;
+  /** (0.34.0) Prefix of the field names and DOM ids, unique per section on a place page (`fieldNamespace`): two sections that show the same setting key never share an id. The server strips it. Empty on the module page. */
+  ns?: string;
 }) {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, defaultLocale);
   const site = (l: string): Site => siteByLocale[l] ?? siteByLocale[defaultLocale] ?? { name: "", tagline: "" };
@@ -145,7 +147,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   /** Un réglage « choix parmi » : sélecteur (2 options ou plus), sinon une ligne d'état ou une bannière actionnable. Jamais traduisible. */
   const choiceNode = (f: SettingField, label: string) => {
     const view = choices[f.key];
-    const id = settingFieldId(f.key);
+    const id = `${ns}${settingFieldId(f.key)}`;
     const help = f.help ? L(f.help) : undefined;
     const flag = missing.has(f.key) ? t("missing.field") : undefined;
     const box = (children: React.ReactNode, tone: "info" | "warn" = "info") => (
@@ -190,20 +192,20 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     const required = requiredKeys.has(f.key);
     if (f.type === "choice") return choiceNode(f, label);
     if (!f.translatable) {
-      return control(f, settingFieldId(f.key), f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], label, { required, flag: missing.has(f.key) ? t("missing.field") : undefined });
+      return control(f, `${ns}${settingFieldId(f.key)}`, f.type === "secret" ? Boolean(stored[f.key]?.[""]) || undefined : stored[f.key]?.[""], label, { required, flag: missing.has(f.key) ? t("missing.field") : undefined });
     }
     // Un seul langage : un champ simple, comme n'importe quel réglage.
     if (ordered.length === 1) {
       const l = ordered[0] ?? defaultLocale;
-      return control(f, `s__${f.key}__${l}`, stored[f.key]?.[l], label, { required, resolved: resolveDefault(f, site(l)) });
+      return control(f, `${ns}s__${f.key}__${l}`, stored[f.key]?.[l], label, { required, resolved: resolveDefault(f, site(l)) });
     }
     // Plusieurs langues : le libellé du réglage une fois, puis une ligne par langue.
     return (
-      <fieldset key={f.key} className="min-w-0" aria-labelledby={`s__${f.key}__legend`}>
-        <legend className={`${ui.label} mb-0.5`}><span id={`s__${f.key}__legend`}>{label}</span><HelpTip help={f.help ? L(f.help) : undefined} name={label} /></legend>
+      <fieldset key={f.key} className="min-w-0" aria-labelledby={`${ns}s__${f.key}__legend`}>
+        <legend className={`${ui.label} mb-0.5`}><span id={`${ns}s__${f.key}__legend`}>{label}</span><HelpTip help={f.help ? L(f.help) : undefined} name={label} /></legend>
         <HelpBelow help={f.help ? L(f.help) : undefined} className="mb-2 text-[13px] leading-5 text-muted" />
         <div className="space-y-2.5">
-          {ordered.map((l) => control(f, `s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l), { inline: true, required: required && l === defaultLocale, resolved: resolveDefault(f, site(l)) }))}
+          {ordered.map((l) => control(f, `${ns}s__${f.key}__${l}`, stored[f.key]?.[l], localeName(l), { inline: true, required: required && l === defaultLocale, resolved: resolveDefault(f, site(l)) }))}
         </div>
       </fieldset>
     );
