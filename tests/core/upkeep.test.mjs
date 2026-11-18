@@ -137,11 +137,11 @@ async function menuHtml(user = owner, advanced = false) {
 const link = (html) => /<a[^>]*href="\/admin\/maintenance\/content"[\s\S]*?<\/a>/.exec(html)?.[0] ?? "";
 const tab = (html) => /<a[^>]*data-tab="upkeep"[\s\S]*?<\/a>/.exec(html)?.[0] ?? "";
 
-test("site propre (marqueur posé) : la page dit « Tout est à jour », rien à faire, aucun bouton ; ni le menu ni l'onglet n'ont de pastille", async () => {
+test("site propre (marqueur posé) : la page dit « Il ne reste rien d'une ancienne version », aucun bouton ; ni le menu ni l'onglet n'ont de pastille", async () => {
   await setMarker();
   const html = await pageHtml();
   assert.match(html, /data-testid="upkeep-status-clean"/);
-  assert.match(html, /Tout est à jour/);
+  assert.match(html, /Il ne reste rien d(?:'|&#x27;)une ancienne version/);
   assert.doesNotMatch(html, /upkeep-group-todo|upkeep-group-kept/);
   assert.match(html, /upkeep-group-done/, "le « terminé » est replié mais présent");
   const menu = link(await menuHtml());
@@ -162,7 +162,7 @@ test("copie gardée (Partenariats : 5 éléments + la reprise) : état « gardé
 
   const simple = await pageHtml(owner, false);
   assert.match(simple, /data-testid="upkeep-status-kept"/);
-  assert.match(simple, /Rien à faire/);
+  assert.match(simple, /Le site garde quelques restes d(?:'|&#x27;)une ancienne version/);
   assert.match(simple, /Gardé par prudence/);
   assert.match(simple, /Copies de sécurité d(?:'|&#x27;)anciennes données/);
   assert.match(simple, /comprises dans vos sauvegardes/);

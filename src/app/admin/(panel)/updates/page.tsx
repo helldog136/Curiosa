@@ -178,7 +178,6 @@ export default async function UpdatesPage() {
               <h2 className="text-base font-semibold">{t("updates.whatHappens")}</h2>
               <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted">
                 <li>{t("updates.happens.backup")}</li>
-                <li>{t("updates.happens.rollback")}</li>
                 <li>{t(`updates.restart.${info.restart}`)}</li>
                 <li>{t("updates.chainNote")}</li>
               </ul>

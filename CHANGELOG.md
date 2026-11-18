@@ -7,6 +7,43 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.36.0 — 2026-11-18
+
+**En bref.** Chaque écran du site ne montre plus que ce qui vous sert. Une application ou une connexion déjà réglée tient en une ligne (« Configuré », « Dégradé » ou « Non configuré ») avec un seul bouton « Modifier ». Les phrases qui rassurent, expliquent l'évidence ou disent « normalement » ont disparu.
+
+**In short.** Every screen of the site now shows only what is useful to you. An application or connection that is already set up fits on one line ("Configured", "Degraded" or "Not configured") with a single "Edit" button. The sentences that reassure, explain the obvious or say "normally" are gone.
+
+### Nouveautés
+
+- **Une ligne d'état pour chaque connexion.** Une application, un compte ou une fonction réglée montre son nom, son état et ce qui est réglé, puis un seul bouton « Modifier ». Les consignes de mise en place ne restent que tant que la mise en place n'est pas faite.
+- **(English) One state line per connection.** An application, an account or a feature that is set up shows its name, its state and what is set, then a single "Edit" button. Setup instructions only stay while the setup is not done.
+- **Un code secret déjà réglé ne ressemble plus à un champ vide.** Il s'affiche en points, et la fenêtre dit « Laisser vide pour garder l'actuel ».
+- **(English) A secret that is already set no longer looks like an empty field.** It shows as dots, and the window says "Leave empty to keep the current one".
+- **Les services externes ne parlent que s'il y a un problème.** Plus de ligne « répond normalement » ni de service « pas encore contacté » ; un même problème n'a plus qu'une ligne, même quand il touche plusieurs adresses.
+- **(English) External services only speak up when something is wrong.** No more "works normally" line or "not contacted yet" service; one problem gets one line, even when it touches several addresses.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Le tableau de bord se tait quand il n'y a rien à dire.** Plus de « Tout va bien », « Tout est à jour. Rien n'attend votre action » ni de carte vide : « À faire », « Ce qui s'est passé » et les cartes des extensions n'apparaissent que s'il y a quelque chose à montrer.
+- **(English) The dashboard stays quiet when there is nothing to say.** No more "All good", "Everything is up to date" or empty card: "To do", "What happened" and the extension cards only show when there is something to show.
+- **Des phrases retirées ou raccourcies partout.** « Rien n'est perdu », « Rien à faire », « en général une minute », « sans aucun risque », les notes sous les étapes qu'on peut passer et les « peut-être » là où le site connaît la raison. Les avertissements qui évitent une perte restent.
+- **(English) Sentences removed or shortened everywhere.** "Nothing is lost", "Nothing to do", "usually a minute", "without any risk", the notes under skippable steps and the "maybe" wherever the site knows the reason. Warnings that prevent a loss stay.
+
+### Après la mise à jour
+
+- Rien à faire. Les extensions qui ne connaissent pas encore la ligne d'état gardent leur écran actuel ; elles l'adoptent dans leurs prochaines versions.
+- **(English)** Nothing to do. Extensions that do not know the state line yet keep their current screen; they adopt it in their next versions.
+
+### Pour les développeurs
+
+- **New block `connection`** (`minCore` 0.36.0): `state`, `summary`, `reason`, `since`, `primary`, `edit`, `menu`, `setup` (only while `notConfigured`), `rows`, `net`. Rules in `core/adminkit/connection.ts`, card in `ConnectionCard.tsx`; see `docs/MODULES.md`.
+- **`valueHint` and `kind: "secret"`** on `adminForm` fields (`kept` | `carried`, `valueSource`, `valueTail`): a set value is never an empty-looking field. The manifest `secret` settings say "Leave empty to keep the current one" once set.
+- **`netHealth` is silent when healthy**: one line per problem, hosts with the same problem and time merged (`net.health.slow.many`, `net.health.down.many`), the hint in a "?" bubble. Removed keys: `net.health.ok`, `net.health.unknown`, `net.health.summary`. Merged into `connection.net` too.
+- **Kit `admin.ergonomics`**: new rules R33a to R33g (`STATE_VOCABULARY`, `FORBIDDEN_STATUS`, `CONDITIONAL_WORDS`, `FILLER_PHRASES`, `SETUP_PATTERN`, `assertConnectionStates`, `adminPageErgonomicsProblems(blocks, { state })`, static checks in `analyzeModule`). The copy of the kit in the modules repository must be updated with it; the modules' baselines grow once, in that batch.
+- **Core texts**: `tests/core/r33-core-texts.test.mjs` scans every FR and EN text of `src/locales` with the same checks; `tests/r33-core-baseline.json` is empty and can only shrink; justified exceptions are listed with their reason in the test.
+- **Fix**: the place functions (`places.ts`: `placeAdvice`, `placeIssues`, `moduleSections`, `moduleTopics`, `fullyPlaced`) no longer crash on a module that declares `places` but no `settings`; this made the kit check `places.budget` fail with "Cannot read properties of undefined (reading 'filter')". Regression test in `connection-block.test.mjs`.
+- **Tests**: `tests/core/connection-block.test.mjs`, `tests/testsupport-ergonomics.test.mjs` (R33a-g), `tests/core/net-health.test.mjs`.
+
 ## 0.35.0 — 2026-11-18
 
 **En bref.** Un nouvel interrupteur « Tous les pouvoirs » sur chaque accès d'assistant IA : une fois activé, cet assistant a tous les droits, y compris pour les outils que les prochaines mises à jour et les futures extensions ajouteront. Vous n'avez plus à recocher des droits après chaque mise à jour.

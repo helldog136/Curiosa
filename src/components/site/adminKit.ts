@@ -7,4 +7,7 @@ export { SuggestInstall } from "../admin/SuggestInstall";
 export { RefreshWhile } from "../admin/RefreshWhile";
 export { AdminTable } from "../admin/AdminTable";
 
+export { ConnectionCard } from "../admin/ConnectionCard";
+export { NetHealthNote } from "../admin/NetHealthNote";
+
 export type AdminKit = typeof import("./adminKit");

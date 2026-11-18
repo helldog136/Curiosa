@@ -253,6 +253,7 @@ export type PlaceSection = {
  * A setting belongs to one section at most; the first claim wins. Settings of the built-in "sources" and "general" tabs are never placed.
  */
 export function moduleSections(m: PlacesManifest, aliases: Record<string, string> = {}): PlaceSection[] {
+  m = { ...m, settings: m.settings ?? [] }; // a module with places and no `settings` (contacts-like) is valid
   const plan = planTabs(m.tabs);
   const tabOf = (key: string) => { const f = m.settings.find((s) => s.key === key); return f ? settingTab(plan, f) : null; };
   const claimed = new Set<string>();
@@ -288,6 +289,7 @@ export function moduleSections(m: PlacesManifest, aliases: Record<string, string
 
 /** Does this module place everything it shows (its own sidebar entry then goes, dual mode)? The "use" and "settings" content and every added tab must have a place. Sources and General stay on the module page. */
 export function fullyPlaced(m: PlacesManifest, sections: PlaceSection[], hostedByCore: (s: PlaceSection) => boolean = () => false): boolean {
+  m = { ...m, settings: m.settings ?? [] }; // a module with places and no `settings` (contacts-like) is valid
   const live = sections.filter((s) => !hostedByCore(s));
   if (!live.length) return false;
   const plan = planTabs(m.tabs);
@@ -328,6 +330,7 @@ function vocabularyTitleKeys(vocab: Vocabulary): Set<string> {
  * the catalogue vocabulary is applied again at runtime (merge rules).
  */
 export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCABULARY): string[] {
+  m = { ...m, settings: m.settings ?? [] }; // a module with places and no `settings` (contacts-like) is valid
   const issues: string[] = [];
   const decls: { where: string; id: string; place: string; d?: PlaceDecl }[] = [
     ...(m.places ?? []).map((d, i) => ({ where: `places[${i}]`, id: d.id, place: d.place, d })),
@@ -401,6 +404,7 @@ export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCAB
  * (soft limit, owner decision 2026-11-18). A vocabulary page may write a `sectionsReason` to say why it is fine (`live.alerts` has 5 tabs).
  */
 export function placeAdvice(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCABULARY): string[] {
+  m = { ...m, settings: m.settings ?? [] }; // a module with places and no `settings` (contacts-like) is valid
   const out: string[] = [];
   const perPage = new Map<string, number>();
   for (const s of moduleSections(m, vocab.aliases)) perPage.set(pageId(s.place), (perPage.get(pageId(s.place)) ?? 0) + 1);
@@ -670,6 +674,7 @@ export function placeBadges(index: PlaceIndex, badgeOf: (instanceId: string) => 
  * reserved groups; core pages are included (« Ajoute des réglages à : Apparence »).
  */
 export function moduleTopics(m: PlacesManifest, aliases: Record<string, string> = {}): string[] {
+  m = { ...m, settings: m.settings ?? [] }; // a module with places and no `settings` (contacts-like) is valid
   const seen = new Set<string>();
   for (const s of moduleSections(m, aliases)) if (groupStatus(s.place.group, BUILTIN_VOCABULARY) !== "reserved") seen.add(pageId(s.place));
   return [...seen];

@@ -4,6 +4,7 @@ import { numberHint, valueErrorKey } from "@/core/adminkit/hints";
 import { summarizeGroup } from "@/core/adminkit/summary";
 import type { FormLabels } from "./AdminBlocks";
 import type { TableLabels } from "./TableView";
+import type { ConnectionLabels } from "./ConnectionCard";
 import { periodLabels } from "./periodLabels";
 import en from "@/locales/en.json";
 
@@ -24,6 +25,11 @@ export function tableLabels(t: Translator): TableLabels {
     prev: t("table.prev"), next: t("table.next"), page: t("table.page"), pages: t("table.pages"), actions: t("table.actions"), menu: t("table.menu"),
     saved: t("switch.saved"), failed: t("switch.failed"), on: t("switch.on"), off: t("switch.off"),
   };
+}
+
+/** (0.36.0) The texts of the `connection` block: the three state words are written here, never by the module (R33). */
+export function connectionLabels(t: Translator): ConnectionLabels {
+  return { state: { configured: t("connection.state.configured"), degraded: t("connection.state.degraded"), notConfigured: t("connection.state.notConfigured") }, edit: t("connection.edit"), since: t("connection.since"), menu: t("connection.menu"), rows: t("connection.rowsMenu") };
 }
 
 /**
@@ -50,6 +56,7 @@ export function formLabels(t: Translator, locale: string, block: Extract<Block, 
     datetime: { date: t("datetime.date"), time: t("datetime.time"), clear: t("datetime.clear"), at: t("datetime.at"), preview: t("datetime.preview") },
     duration: { s: t("unit.s"), min: t("unit.min"), h: t("unit.h"), d: t("unit.d"), day: t("unit.day") },
     hints, invalid, fold,
+    ...(block.fields.some((f) => f.valueHint) ? { valueHint: { kept: t("field.kept"), carried: t("field.carried", { source: "{source}" }) } } : {}),
     ...(block.fields.some((f) => f.kind === "gallery") ? { gallery: Object.fromEntries(GALLERY_KEYS.map((k) => [k, t(k)])) } : {}),
     ...(block.fields.some((f) => f.kind === "gallery" && f.compose) ? { compose: Object.fromEntries(COMPOSE_KEYS.map((k) => [k, t(k)])) } : {}),
     dialog: { close: t("modal.close"), cancel: t("editDialog.cancel"), saved: t("action.saved"), discard: { message: t("editDialog.message"), discard: t("editDialog.discard"), keep: t("editDialog.keep") } },

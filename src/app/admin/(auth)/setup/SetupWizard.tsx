@@ -171,7 +171,7 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
             <legend className="text-2xl font-semibold tracking-tight">{t("setup.profile.title")}</legend>
             <p className="text-[15px] text-muted">{t("setup.profile.help")}</p>
             <div className="grid gap-3 sm:grid-cols-2" data-testid="setup-profiles">
-              {[...profiles.map((p) => ({ id: p.id, icon: p.icon, name: pick(p.names), help: pick(p.descriptions) })), { id: "other", icon: "✨", name: t("setup.profile.other"), help: t("setup.profile.otherHelp") }].map((p) => {
+              {[...profiles.map((p) => ({ id: p.id, icon: p.icon, name: pick(p.names), help: pick(p.descriptions) })), { id: "other", icon: "✨", name: t("setup.profile.other"), help: "" }].map((p) => {
                 const selected = p.id === "other" ? profile === null && profileTouched : profile === p.id;
                 return (
                   <label key={p.id} className={`relative flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${selected ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
@@ -182,14 +182,13 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
                     <span aria-hidden className="text-2xl leading-none">{p.icon}</span>
                     <span className="min-w-0">
                       <span className="block text-[17px] font-medium [overflow-wrap:anywhere]">{p.name}{selected && <span className="ml-2 text-accent" aria-hidden>✓</span>}</span>
-                      <span className="block text-sm text-muted [overflow-wrap:anywhere]">{p.help}</span>
+                      {p.help && <span className="block text-sm text-muted [overflow-wrap:anywhere]">{p.help}</span>}
                     </span>
                   </label>
                 );
               })}
             </div>
           </fieldset>
-          <p className="rounded-2xl bg-accent/5 p-4 text-sm" data-testid="profile-skip-note">{t("setup.profile.skip")}</p>
           <button type="button" className={ui.btn} data-testid="profile-skip" onClick={() => { chooseProfile(null); setProfileTouched(false); setStep((s) => s + 1); }}>{t("setup.profile.skipButton")} →</button>
         </div>
 
@@ -228,7 +227,6 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
               })}
             </MoreOptions>
           )}
-          <p className="rounded-2xl bg-accent/5 p-4 text-sm" data-testid="modules-skip-note">{t("setup.modules.skip")}</p>
           <button type="button" className={ui.btn} onClick={() => { setChosen([]); setSamples([]); setStep((s) => s + 1); }}>{t("setup.modules.skipButton")} →</button>
         </div>
 

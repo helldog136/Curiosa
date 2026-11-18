@@ -10,6 +10,7 @@ import { isSafeExternalUrl, safeHref } from "@/core/url";
 import { getSiteConfig } from "@/core/settings";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { describeNetHealth } from "@/core/netHealthText";
+import { connectionView } from "@/core/adminkit/connection";
 import { EntryList } from "./EntryList";
 import { Markdown } from "./Markdown";
 import { CoverImage } from "./CoverImage";
@@ -27,7 +28,7 @@ import { mayShowDownload } from "@/core/modules/downloadAccess";
 import { isEnhancedTable } from "@/core/adminkit/table";
 import { sanitizeTableImages } from "@/core/adminkit/image";
 import { imageHostsOfInstance } from "@/core/modules/imageHosts";
-import { formLabels, tableLabels } from "../admin/kitLabels";
+import { connectionLabels, formLabels, tableLabels } from "../admin/kitLabels";
 
 const TONES = {
   info: "bg-accent text-accent-fg",
@@ -35,8 +36,6 @@ const TONES = {
   warning: "bg-warning text-warning-fg",
 };
 
-/** Pastille de couleur de chaque état d'un service externe (bloc « netHealth »). */
-const NET_DOT = { ok: "bg-success", slow: "bg-warning", rate: "bg-warning", quota: "bg-warning", down: "bg-danger", unknown: "bg-line" } as const;
 
 /** Rend les blocs renvoyés par les modules. Les blocs "head" sont traités à part (voir HeadTags). */
 /** `n` éléments au hasard, sans répétition. */
@@ -60,7 +59,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
   const out: React.ReactNode[] = [];
   // The admin components come from `kit`, given by the admin pages only (see adminKit.ts). Each use below sits in a branch that needs an admin panel (`adminInstanceId`),
   // which only those pages set, so the names are defined whenever they are reached.
-  const { AdminBlockForm, RowActionButton, DialogLink, GridEditor, SuggestInstall, RefreshWhile } = kit ?? ({} as AdminKit);
+  const { AdminBlockForm, RowActionButton, DialogLink, GridEditor, SuggestInstall, RefreshWhile, ConnectionCard, NetHealthNote } = kit ?? ({} as AdminKit);
   // Admin pages get the table with its row buttons and switches; public pages get the same view without them (search, pills, pages, badges).
   const Table = kit?.AdminTable ?? TableView;
   // An edit dialog (`presentation: "dialog"`) comes last: opening it does not shift the position (so the identity and the state, search and filter) of the list under it.
@@ -292,28 +291,20 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
         break;
       case "netHealth": {
         // Santé des services externes : panneau d'admin uniquement (jamais sur le site public : l'état des fournisseurs ne regarde pas les visiteurs).
+        // R33 : quand tout répond, rien n'est affiché ; seuls les services en difficulté ont une ligne (une seule pour des hôtes qui ont le même problème depuis la même heure).
         if (!adminInstanceId) break;
         const view = describeNetHealth(block.items, locale);
         if (view.lines.length === 0) break;
-        out.push(
-          <section key={i} data-card="" data-skin-part="card" className="space-y-3 rounded-card border-token border-line bg-surface p-[var(--sk-card-pad,calc(var(--spacing)*4))]" aria-label={view.title}>
-            <h3 className="text-sm font-semibold">{view.title}</h3>
-            {view.summary && (
-              <div className="rounded-field border-token border-warning p-3 text-sm" role="status">
-                <p className="font-medium">{view.summary}</p>
-                {view.hint && <p className="mt-1 text-muted">{view.hint}</p>}
-              </div>
-            )}
-            <ul className="space-y-2">
-              {view.lines.map((l) => (
-                <li key={`${l.host}-${l.label}`} className="flex items-start gap-2 text-sm">
-                  <span aria-hidden="true" className={`mt-1.5 inline-block h-2 w-2 shrink-0 rounded-chip ${NET_DOT[l.state]}`} />
-                  <span className="min-w-0 break-words">{l.text}</span>
-                </li>
-              ))}
-            </ul>
-          </section>,
-        );
+        if (NetHealthNote) out.push(<NetHealthNote key={i} view={view} />);
+        break;
+      }
+      case "connection": {
+        // R33 : l'état d'une application, d'une connexion ou d'une fonction sur UNE ligne ; panneau d'admin d'une instance seulement (ni site public, ni éditeur d'entrée).
+        if (!panelInstanceId || entryScope || !ConnectionCard) break;
+        const view = connectionView(block, block.net ? describeNetHealth(block.net, locale).lines : []);
+        if (!view) break;
+        const setup = view.setup.length > 0 ? <Blocks blocks={view.setup.filter((b) => b.type !== "connection")} locale={locale} kit={kit} adminInstanceId={panelInstanceId} /> : undefined;
+        out.push(<ConnectionCard key={i} view={view} instanceId={panelInstanceId} labels={connectionLabels(makeTranslator(locale))} locale={locale} setup={setup} />);
         break;
       }
       case "suggestInstall":

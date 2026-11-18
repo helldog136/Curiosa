@@ -34,7 +34,12 @@ export type AdminField = {
      * `value`: the items already saved, as the JSON text the module receives. The module receives `values[name]` = `[{"src":"/uploads/<uuid>.<ext>","label":"…"}, …]`,
      * rebuilt and checked by the core (shape, kinds, `max`, `min`, no outside address). See docs/MODULES.md, "Gallery field".
      */
-    | "gallery";
+    | "gallery"
+    /**
+     * (core 0.36.0, `minCore` 0.36.0; an older core shows a text field) A SECRET (a password, an access code): the characters are hidden and no password manager offers to fill it
+     * (use it for a secret of a service, never for the password of a person). `value` is never sent back to the page: leave it empty and say that a value is set with `valueHint`.
+     */
+    | "secret";
   /**
    * `kind: "file"` : types acceptés (comme l'attribut HTML `accept`, par exemple « .csv,.txt »). Le cœur n'accepte de toute façon que du texte (csv, tsv, txt, json, vcf).
    * `kind: "gallery"` (0.14.0) : la liste des genres de fichiers acceptés, un sous-ensemble de `["image", "video", "audio"]` (images seulement si absent).
@@ -72,6 +77,16 @@ export type AdminField = {
    * defaultFormat?, maxBoxes?, testAction? }`. Each item of the value may then carry `compose` (a checked composition); the field holds 12 files at most. See docs/MODULES.md, "Compositions".
    */
   compose?: { variables?: { token: string; label: string; sample?: string }[]; phrase?: { label: string; sample?: string }; formats?: string[]; defaultFormat?: string; maxBoxes?: number; testAction?: string };
+  /**
+   * (core 0.36.0, optional; an older core ignores it) `kind: "secret"` or `"text"`/`"url"`: a value IS set but is not shown (a secret never looks like an empty field).
+   * `"kept"`: the field shows dots (or, for a `text`, `…` and the last characters in `valueTail`) and says "Leave empty to keep the current one"; an empty field posted back means "keep".
+   * `"carried"`: same, and adds "Taken from {valueSource}" so that the person knows the value was carried over from elsewhere. Leave `value` empty.
+   */
+  valueHint?: "kept" | "carried";
+  /** (core 0.36.0) `valueHint: "carried"`: where the value comes from, in the person's words ("the Twitch connector"). 60 characters at most. */
+  valueSource?: string;
+  /** (core 0.36.0) `valueHint` on a `text` / `url` field: the last 1 to 4 characters of the value, shown as "…a1b2" (never for a secret). */
+  valueTail?: string;
   /** (0.6.0) Champ rare : rangé sous « Plus d'options » (replié, avec un résumé de ce qui y est réglé, ouvert d'office si une valeur y est déjà). Il ne compte plus dans le budget de champs visibles. */
   folded?: boolean;
 };
@@ -267,6 +282,40 @@ export type Block =
    * `label` : nom lisible donné par le module (le cœur ne connaît aucun fournisseur) ; `lastGoodAt` (ISO 8601) : date des données affichées.
    */
   | { type: "netHealth"; items: { host: string; label: string; lastGoodAt?: string }[] }
+  /**
+   * (core 0.36.0, admin panel of an instance only, ignored elsewhere; an older core ignores the block: declare `minCore` "0.36.0") THE ONE-LINE STATE of an application, a
+   * connection or a feature (R33): a chip with one of three words written by the core ("Configured", "Degraded", "Not configured"), what is configured on ONE line, and ONE
+   * "Edit" button that opens the module's `adminForm` window (`presentation: "dialog"`). The module computes `state`; the core decides what is shown:
+   *  - `configured`: chip + `summary` + the edit button + the menu "⋯". `setup` is NEVER shown (setup instructions exist only while the step is not done);
+   *  - `degraded`: the same, plus `reason` (one line, in the person's words) and the fix `primary` (a link or an action) ; `since` adds "since 15 November";
+   *  - `notConfigured`: chip + `reason` (what is missing) + `setup` (the blocks that guide: a copy field, steps) + `primary`; no edit button (the setup is the edit).
+   * `net` folds the health of external services into the state: a `configured` connection whose host is down, paused or out of quota shows as `degraded` with one line, and
+   * nothing at all when every host answers (no "works normally" sentence). `rows` lists accounts or sources; only the ones that are not `configured` are shown (the summary says how many are fine).
+   * `menu` (at most 4) holds the rare actions ("Disconnect"): `action` runs an adminAction, `confirm` says what will be lost (R24), `danger` colours it red.
+   */
+  | {
+      type: "connection";
+      /** Stable id (the anchor of the card). */
+      id?: string;
+      /** A short noun phrase ("Twitch application"). */
+      title: string;
+      state: "configured" | "degraded" | "notConfigured";
+      /** ONE line of what is configured ("Client …a1b2 · 2 accounts connected"). Required when `configured`. */
+      summary?: string;
+      /** `degraded` / `notConfigured`: what is wrong or missing, in the person's words, one line. */
+      reason?: string;
+      /** ISO 8601: `degraded` only, written "since 15 November". */
+      since?: string;
+      /** The fix: a link (`href`) or an adminAction of the module (`action`, posted with `id`). */
+      primary?: { label: string; href?: string; action?: string };
+      /** The window of the module's form: `href` such as "?edit=app" (the page returns the `adminForm` with `presentation: "dialog"` when the address asks for it). `label` defaults to "Edit". */
+      edit?: { href: string; label?: string };
+      menu?: { label: string; action: string; confirm?: string; danger?: boolean; id?: string }[];
+      /** Blocks shown ONLY while `notConfigured`. */
+      setup?: Block[];
+      rows?: { text: string; state: "configured" | "degraded" | "notConfigured"; reason?: string; primary?: { label: string; href?: string; action?: string; id?: string } }[];
+      net?: { host: string; label: string; lastGoodAt?: string }[];
+    }
   /**
    * Suggestion d'installation (cœur 0.2.0, panneau d'admin d'une instance SEULEMENT, ignoré ailleurs) : « il manque un module qui offre `service` ».
    * Le cœur cherche lui-même dans le catalogue qui l'offre (version ≥ `min`) ; le propriétaire installe d'un clic ou dit « Ne plus proposer » ;

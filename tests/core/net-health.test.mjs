@@ -26,31 +26,27 @@ const items = [
   { host: "never.example.org", label: "Service F" },
 ];
 
-test("bloc santé en français : une phrase simple par service, l'heure de reprise, la date des données, et le message d'ensemble", () => {
+test("bloc santé en français : une phrase simple par service EN DIFFICULTÉ (l'heure de reprise, la date des données) ; rien pour un hôte qui répond ou jamais contacté (R33)", () => {
   const v = describeNetHealth(items, "fr", { now, lookup });
   const t = v.lines.map((l) => l.text);
   assert.equal(v.title, "Services externes");
-  assert.equal(t[0], "Service A répond normalement.");
-  assert.match(t[1], /^Service B répond lentement depuis 10:42\. Les données affichées datent de 10:30\.$/);
-  assert.match(t[2], /^Service C : trop de demandes, pause jusqu'à 11:30\.$/);
-  assert.match(t[3], /^Service D : quota du jour épuisé, reprise à .*09:00\.$/);
-  assert.match(t[4], /^Service E ne répond pas depuis 10:15\. Les données affichées datent de 10:00\.$/);
-  assert.match(t[5], /pas encore contacté/);
-  assert.deepEqual(v.lines.map((l) => l.state), ["ok", "slow", "rate", "quota", "down", "unknown"]);
-  assert.equal(v.summary, "Un service externe ne répond pas : le site affiche les dernières données connues.");
-  assert.match(v.hint, /reprise est automatique/);
+  assert.equal(t.length, 4, "Service A (ok) et Service F (jamais contacté) n'ont aucune ligne");
+  assert.match(t[0], /^Service B répond lentement depuis 10:42\. Les données affichées datent de 10:30\.$/);
+  assert.match(t[1], /^Service C : trop de demandes, pause jusqu'à 11:30\.$/);
+  assert.match(t[2], /^Service D : quota du jour épuisé, reprise à .*09:00\.$/);
+  assert.match(t[3], /^Service E ne répond pas depuis 10:15\. Les données affichées datent de 10:00\.$/);
+  assert.deepEqual(v.lines.map((l) => l.state), ["slow", "rate", "quota", "down"]);
+  assert.match(v.hint, /reprend tout seul/);
 });
 
-test("bloc santé en anglais ; tout va bien = pas de message d'ensemble ; entrées invalides ignorées, 20 au plus", () => {
+test("bloc santé en anglais ; tout va bien = aucune ligne ni infobulle ; entrées invalides ignorées, 20 au plus", () => {
   const v = describeNetHealth(items, "en", { now, lookup });
   assert.equal(v.title, "External services");
-  assert.equal(v.lines[0].text, "Service A is working normally.");
-  assert.match(v.lines[2].text, /^Service C: too many requests, paused until 11:30/);
-  assert.match(v.lines[4].text, /has not been responding since .* The data shown is from/);
-  assert.equal(v.summary, "An external service is not responding: the site shows the last known data.");
+  assert.match(v.lines[1].text, /^Service C: too many requests, paused until 11:30/);
+  assert.match(v.lines[3].text, /has not been responding since .* The data shown is from/);
   const calm = describeNetHealth([{ host: "ok.example.org", label: "A" }, null, { host: 3 }, { label: "x" }, ...Array.from({ length: 30 }, () => ({ host: "ok.example.org", label: "A" }))], "fr", { now, lookup });
-  assert.equal(calm.summary, null);
-  assert.equal(calm.lines.length, 17, "les 20 premières entrées seulement, dont 3 invalides");
+  assert.deepEqual(calm.lines, []);
+  assert.equal(calm.hint, null);
 });
 
 test("le bloc lit le VRAI état du client partagé par défaut", async () => {
@@ -58,6 +54,7 @@ test("le bloc lit le VRAI état du client partagé par défaut", async () => {
   await withFakeFetch({ "*": netReplies.rateLimited(300) }, () => N.sharedNet().request({ url: "https://shared.example.org/x" }));
   const v = describeNetHealth([{ host: "shared.example.org", label: "Service" }], "fr");
   assert.equal(v.lines[0].state, "rate");
+  assert.deepEqual(describeNetHealth([{ host: "never-called.example.org", label: "Service" }], "fr").lines, []);
   N.resetSharedNet();
 });
 

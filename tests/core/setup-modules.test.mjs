@@ -75,12 +75,12 @@ test("assistant sans réseau : aucun module proposé (message dédié), rien n'e
 test("assistant : étape facultative qui dit qu'on peut la passer sans risque ; seuls les modules proposés et cochés sont installés ; sans catalogue, un message simple et le tableau de bord le redit", () => {
   const wizard = fs.readFileSync("src/app/admin/(auth)/setup/SetupWizard.tsx", "utf8");
   assert.match(wizard, /data-step|section\("modules"\)/);
-  assert.match(wizard, /setup\.modules\.skip"/);
+  assert.doesNotMatch(wizard, /setup\.modules\.skip"/, "R33: no sentence next to a button that says what it does");
   assert.match(wizard, /setup\.modules\.skipButton/);
   assert.match(wizard, /setup\.modules\.unreachable/);
   assert.ok(!/preselected/.test(wizard), "rien n'est coché d'avance");
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
-  assert.match(fr["setup.modules.skip"], /passer cette étape sans aucun risque/);
+  assert.ok(!("setup.modules.skip" in fr), "la note « sans aucun risque » est retirée (R33)");
   assert.equal(fr["dashboard.modulesFailed"], "Aucune extension n'a pu être installée (catalogue injoignable) : installez-les plus tard depuis Extensions › Ajouter.");
   const actions = fs.readFileSync("src/app/admin/(auth)/setup/actions.ts", "utf8");
   assert.match(actions, /installChosenModules\(presetIds\)/, "une valeur envoyée à la main n'ajoute aucun module : seuls les suggérés sont installés");

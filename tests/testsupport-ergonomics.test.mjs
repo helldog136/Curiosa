@@ -351,3 +351,103 @@ test("vignette de tableau : sans texte alternatif (R28) ou sans adresse affichab
   assert.deepEqual(rules({ src: "https://tiers.example.net/z.jpg", alt: "x" }), [], "sans liste d'hôtes, seule la forme est contrôlée");
   for (const src of ["/api/admin/x", "/admin/users", "/a/../b", "//x.example/y", "http://media.example.org/z", "javascript:alert(1)", "https://u@media.example.org/z", ""]) assert.deepEqual(rules({ src, alt: "x" }, { imageHosts: ["media.example.org"] }), ["R16"], src);
 });
+
+/* ───────────── R33 (a to g), core 0.36.0 ───────────── */
+import { conditionalWording, fillerPhrases, forbiddenStatus, assertConnectionStates, STATE_VOCABULARY, CONNECTION_STATES, CONDITIONAL_WORDS, FILLER_PHRASES, FORBIDDEN_STATUS } from "../testsupport/ergonomics.mjs";
+
+const page = (blocks, opts) => adminPageErgonomicsProblems(blocks, opts);
+const has = (problems, rule) => problems.filter((p) => p.rule === rule);
+const conn = (state, extra = {}) => ({ type: "connection", id: "app", title: "Application", state, edit: { href: "?edit=app" }, ...extra });
+
+test("R33a : l'état se dit avec trois mots ; un mot interne est refusé dans une pastille, un bloc « connection » mal formé aussi", () => {
+  assert.deepEqual(STATE_VOCABULARY.fr, { configured: "Configuré", degraded: "Dégradé", notConfigured: "Non configuré" });
+  assert.deepEqual(STATE_VOCABULARY.en, { configured: "Configured", degraded: "Degraded", notConfigured: "Not configured" });
+  assert.deepEqual(CONNECTION_STATES, ["configured", "degraded", "notConfigured"]);
+  for (const w of ["Reprise", "Repris", "Prête", "Incomplète", "Pris ailleurs", "Legacy", "Hérité", "Carried over", "Taken over", "Bridged", "Adopté"]) assert.deepEqual(forbiddenStatus(w).length, 1, w);
+  for (const w of ["Configuré", "Dégradé", "Non configuré", "En direct", "etoile_nord"]) assert.deepEqual(forbiddenStatus(w), [], w);
+  assert.deepEqual(forbiddenStatus("Une page prête à être publiée après relecture complète"), [], "une phrase n'est pas une pastille");
+  const cells = [[{ text: "Reprise", badge: "info" }], [{ text: "Configuré", badge: "ok" }]];
+  assert.equal(has(page([{ type: "table", columns: ["État"], rows: cells }]), "R33a").length, 1);
+  assert.ok(has(page([conn("ready", { summary: "x" })]), "R33a").length >= 1, "état inconnu");
+  assert.equal(has(page([conn("degraded", { summary: "x" })]), "R33a").length >= 2, true, "dégradé sans raison ni marche à suivre");
+  assert.equal(has(page([conn("degraded", { reason: "Refusé", primary: { label: "Autoriser", href: "/x" }, summary: "x" })]), "R33a").length, 0);
+  assert.equal(has(page([conn("configured", { summary: "Client …a1b2" })]), "R33a").length, 0);
+  assert.equal(has(page([conn("configured")]), "R33a").length, 1, "configuré sans résumé");
+  assert.equal(has(page([conn("notConfigured", { reason: "Rien n'est enregistré", setup: [{ type: "copy", text: "x" }], edit: undefined })]), "R33a").length, 0);
+  const locale = analyzeModule(mod({}, { fr: { chip_state_taken: "Reprise", note: "Reprise du direct" }, en: { chip_state_taken: "Taken over", note: "Resuming the stream" } })).filter((g) => g.rule === "R33a");
+  assert.equal(locale.length, 2, "seules les clés d'état sont jugées");
+});
+
+test("R33b : une page configurée ne garde pas un formulaire dont tous les champs sont remplis ; une fenêtre, un formulaire vide ou non configuré passent", () => {
+  const filled = { type: "adminForm", action: "save", submitLabel: "Enregistrer l'application", fields: [{ name: "id", label: "Application", value: "abc" }, { name: "key", label: "Code", kind: "secret", valueHint: "kept" }] };
+  assert.equal(has(page([filled], { state: "configured" }), "R33b").length, 1);
+  assert.equal(has(page([filled]), "R33b").length, 0, "sans état déclaré : pas de contrôle");
+  assert.equal(has(page([filled], { state: "notConfigured" }), "R33b").length, 0);
+  assert.equal(has(page([{ ...filled, presentation: "dialog", cancelHref: "?" }], { state: "configured" }), "R33b").length, 0, "derrière « Modifier »");
+  assert.equal(has(page([{ ...filled, fields: [{ name: "id", label: "Application", value: "" }] }], { state: "configured" }), "R33b").length, 0);
+  assert.equal(has(page([{ ...filled, fields: [{ name: "id", label: "Application", value: "abc", folded: true }] }], { state: "configured" }), "R33b").length, 0, "replié");
+  // static: a secret or an identifier setting visible in simple mode
+  const m = mod({ settings: [{ key: "clientId", type: "text", label: L("Application", "Application"), help: L("Par exemple : abc.", "For example: abc.") }, { key: "apiSecret", type: "secret", label: L("Code", "Code") }, { key: "apiKeyAdv", type: "secret", advanced: true, label: L("Code", "Code") }, { key: "title", type: "text", default: "x", label: L("Titre", "Title") }] });
+  assert.deepEqual(only(m, "R33b").map((g) => g.where), ["setting:apiSecret", "setting:clientId"]);
+});
+
+test("R33c : deux lignes d'état identiques qui se suivent échouent ; des lignes différentes ou séparées passent", () => {
+  const b = (text) => ({ type: "banner", text, href: "/x" });
+  assert.equal(has(page([b("Twitch ne répond pas"), b("Twitch ne répond pas")]), "R33c").length, 1);
+  assert.equal(has(page([b("Twitch ne répond pas"), { type: "heading", text: "Comptes" }, b("Twitch ne répond pas")]), "R33c").length, 0);
+  assert.equal(has(page([b("Twitch ne répond pas"), b("YouTube ne répond pas")]), "R33c").length, 0);
+  assert.equal(has(page([{ type: "markdown", text: "Un état  identique." }, { type: "markdown", text: "un état identique." }]), "R33c").length, 1, "casse, accents et espaces ignorés");
+});
+
+test("R33d : un bandeau de bonne nouvelle sans action échoue ; avec action, ou une alerte, il passe", () => {
+  assert.equal(has(page([{ type: "banner", text: "Votre compte est enregistré", tone: "success" }]), "R33d").length, 1);
+  assert.equal(has(page([{ type: "banner", text: "Tout fonctionne" }]), "R33d").length, 1);
+  assert.equal(has(page([{ type: "banner", text: "Tout fonctionne", href: "/x" }]), "R33d").length, 0);
+  assert.equal(has(page([{ type: "banner", text: "Le code a expiré", tone: "warning" }]), "R33d").length, 0);
+});
+
+test("R33e : la formulation conditionnelle ou approximative échoue (FR et EN), une exception justifiée passe", () => {
+  for (const t of ["Ajoutez-la si ce n'est pas déjà fait", "Cela marche normalement", "En général, une minute", "C'est peut-être passager", "Au besoin, cliquez", "If not already done, add it", "It usually takes a minute", "Maybe later"]) assert.ok(conditionalWording(t).length >= 1, t);
+  for (const t of ["Ajoutez cette adresse", "Le code a expiré", "Renewal is automatic"]) assert.deepEqual(conditionalWording(t), [], t);
+  const m = mod({ settings: [field("a", { help: L("Collez le lien, normalement.", "Paste the link, normally.") })] }, { fr: { x: "Si ce n'est pas déjà fait" }, en: { x: "If not already done" } });
+  assert.ok(only(m, "R33e").length >= 4);
+  assert.ok(CONDITIONAL_WORDS.every((w) => w === w.toLowerCase() && !/[é-ï]/.test(w)), "la liste est pliée (minuscules, sans accents)");
+});
+
+test("R33f : une page configurée ne montre aucune consigne de mise en place ; l'état à configurer, oui", () => {
+  const setup = [{ type: "copy", text: "https://exemple.test/retour" }];
+  assert.equal(has(page(setup, { state: "configured" }), "R33f").length, 1);
+  assert.equal(has(page(setup, { state: "notConfigured" }), "R33f").length, 0);
+  assert.equal(has(page(setup), "R33f").length, 0);
+  assert.equal(has(page([{ type: "markdown", text: "Collez cette adresse dans les Redirect URLs." }], { state: "configured" }), "R33f").length, 1);
+  assert.equal(has(page([{ type: "markdown", text: "Compte etoile_nord connecté." }], { state: "configured" }), "R33f").length, 0);
+  assert.equal(has(page([{ type: "suggestInstall", service: "x", reason: "y" }], { state: "configured" }), "R33f").length, 1);
+  assert.equal(has(page([conn("configured", { summary: "Client …a1b2", setup })], { state: "configured" }), "R33f").length >= 1, true, "le bloc configuré ne porte pas de consignes");
+});
+
+test("R33g : les phrases de remplissage échouent (FR et EN)", () => {
+  for (const t of ["Rien à faire : la reprise est automatique", "Tout va bien", "Vous n'avez rien à régler", "C'est normal", "Sans risque", "Nothing to do here", "Everything is fine", "Don't worry"]) assert.ok(fillerPhrases(t).length >= 1, t);
+  for (const t of ["Ce lien expire demain", "Le compte etoile_nord est connecté"]) assert.deepEqual(fillerPhrases(t), [], t);
+  const m = mod({ description: L("Tout fonctionne, rien à faire.", "All is well.") });
+  assert.ok(only(m, "R33g").length >= 2);
+  assert.ok([...FILLER_PHRASES, ...FORBIDDEN_STATUS].every((w) => w === w.toLowerCase() && !/[é-ï]/.test(w)));
+});
+
+test("assertConnectionStates : les trois états doivent être présents et corrects ; le configuré n'a ni mise en place ni formulaire rempli", () => {
+  const okSetup = [conn("notConfigured", { reason: "Aucun identifiant n'est enregistré", edit: undefined, setup: [{ type: "copy", text: "https://exemple.test/retour" }] })];
+  const okConf = [conn("configured", { summary: "Client …a1b2" })];
+  const okDeg = [conn("degraded", { summary: "Client …a1b2", reason: "Le compte etoile_nord doit être autorisé", primary: { label: "Autoriser de nouveau", href: "/x" } })];
+  assert.doesNotThrow(() => assertConnectionStates({ notConfigured: okSetup, configured: okConf, degraded: okDeg }));
+  assert.throws(() => assertConnectionStates({ notConfigured: okSetup, configured: okConf }), /« degraded » manque|degraded/);
+  assert.throws(() => assertConnectionStates({ notConfigured: okSetup, configured: okDeg, degraded: okDeg }), /dit « degraded »/);
+  assert.throws(() => assertConnectionStates({ notConfigured: okSetup, configured: [...okConf, { type: "copy", text: "https://exemple.test/retour" }], degraded: okDeg }), /R33f/);
+  assert.throws(() => assertConnectionStates({ notConfigured: [conn("notConfigured", { reason: "Rien", edit: undefined, primary: { label: "Commencer", href: "/x" } })], configured: okConf, degraded: okDeg }), /ni consignes/);
+  assert.throws(() => assertConnectionStates({ notConfigured: okSetup, configured: [], degraded: okDeg }), /aucun bloc « connection »/);
+});
+
+test("l'exigence admin.ergonomics trie R33a… après R29 et décrit R33 ; chaque règle R33 a son texte", async () => {
+  const { RULES } = await import("../testsupport/ergonomics.mjs");
+  for (const r of ["R33a", "R33b", "R33c", "R33d", "R33e", "R33f", "R33g"]) assert.ok(RULES[r], r);
+  const src = fs.readFileSync("testsupport/requirements/ergonomics.mjs", "utf8");
+  assert.match(src, /parseInt\(a\.slice\(1\), 10\)/);
+});
