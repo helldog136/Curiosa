@@ -14,7 +14,6 @@ const Rec = await import("@/core/modules/recognized");
 const Ret = await import("@/core/modules/retired");
 const Plan = await import("@/core/modules/retiredPlan");
 const Removal = await import("@/core/modules/removal");
-const Legacy = await import("@/core/modules/legacyOff");
 const Def = await import("@/core/modules/defaultInstance");
 const { createInstance, removeInstance } = await import("@/core/instanceService");
 const { moduleActionProvider } = await import("@/core/modules/mcpProvider");
@@ -109,21 +108,12 @@ test("retrait (pur) : le propriétaire qui retire la seule instance retire le mo
   assert.equal(Removal.removalNoticeHref("/admin/extensions", { notice: "kept", name: "Blog & Cie" }), "/admin/extensions?notice=kept&name=Blog+%26+Cie");
 });
 
-test("migration des éteints (pur) : un module éteint part avec toutes ses instances ; une instance éteinte d'un module allumé part seule", () => {
-  const p = Legacy.legacyOffPlan(
-    [{ id: "b", enabled: false }, { id: "a", enabled: true }, { id: "c", enabled: true }],
-    [{ id: "1", moduleId: "a", enabled: true }, { id: "2", moduleId: "a", enabled: false }, { id: "3", moduleId: "b", enabled: false }, { id: "4", moduleId: "b", enabled: true }, { id: "5", moduleId: "orphelin", enabled: false }],
-  );
-  assert.deepEqual(p, { modules: ["b"], instances: ["2", "5"] });
-  assert.deepEqual(Legacy.legacyOffPlan([{ id: "a", enabled: true }], [{ id: "1", moduleId: "a", enabled: true }]), { modules: [], instances: [] });
-});
-
 /* ───────────── Désinstaller : garder ou tout effacer ───────────── */
 
 test("garder mes données : plus rien de vivant (site, API, MCP, menu), tout rangé ; installé = actif", async () => {
   await publish("journal");
   assert.equal((await I.installFromCatalogue("journal", { firstInstance: false })).ok, true);
-  assert.equal((await prisma.module.findUnique({ where: { id: "journal" } })).enabled, true, "installé = actif, pas d'état intermédiaire");
+  assert.ok(await prisma.module.findUnique({ where: { id: "journal" } }), "installé = actif, pas d'état intermédiaire");
   const { inst } = await richInstance("journal");
   assert.equal((await R.getActiveInstances()).length, 1);
   assert.equal((await moduleActionProvider.list()).length, 1, "l'outil MCP du module existe tant qu'il est installé");
@@ -283,46 +273,6 @@ test("la règle de nettoyage des dépendances s'applique à la désinstallation 
   // le nettoyage passe par le même choix
   assert.equal((await I.uninstallModule("fourn", { keepData: false })).ok, true);
   assert.deepEqual(await Auto.cleanupSuggestions(), []);
-});
-
-/* ───────────── Les « éteints » d'avant : rangés, rien de perdu ───────────── */
-
-test("migration des éteints : module éteint = désinstallé, données gardées ; instance éteinte d'un module allumé = retirée, données gardées ; idempotent", async () => {
-  await publish("eteint"); await publish("allume");
-  await I.installFromCatalogue("eteint", { firstInstance: false }); await I.installFromCatalogue("allume", { firstInstance: false });
-  const e1 = await richInstance("eteint", "E1");
-  const keep = await richInstance("allume", "Gardée");
-  const off = await richInstance("allume", "Éteinte");
-  // l'état d'un site d'avant la 0.1.20
-  await prisma.module.update({ where: { id: "eteint" }, data: { enabled: false } });
-  await prisma.moduleInstance.update({ where: { id: off.inst.id }, data: { enabled: false } });
-
-  const done = await Legacy.retireLegacyOff();
-  assert.deepEqual(done, { modules: ["eteint"], instances: [off.inst.id] });
-  assert.equal(await prisma.module.findUnique({ where: { id: "eteint" } }), null);
-  assert.ok(await prisma.module.findUnique({ where: { id: "allume" } }));
-  assert.deepEqual((await prisma.moduleInstance.findMany()).map((i) => i.id), [keep.inst.id], "seule l'instance allumée reste");
-  assert.deepEqual((await Ret.listRetired()).map((k) => [k.moduleId, k.reason]).sort(), [["allume", "legacy"], ["eteint", "legacy"]]);
-  assert.deepEqual(await Legacy.retireLegacyOff(), { modules: [], instances: [] }, "rien de plus au second passage");
-  assert.ok((await prisma.auditLog.findMany()).some((a) => a.action === "module.legacy.off" && a.target === "eteint"));
-
-  // rien n'est perdu : en réinstallant, tout revient
-  const before = await snapshot(e1.inst.id);
-  void before;
-  const r = await I.installFromCatalogue("eteint", { firstInstance: false });
-  assert.deepEqual(r.restored, [e1.inst.key]);
-  assert.equal((await prisma.entry.count({ where: { instanceId: e1.inst.id } })), 1);
-  assert.equal((await Ret.restoreInstance(off.inst.id)).ok, true);
-  assert.equal((await prisma.moduleInstance.findUnique({ where: { id: off.inst.id } })).enabled, true, "revenue allumée : il n'y a plus d'autre état");
-});
-
-test("code temporaire : la migration des éteints est signalée dans son fichier, déclarée dans le test d'échéance, appelée par la restauration et plus par le démarrage", () => {
-  const file = fs.readFileSync("src/core/modules/legacyOff.ts", "utf8");
-  assert.match(file, /TEMPORAIRE — À SUPPRIMER APRÈS LA /);
-  assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /runLegacySweep/);
-  assert.doesNotMatch(fs.readFileSync("src/core/modules/legacySweep.ts", "utf8"), /retireLegacyOff/, "le démarrage ne range plus les éteints (version minimale de mise à jour 0.2.0)");
-  assert.match(fs.readFileSync("src/core/backup/restore.ts", "utf8"), /await retireLegacyOff\(\)/, "la restauration d'une sauvegarde d'avant la 0.1.20 les range encore");
-  assert.match(fs.readFileSync("tests/core/temporary-code.test.mjs", "utf8"), /legacyOff\.ts/);
 });
 
 /* ───────────── Sauvegarde ───────────── */

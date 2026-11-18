@@ -55,12 +55,11 @@ const migration = (body) => `export default { migrations: { 2: async (ctx) => { 
  *  - par défaut : plan 1.0.0 puis `update()` = la vraie mise à jour (migration PUIS cascade des dépendances, comme en production) ;
  *  - `direct: true` : plan 1.1.0 installé tel quel, données remises à la version 1, `update()` = la seule migration (aucune cascade après elle : on voit l'état exact laissé par un échec).
  */
-async function setupPlan({ body = STANDARD, v2 = {}, enabled = true, direct = false, settings = { icalUrl: URL1, icalToken: SECRET, title: "Mon planning" } } = {}) {
+async function setupPlan({ body = STANDARD, v2 = {}, direct = false, settings = { icalUrl: URL1, icalToken: SECRET, title: "Mon planning" } } = {}) {
   const manifestV2 = planManifest("1.1.0", 2, v2);
   const repo = makeRepo({ "module.json": direct ? manifestV2 : planManifest("1.0.0"), "index.mjs": direct ? migration(body) : "export default {};" });
   repo.g("tag", "v1.0.0");
   assert.equal((await I.installModule(`${repo.url}#v1.0.0`, { firstInstance: false, dependencies: false })).ok, true);
-  if (enabled) await db.prisma.module.update({ where: { id: "plan" }, data: { enabled: true } });
   const inst = await createInstance(db.prisma, { manifest: (await R.getModule("plan")).manifest, names: { fr: "Plan" } });
   for (const [k, v] of Object.entries(settings)) await setSetting(`instance.${inst.id}.${k}`, v);
   if (direct) {
@@ -72,10 +71,10 @@ async function setupPlan({ body = STANDARD, v2 = {}, enabled = true, direct = fa
   repo.g("commit", "-qam", "release 1.1.0"); repo.g("tag", "v1.1.0");
   return { inst, repo, update: () => I.updateModule("plan") };
 }
-async function installAgenda(over = {}, { enabled = true } = {}) {
+async function installAgenda(over = {}) {
   const repo = makeRepo({ "module.json": agendaManifest(over), "index.mjs": "export default {};" });
   assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
-  if (enabled)  return repo;
+  return repo;
 }
 const agendaInstances = () => db.prisma.moduleInstance.findMany({ where: { moduleId: "agenda" }, orderBy: { key: "asc" } });
 const sv = (id, key) => getSetting(`instance.${id}.${key}`);
@@ -104,7 +103,6 @@ test("de bout en bout : migration → instance semée (secret compris) → ancie
   const [seeded] = await agendaInstances();
   assert.equal((await agendaInstances()).length, 1);
   assert.equal(seeded.nickname, "Agenda iCal");
-  assert.equal(seeded.enabled, true);
   assert.equal(seeded.key, "agenda-ical");
   assert.equal(await sv(seeded.id, "url"), URL1);
   assert.equal(await sv(seeded.id, "token"), SECRET, "le secret est enregistré comme par l'admin (même table de réglages)");
@@ -282,13 +280,13 @@ test("une instance existante n'est jamais écrasée : la graine crée une AUTRE 
 });
 
 test("module cible déjà installé : l'instance semée est créée, active ; réglages traduisibles et noms acceptés", async () => {
-  await installAgenda({}, { enabled: false });
+  await installAgenda({});
   const { update } = await setupPlan({ direct: true, body: `
     await ctx.seedInstance("agenda", { nickname: "Planning", names: { fr: "Planning Twitch", en: "Twitch schedule", de: "ignoré" }, seedKey: "k", settings: { url: ctx.setting("icalUrl"), label: { fr: "Bonjour", en: "Hello" }, mode: "b", count: 3 } });
     await ctx.clearSetting("icalUrl");` });
   assert.equal((await update()).ok, true);
   const [seeded] = await agendaInstances();
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, true);
+  assert.ok(await db.prisma.module.findUnique({ where: { id: "agenda" } }));
   assert.deepEqual((await db.prisma.instanceTranslation.findMany({ where: { instanceId: seeded.id } })).map((n) => [n.locale, n.name]).sort(), [["en", "Twitch schedule"], ["fr", "Planning Twitch"]]);
   assert.deepEqual([await sv(seeded.id, "mode"), await sv(seeded.id, "count")], ["b", 3]);
   assert.equal(await getSetting(`instance.${seeded.id}.label`, "en"), "Hello");
@@ -327,10 +325,9 @@ test("cascade : cible absente → installée depuis le catalogue SANS instance p
   const result = await update();
   assert.deepEqual(migrated(result), [["ok", undefined]]);
   const row = await db.prisma.module.findUnique({ where: { id: "agenda" } });
-  assert.deepEqual([row?.enabled, row?.source], [true, "git"]);
+  assert.deepEqual([!!row, row?.source], [true, "git"]);
   const instances = await agendaInstances();
   assert.equal(instances.length, 1, "uniquement l'instance semée : pas d'instance par défaut vide à côté");
-  assert.equal(instances[0].enabled, true);
   assert.equal(await sv(instances[0].id, "url"), URL1);
   assert.equal(await sv(inst.id, "icalUrl"), undefined);
   assert.deepEqual((await Auto.readAuto()).agenda?.for, ["plan"]);
@@ -373,9 +370,9 @@ test("cascade : cible ni installée ni dans le catalogue, ou catalogue injoignab
 
 test("cascade : la cible installée par le semis est active, avec son instance semée", async () => {
   await publishAgenda();
-  const { update } = await setupPlan({ direct: true, enabled: false });
+  const { update } = await setupPlan({ direct: true });
   assert.deepEqual(migrated(await update()), [["ok", undefined]]);
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "agenda" } })).enabled, true);
+  assert.ok(await db.prisma.module.findUnique({ where: { id: "agenda" } }));
   assert.equal((await agendaInstances()).length, 1);
 });
 

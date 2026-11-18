@@ -68,7 +68,7 @@ test("MISE À JOUR SANS PERTE DE DONNÉES : le code change, instances, réglages
   const done = await updateModule("demo");
   assert.deepEqual([done.ok, done.id], [true, "demo"]);
   const row = await mod();
-  assert.deepEqual([row.ref, row.version, row.commit !== before, row.enabled], ["v1.1.0", "1.1.0", true, true], "étiquette suivie, version et commit à jour, toujours activé");
+  assert.deepEqual([row.ref, row.version, row.commit !== before, !!row], ["v1.1.0", "1.1.0", true, true], "étiquette suivie, version et commit à jour, toujours activé");
   assert.match(fs.readFileSync(path.join(moduleDir("demo"), "index.mjs"), "utf8"), /version 1\.1\.0/);
   assert.equal((await R.getModule("demo")).def.sections.hello().at(0).text, "version 1.1.0", "le nouveau code est celui chargé");
   // les données, intactes

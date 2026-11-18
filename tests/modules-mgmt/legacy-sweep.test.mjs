@@ -31,14 +31,13 @@ async function module(id, manifest = {}, code = "export default {};", row = {}) 
   const full = { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", ...manifest };
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(full));
   fs.writeFileSync(path.join(dir, "index.mjs"), code);
-  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version, enabled: true, ...row } });
+  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version, ...row } });
   R.forgetModule(id);
   return full;
 }
-async function instance(id, nickname, enabled = true) {
+async function instance(id, nickname) {
   const mod = await R.getModule(id);
   const inst = await createInstance(prisma, { manifest: mod.manifest, nickname, names: { fr: nickname } });
-  if (!enabled) await prisma.moduleInstance.update({ where: { id: inst.id }, data: { enabled: false } });
   return inst;
 }
 /** Dernière copie reçue du catalogue (sans réseau). */
@@ -65,7 +64,6 @@ test("base d'avant : lignes bundled/builtin comptées et laissées telles quelle
 
   const before = await Rp.legacyReport();
   assert.deepEqual(before.sourceRows.map((r) => [r.id, r.source]), [["agenda", "bundled"], ["carnet", "bundled"], ["vieux", "builtin"]]);
-  assert.deepEqual(before.switchedOff, { modules: [], instances: [] }, "champ gardé, toujours vide");
   assert.equal(before.converted, false);
 
   const lines = [];
@@ -91,16 +89,6 @@ test("base d'avant : lignes bundled/builtin comptées et laissées telles quelle
   assert.equal(typeof m.at, "string");
   assert.equal(m.version, JSON.parse(fs.readFileSync("package.json", "utf8")).version);
   assert.equal(await Rp.legacyConversionPending(), false);
-});
-
-test("un module éteint d'avant la 0.1.20 n'est plus compté ni rangé au démarrage (la 0.2.0 l'a fait) ; le site démarre et pose le marqueur", async () => {
-  await module("eteint", {}, "export default {};", { enabled: false });
-  await module("allume");
-  const rep = await Rp.legacyReport();
-  assert.deepEqual([rep.totals.switchedOffModules, rep.totals.switchedOffInstances], [0, 0]);
-  const r = await S.runLegacySweep(silent);
-  assert.equal(r.done, true);
-  assert.ok(await prisma.module.findUnique({ where: { id: "eteint" } }), "rien n'est touché");
 });
 
 /* ───────────── Migrations en attente, idempotence, reprise, délai ───────────── */

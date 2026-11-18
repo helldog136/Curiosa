@@ -189,6 +189,15 @@ test("restauration : refus net — mauvais mot de passe, fichier étranger, arch
     fs_.find((f) => f.path === "backup.json").content = Buffer.from(JSON.stringify(m));
   });
   assert.equal(Rs.openBackup(noOwner, PW, FAST).error, "no-owner", "une restauration ne doit jamais verrouiller l'admin");
+  // Written before 0.1.20: a module or an instance "switched off" (since 0.32.0 that state no longer exists: the backup is refused whole, before anything is touched).
+  assert.equal(Rs.openBackup(edit((m) => { m.modules.push({ id: "old", source: "git", version: "1", origin: "catalogue", name: "Old", enabled: false, repoUrl: null, ref: null, commit: null }); }), PW, FAST).error, "switched-off");
+  const offInstance = tamper((fs_) => {
+    const inst = fs_.find((f) => f.path === "data/instances.json"); inst.content = Buffer.from(JSON.stringify([{ id: "i1", moduleId: "blog", key: "blog", enabled: false }]));
+    const m = JSON.parse(fs_.find((f) => f.path === "backup.json").content); m.files.find((f) => f.path === "data/instances.json").sha256 = F.sha256(inst.content);
+    fs_.find((f) => f.path === "backup.json").content = Buffer.from(JSON.stringify(m));
+  });
+  assert.equal(Rs.openBackup(offInstance, PW, FAST).error, "switched-off");
+  assert.equal(Rs.openBackup(b.buffer, PW, FAST).ok, true, "a current backup (every module on) is accepted");
 });
 
 test("restauration : un échec en cours de route ne laisse AUCUNE donnée à moitié remplacée (transaction)", async () => {
@@ -240,7 +249,7 @@ test("modules : les données de CHAQUE module installé sont sauvegardées (stoc
   assert.equal(text(files, `readable/modules/${inst.key}/resume.csv`), "nom;valeur\nclé;42\n", "fichier lisible fourni par le module");
   assert.ok(!Object.keys(files).some((p) => p.includes("evil")), "un chemin dangereux fourni par un module est ignoré");
   const m = b.manifest.modules.find((x) => x.id === "perso");
-  assert.deepEqual([m.source, m.origin, m.enabled, m.repoUrl.startsWith("file:")], ["git", "custom", true, true]);
+  assert.deepEqual([m.source, m.origin, "enabled" in m, m.repoUrl.startsWith("file:")], ["git", "custom", false, true]);
   assert.equal(b.manifest.modules.find((x) => x.id === "blog").origin, "catalogue", "le cœur ne livre aucun module : le blog vient du catalogue comme les autres");
 });
 
@@ -257,12 +266,12 @@ test("plan de restauration : ancienne sauvegarde (module « intégré »), déj�
   const modules = [
     { id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "demo-planner", source: "bundled", origin: "catalogue", name: "Planning", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
-    { id: "demo-sponsors", source: "bundled", origin: "catalogue", name: "Sponsors", version: "1", enabled: false, repoUrl: null, ref: null, commit: null },
+    { id: "demo-sponsors", source: "bundled", origin: "catalogue", name: "Sponsors", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "perso", source: "git", origin: "custom", name: "Perso", version: "2", enabled: true, repoUrl: "https://github.com/moi/perso", ref: "v2", commit: "abc" },
     { id: "fantome", source: "git", origin: "custom", name: "Fantôme", version: "1", enabled: true, repoUrl: null, ref: null, commit: null },
     { id: "disparu", source: "git", origin: "catalogue", name: "Disparu", version: "1", enabled: true, repoUrl: "https://github.com/x/disparu", ref: null, commit: null },
   ];
-  await db.prisma.module.create({ data: { id: "demo-sponsors", source: "bundled", version: "1", enabled: true } });
+  await db.prisma.module.create({ data: { id: "demo-sponsors", source: "bundled", version: "1" } });
   const plan = Object.fromEntries((await Rs.planModules(modules)).map((p) => [p.id, p]));
   assert.deepEqual(Object.fromEntries(Object.entries(plan).map(([k, v]) => [k, [v.status, v.needsConfirmation]])), {
     blog: ["catalogue", false], "demo-planner": ["catalogue", false], "demo-sponsors": ["installed", false], perso: ["custom", true], fantome: ["unavailable", false], disparu: ["custom", true],
@@ -283,14 +292,14 @@ test("restauration des modules : catalogue → réinstallés d'office ; personne
   ];
   const calls = [];
   const installers = {
-    fromCatalogue: async (id) => { calls.push(`catalogue:${id}`); await db.prisma.module.create({ data: { id, source: "bundled", version: "1", enabled: false } }); return { ok: true, id }; },
-    fromRepo: async (url) => { calls.push(`repo:${url}`); const id = url.includes("/a") ? "perso-a" : "perso-b"; await db.prisma.module.create({ data: { id, source: "git", version: "1", enabled: false, repoUrl: url } }); return { ok: true, id }; },
+    fromCatalogue: async (id) => { calls.push(`catalogue:${id}`); await db.prisma.module.create({ data: { id, source: "bundled", version: "1" } }); return { ok: true, id }; },
+    fromRepo: async (url) => { calls.push(`repo:${url}`); const id = url.includes("/a") ? "perso-a" : "perso-b"; await db.prisma.module.create({ data: { id, source: "git", version: "1", repoUrl: url } }); return { ok: true, id }; },
   };
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: ["perso-a"], actor: "o", installers });
   assert.equal(report.ok, true);
   assert.deepEqual(calls, ["catalogue:demo-planner", "repo:https://github.com/moi/a#v1"], "perso-b non confirmé : jamais téléchargé");
   assert.deepEqual(Object.fromEntries(report.modules.map((m) => [m.id, m.outcome])), { "demo-planner": "installed", "perso-a": "installed", "perso-b": "skipped", fantome: "unavailable" });
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "demo-planner" } })).enabled, true, "remis à « activé » comme sauvegardé");
+  assert.ok(await db.prisma.module.findUnique({ where: { id: "demo-planner" } }), "installed");
   assert.equal(await db.prisma.module.findUnique({ where: { id: "perso-b" } }), null);
 });
 
@@ -300,12 +309,6 @@ test("restauration des modules : une installation qui échoue est signalée sans
   const report = await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o", installers });
   assert.equal(report.ok, true, "les données sont restaurées malgré tout");
   assert.deepEqual(report.modules, [{ id: "demo-planner", outcome: "failed", error: "modules.error.clone" }]);
-});
-
-test("restauration des modules : les modules d'une ancienne sauvegarde (« intégrés ») sont réinstallés depuis le catalogue ; un module « éteint » est ensuite désinstallé, données gardées", async () => {
-  const mods = [{ id: "blog", source: "builtin", origin: "builtin", name: "Blog", version: "1", enabled: false, repoUrl: null, ref: null, commit: null }];
-  await Rs.applyRestore(fakeBackup(mods), { confirmCustom: [], actor: "o" });
-  assert.equal(await db.prisma.module.findUnique({ where: { id: "blog" } }), null, "éteint dans l'ancienne sauvegarde : plus installé");
 });
 
 /* ───────────── Mise de côté entre aperçu et confirmation ───────────── */

@@ -15,15 +15,8 @@
       "what": "Old menu (instances shown in the menu + nav.custom) frozen into nav.menu when an instance is created or the navigation page opens; legacy fallback while nav.menu is absent (restored old backup, brand-new site).",
       "introducedIn": "0.2.6",
       "removableAtFloor": null,
-      "why": "Kept at the 0.6.18 floor raise on purpose. The start-up call is long gone and every site that updates went through it, but the fallback is also the reader of BACKUP FILES made before the stored menu (nav.menu, 0.2.6): a backup file never expires (docs/MIGRATIONS.md rule 5, no minimum version on restore), and restoring one relies on loadMenu / menuResolve rebuilding the menu from showInNav + nav.custom. Removable only after a backup-format decision (refuse such backups with a clear message, or freeze the menu inside the restore), like legacy-off.",
+      "why": "Kept at the 0.6.18 floor raise on purpose. The start-up call is long gone and every site that updates went through it, but the fallback is also the reader of BACKUP FILES made before the stored menu (nav.menu, 0.2.6): a backup file never expires (docs/MIGRATIONS.md rule 5, no minimum version on restore), and restoring one relies on loadMenu / menuResolve rebuilding the menu from showInNav + nav.custom. Removable only after a backup-format decision (refuse such backups with a clear message, or freeze the menu inside the restore), as was done for legacy-off in 0.32.0.",
       "present": { "files": [], "symbols": ["ensureMenuMigrated", "legacyMenuFromDb"] }
-    },
-    {
-      "id": "legacy-off",
-      "what": "Restoring a backup made before 0.1.20: modules/instances that were switched off become uninstalled, data kept.",
-      "introducedIn": "0.1.20",
-      "removableAtFloor": "0.10.0",
-      "present": { "files": ["src/core/modules/legacyOff.ts"], "symbols": [] }
     }
   ],
   "removed": [
@@ -41,6 +34,13 @@
       "removedWithFloor": "0.6.10",
       "absentSymbols": ["ensureMenuMigrated"],
       "absentIn": ["src/instrumentation.ts"]
+    },
+    {
+      "id": "legacy-off",
+      "what": "Restoring a backup made before 0.1.20: modules/instances that were switched off became uninstalled, data kept. Removed in 0.32.0 with the columns Module.enabled and ModuleInstance.enabled: rows still switched off are set aside by the SQL migration 20261118090000_drop_enabled_columns (data kept, reason \"legacy\"), and such a backup file is refused (error switched-off).",
+      "introducedIn": "0.1.20",
+      "removedWithFloor": "0.6.18",
+      "absentSymbols": ["retireLegacyOff", "legacyOffPlan"]
     },
     {
       "id": "rawg-handover",

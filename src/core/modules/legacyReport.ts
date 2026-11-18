@@ -16,7 +16,7 @@ import { upkeepRows, upkeepSummary } from "./legacyUpkeep";
  *   - réglages orphelins : clé ni déclarée, ni `legacySettings`, ni `__*` (signalés, jamais supprimés en 0.2.0).
  * Les lignes `bundled` / `builtin` : plus aucun code ne les convertit (retiré, version minimale de mise à jour 0.2.0, dont le démarrage convertissait ce qui
  * était sûr). Il n'en reste que sur un site où la 0.2.0 n'a pas pu les convertir sans réseau : la personne choisit (les retirer en gardant les données puis
- * réinstaller depuis le catalogue, ou les garder telles quelles). Les modules « éteints » ne sont plus comptés : le démarrage de la 0.2.0 les a tous rangés.
+ * réinstaller depuis le catalogue, ou les garder telles quelles). L'état « éteint » n'existe plus (0.32.0 : colonnes retirées).
  * Le cœur ne lit les manifestes que sur le disque (aucun code de module n'est exécuté ici). Listes bornées (LIST_MAX), totaux exacts.
  */
 export const LEGACY_MARKER = "core.legacyCleared";
@@ -36,8 +36,6 @@ export type LegacyReport = {
   sourceRows: { id: string; source: string; version: string; state: SourceRowState }[];
   /** Modules hérités que l'administrateur a choisi de garder tels quels : ils ne retiennent pas la mise à niveau. */
   keptRows: { id: string; version: string }[];
-  /** Toujours vide : l'état « éteint » n'existe plus et plus rien ne le compte (champ gardé pour les outils qui lisent le rapport). */
-  switchedOff: { modules: string[]; instances: string[] };
   behind: InstanceItem[];
   failed: (InstanceItem & { reason: "floor" | "timeout" | "error"; floor?: number })[];
   newer: InstanceItem[];
@@ -46,7 +44,7 @@ export type LegacyReport = {
   legacyValues: { key: string; module: string; settings: string[] }[];
   orphans: { key: string; module: string; settings: string[] }[];
   /** Totaux exacts (les listes ci-dessus sont bornées). */
-  totals: { sourceRows: number; keptRows: number; switchedOffModules: number; switchedOffInstances: number; behind: number; failed: number; newer: number; seedsMissing: number; collections: number; legacyValues: number; orphans: number };
+  totals: { sourceRows: number; keptRows: number; behind: number; failed: number; newer: number; seedsMissing: number; collections: number; legacyValues: number; orphans: number };
   /** Rien ne retient la conversion : aucune ligne héritée, aucune instance en retard ou mise à l'écart faute de conversion. */
   converted: boolean;
   /** Rien du tout à signaler (rapport « à zéro »). */
@@ -150,14 +148,14 @@ export async function legacyReport(): Promise<LegacyReport> {
   }
 
   const totals = {
-    sourceRows: sourceRows.length, keptRows: keptRows.length, switchedOffModules: 0, switchedOffInstances: 0,
+    sourceRows: sourceRows.length, keptRows: keptRows.length,
     behind: behind.length, failed: failed.length, newer: newer.length, seedsMissing: seedsMissing.length,
     collections: collections.length, legacyValues: legacyValues.length, orphans: orphans.length,
   };
   const converted = !totals.sourceRows && !totals.behind && !totals.failed;
   return {
     marker: await readLegacyMarker(),
-    sourceRows: cap(sourceRows), keptRows: cap(keptRows), switchedOff: { modules: [], instances: [] },
+    sourceRows: cap(sourceRows), keptRows: cap(keptRows),
     behind: cap(behind), failed: cap(failed), newer: cap(newer), seedsMissing: cap(seedsMissing), collections: cap(collections),
     legacyValues: cap(legacyValues), orphans: cap(orphans),
     totals, converted, clean: converted && Object.values(totals).every((n) => n === 0),
@@ -182,7 +180,6 @@ export async function legacyReportForAssistant() {
     totals: r.totals,
     oldModuleRows: r.sourceRows,
     oldModulesKeptAsTheyAre: r.keptRows,
-    switchedOff: r.switchedOff,
     instancesBehind: r.behind,
     instancesSetAside: r.failed,
     instancesNewerThanModule: r.newer,

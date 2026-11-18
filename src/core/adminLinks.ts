@@ -133,7 +133,6 @@ export const overlayPageHref = (pageId: string): string => `${OVERLAY_PAGES_HREF
 export const overlayPagePreviewHref = (pageId: string, query: Record<string, string | undefined> = {}): string => withQuery(`${overlayPageHref(pageId)}/preview`, query);
 /** The skin tab of an overlay page (default skin, skin per context rules), the list of known context values (JSON, for the picker) and the sample page of a skin (a real handler). */
 export const overlayPageSkinHref = (pageId: string, query: Record<string, string | undefined> = {}): string => withQuery(`${overlayPageHref(pageId)}/skin`, query);
-export const overlayPageValuesHref = (pageId: string): string => `${overlayPageHref(pageId)}/skin/values`;
 /** Preview image of a catalogue overlay skin, served by the site itself (never from a third-party site). */
 export const overlaySkinPreviewHref = (skinId: string, anim = false): string => `${OVERLAY_PAGES_HREF}/skin-preview/${seg(skinId)}${anim ? "?anim=1" : ""}`;
 export const overlaySkinSampleHref = (skinId: string): string => `${OVERLAY_PAGES_HREF}/skin-sample/${seg(skinId)}`;

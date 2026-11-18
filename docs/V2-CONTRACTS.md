@@ -725,12 +725,12 @@ legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean
   2. effacement des valeurs vides de `legacySettings` et de réglages orphelins ;
   3. conversion `fromText` des réglages `choice` (contrat 1) ;
   4. marqueur.
-  **Retiré (phase 3, fait avec `minFrom` 0.2.0)** : `retireLegacyOff` au démarrage (modules « éteints » avant la 0.1.20) et la conversion des lignes `bundled` / `builtin` (balayage, mise à jour, réinstallation : `bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). Le démarrage de la 0.2.0, que tout site plus ancien traverse d'abord, les a faits. `retireLegacyOff` ne sert plus qu'à la restauration d'une sauvegarde d'avant la 0.1.20 (un fichier de sauvegarde garde son format).
+  **Retiré (phase 3, fait avec `minFrom` 0.2.0)** : `retireLegacyOff` au démarrage (modules « éteints » avant la 0.1.20) et la conversion des lignes `bundled` / `builtin` (balayage, mise à jour, réinstallation : `bundledUpdate.ts`, `convertSourceRowsOffline`, `localTreeHash`). Le démarrage de la 0.2.0, que tout site plus ancien traverse d'abord, les a faits. `retireLegacyOff` n'a plus servi qu'à la restauration d'une sauvegarde d'avant la 0.1.20 ; il est supprimé en 0.32.0 avec les colonnes `enabled` (la migration `20261118090000_drop_enabled_columns` range ce qui restait éteint, données gardées ; une telle sauvegarde est désormais refusée).
 - Si tout est terminé, le marqueur `core.legacyCleared` est écrit. Sinon, il ne l'est pas ; le démarrage suivant reprend.
 - **Garde** : marqueur absent → le site public est servi normalement. L'admin affiche en tête une explication « La conversion des anciennes données n'est pas terminée », avec le rapport et « Relancer » (propriétaire). Décision de la phase 3 : cela reste un **avertissement**, jamais un blocage (il protège aussi les conversions de données de modules, toujours vivantes). Une ligne `bundled` / `builtin` qui resterait retient le marqueur jusqu'à ce que la personne la retire (données gardées) ou la garde telle quelle.
 - **Rapport d'héritage** (lecture seule, page `/admin/maintenance/legacy` et outil MCP de maintenance). Il compte :
   - les lignes `bundled` / `builtin` (plus aucun code ne les convertit) ;
-  - ~~les entités `enabled=false`~~ (plus comptées : le démarrage de la 0.2.0 les a toutes rangées ; `switchedOff` reste dans la réponse, vide) ;
+  - ~~les entités `enabled=false`~~ (plus comptées : le démarrage de la 0.2.0 les a toutes rangées ; le champ `switchedOff`, toujours vide, a été retiré en 0.32.0) ;
   - les instances en retard, `failed` ou `newer` ;
   - les valeurs présentes dans des `legacySettings` ;
   - les réglages orphelins (clé ni déclarée, ni `legacySettings`, ni `__*`) ;
@@ -748,7 +748,7 @@ legacy?: { keys(): string[]; get(key: string): Promise<string | number | boolean
 
 ### d. Compatibilité
 
-- La chaîne 0.1.28 → 0.2.0 était directe (`minFrom: "0.1.4"`). La phase 3 a imposé `minFrom: "0.2.0"` et une ligne `REMOVED` (`tests/core/temporary-code.test.mjs`) : un site plus ancien passe d'abord par la 0.2.0. `legacyOff.ts` reste pour la seule restauration d'une sauvegarde d'avant la 0.1.20 (échéance du test d'échéance relevée).
+- La chaîne 0.1.28 → 0.2.0 était directe (`minFrom: "0.1.4"`). La phase 3 a imposé `minFrom: "0.2.0"` et une ligne `REMOVED` (`tests/core/temporary-code.test.mjs`) : un site plus ancien passe d'abord par la 0.2.0. `legacyOff.ts` a été supprimé en 0.32.0 (voir plus haut).
 - Un cœur ancien ignore `legacySettings` : ces clés ne s'affichent pas (non déclarées), mais `ctx.setting` ne les lit pas non plus.
 
 ### e. Fichiers

@@ -7,6 +7,42 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.32.0 — 2026-11-18
+
+**En bref.** Ménage de fond : l'ancien état « installé mais éteint » (qui n'existait plus depuis longtemps) disparaît pour de bon, avec du code mort. Quelques encadrés sans utilité deviennent de simples pastilles, et un bouton de suppression de rôle n'est plus un gros bouton plein.
+
+**In short.** Deep clean: the old "installed but switched off" state (which had not existed for a long time) is gone for good, with dead code. A few useless boxes become simple chips, and the delete-role button is no longer a big solid button.
+
+### Retiré
+
+- **L'état « éteint » d'une extension ou d'une instance.** Il n'existait plus depuis la 0.1.20 ; la mise à jour retire ses dernières traces. Si un site en gardait encore (cas très rare), ces éléments sont mis de côté avec leurs données, jamais rallumés ni effacés : vous les retrouvez dans « Données gardées ».
+- **(English) The "switched off" state of an extension or an instance.** It had not existed since 0.1.20; the update removes its last traces. If a site still had any (very rare), those items are set aside with their data, never switched back on nor erased: you find them in "Kept data".
+- **Restaurer une très ancienne sauvegarde qui contient des éléments éteints.** Elle est maintenant refusée avec un message clair, sans rien modifier. Restaurez-la sur la version d'origine, puis mettez à jour.
+- **(English) Restoring a very old backup that lists switched-off items.** It is now refused with a clear message, and nothing is changed. Restore it on the version it came from, then update.
+- **Un champ toujours vide du rapport de mise à niveau pour votre assistant IA** (les éléments éteints) : il n'est plus dans la réponse.
+- **(English) An always-empty field of the upgrade report for your AI assistant** (the switched-off items): it is no longer in the answer.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Des pastilles à la place d'encadrés sans action.** « À jour » ou « Mise à jour disponible » sur la page d'une extension, « Données gardées » sur sa fiche, « Adresse confirmée », « Rien à refaire », « Tout va bien » sur la vérification des contenus : un mot, la phrase complète au survol.
+- **(English) Chips instead of boxes that ask for nothing.** "Up to date" or "Update available" on an extension page, "Data kept" on its sheet, "Address confirmed", "Nothing to redo", "All is well" on the content check: one word, the full sentence on hover.
+- **Supprimer un rôle n'est plus un gros bouton plein.** Il garde son contour rouge, rangé dans la zone des actions rares, avec sa confirmation.
+- **(English) Deleting a role is no longer a big solid button.** It keeps a red outline, in the area of rare actions, with its confirmation.
+
+### Après la mise à jour
+
+- Rien à faire. Une copie de la base est faite avant la mise à jour, comme toujours.
+- **(English)** Nothing to do. A copy of the database is made before the update, as always.
+
+### Pour les développeurs
+
+- **Dropped `Module.enabled` and `ModuleInstance.enabled`** (migration `20261118090000_drop_enabled_columns`). First, SQL sets aside each instance still switched off (itself or through its module) as a `RetiredInstance` line, reason `legacy`, same payload v1 as `retireInstance`, and uninstalls a switched-off module. Never switched on, never deleted.
+- **Removed** `legacyOff.ts` (`retireLegacyOff`, `legacyOffPlan`), its call in `applyRestore`, `BackupModule.enabled`, `ModulePlan.enabled`, and the always-empty `switchedOff` field and totals of `legacyReport` / `maintenance_legacy`. Registry `legacy-off` moves to `removed`; the temporary-code list is empty.
+- **Backups**: `openBackup` returns the new error `switched-off` (EN+FR text) when a module or an instance of the file has `enabled: false`, before anything is touched. The `enabled: true` written by 0.31 and older is ignored.
+- **Dead exports removed**: `overlayPageValuesHref`, `autoFixed`, `OV_BASE_TOKEN_NAMES`, `isTransparentColor`, `elementScaleOf`, `matchingProfile`, `LIFTED_MAX_MEDIA_BYTES`, `MODULE_SKIN_MAX_DEMO_BYTES`, `MAX_TOTAL_BYTES`, two unused strings. The module contract is unchanged.
+- **R32 / R3**: `ActionForm` gains `danger` (outlined red submit). `tests/core/admin-banners.test.mjs` fails on an information `Callout` without action that is not listed with a reason, and on a destructive `ActionForm` or primary `PendingButton`.
+- **Tests**: `tests/core/drop-enabled-migration.test.mjs` runs the real `prisma migrate deploy` before and after on a populated database. It checks that no live row is lost and that the SQL payload equals the one `retireInstance` writes.
+
 ## 0.31.1 — 2026-11-18
 
 **En bref.** Sur un compteur animé dans un cadre bas (par exemple 700 sur 360), le « +5 » affiché à chaque don sortait par le bas du cadre et était coupé. Il reste maintenant toujours dans le cadre, quelle que soit sa forme.

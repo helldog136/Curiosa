@@ -129,7 +129,7 @@ test("installation : installé = actif, il n'y a pas d'état intermédiaire", as
   const r = withoutI18nNote(await installModule(repo.url, { firstInstance: false }));
   assert.deepEqual(r, { ok: true, id: "demo" });
   const row = await db.prisma.module.findUnique({ where: { id: "demo" } });
-  assert.equal(row.enabled, true);
+  assert.equal(!!row, true);
   assert.equal(row.source, "git");
   assert.equal(row.commit, repo.commit);
   assert.ok(fs.existsSync(path.join(MODULES_DIR, "demo", "module.json")));
@@ -222,7 +222,6 @@ test("registre : un module cassé est ignoré sans casser les autres", async () 
   assert.equal((await installModule(makeRepo({ "module.json": base({ id: "casse", main: "index.mjs" }), "index.mjs": "export default {};" }).url, { firstInstance: false })).ok, true);
   fs.writeFileSync(path.join(R.moduleDir("casse"), "index.mjs"), "throw new Error('boum');");
   R.forgetModule("casse");
-  await db.prisma.module.update({ where: { id: "casse" }, data: { enabled: true } });
   const log = console.error; console.error = () => {};
   try {
     const mods = await R.getInstalledModules();

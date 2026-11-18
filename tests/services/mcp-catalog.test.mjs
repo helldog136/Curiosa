@@ -331,7 +331,7 @@ test("install : instanceKey — valide et libre, refusée pour un module à une 
   assert.equal((await M.approveRequest(ok.requestId, owner)).ok, true);
   assert.equal((await db.prisma.moduleInstance.findFirst({ where: { moduleId: "atelier" } })).key, "commandes");
   // Une clé déjà prise par une autre instance.
-  await db.prisma.module.create({ data: { id: "faux-installe", source: "git", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "faux-installe", source: "git", version: "1.0.0" } });
   await db.prisma.moduleInstance.create({ data: { moduleId: "faux-installe", key: "pris", showInNav: false, navOrder: 9 } });
   assert.match((await call(token, "maintenance_module_install", { module: "solo", instanceKey: "pris" })).error, /only one instance|already used/);
 });

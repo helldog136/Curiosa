@@ -11,7 +11,7 @@ import { saveUpload, sniffImage } from "@/core/services/uploads";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { takeSlot } from "@/core/maintenance/slots";
-import { dailyWindowStart, LIFTED_MEDIA_BODY, LIFTED_MEDIA_BYTES, MEDIA_BYTES, mediaLimitsNow, OWNER_WHERE } from "@/core/services/mcp/uploadLift";
+import { dailyWindowStart, LIFTED_MEDIA_BODY, MEDIA_BYTES, mediaLimitsNow, OWNER_WHERE } from "@/core/services/mcp/uploadLift";
 
 /**
  * MEDIA FOR AN AI: `media_upload`, `media_list` (read) and `media_set_alt`. No deletion tool.
@@ -31,7 +31,6 @@ import { dailyWindowStart, LIFTED_MEDIA_BODY, LIFTED_MEDIA_BYTES, MEDIA_BYTES, m
  * counter for media_upload, and one image up to 10 MB. The type, pixel and svg checks above are NEVER lifted.
  */
 export const MAX_MEDIA_BYTES = MEDIA_BYTES;
-export const LIFTED_MAX_MEDIA_BYTES = LIFTED_MEDIA_BYTES;
 export const MAX_ALT = 125;
 export const PAGE_SIZE = 50;
 /** For the whole site, all accesses together, over the last 24 hours. */
