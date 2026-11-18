@@ -17,14 +17,14 @@ const KEY = (tokenId: string) => `mcp.listSeen.${tokenId}`;
 const MAX_NAMES = 1000;
 
 /** The revision: the ceiling, the explicit grants and which feature instances exist (not their versions: an update that adds no tool is not a change for the assistant). */
-export function accessRevision(token: { scope: Scope; grants: Grants }, instances: { key: string; moduleId: string }[]): string {
+export function accessRevision(token: { scope: Scope; grants: Grants; fullPowers?: boolean }, instances: { key: string; moduleId: string }[]): string {
   const grants = Object.entries(token.grants).sort(([a], [b]) => (a < b ? -1 : 1));
   const inst = instances.map((i) => `${i.key}:${i.moduleId}`).sort();
-  return crypto.createHash("sha256").update(JSON.stringify([token.scope, grants, inst])).digest("hex").slice(0, 16);
+  return crypto.createHash("sha256").update(JSON.stringify(token.fullPowers ? [token.scope, grants, inst, "full"] : [token.scope, grants, inst])).digest("hex").slice(0, 16);
 }
 
 /** The revision of this access now: one cheap query (feature instances), the rights are already in `token`. */
-export async function revisionNow(token: { scope: Scope; grants: Grants }): Promise<string> {
+export async function revisionNow(token: { scope: Scope; grants: Grants; fullPowers?: boolean }): Promise<string> {
   return accessRevision(token, await prisma.moduleInstance.findMany({ select: { key: true, moduleId: true } }));
 }
 
