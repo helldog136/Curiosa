@@ -7,6 +7,35 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.33.0 — 2026-11-18
+
+**En bref.** Les jauges et compteurs animés des overlays apprennent un vocabulaire de mouvement : un skin peut demander un mouvement « vif », « fluide », « doux » ou « rebondissant », et un rythme plus ou moins rapide. Rien ne change pour les skins existants.
+
+**In short.** The animated gauges and counters of overlays learn a motion vocabulary: a skin can ask for a "snappy", "smooth", "gentle" or "bouncy" motion, and a quicker or slower pace. Nothing changes for existing skins.
+
+### Overlays
+
+- **Des mouvements nommés pour les skins animés.** Quatre ressorts (vif, fluide, doux, rebondissant), trois durées (rapide, standard, posée) et trois rythmes (enlevé, régulier, solennel). Un skin qui n'en demande pas garde exactement son animation actuelle, image pour image.
+- **(English) Named motions for animated skins.** Four springs (snappy, smooth, gentle, bouncy), three durations (fast, standard, considered) and three tempos (brisk, steady, stately). A skin that asks for none keeps exactly its current animation, frame for frame.
+- **Les chiffres ne dépassent jamais leur valeur.** Même avec un ressort rebondissant, le nombre affiché monte de l'ancienne à la nouvelle valeur sans jamais la dépasser. Seule la décoration (le bout de la barre, un anneau) peut rebondir un peu.
+- **(English) Numbers never go past their value.** Even with a bouncy spring, the displayed number rises from the old to the new value and never passes it. Only decoration (the tip of the bar, a ring) may bounce a little.
+- **Le mode calme reste calme.** Tous les ressorts deviennent amortis, sans rebond, et les mouvements restent remplacés par de simples fondus.
+- **(English) Calm mode stays calm.** Every spring becomes damped, with no bounce, and movements stay replaced by plain fades.
+- **Un skin écrit pour une version plus récente s'installe sans erreur.** Ce que cette version ne connaît pas est ignoré avec un avertissement clair, au lieu de refuser le skin. Sur une version plus ancienne, le skin s'installe avec le rendu simple.
+- **(English) A skin written for a newer version installs without error.** What this version does not know is ignored with a clear warning, instead of refusing the skin. On an older version, the skin installs with the basic rendering.
+
+### Après la mise à jour
+
+- Rien à faire. Aucun skin existant ne change d'apparence.
+- **(English)** Nothing to do. No existing skin changes its look.
+
+### Pour les développeurs
+
+- **Motion tokens** (`MOTION` in `src/core/animate/spec.ts`): four springs used through their analytic step response (pure in time), durations 150 / 300 / 600 ms, tempos 0.8 / 1 / 1.35. Recipes use names only: a top-level `motion` and per-layer `spring` / `duration`.
+- **No `motion`, no change**: a 810-frame golden test shows frames identical to 0.32.0.
+- **`animateContract` 1 to 2, additive**, with a tolerant reader: unknown names of a contract-2 recipe are warnings and skipped; `animateMinContract` negotiates. `skinContract` stays 4. New codes `animation-motion-name`, `animation-motion-shape`, `animation-contract-ahead`.
+- **CSS twins** `--ov-dur-*` and `--ov-ease-*` (in a skin sheet that reads them, never on other pages), plus `ctx.overlay.animateMotion` and `animateMotionCss()`. Docs: `docs/OVERLAY-ANIMATIONS.md`, sections 5b and 5c.
+
 ## 0.32.0 — 2026-11-18
 
 **En bref.** Ménage de fond : l'ancien état « installé mais éteint » (qui n'existait plus depuis longtemps) disparaît pour de bon, avec du code mort. Quelques encadrés sans utilité deviennent de simples pastilles, et un bouton de suppression de rôle n'est plus un gros bouton plein.

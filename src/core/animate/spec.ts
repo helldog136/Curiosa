@@ -18,10 +18,60 @@
  * so a skin never assumes a size.
  */
 
-/** Version of the recipe contract (animation.json `animateContract`) this core understands. */
-export const ANIMATE_CONTRACT = 1;
+/**
+ * Version of the recipe contract (animation.json `animateContract`) this core understands. Contract 2 (core 0.33.0) is ADDITIVE over 1: the `motion` key and the
+ * per-layer `spring` / `duration` parameters, and the TOLERANT READER (a contract-2 recipe may carry words this core does not know yet: they are skipped with a
+ * warning, never an error). A contract-1 recipe keeps its strict reading and its exact curves.
+ */
+export const ANIMATE_CONTRACT = 2;
 /** Version of the engine text (bumped when its behaviour changes in a way a module could notice). */
-export const ANIMATE_VERSION = 1;
+export const ANIMATE_VERSION = 2;
+
+/**
+ * THE MOTION TOKENS (core 0.33.0): a closed vocabulary of NAMES. A skin writes names only (`"motion": { "value": "gentle" }`, a layer's `"spring": "bouncy"`),
+ * never a raw time or constant, so retuning this table in a later core changes every skin together (the same property as the `--ov-*` tokens).
+ *
+ *  - SPRINGS are damped oscillators, used through their analytic STEP RESPONSE (a pure function of time, no integrator): `f` is the natural frequency in Hz,
+ *    `z` the damping ratio (1 = critical: no overshoot). Springs are linear, so several pending changes add up with continuous velocity.
+ *  - DURATIONS in milliseconds, for fades and the attack of light reactions.
+ *  - TEMPOS scale the engine moments (`TIMING.step`, `celebration`, `ease`): brisk is quicker, stately slower. Bounded 0.6 to 1.6.
+ * The values are this project's own (chosen by physics: overshoot and settling time of each spring are listed in docs/OVERLAY-ANIMATIONS.md).
+ */
+export const MOTION = {
+  springs: {
+    snappy: { f: 4, z: 0.7 },
+    smooth: { f: 2, z: 1 },
+    gentle: { f: 1, z: 1 },
+    bouncy: { f: 2.6, z: 0.45 },
+  },
+  durations: { fast: 150, standard: 300, considered: 600 },
+  tempos: { brisk: 0.8, steady: 1, stately: 1.35 },
+  tempoRange: [0.6, 1.6],
+  /** The roles of `motion`: springs for `value` (the displayed value's glide), `body` (the head of a bar), `reaction` (steps) and `celebration` (bursts); `fade` is a duration. */
+  roles: { value: "spring", body: "spring", reaction: "spring", celebration: "spring", fade: "duration", tempo: "tempo" },
+  /** What a role takes when `motion` is present and does not name it (the value glide of `gentle` stands for today's 0.9 s ease). */
+  defaults: { value: "gentle", body: "smooth", reaction: "snappy", celebration: "bouncy", fade: "fast", tempo: "steady" },
+  /** `motion: "<spring>"` as a shorthand sets these roles at once. */
+  shorthand: ["value", "body", "reaction"],
+  /** CSS twins for the fallback rendering (`--ov-ease-*`): cubic-bezier fits of the step responses (least squares, own work); `bouncy` overshoots about 22 %. */
+  css: {
+    snappy: "cubic-bezier(0.27,0.2,0.23,1.3)",
+    smooth: "cubic-bezier(0.25,0.18,0.2,0.88)",
+    gentle: "cubic-bezier(0.25,0.18,0.2,0.88)",
+    bouncy: "cubic-bezier(0.59,2.09,0.2,0.82)",
+  },
+} as const;
+export type SpringName = keyof typeof MOTION.springs;
+export type DurationName = keyof typeof MOTION.durations;
+export type TempoName = keyof typeof MOTION.tempos;
+
+/** The same names as CSS custom properties, for the HTML parts and the fallback rendering: `--ov-dur-fast|standard|considered`, `--ov-ease-snappy|smooth|gentle|bouncy`. */
+export const MOTION_CSS_VARS: Readonly<Record<string, string>> = Object.freeze({
+  ...Object.fromEntries(Object.entries(MOTION.durations).map(([k, v]) => [`--ov-dur-${k}`, `${v}ms`])),
+  ...Object.fromEntries(Object.entries(MOTION.css).map(([k, v]) => [`--ov-ease-${k}`, v])),
+});
+/** A `:root{…}` block with them (a module copies it into its element page; the core page and a skin that cites one include it). */
+export const motionCss = (selector = ":root"): string => `${selector}{${Object.entries(MOTION_CSS_VARS).map(([k, v]) => `${k}:${v}`).join(";")}}`;
 
 export type ParamSpec =
   | readonly ["num", number, number, number]
@@ -34,6 +84,9 @@ export type ParamSpec =
 
 const IRREG = ["num", 0, 4, 1] as const;
 const ALPHA = (d: number) => ["num", 0, 1, d] as const;
+/** (contract 2) Per-layer motion words: `inherit` follows the recipe's `motion` (or today's curve when there is none). */
+const SPRING = ["enum", ["inherit", ...Object.keys(MOTION.springs)], "inherit"] as const;
+const DURATION = ["enum", ["inherit", ...Object.keys(MOTION.durations)], "inherit"] as const;
 
 /** The genres and the roles a skin may draw for each one (in drawing order). */
 export const GENRES = {
@@ -52,7 +105,7 @@ export const PRIMITIVES: Record<string, { roles: readonly string[]; params: Reco
   lead: { roles: ["frame"], params: { color: ["color", "#120c09"], width: ["num", 0.01, 0.12, 0.05], highlight: ["color", "#8a7a6a"], irregularity: IRREG, seed: ["seed", 1], backing: ["color", "#1a0f0a"], backingAlpha: ALPHA(0) } },
   trace: { roles: ["frame"], params: { color: ["color", "#00e5ff"], alpha: ALPHA(0.45), lines: ["int", 1, 4, 2], nodes: ["int", 0, 12, 5], width: ["num", 0.004, 0.03, 0.01], seed: ["seed", 1], pulse: ALPHA(0.6) } },
   // ---- bodies
-  bar: { roles: ["body"], params: { track: ["color", "#ffffff"], trackAlpha: ALPHA(0.18), fill: ["color", "#e8a23b"], fillAlpha: ALPHA(1), radius: ["num", 0, 0.5, 0.5], thickness: ["num", 0.15, 1, 0.42], gradient: ALPHA(0.25) } },
+  bar: { roles: ["body"], params: { track: ["color", "#ffffff"], trackAlpha: ALPHA(0.18), fill: ["color", "#e8a23b"], fillAlpha: ALPHA(1), radius: ["num", 0, 0.5, 0.5], thickness: ["num", 0.15, 1, 0.42], gradient: ALPHA(0.25), spring: SPRING } },
   tube: {
     roles: ["body"],
     params: { color: ["color", "#ff2bd6"], core: ["color", "#ffe6fb"], dim: ["color", "#3a1036"], dimAlpha: ALPHA(0.55), width: ["num", 0.03, 0.4, 0.14], glow: ALPHA(0.8), thickness: ["num", 0.15, 1, 0.5], shape: ["enum", ["line", "loop"], "line"], segments: ["int", 1, 24, 1] },
@@ -96,14 +149,14 @@ export const PRIMITIVES: Record<string, { roles: readonly string[]; params: Reco
   // ---- timer (countdown) track; its text uses the "text" style of the value
   gaugeline: { roles: ["timer"], params: { color: ["color", "#ffffff"], alpha: ALPHA(0.8), track: ["color", "#ffffff"], trackAlpha: ALPHA(0.2), thickness: ["num", 0.01, 0.2, 0.05] } },
   // ---- reactions
-  flash: { roles: ["step", "burst"], params: { color: ["color", "#fff3c4"], strength: ALPHA(0.6), size: ["num", 0.2, 3, 1] } },
-  ring: { roles: ["step", "burst"], params: { color: ["color", "#ffd45e"], width: ["num", 0.005, 0.1, 0.03], irregularity: IRREG, size: ["num", 0.3, 4, 1.6], seed: ["seed", 11] } },
+  flash: { roles: ["step", "burst"], params: { color: ["color", "#fff3c4"], strength: ALPHA(0.6), size: ["num", 0.2, 3, 1], spring: SPRING, duration: DURATION } },
+  ring: { roles: ["step", "burst"], params: { color: ["color", "#ffd45e"], width: ["num", 0.005, 0.1, 0.03], irregularity: IRREG, size: ["num", 0.3, 4, 1.6], seed: ["seed", 11], spring: SPRING } },
   particles: {
     roles: ["step", "burst", "ambient"],
-    params: { kind: ["enum", ["sparks", "embers", "shards", "dust"], "sparks"], colors: ["colors", 1, 6, ["#ffd45e", "#ff6a1a", "#fff3c4"]], count: ["int", 0, 80, 24], spread: ["num", 0.1, 3, 1], gravity: ["num", -1, 1, 0.3], size: ["num", 0.005, 0.08, 0.02], seed: ["seed", 13] },
+    params: { kind: ["enum", ["sparks", "embers", "shards", "dust"], "sparks"], colors: ["colors", 1, 6, ["#ffd45e", "#ff6a1a", "#fff3c4"]], count: ["int", 0, 80, 24], spread: ["num", 0.1, 3, 1], gravity: ["num", -1, 1, 0.3], size: ["num", 0.005, 0.08, 0.02], seed: ["seed", 13], spring: SPRING },
   },
-  rays: { roles: ["burst", "ambient"], params: { color: ["color", "#fff1c4"], count: ["int", 2, 12, 5], strength: ALPHA(0.25), angle: ["num", -80, 80, 25], seed: ["seed", 17] } },
-  pulse: { roles: ["step", "burst"], params: { strength: ALPHA(0.5) } },
+  rays: { roles: ["burst", "ambient"], params: { color: ["color", "#fff1c4"], count: ["int", 2, 12, 5], strength: ALPHA(0.25), angle: ["num", -80, 80, 25], seed: ["seed", 17], duration: DURATION } },
+  pulse: { roles: ["step", "burst"], params: { strength: ALPHA(0.5), spring: SPRING, duration: DURATION } },
   // ---- ambient (alive at rest; off in reduced motion and at minimal quality)
   shimmer: { roles: ["ambient"], params: { color: ["color", "#ffffff"], strength: ALPHA(0.12), period: ["num", 3, 30, 7] } },
   flicker: { roles: ["ambient"], params: { strength: ALPHA(0.15), rate: ["num", 0.2, 2.5, 1] } },
@@ -154,5 +207,5 @@ export const FORMATS = ["count", "time", "money", "percent"] as const;
 export const RECIPE_LIMITS = { bytes: 24 * 1024, layersPerRole: 3 } as const;
 
 /** The whole table, as sent to the browser with the engine. */
-export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS };
+export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS };
 export type AnimateSpec = typeof ANIMATE_SPEC;

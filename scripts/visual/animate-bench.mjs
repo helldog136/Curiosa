@@ -1,6 +1,7 @@
 // Animation engine: still frames and frame-time measurements in headless Chromium (core 0.30.0, docs/OVERLAY-ANIMATIONS.md "Performance").
 //
 //   node --import ./tests/helpers/register.mjs scripts/visual/animate-bench.mjs shots <dir> [recipe.json …]   still frames of every genre at key instants
+//   node --import ./tests/helpers/register.mjs scripts/visual/animate-bench.mjs motion <dir>   each named spring (and calm mode) on a gauge at key instants, with the head's width measured
 //   node --import ./tests/helpers/register.mjs scripts/visual/animate-bench.mjs bench [seconds] [throttle] [recipe.json …]   frame cost per size and quality
 //
 // Without recipe files it uses the reference recipes of tests/fixtures/animate and the basic rendering. Headless Chromium draws in SOFTWARE here
@@ -30,7 +31,31 @@ export function scenes(t0 = T0) {
 
 async function browser() { const pw = loadPlaywright(); return pw.chromium.launch({ executablePath: chromiumPath(), args: CHROMIUM_ARGS }); }
 
-if (mode === "shots") {
+if (mode === "motion") {
+  // The motion tokens (core 0.33.0): one step of +25 on a gauge, drawn at key instants with each spring, in live and in calm mode, at two sizes.
+  const dir = rest[0] || "animate-motion";
+  fs.mkdirSync(dir, { recursive: true });
+  const b = await browser(), page = await b.newPage({ viewport: { width: 1764, height: 717 } });
+  const st = { genre: "gauge", value: 75, target: 100, label: "Follower goal", milestones: [25, 50, 75], highlights: [{ id: "k1", at: T0, kind: "step", amount: 25 }, { id: "k2", at: T0 + 2600, kind: "milestone" }] };
+  const base = JSON.parse(fs.readFileSync("tests/fixtures/animate/night-neon.json", "utf8"));
+  const report = [];
+  for (const spring of ["snappy", "smooth", "gentle", "bouncy"]) for (const calm of [false, true]) for (const [w, h] of [[1764, 717], [700, 360]]) {
+    const recipe = { ...base, animateContract: 2, motion: { value: spring, body: spring, reaction: spring, celebration: spring } };
+    const frames = [];
+    for (const dt of [0, 90, 180, 300, 500, 900, 2900]) {
+      await page.setViewportSize({ width: w, height: h });
+      await page.setContent(K.animateKitPage({ state: st, recipe, width: w, height: h, at: T0 + dt, quality: "full", calm, background: "stream", lang: "en" }));
+      await page.waitForSelector("html[data-ready='1']");
+      const view = await page.evaluate(() => ({ display: window.__frame.view.display, progress: window.__frame.view.progress }));
+      frames.push({ dt, display: Math.round(view.display * 100) / 100, progress: Math.round(view.progress * 1000) / 1000 });
+      await page.screenshot({ path: path.join(dir, `${spring}-${calm ? "calm" : "live"}-${w}x${h}-${String(dt).padStart(4, "0")}.png`) });
+    }
+    report.push({ spring, calm, size: `${w}x${h}`, frames });
+  }
+  await b.close();
+  fs.writeFileSync(path.join(dir, "report.json"), JSON.stringify(report, null, 1));
+  console.log(`motion frames written to ${dir}`);
+} else if (mode === "shots") {
   const dir = rest[0] || "animate-shots";
   fs.mkdirSync(dir, { recursive: true });
   const b = await browser(), page = await b.newPage({ viewport: { width: 1764, height: 717 } });

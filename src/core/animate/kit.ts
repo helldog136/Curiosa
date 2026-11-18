@@ -6,6 +6,8 @@
  *  - `animateContract` / `animateVersion` / `animateGenres`: what this core understands (a module tests them before it relies on a genre).
  *  - `checkAnimateState(raw)`: the same checker the engine applies, with the problems listed (a module's tests use it).
  *  - `checkAnimation(raw)`: the checker of a skin's `animation.json` (recipe.ts), for authors' tools.
+ *  - `animateMotion` / `animateMotionCss(selector?)` (0.33.0): the motion words (springs, durations, tempos) and the CSS custom properties `--ov-dur-*` /
+ *    `--ov-ease-*` for the HTML parts of an element, so a fallback rendering moves with the same vocabulary as the canvas.
  *  - `animateOptions()`: the two element options a module copies into its `overlayElements[].options` (effects quality, calm motion) so every animated
  *    element offers the same two settings with the same words.
  *  - `animateKitPage(opts)`: a self-contained HTML page that draws one state with one recipe at a frozen instant (screenshots, measurements, the assistant's
@@ -14,7 +16,7 @@
  * An older core has none of these: a module tests `typeof ctx.overlay?.animateScript === "function"` and, without it, shows its numbers as text.
  */
 import { animateEngine } from "./engine";
-import { ANIMATE_CONTRACT, ANIMATE_SPEC, ANIMATE_VERSION, GENRES } from "./spec";
+import { ANIMATE_CONTRACT, ANIMATE_SPEC, ANIMATE_VERSION, GENRES, MOTION, motionCss } from "./spec";
 import { checkAnimation } from "./recipe";
 import { checkAnimateState } from "./state";
 
@@ -85,6 +87,8 @@ export const animateKit = Object.freeze({
   animateVersion: ANIMATE_VERSION,
   animateGenres: ANIMATE_GENRES as readonly string[],
   animateScript,
+  animateMotion: MOTION,
+  animateMotionCss: (selector?: string) => motionCss(selector),
   animateOptions,
   animateKitPage: (o: AnimateKitOptions) => animateKitPage(o),
   checkAnimateState: (raw: unknown) => checkAnimateState(raw),
