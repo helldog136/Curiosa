@@ -144,7 +144,7 @@ test("mise à jour refusée : version et fichiers inchangés, message clair ; ac
   const r = await updateModule("alpha");
   assert.deepEqual(r, { ok: false, error: "modules.error.core", detail: "0.1.10", needsCore: "0.1.10" });
   const after = await db.prisma.module.findUnique({ where: { id: "alpha" } });
-  assert.equal(after.version, "1.0.0"); assert.equal(after.commit, before.commit); assert.equal(after.enabled, true);
+  assert.equal(after.version, "1.0.0"); assert.equal(after.commit, before.commit); assert.equal(!!after, true);
   assert.equal(JSON.parse(fs.readFileSync(path.join(db.dir, "modules", "alpha", "module.json"), "utf8")).version, "1.0.0");
   C.setCoreVersionForTests("0.1.10");
   assert.equal((await updateModule("alpha")).ok, true);
@@ -201,7 +201,7 @@ test("un module déjà installé et activé n'est jamais désactivé ni cassé, 
   const mod = await getModule("deja");
   assert.ok(mod, "chargé");
   assert.equal(mod.manifest.minCore, "0.1.0");
-  assert.equal((await db.prisma.module.findUnique({ where: { id: "deja" } })).enabled, true);
+  assert.equal(!!(await db.prisma.module.findUnique({ where: { id: "deja" } })), true);
 });
 
 /* ───────────── Restauration ───────────── */

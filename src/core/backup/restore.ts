@@ -6,7 +6,6 @@ import { UPLOAD_NAME_RE as FONT_NAME_RE } from "@/core/fonts/registry";
 import { reconcileUploads } from "@/core/fonts/uploads";
 import { prisma } from "@/core/db";
 import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
-import { retireLegacyOff } from "@/core/modules/legacyOff";
 import { installFromCatalogue, installModule, type InstallResult } from "@/core/modules/installer";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
@@ -36,7 +35,7 @@ export type ParsedBackup = {
   /** Polices envoyées (0.7.0 ; absent avant : aucune). */
   fonts?: { name: string; content: Buffer }[];
 };
-export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
+export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner" | "switched-off";
 
 /** Une sauvegarde faite par un schéma de base PLUS RÉCENT que le nôtre ne peut pas être lue : il faut d'abord mettre le framework à jour. */
 export async function checkSchema(manifest: BackupManifest): Promise<"ok" | "newer-schema"> {
@@ -113,6 +112,9 @@ function* checkFiles(tar: TarFile[]): Steps<Parsed> {
   const modules = manifest.modules;
   const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
   if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
+  // Since 0.32.0 a module or an instance can no longer be "installed but switched off" (the state ended with 0.1.20). A backup written before that still says so
+  // (`enabled: false`): restoring it would switch the item on, so it is refused, before anything is touched, with a message that says why.
+  if (modules.some((m) => (m as { enabled?: unknown }).enabled === false) || d.instances.some((i) => i.enabled === false)) return { ok: false, error: "switched-off" };
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
   const fonts = [...files.entries()].filter(([p]) => p.startsWith("fonts/") && FONT_NAME_RE.test(p.slice(6))).map(([p, content]) => ({ name: p.slice(6), content }));
   return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles, uploadFiles, overlayPages }, uploads, fonts } };
@@ -124,7 +126,6 @@ export type ModulePlan = {
   id: string;
   name: string;
   version: string;
-  enabled: boolean;
   /** installed : déjà installé · catalogue : sera réinstallé depuis le catalogue · custom : dépôt personnel, CONFIRMATION requise · unavailable : introuvable */
   status: "installed" | "catalogue" | "custom" | "unavailable";
   repoUrl: string | null;
@@ -147,7 +148,7 @@ async function planModulesBase(modules: BackupModule[]): Promise<ModulePlan[]> {
   const market = await getCatalogue().catch(() => []);
   const installed = new Set((await prisma.module.findMany({ select: { id: true } })).map((m) => m.id));
   return modules.map((m): ModulePlan => {
-    const base = { id: m.id, name: m.name, version: m.version, enabled: m.enabled, repoUrl: m.repoUrl, ref: m.ref, subdir: m.subdir ?? null };
+    const base = { id: m.id, name: m.name, version: m.version, repoUrl: m.repoUrl, ref: m.ref, subdir: m.subdir ?? null };
     if (installed.has(m.id)) return { ...base, status: "installed", needsConfirmation: false };
     const entry = market.find((e) => e.id === m.id);
     // Une sauvegarde d'une version où les modules de base étaient « intégrés » les nomme « builtin » : ce sont aujourd'hui des modules du catalogue.
@@ -294,13 +295,6 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
 
       // Pages d'overlay : mêmes adresses secrètes qu'avant (OBS continue de fonctionner), bornes dures réappliquées.
       for (const c of chunks(fromBackupRows(d.overlayPages))) await tx.overlayPage.createMany({ data: c });
-
-      // Modules : un module « éteint » dans une sauvegarde d'avant la 0.1.20 garde ce drapeau le temps que la migration ci-dessous le désinstalle (données gardées).
-      for (const m of d.modules) {
-        const outcome = outcomes.find((o) => o.id === m.id)?.outcome;
-        if (outcome === "skipped" || outcome === "failed" || outcome === "unavailable") continue;
-        await tx.module.updateMany({ where: { id: m.id }, data: { enabled: m.enabled !== false } });
-      }
     }, { timeout: 120_000, maxWait: 10_000 });
   } catch (error) {
     console.error("[backup] restore failed:", (error as Error)?.message);
@@ -327,12 +321,10 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   opStep("finish");
   // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
-  // Seul appel restant de legacyOff.ts (plus appelé au démarrage) : une sauvegarde d'un site d'avant la 0.1.20 peut contenir des modules ou instances « éteints » ; ils deviennent « désinstallés, données gardées ».
-  await retireLegacyOff().catch((e) => console.error("[backup] legacy off migration failed:", (e as Error)?.message));
   // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
   const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
   // Les modules actifs retrouvent ce dont ils ont besoin (fournisseur disponible installé avec son instance) ; sinon le bilan le dit.
-  const active = d.modules.filter((m) => m.enabled !== false && !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
+  const active = d.modules.filter((m) => !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
   // Skins : réinstallés depuis leur dépôt (les réglages ont été restaurés d'un bloc avec les autres) ; sinon basic s'applique en attendant, sans rien perdre.
   const skins = await restoreSkins({ before: skinsBefore, confirmCustom: opts.confirmCustom, actor: opts.actor });
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));

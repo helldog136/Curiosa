@@ -20,7 +20,6 @@ export const MODULE_SKIN_TOKEN_TYPES = ["color", "length", "shadow", "number", "
 /** Plafonds : un module reste un petit vocabulaire (docs/SKINS.md §8.2). */
 export const MODULE_SKIN_MAX_PARTS = 12;
 export const MODULE_SKIN_MAX_TOKENS = 24;
-export const MODULE_SKIN_MAX_DEMO_BYTES = 20 * 1024;
 /** Un jeton de module a pour nom `--sk-m-<idDuModule>-<reste>` ; le nom entier reste dans la limite d'une variable de skin (`--sk-` + 61 caractères au plus). */
 export const MODULE_SKIN_TOKEN_PREFIX = (moduleId: string): string => `--sk-m-${moduleId}-`;
 export const MODULE_SKIN_TOKEN_MAX_NAME = 66;

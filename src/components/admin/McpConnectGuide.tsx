@@ -3,7 +3,7 @@ import { CopyBlock } from "./CopyBlock";
 
 /** Clés de traduction dont le guide a besoin : la page les résout côté serveur et les passe en `texts`. */
 export const GUIDE_KEYS = [
-  "mcp.guide.marker", "mcp.guide.copy", "mcp.guide.copied", "mcp.guide.placeholderNote", "mcp.guide.filled",
+  "mcp.guide.marker", "mcp.guide.copy", "mcp.guide.copied", "mcp.guide.placeholderNote",
   "mcp.guide.claude.title", "mcp.guide.claude.text", "mcp.guide.claude.need", "mcp.guide.secretWarn",
   "mcp.guide.code.title", "mcp.guide.code.text",
   "mcp.guide.other.title", "mcp.guide.other.text", "mcp.guide.other.generic", "mcp.guide.other.vscode", "mcp.guide.other.windsurf",
@@ -37,7 +37,6 @@ export function McpConnectGuide({ texts, baseUrl, token, byUrl, advanced }: { te
   return (
     <div className="space-y-3" data-testid="mcp-guide">
       {!token && <p className="text-sm text-muted">{texts["mcp.guide.placeholderNote"].replace("{marker}", texts["mcp.guide.marker"])}</p>}
-      {token && <Callout tone="ok">{texts["mcp.guide.filled"]}</Callout>}
 
       <details className={card} open data-testid="mcp-guide-claude">
         <summary className={summary}>{texts["mcp.guide.claude.title"]}</summary>

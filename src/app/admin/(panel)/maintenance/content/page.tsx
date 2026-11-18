@@ -43,7 +43,7 @@ export default async function ContentHealthPage() {
       {verdict === "none" ? (
         <Callout tone="info" role="status" testid="content-verdict-none">{t("content.verdict.none")}</Callout>
       ) : verdict === "good" ? (
-        <Callout tone="ok" role="status" testid="content-verdict-good"><strong>{t("content.verdict.good")}</strong> {t("content.verdict.goodHelp", { date: when(report?.doneAt ?? report?.at) })}</Callout>
+        <p><span role="status" data-testid="content-verdict-good" className={ui.chipOk} title={t("content.verdict.goodHelp", { date: when(report?.doneAt ?? report?.at) })}>✔ {t("content.verdict.good")}</span></p>
       ) : (
         <Callout tone="info" role="status" testid="content-verdict-look"><strong>{t("content.verdict.look")}</strong> {t("content.verdict.lookHelp", { date: when(report?.doneAt ?? report?.at) })}</Callout>
       )}
@@ -64,7 +64,6 @@ export default async function ContentHealthPage() {
         <p className={ui.help}>{t(settings.checkLinks ? "content.run.help" : "content.run.helpNoLinks")}</p>
       </Panel>
 
-      {report && groups.length === 0 && verdict !== "none" && <Callout tone="ok" testid="content-empty">{t("content.nothing")}</Callout>}
 
       {SEVERITIES.map((sev) => {
         const here = groups.filter((g) => g.sev === sev);

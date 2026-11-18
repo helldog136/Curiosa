@@ -152,8 +152,8 @@ test("accès : « remettre les défauts » d'un jeton maintenance garde le nivea
 // ── Niveau 1 : lecture et diagnostic ────────────────────────────────────────────────────────────────────────────────────────
 
 test("status : version, canal, Node, uptime, modules, mise à jour en cours", async () => {
-  await db.prisma.module.create({ data: { id: "m1", source: "git", repoUrl: "https://example.org/m1.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "m2", source: "git", repoUrl: "https://example.org/m2.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "m1", source: "git", repoUrl: "https://example.org/m1.git", ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "m2", source: "git", repoUrl: "https://example.org/m2.git", ref: "v1.0.0", version: "1.0.0" } });
   fs.mkdirSync(path.join(db.dir, "update"), { recursive: true });
   fs.writeFileSync(path.join(db.dir, "update", "state.json"), JSON.stringify({ status: "running", target: "v0.1.15", step: "download", startedAt: Date.now() }));
   const { token } = await maintenanceToken();
@@ -199,7 +199,7 @@ test("health : une sauvegarde faite par la maintenance, ou téléchargée par le
 });
 
 test("modules : version, source (sans identifiants), instances en erreur, mise à jour disponible", async () => {
-  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://bob:s3cr3t@example.org/alpha.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://bob:s3cr3t@example.org/alpha.git", ref: "v1.0.0", version: "1.0.0" } });
   await db.prisma.moduleInstance.create({ data: { moduleId: "alpha", key: "alpha-1" } });
   const inst = await db.prisma.moduleInstance.findUnique({ where: { key: "alpha-1" } });
   await setSetting(`instance.${inst.id}.__dataStatus`, { status: "failed", error: "boom password=hunter2" });
@@ -216,8 +216,8 @@ test("modules : version, source (sans identifiants), instances en erreur, mise �
 
 test("updates : cœur ET modules ; stable seulement ; niveau ; notes courtes ; un module sur une branche n'est pas mettable à jour par une IA", async () => {
   latest = { tag: "v0.2.0", notes: "# Notes\n\n- une chose\n".repeat(200) };
-  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "branchy", source: "git", repoUrl: "https://example.org/b.git", ref: "main", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "branchy", source: "git", repoUrl: "https://example.org/b.git", ref: "main", version: "1.0.0" } });
   report = { checkedAt: Date.now(), checked: 2, unchecked: ["lost"], outdated: [
     { id: "tagged", current: "1.0.0", target: "1.0.1", level: "patch" }, { id: "branchy", current: "1.0.0", target: "abc1234" }, { id: "needy", current: "1.0.0", target: "2.0.0", level: "major", needsCore: "0.3.0" },
   ] };
@@ -255,7 +255,7 @@ test("updates : jamais de candidate — le site est sur le canal RC, le cœur pr
 });
 
 test("diagnose : un rapport par problème avec la cause probable, l'action proposée et l'outil qui la fait", async () => {
-  await db.prisma.module.create({ data: { id: "broken", source: "git", repoUrl: "https://example.org/b.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "broken", source: "git", repoUrl: "https://example.org/b.git", ref: "v1.0.0", version: "1.0.0" } });
   report = { checkedAt: Date.now(), checked: 1, unchecked: [], outdated: [{ id: "broken", current: "1.0.0", target: "1.0.1", level: "patch" }] };
   const { token } = await maintenanceToken();
   const { value } = await call(token, "maintenance_diagnose");
@@ -449,7 +449,7 @@ test("approbation : le propriétaire approuve → exécuté UNE seule fois ; la 
 
 test("refus : une demande refusée ne s'exécute jamais, même si on tente ensuite de l'approuver", async () => {
   const { token } = await maintenanceToken(["module_uninstall"]);
-  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0" } });
   const { value } = await call(token, "maintenance_module_uninstall", { module: "alpha" });
   assert.equal(value.status, "pending_approval");
   assert.equal((await M.denyRequestBy(value.requestId, owner)).ok, true);
@@ -536,7 +536,7 @@ test("request_status : une IA ne relit que ses propres demandes", async () => {
 
 test("file de demandes : au plus 5 en attente par jeton", async () => {
   const { token } = await maintenanceToken(["module_uninstall"]);
-  for (let i = 0; i < 7; i++) await db.prisma.module.create({ data: { id: `m${i}`, source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
+  for (let i = 0; i < 7; i++) await db.prisma.module.create({ data: { id: `m${i}`, source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0" } });
   for (let i = 0; i < 5; i++) assert.equal((await call(token, "maintenance_module_uninstall", { module: `m${i}` })).value.status, "pending_approval");
   assert.match((await call(token, "maintenance_module_uninstall", { module: "m5" })).error, /Too many requests/);
 });
@@ -600,8 +600,8 @@ test("core_update : une version candidate ou un instantané n'est jamais visé, 
 test("modules : un module dont la cible est une préversion, un instantané, un commit ou une branche n'est jamais mis à jour par l'IA (module_update et modules_update_all)", async () => {
   const { token, id } = await maintenanceToken(["module_update", "modules_update_all"]);
   await S.setApprovalMode(id, "direct");
-  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "branchy", source: "git", repoUrl: "https://example.org/b.git", ref: "main", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "branchy", source: "git", repoUrl: "https://example.org/b.git", ref: "main", version: "1.0.0" } });
   for (const target of ["v1.1.0-rc.1", "dev-20261012", "abc1234"]) {
     moduleCheck = { check: { available: true, target, level: "minor" }, failed: false };
     assert.match((await call(token, "maintenance_module_update", { module: "tagged" })).error, /cannot be updated by an AI/, target);
@@ -621,7 +621,7 @@ test("modules : un module dont la cible est une préversion, un instantané, un 
 
 test("module_update : demande, puis approbation → le module est mis à jour (même fonction que l'admin) ; une version qui a changé entre-temps n'est pas exécutée", async () => {
   const { token } = await maintenanceToken(["module_update"]);
-  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "tagged", source: "git", repoUrl: "https://example.org/t.git", ref: "v1.0.0", version: "1.0.0" } });
   moduleCheck = { check: { available: true, target: "v1.0.1", level: "patch" }, failed: false };
   const a = (await call(token, "maintenance_module_update", { module: "tagged" })).value;
   assert.deepEqual(a.plan, { module: "tagged", from: "1.0.0", to: "1.0.1", level: "patch" });
@@ -643,8 +643,8 @@ test("module_update : demande, puis approbation → le module est mis à jour (m
 
 test("modules_update_all : ne met à jour que les modules éligibles, un par un (liste figée à la demande, revérifiée à l'exécution)", async () => {
   const { token } = await maintenanceToken(["modules_update_all"]);
-  for (const id of ["a", "b", "c"]) await db.prisma.module.create({ data: { id, source: "git", repoUrl: `https://example.org/${id}.git`, ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "d", source: "git", repoUrl: "https://example.org/d.git", ref: "develop", version: "1.0.0", enabled: true } });
+  for (const id of ["a", "b", "c"]) await db.prisma.module.create({ data: { id, source: "git", repoUrl: `https://example.org/${id}.git`, ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "d", source: "git", repoUrl: "https://example.org/d.git", ref: "develop", version: "1.0.0" } });
   report = { checkedAt: Date.now(), checked: 4, unchecked: [], outdated: [
     { id: "a", current: "1.0.0", target: "1.0.1" }, { id: "b", current: "1.0.0", target: "1.1.0-rc.1" }, { id: "c", current: "1.0.0", target: "1.2.0" }, { id: "d", current: "1.0.0", target: "ffffff0" },
   ] };
@@ -660,7 +660,7 @@ test("modules_update_all : ne met à jour que les modules éligibles, un par un 
 
 test("module_uninstall : demande, puis approbation → désinstallé ; refusé d'avance si un autre module en dépend ou s'il n'existe pas", async () => {
   const { token } = await maintenanceToken(["module_uninstall"]);
-  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "alpha", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0" } });
   assert.match((await call(token, "maintenance_module_uninstall", { module: "ghost" })).error, /Unknown module/);
   const req = (await call(token, "maintenance_module_uninstall", { module: "alpha" })).value;
   assert.equal(calls.uninstall.length, 0);
@@ -668,7 +668,7 @@ test("module_uninstall : demande, puis approbation → désinstallé ; refusé d
   assert.deepEqual(calls.uninstall, ["alpha"]);
   assert.deepEqual(calls.uninstallOpts, [{ keepData: true }], "sans précision : les données sont GARDÉES (non destructif)");
   uninstallResult = { ok: false, error: "modules.error.requiredBy" };
-  await db.prisma.module.create({ data: { id: "beta", source: "git", repoUrl: "https://example.org/b.git", ref: "v1.0.0", version: "1.0.0", enabled: false } });
+  await db.prisma.module.create({ data: { id: "beta", source: "git", repoUrl: "https://example.org/b.git", ref: "v1.0.0", version: "1.0.0" } });
   const req2 = (await call(token, "maintenance_module_uninstall", { module: "beta" })).value;
   const r = await M.approveRequest(req2.requestId, owner);
   assert.equal(r.ok, false);
@@ -678,7 +678,7 @@ test("module_uninstall : demande, puis approbation → désinstallé ; refusé d
 
 test("module_uninstall : keepData=false (tout effacer) est une demande distincte, dite telle quelle à l'humain ; la valeur doit être un booléen", async () => {
   const { token } = await maintenanceToken(["module_uninstall"]);
-  await db.prisma.module.create({ data: { id: "gamma", source: "git", repoUrl: "https://example.org/g.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "gamma", source: "git", repoUrl: "https://example.org/g.git", ref: "v1.0.0", version: "1.0.0" } });
   assert.match((await call(token, "maintenance_module_uninstall", { module: "gamma", keepData: "non" })).error, /boolean/);
   const keep = (await call(token, "maintenance_module_uninstall", { module: "gamma" })).value;
   assert.equal((await Q.getRequest(keep.requestId)).plan.keepData, true);

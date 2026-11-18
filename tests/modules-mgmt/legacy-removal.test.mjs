@@ -97,16 +97,16 @@ test("restauration d'une sauvegarde récente : le module, son instance, ses rég
   assert.equal((await S.runLegacySweep(silent)).done, true, "et le site démarre proprement après la restauration");
 });
 
-test("outil MCP maintenance_legacy : répond toujours, avec tous ses champs (les champs « éteints » restent, vides) ; il n'expose ni valeur ni adresse", async () => {
+test("outil MCP maintenance_legacy : répond toujours, avec tous ses champs ; il n'expose ni valeur ni adresse", async () => {
   await S.runLegacySweep(silent);
   const data = await Rp.legacyReportForAssistant();
   assert.equal(data.conversionFinished, true);
-  for (const k of ["conversionFinished", "totals", "oldModuleRows", "oldModulesKeptAsTheyAre", "switchedOff", "instancesBehind", "instancesSetAside", "instancesNewerThanModule", "takeoverNotDone", "collectionsToEmpty", "keptSettingsWithValue", "unknownSettings", "upkeep"]) assert.ok(k in data, k);
-  assert.deepEqual(data.switchedOff, { modules: [], instances: [] });
-  for (const k of ["sourceRows", "keptRows", "switchedOffModules", "switchedOffInstances", "behind", "failed", "newer", "seedsMissing", "collections", "legacyValues", "orphans"]) assert.equal(typeof data.totals[k], "number", `totals.${k}`);
+  for (const k of ["conversionFinished", "totals", "oldModuleRows", "oldModulesKeptAsTheyAre", "instancesBehind", "instancesSetAside", "instancesNewerThanModule", "takeoverNotDone", "collectionsToEmpty", "keptSettingsWithValue", "unknownSettings", "upkeep"]) assert.ok(k in data, k);
+  assert.ok(!("switchedOff" in data), "the always-empty switched-off field is gone (0.32.0)");
+  for (const k of ["sourceRows", "keptRows", "behind", "failed", "newer", "seedsMissing", "collections", "legacyValues", "orphans"]) assert.equal(typeof data.totals[k], "number", `totals.${k}`);
   assert.equal(data.upkeep.state, "up_to_date");
   // Une ligne restée d'une des premières versions : elle est dite « à faire », avec son nom et sa version, jamais autre chose.
-  await prisma.module.create({ data: { id: "vieux", source: "bundled", version: "0.1.0", enabled: true } });
+  await prisma.module.create({ data: { id: "vieux", source: "bundled", version: "0.1.0" } });
   const withRow = await Rp.legacyReportForAssistant();
   assert.deepEqual(withRow.oldModuleRows.map((r) => [r.id, r.source, r.version]), [["vieux", "bundled", "0.1.0"]]);
   assert.equal(withRow.upkeep.state, "to_do");

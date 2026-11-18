@@ -169,7 +169,7 @@ test("site d'une des premières versions (ligne `bundled`) : son dossier est sur
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify({ apiVersion: 2, id: "carnet", name: "Carnet", version: "1.0.0", main: "index.mjs" }));
   fs.writeFileSync(path.join(dir, "index.mjs"), "export default { marker: 'ancien' };\n");
-  await db.prisma.module.create({ data: { id: "carnet", source: "bundled", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "carnet", source: "bundled", version: "1.0.0" } });
   await cat.down({ forget: true });
 
   // 1. hors ligne : il marche, une instance se crée, le rapport de mises à jour ne casse pas
@@ -187,7 +187,7 @@ test("site d'une des premières versions (ligne `bundled`) : son dossier est sur
   assert.deepEqual((await Upd.getModulesReport(true)).outdated, []);
   assert.equal((await I.updateModule("carnet")).error, "modules.error.unknownSource");
   const row = await db.prisma.module.findUnique({ where: { id: "carnet" } });
-  assert.deepEqual([row.source, row.version, row.enabled, row.repoUrl], ["bundled", "1.0.0", true, null]);
+  assert.deepEqual([row.source, row.version, !!row, row.repoUrl], ["bundled", "1.0.0", true, null]);
   assert.equal((await R.getModule("carnet")).def.marker, "ancien");
   assert.equal(await getSetting(`instance.${inst.id}.titre`), "Mon carnet");
   assert.equal(await db.prisma.moduleRecord.count({ where: { instanceId: inst.id } }), 1);

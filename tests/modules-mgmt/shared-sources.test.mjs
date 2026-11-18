@@ -101,9 +101,9 @@ test("outside a pass nothing is shared: each call downloads its own copy and cle
 
 test("startup recovery: a module swap that a dead process left half done is put right (old copy back, or old copy deleted when the swap was complete)", async () => {
   const dead = 4194000;   // no such process
-  await db.prisma.module.create({ data: { id: "kept", source: "git", repoUrl: "https://example.org/k.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "lost", source: "git", repoUrl: "https://example.org/l.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
-  await db.prisma.module.create({ data: { id: "live", source: "git", repoUrl: "https://example.org/v.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "kept", source: "git", repoUrl: "https://example.org/k.git", ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "lost", source: "git", repoUrl: "https://example.org/l.git", ref: "v1.0.0", version: "1.0.0" } });
+  await db.prisma.module.create({ data: { id: "live", source: "git", repoUrl: "https://example.org/v.git", ref: "v1.0.0", version: "1.0.0" } });
   const put = (dir, id, version) => { fs.mkdirSync(dir, { recursive: true }); fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(manifest(id, version))); };
   // "kept": the new folder is in place and is the version of the database -> the swap was complete, the old copy goes.
   put(path.join(MODULES_DIR, "kept"), "kept", "1.0.0"); put(path.join(MODULES_DIR, `kept.previous-${dead}`), "kept", "0.9.0");

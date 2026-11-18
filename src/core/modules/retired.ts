@@ -111,7 +111,7 @@ export async function restoreInstance(id: string): Promise<RestoreOutcome> {
 
   await prisma.$transaction(async (tx) => {
     await tx.setting.deleteMany({ where: { key: { startsWith: prefix(id) } } });   // jamais de reste d'une vie antérieure
-    const live = pickKnownColumns("instances", reviveDates("instance", { ...payload.instance, key: plan.key, basePath: plan.basePath, nickname: plan.nickname, enabled: true }));
+    const live = pickKnownColumns("instances", reviveDates("instance", { ...payload.instance, key: plan.key, basePath: plan.basePath, nickname: plan.nickname }));
     await tx.moduleInstance.create({ data: live as never });
     for (const t of payload.translations) await tx.instanceTranslation.create({ data: pickKnownColumns("instanceTranslations", t) as never });
     for (const e of payload.entries) {

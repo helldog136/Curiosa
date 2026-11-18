@@ -51,11 +51,10 @@ function publish(over = {}, id = "planning") {
   repo.g("add", "-A"); repo.g("commit", "-q", "--allow-empty", "--no-verify", "-m", "publication");
 }
 /** Un module installé depuis son dépôt git (à la racine), dont le dossier installé « a dérivé » : un autre code (« ancien ») sous le même numéro de version. */
-async function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {}, enabled = true } = {}) {
+async function legacyFolder(id = "planning", { files = { "index.mjs": code("ancien") }, manifest: m = {} } = {}) {
   const repo = makeRepo({ "module.json": manifest({ id, ...m }), ...Object.fromEntries(Object.entries(files).map(([n, c]) => [n, c])) });
   repos.set(id, repo);
   assert.equal((await I.installModule(repo.url, { firstInstance: false })).ok, true);
-  if (!enabled) await db.prisma.module.update({ where: { id }, data: { enabled } });
   return row(id);
 }
 
@@ -87,7 +86,7 @@ test("ligne `bundled` d'une des premières versions : plus de conversion — le 
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(manifest()));
   fs.writeFileSync(path.join(dir, "index.mjs"), code("ancien"));
-  await db.prisma.module.create({ data: { id: "planning", source: "bundled", version: "1.1.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "planning", source: "bundled", version: "1.1.0" } });
   await cat.add("planning", { manifest: { version: "1.2.0" }, marker: "nouveau" });   // même si le catalogue le propose, plus rien ne le convertit
   const hash = X.fingerprintDir(dir).hash;
   const d = await X.diagnoseModule("planning", { compare: "network" });
@@ -176,7 +175,7 @@ test("module git à la racine d'un dépôt : le dossier garde son .git", async (
 test("refus : inconnu, sans source, mise à jour du site en cours, autre identifiant, trop gros, cœur trop ancien, nouvelles permissions", async () => {
   assert.equal((await X.reinstallModule("inconnu")).error, "modules.error.notfound");
 
-  await db.prisma.module.create({ data: { id: "manuel", source: "manual", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "manuel", source: "manual", version: "1.0.0" } });
   assert.equal((await X.reinstallModule("manuel")).error, "modules.error.reinstallNoSource");
 
   await bundledWithData();
@@ -232,7 +231,7 @@ test("échec en cours d'échange : retour arrière complet (fichiers et base), l
   assert.equal(r.rolledBack, true);
   assert.equal(X.fingerprintDir(installed()).hash, hash, "l'ancien dossier est revenu tel quel");
   const after = await row();
-  assert.equal(after.version, before.version); assert.equal(after.enabled, true); assert.equal(after.source, "git", "la ligne d'avant est rétablie telle quelle");
+  assert.equal(after.version, before.version); assert.equal(!!after, true); assert.equal(after.source, "git", "la ligne d'avant est rétablie telle quelle");
   assert.deepEqual(leftovers(), []);
   assert.equal((await R.getModule("planning")).def.marker, "ancien");
   assert.match(X.describeReinstall(r, (k) => k).lines.join(), /maintenance\.rolledBack/);
@@ -270,7 +269,7 @@ test("réinstaller laisse le module installé et actif, et ne touche pas à ses 
   await legacyFolder("planning", { files: { "index.mjs": code("a") } });
   await publish({ marker: "b" });
   assert.equal((await X.reinstallModule("planning")).ok, true);
-  assert.equal((await row()).enabled, true);
+  assert.equal(!!(await row()), true);
 });
 
 test("bilan lisible et i18n : toutes les clés existent en français et en anglais", async () => {

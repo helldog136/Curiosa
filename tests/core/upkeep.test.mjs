@@ -34,9 +34,9 @@ const PANEL = "../../src/app/admin/(panel)";
 
 /** Un rapport d'héritage vide, que chaque test complète. */
 const report = (over = {}) => ({
-  marker: { version: "0.6.3", at: "2026-11-01T10:00:00.000Z", counts: {} }, sourceRows: [], keptRows: [], switchedOff: { modules: [], instances: [] }, behind: [], failed: [], newer: [],
+  marker: { version: "0.6.3", at: "2026-11-01T10:00:00.000Z", counts: {} }, sourceRows: [], keptRows: [], behind: [], failed: [], newer: [],
   seedsMissing: [], collections: [], legacyValues: [], orphans: [],
-  totals: { sourceRows: 0, keptRows: 0, switchedOffModules: 0, switchedOffInstances: 0, behind: 0, failed: 0, newer: 0, seedsMissing: 0, collections: 0, legacyValues: 0, orphans: 0 },
+  totals: { sourceRows: 0, keptRows: 0, behind: 0, failed: 0, newer: 0, seedsMissing: 0, collections: 0, legacyValues: 0, orphans: 0 },
   converted: true, clean: true, ...over,
 });
 const groupOf = (rows, id) => rows.filter((r) => r.id === id).map((r) => r.group);
@@ -103,7 +103,7 @@ async function extension(id, manifest = {}, row = {}) {
   const full = { apiVersion: 2, id, name: id, version: "1.0.0", main: "index.mjs", ...manifest };
   fs.writeFileSync(path.join(dir, "module.json"), JSON.stringify(full));
   fs.writeFileSync(path.join(dir, "index.mjs"), "export default {};");
-  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version, enabled: true, ...row } });
+  await prisma.module.create({ data: { id, source: "git", repoUrl: "https://github.com/exemple/perso", version: full.version, ...row } });
   R.forgetModule(id);
   return full;
 }
@@ -226,7 +226,7 @@ test("le menu reste simple : le calcul de la pastille ne lève jamais et se met 
 
 test("MCP maintenance_legacy : tous les anciens champs sont là, plus `upkeep` qui distingue « à faire » et « gardé par prudence »", async () => {
   const data = await Rp.legacyReportForAssistant();
-  for (const k of ["conversionFinished", "totals", "oldModuleRows", "oldModulesKeptAsTheyAre", "switchedOff", "instancesBehind", "instancesSetAside", "instancesNewerThanModule", "takeoverNotDone", "collectionsToEmpty", "keptSettingsWithValue", "unknownSettings"]) assert.ok(k in data, k);
+  for (const k of ["conversionFinished", "totals", "oldModuleRows", "oldModulesKeptAsTheyAre", "instancesBehind", "instancesSetAside", "instancesNewerThanModule", "takeoverNotDone", "collectionsToEmpty", "keptSettingsWithValue", "unknownSettings"]) assert.ok(k in data, k);
   assert.equal(data.collectionsToEmpty.length, 2, "le nom de champ est conservé");
   assert.equal(data.upkeep.state, "nothing_to_do_kept_as_precaution");
   assert.deepEqual(data.upkeep.toDo, []);

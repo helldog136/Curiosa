@@ -55,8 +55,6 @@ export const OV_TOKEN_DEFS: readonly OvTokenDef[] = [
 ] as const;
 
 export const OV_TOKEN_BY_NAME: ReadonlyMap<string, OvTokenDef> = new Map(OV_TOKEN_DEFS.map((d) => [d.name, d]));
-/** The four tokens of the common style (0.5.0): unchanged. */
-export const OV_BASE_TOKEN_NAMES = ["--ov-fg", "--ov-surface", "--ov-radius", "--ov-border"] as const;
 export const OV_ANIM_PRESETS = ["none", "fade", "rise", "pop", "glow"] as const;
 export const OV_TRANSFORMS = ["none", "uppercase", "lowercase", "capitalize"] as const;
 export const MAX_TOKEN_VALUE = 240;
@@ -181,8 +179,3 @@ export function checkToken(name: string, raw: unknown): TokenCheck {
   }
 }
 
-/** Alpha-aware luminance helpers for the contrast check live in skinReadability.ts. */
-export function isTransparentColor(v: string | undefined): boolean {
-  const c = v ? parseColor(v) : null;
-  return !c || c.a < 0.2;
-}

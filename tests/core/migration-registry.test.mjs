@@ -56,8 +56,8 @@ test("removed migrations: the floor is at least the version that made it safe, a
 });
 
 test("the sunset report flags what a floor raise would delete, and nothing when the floor stays", () => {
-  assert.deepEqual(report({ floor: "0.7.0", version, registry }).filter((r) => r.expired), [], "raising the floor to 0.7.0 deletes nothing more: menu-freeze is kept (backup reader), legacy-off waits for 0.10.0");
-  assert.deepEqual(report({ floor: "0.10.0", version, registry }).filter((r) => r.expired).map((r) => r.id), ["legacy-off"], "the backup reader legacy-off is the next one a floor raise can delete");
+  assert.deepEqual(report({ floor: "0.7.0", version, registry }).filter((r) => r.expired), [], "raising the floor to 0.7.0 deletes nothing more: menu-freeze is kept (backup reader), legacy-off is gone (0.32.0)");
+  assert.deepEqual(report({ floor: "0.10.0", version, registry }).filter((r) => r.expired), [], "nothing left that a floor raise can delete: the only active reader of old backups is permanent");
   assert.equal(report({ floor, version, registry }).filter((r) => r.expired).length, 0);
 });
 

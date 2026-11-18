@@ -158,7 +158,7 @@ async function putModule(id, files) {
   fs.rmSync(target, { recursive: true, force: true });
   for (const [name, content] of Object.entries(files)) { fs.mkdirSync(path.dirname(path.join(target, name)), { recursive: true }); fs.writeFileSync(path.join(target, name), typeof content === "string" ? content : JSON.stringify(content)); }
   const manifest = typeof files["module.json"] === "string" ? JSON.parse(files["module.json"]) : files["module.json"];
-  await db.prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version: manifest.version, enabled: true }, update: { enabled: true } });
+  await db.prisma.module.upsert({ where: { id }, create: { id, source: "bundled", version: manifest.version }, update: {} });
 }
 const PROVIDER = {
   "module.json": { apiVersion: 2, id: "mood-source", name: "Mood", version: "1.0.0", minCore: "0.8.0", main: "index.mjs", type: "widget", permissions: [], instances: "single",

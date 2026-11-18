@@ -33,7 +33,6 @@ import { storageForTool } from "@/core/storage/tool";
  * Chaque texte qui vient d'ailleurs (journal, message d'erreur, adresse de dépôt, notes de version) passe par le masquage des secrets et est borné.
  */
 const MAX_MODULES = 100;
-const MB = 1024 * 1024;
 const BACKUP_RECENT_MS = 7 * 24 * 60 * 60_000;
 
 const appDir = () => deps.appDir ?? process.cwd();

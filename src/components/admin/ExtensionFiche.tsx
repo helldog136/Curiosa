@@ -1,7 +1,6 @@
 import type { Translator } from "@/core/i18n/dictionary";
 import type { AddItem, BarState } from "@/core/modules/ficheView";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
-import { Callout } from "./Page";
 import { ui } from "./ui";
 import { AddsList, InstallBar, InstallBlockedButton, ReadmeFold, TechnicalDetails } from "./FicheParts";
 import { PreviewGallery, type GalleryItem, type GalleryLabels } from "./PreviewGallery";
@@ -98,7 +97,7 @@ export function ExtensionFiche(p: FicheProps) {
 
       {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
       {p.noModule && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
-      {p.keptCount > 0 && <Callout tone="info" role="status"><span data-testid="kept-note">🗂 {t("kept.detailsNote", { name: p.name, count: p.keptCount })}</span></Callout>}
+      {p.keptCount > 0 && <p><span role="status" data-testid="kept-note" className={ui.chip} title={t("kept.detailsNote", { name: p.name, count: p.keptCount })}>🗂 {t("kept.chip")}</span></p>}
       {p.failed && (
         <div role="alert" data-testid="fiche-failed" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
           <p className="min-w-0 flex-1 basis-64">{t(p.timedOut ? "catalogue.previewSlow" : p.rateLimited ? "catalogue.previewRateLimit" : "catalogue.previewFailed")}</p>

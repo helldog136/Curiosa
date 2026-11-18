@@ -225,5 +225,3 @@ export function lookCss(a: Applied): string {
   ].join("\n");
 }
 
-/** Elements whose look the core fixed on its own (for the editor notice). */
-export const autoFixed = <E extends { style?: ElementStyle | null }>(list: readonly E[], page: PageSide, follows: (e: E) => boolean): E[] => list.filter((e) => appliedLook(e.style, page, follows(e))?.source === "auto");

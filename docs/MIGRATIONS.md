@@ -29,7 +29,7 @@ The CHANGELOG of a release that raises the floor says so in plain words: **"Olde
    run `npm run migrations:sunset -- --floor <new floor>`, delete what it lists as EXPIRED, raise `minFrom`, move the entries to `removed`.
 4. `tests/core/migration-registry.test.mjs` fails when a conversion is still present although the floor is at or above its `removableAtFloor`, when a removed one comes back, and
    when a registry entry no longer matches the code. `npm run migrations:sunset` warns about conversions older than 3 minor releases (`--strict` makes it fail).
-5. Backups keep their format whatever the site version: reading an old backup is a file-format reader, listed in the registry (`legacy-off`) with its own removal floor.
+5. Backups keep their format whatever the site version: reading an old backup is a file-format reader, listed in the registry with its own removal floor. A reader can also be removed by a format decision: since 0.32.0 a backup from before 0.1.20 that lists switched-off items is refused with a clear message (`legacy-off`).
 6. Module data conversions (`dataVersion` in a module manifest) are a permanent contract between the core and modules, not core legacy: they run when a module is installed or updated.
 
 ## Registry
@@ -37,9 +37,9 @@ The CHANGELOG of a release that raises the floor says so in plain words: **"Olde
 | id | Introduced in | Removable once the floor reaches | State |
 |---|---|---|---|
 | `startup-sweep` | 0.2.0 | permanent (module `dataVersion` contract) | runs once per state (`core.legacySweepState`), no longer on every start |
-| `menu-freeze` | 0.2.6 | not removable by a floor raise (reader of old backups, rule 5) | the start-up call is gone; the freeze and the fallback remain for new instances and for restored backups made before the stored menu; removable after a backup-format decision, like `legacy-off` |
+| `menu-freeze` | 0.2.6 | not removable by a floor raise (reader of old backups, rule 5) | the start-up call is gone; the freeze and the fallback remain for new instances and for restored backups made before the stored menu; removable after a backup-format decision, as was done for `legacy-off` |
 | `rawg-handover` | 0.3.0 | removed with the floor 0.6.18 | deleted (start-up hook, hook after install/update/restore, relay wait; `ctx.api.rawg` relay, the old-address redirect and the MCP short names stay) |
-| `legacy-off` | 0.1.20 | 0.10.0 | present (restoring backups from before 0.1.20) |
+| `legacy-off` | 0.1.20 | removed in 0.32.0 | deleted with the columns `Module.enabled` and `ModuleInstance.enabled` (migration `20261118090000_drop_enabled_columns` sets aside any switched-off row, data kept; a pre-0.1.20 backup listing switched-off items is refused) |
 | `placement-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |
 | `startup-menu-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |
 

@@ -30,6 +30,8 @@ type Props = {
   hideSubmit?: boolean;
   /** Bouton d'envoi discret (action secondaire de la page) : l'action principale reste la seule à être pleine couleur. */
   secondary?: boolean;
+  /** Bouton d'envoi d'une action rare qui efface (« Supprimer le rôle ») : contour rouge, jamais le bouton plein de la page (R3). */
+  danger?: boolean;
   /** Demande confirmation (boîte du navigateur) avant d'envoyer. */
   confirm?: string;
   /** Vide les champs après un succès : pour les formulaires qui CRÉENT quelque chose (utilisateur, redirection, jeton). Par défaut les valeurs saisies restent affichées. */
@@ -72,7 +74,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -155,7 +157,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
       {state?.secret && <SecretReveal key={state.secret.value} secret={state.secret} />}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <PendingButton pending={pending} pendingLabel={busyLabel} variant={secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
+          <PendingButton pending={pending} pendingLabel={busyLabel} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
           {track && pending && <OperationProgress kind={track} snap={tracker.snap} lost={tracker.lost} unreachable={tracker.unreachable} className="mt-3 max-w-sm" />}
         </div>
       )}

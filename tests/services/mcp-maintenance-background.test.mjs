@@ -62,7 +62,7 @@ async function maintenanceToken(grant = [], name = "Maintenance AI") {
   return { token, id: await T.findTokenId(token) };
 }
 async function threeModules() {
-  for (const id of ["a", "b", "c"]) await db.prisma.module.create({ data: { id, source: "git", repoUrl: `https://example.org/${id}.git`, ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  for (const id of ["a", "b", "c"]) await db.prisma.module.create({ data: { id, source: "git", repoUrl: `https://example.org/${id}.git`, ref: "v1.0.0", version: "1.0.0" } });
   report = { checkedAt: Date.now(), checked: 3, unchecked: [], outdated: ["a", "b", "c"].map((id) => ({ id, current: "1.0.0", target: "1.0.1" })) };
 }
 /** An updater that takes `ms` per module and tells the progress as each one ends; `fail` modules fail. */
@@ -244,7 +244,7 @@ test("diagnose: a hung network does not hold the answer; the checks that did not
 
 test("diagnose: when the check of the repositories is not over, the last saved one is served and marked as old", async () => {
   const { token } = await maintenanceToken();
-  await db.prisma.module.create({ data: { id: "a", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0", enabled: true } });
+  await db.prisma.module.create({ data: { id: "a", source: "git", repoUrl: "https://example.org/a.git", ref: "v1.0.0", version: "1.0.0" } });
   const saved = { checkedAt: Date.now() - 3 * 3600_000, checked: 1, unchecked: [], outdated: [{ id: "a", current: "1.0.0", target: "1.0.1", level: "patch" }] };
   D.setMaintenanceDeps({ modulesReport: () => new Promise(() => {}), savedModulesReport: async () => saved });
   const { value } = await call(token, "maintenance_diagnose");

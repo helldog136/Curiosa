@@ -4,20 +4,15 @@ import fs from "node:fs";
 
 // Code jetable : chaque entrée dit jusqu'à quelle version stable il a une raison d'exister. Passé ce jalon, ce test échoue et impose le ménage.
 const TEMPORARY = [
-  {
-    why: "restauration d'une sauvegarde d'avant la 0.1.20 : ses modules et instances « éteints » deviennent « désinstallés, données gardées » (plus appelé au démarrage : `upgrade.json` exige la 0.2.0 depuis le retrait de l'entretien)",
-    // (0.30.0) Postponed from 0.29.99 to 0.32.99 (owner's decision, 2026-11-17): the removal (legacyOff.ts, Module.enabled, ModuleInstance.enabled, with
-    // a tested database migration) gets its own release right after core 0.31.0. Only this line changes: other branches rebase on it without conflict.
-    removeAfter: "0.32.99",   // (0.20.0: postponed again from 0.19.99 to 0.29.99, same reason: removing it needs its own migration and a backup-format decision) (reporté de 0.9.99 à 0.19.99 lors de la 0.10.0 : la restauration d'une sauvegarde d'avant la 0.1.20 reste permise ; supprimer ce code est une décision à part, avec sa migration) un fichier de sauvegarde garde son format quelle que soit la version du site : tant qu'une sauvegarde de cette époque peut être restaurée, ce code reste. Échéance à relire quand le format de sauvegarde refusera ces anciennes sauvegardes.
-    files: ["src/core/modules/legacyOff.ts"],
-    alsoRemove: ["son appel dans applyRestore (src/core/backup/restore.ts) ; les colonnes Module.enabled et ModuleInstance.enabled (prisma/schema.prisma, nouvelle migration), le champ enabled de BackupModule (backup/format.ts) ; les tests « migration des éteints » de tests/modules-mgmt/module-lifecycle.test.mjs"],
-  },
+  // (0.32.0) Empty: the last entry (legacyOff.ts, Module.enabled, ModuleInstance.enabled) was removed with a tested migration, see REMOVED.
+  // Entry shape: { why, removeAfter: "x.y.99", files: ["src/..."], alsoRemove: ["..."] }.
 ];
 
 // Code jetable déjà supprimé : une instance plus ancienne que `needs` n'a plus le droit de sauter à la version courante, elle doit passer par `needs`
 // d'abord. C'est `upgrade.json` (asset de release, lu par le système de mise à jour) qui l'impose : en supprimant du code jetable, remontez `minFrom`
 // et ajoutez ici une ligne.
 const REMOVED = [
+  { what: "restore of a backup made before 0.1.20 that lists switched-off modules or instances (legacyOff.ts, columns Module.enabled and ModuleInstance.enabled; 0.32.0): rows still switched off are set aside by the migration 20261118090000_drop_enabled_columns, such a backup file is now refused (error switched-off)", needs: "0.2.0" },
   { what: "RAWG handover of the old core key and cover fixes to the Game covers module (0.3.0): start-up hook, hooks after install/update/restore, relay wait (see src/core/updates/migrations-registry.json)", needs: "0.6.18" },
   { what: "one-time freeze of overlay placements (0.2.6) and the start-up menu freeze (see src/core/updates/migrations-registry.json)", needs: "0.6.10" },
   { what: "migrations « modules intégrés » et « Blocs de page » (0.1.2, 0.1.3-rc.x)", needs: "0.1.4" },

@@ -48,7 +48,7 @@ export default async function AddressPage({ searchParams }: { searchParams: Sear
       <PageHeader title={t("domain.title")} intro={t("domain.intro")} />
       <Panel title={t("domain.current.title")} testid="domain-current">
         <p className="break-all text-lg font-semibold" data-testid="domain-current-url">{siteUrl}</p>
-        {visit.same === true && <Callout tone="ok" role="status">✔ {t("domain.current.same")}</Callout>}
+        {visit.same === true && <p><span role="status" className={ui.chipOk} title={t("domain.current.same")}>✔ {t("domain.current.sameChip")}</span></p>}
         {visit.same === false && <Callout tone="warn" role="status" testid="domain-mismatch">{t("domain.current.differs", { visited: visit.visited ?? "", host: visit.configured })}</Callout>}
         {visit.same === null && <Callout role="status">{t("domain.current.local")}</Callout>}
         {hostProblem(oldHost) === null && !siteUrl.startsWith("https://") && <Callout tone="warn" role="status">{t("domain.current.http")}</Callout>}

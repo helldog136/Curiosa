@@ -33,7 +33,6 @@ export { CHUNK_BYTES, HTTP_PART_BYTES, STAGING_TTL_MS };
  * open-upload caps, the 30-minute staging, the module's storage quota. A refusal that a running lift does not cover says so.
  */
 export const STAGING_DIR = path.join(DATA_DIR, "assistant-uploads");
-export const MAX_TOTAL_BYTES = Math.max(...Object.values(ASSISTANT_MAX_BYTES));
 export const OPEN_PER_ACCESS = 3;
 export const OPEN_PER_SITE = 10;
 /** For the whole site, all assistants together, over 24 hours or since the owner started over (counted from the journal, nothing else to keep). */
