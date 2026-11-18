@@ -45,7 +45,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- **`canUse` computes the rights with the switch** (`services/mcp/access.ts`: `AccessToken.fullPowers`, `grantedByFullPowers`, `neverUnderFullPowers`, `dangerousUnderFullPowers`). Nothing is copied into `grants`. The flag is the core setting `mcp.fullPowers` (a list of access ids, `services/mcp/fullPowers.ts`), read from the database on every request. No migration.
+- **`canUse` computes the rights with the switch** (`services/mcp/access.ts`: `AccessToken.fullPowers`, `grantedByFullPowers`, `neverUnderFullPowers`, `dangerousUnderFullPowers`). Nothing is copied into `grants`; the flag is the core setting `mcp.fullPowers` (access ids, `services/mcp/fullPowers.ts`), read from the database on every request, with no migration.
 - **Owner only**: `assistants/fullPowersActions.ts` (`adminCtx("owner")`, typed name checked again on the server) is the only importer of `setFullPowers`, besides the revocation, which only turns it off. A test reads the source tree for it. No MCP tool, module action or access reaches it.
 - **Kept out of the switch**: tools whose name says token, secret, credential, password, oauth, grant, rights, permission, approval or full powers. The approval setting, `ALWAYS_HUMAN` installs, the stable-only core update, `slots.ts` and `uploadLift.ts` do not read the flag. The ceiling stays: only a write access can hold it.
 - **Journal**: `mcp.fullpowers.on|off|action|cleared` (EN+FR labels). `action` is written by `server.ts` before each destructive, request or publishing tool runs under the switch. Backups: `FULL_POWERS_KEY` is left out of the export and ignored by the restore, which also journals `cleared`.
