@@ -124,7 +124,7 @@ test("fallback: a role the skin does not draw uses the basic rendering; an unkno
   assert.equal(f.skin, true);
   assert.ok(f.ops.some((o) => o.k === "poly" && o.L === 0 && o.p.length > 8), "the skin's window");
   assert.ok(textOps(f).some((o) => o.t === "62 / 100" || /\/ 100$/.test(o.t)), "the basic value text");
-  for (const future of [{ ...glass, animateContract: 2 }, { genres: glass.genres }, "nonsense", 42]) {
+  for (const future of [{ ...glass, animateContract: 3 }, { genres: glass.genres }, "nonsense", 42]) {
     const a = A.frame(STATES.gauge, future, T0, SIZE, {}), b = A.frame(STATES.gauge, null, T0, SIZE, {});
     assert.equal(a.skin, false); assert.deepEqual(a.ops, b.ops);
   }
@@ -204,9 +204,10 @@ test("recipe checker: the two reference recipes pass; out of grammar is refused 
   bad({ value: { draw: "text", color: "#777777", outline: "#888888" } }, "text-contrast", "gauge.value");
   bad({ burst: [{ draw: "flash" }, { draw: "ring" }, { draw: "pulse" }, { draw: "rays" }] }, "shape", "gauge.burst");
   assert.equal(RC.checkAnimation({ animateContract: 1, genres: { gauge: { value: { draw: "text", color: "#ffffff", outline: "#eeeeee", plate: "soft", plateColor: "#000000", plateAlpha: 0.9 } } } }).ok, true, "a weak outline is fine over an opaque plate that contrasts");
-  const newer = RC.checkAnimation({ animateContract: 2, genres: { gauge: { body: { draw: "hologram" } } } });
+  const newer = RC.checkAnimation({ animateContract: 3, genres: { gauge: { body: { draw: "hologram" } } } });
   assert.equal(newer.ok, true); assert.equal(newer.recipe, null); assert.equal(newer.issues[0].code, "contract-newer");
   assert.equal(RC.checkAnimation({ animateContract: 1, genres: { sparkline: {} } }).issues[0].severity, "warning", "a genre of a later contract is ignored");
+  assert.equal(RC.checkAnimation({ animateContract: 2, genres: { gauge: { body: { draw: "hologram" } } } }).ok, true, "contract 2 is read tolerantly (tests/core/animate-motion.test.mjs)");
   assert.equal(RC.checkAnimation([]).ok, false);
 });
 

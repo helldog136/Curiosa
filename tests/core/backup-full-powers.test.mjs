@@ -2,7 +2,7 @@ import test, { after } from "node:test";
 import assert from "node:assert/strict";
 import { useTestDb, settleBackground } from "../helpers/db.mjs";
 
-// Full powers (core 0.33.0) never travel in a backup, and a restore switches them off everywhere, even if the file was crafted to carry them.
+// Full powers (core 0.34.0) never travel in a backup, and a restore switches them off everywhere, even if the file was crafted to carry them.
 // eslint-disable-next-line react-hooks/rules-of-hooks -- useTestDb is not a React hook
 const db = await useTestDb();
 const B = await import("@/core/backup/export");

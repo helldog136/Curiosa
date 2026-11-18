@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-// Full powers of an AI access (core 0.33.0), the screens: the window, the chip on the row, the banner, the access page, and every text (EN + FR).
+// Full powers of an AI access (core 0.34.0), the screens: the window, the chip on the row, the banner, the access page, and every text (EN + FR).
 // The window itself is driven in a real browser for the screenshots of the pull request; here: what the server renders, the gesture rule and the wiring.
 const React = (await import("react")).default;
 const { renderToStaticMarkup } = await import("react-dom/server");

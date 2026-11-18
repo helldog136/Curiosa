@@ -431,7 +431,7 @@ Cause: a module that lives in a folder of a repository with many modules was che
 - The public host comes from `SITE_URL` (one per site); only when it is left at its development value does the core use `X-Forwarded-Host` / `X-Forwarded-Proto`, then `Host` (`core/publicOrigin.ts`). An internal host (`localhost`) is never used in an address given to a client. Redirects the core issues itself carry a path-only `Location`.
 - The version `2025-11-25` is accepted at `initialize` (the older ones still are).
 
-## Addendum: full powers of an access (core 0.33.0, English)
+## Addendum: full powers of an access (core 0.34.0, English)
 
 **What it is.** A switch on each AI access, "Full powers" (FR: « Tous les pouvoirs »), in Admin > AI assistants > the access. Once on, that access holds EVERY right of the CURRENT tool catalogue, computed on each request: past tools, present tools and tools a later update or a module installed later adds, dangerous ones included (publish, unpublish, delete, uninstall, the maintenance tools of level 3). The owner never has to tick a right again after an update. It is off for every access, new or old.
 

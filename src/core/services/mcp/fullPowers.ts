@@ -2,7 +2,7 @@ import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
 
 /**
- * FULL POWERS of an AI access (core 0.33.0). A flag per access, kept as a core setting (a list of access ids, like the secret-address list in tokens.ts):
+ * FULL POWERS of an AI access (core 0.34.0). A flag per access, kept as a core setting (a list of access ids, like the secret-address list in tokens.ts):
  * no column, so no migration, and it is part of the access settings, not of the rights (`grants`), which a rights page edit can never touch.
  *
  *  - WHO SETS IT: only the owner, in the admin (`setFullPowersAction`, which checks `adminCtx("owner")`). THIS FILE'S SETTER IS IMPORTED BY NOTHING ELSE that an assistant can

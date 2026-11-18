@@ -446,7 +446,7 @@ test("backup : la garde HTTP exige le droit core:backup", async () => {
 /* ───────────── Ce qui reste au propriétaire seul ───────────── */
 
 // Owner-only exceptions, each decided by the owner: the e-mail settings; (0.28.0) lifting or resetting the upload limits of the AI assistants (uploadLimitsActions.ts);
-// (0.33.0) giving or removing "Full powers" on an AI access (fullPowersActions.ts).
+// (0.34.0) giving or removing "Full powers" on an AI access (fullPowersActions.ts).
 test("inventory: the only pages or actions that still require \"owner\" are the e-mail settings, the upload limits and the full powers of an AI access", () => {
   const found = [];
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = `${d}/${e.name}`; if (e.isDirectory()) walk(p); else if (/\.(ts|tsx)$/.test(e.name) && /adminCtx\("owner"/.test(read(p))) found.push(p); } };

@@ -1,4 +1,4 @@
-# Animated gauges, levels and counters (animation recipes, contract 4)
+# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 2)
 
 > Core 0.30.0. A module says **what happens** (a value goes up, a level is reached, time is added); an overlay skin says **what it looks like** (stained glass, neon tubes, a plain bar). The core's engine draws one with the other, live, in the overlay element. Adding a skin restyles every animated element; adding an animated element works with every skin. Nothing here runs code from a skin.
 
@@ -25,11 +25,12 @@ A role the skin does not describe is drawn by the **basic rendering** of the cor
 
 ## 2. The file
 
-Add `"animation": "animation.json"` to `skin.json`, declare `"skinContract": 4` and `"minCore": "0.30.0"`:
+Add `"animation": "animation.json"` to `skin.json`, declare `"skinContract": 4` and `"minCore": "0.30.0"` (`"0.33.0"` if you use `motion`, see section 5b and 5c):
 
 ```json
 {
-  "animateContract": 1,
+  "animateContract": 2,
+  "motion": { "value": "gentle", "reaction": "snappy", "celebration": "bouncy" },
   "colors": { "amber": "#e2a35e", "lead": "#120c09" },
   "genres": {
     "gauge": {
@@ -42,7 +43,9 @@ Add `"animation": "animation.json"` to `skin.json`, declare `"skinContract": 4` 
 }
 ```
 
-- `animateContract` (required): the version of this vocabulary. A core that does not know it switches the skin's animation off and uses the basic rendering; the rest of the skin (tokens, sheet) keeps working.
+- `animateContract` (required): the version of this vocabulary the recipe was written for (1 or 2 today). A core that does not know it switches the skin's animation off and uses the basic rendering; the rest of the skin (tokens, sheet) keeps working. Section 5c explains how contracts are negotiated.
+- `animateMinContract` (optional, contract 2): the oldest contract that can draw the recipe faithfully; defaults to `animateContract`.
+- `motion` (optional, contract 2): named springs, durations and a tempo (section 5b). Without it the curves are exactly those of core 0.30 to 0.32.
 - `colors` (optional, 16 at most): names you can cite as `"@name"` in any colour parameter. `"@fg"`, `"@accent"` and `"@surface"` cite the page's own tokens (so an animation can follow the skin's tokens or the site's retouches).
 - `genres`: per genre, per role, one layer `{ "draw": …, …parameters }` or a list of up to **three** layers drawn in order. `{ "draw": "none" }` draws nothing on purpose (no basic rendering for that role).
 - `effects` (optional): post effects of the whole element (section 5, "Effects").
@@ -122,6 +125,7 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | `radius` | number 0 to 0.5, default 0.5 |
 | `thickness` | number 0.15 to 1, default 0.42 |
 | `gradient` | number 0 to 1, default 0.25 |
+| `spring` | `inherit` (default: the recipe's `motion`, else today's curve), `snappy`, `smooth`, `gentle`, `bouncy` |
 
 #### `tube` — roles: `body`
 
@@ -249,6 +253,8 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | `color` | colour (default `#fff3c4`) |
 | `strength` | number 0 to 1, default 0.6 |
 | `size` | number 0.2 to 3, default 1 |
+| `spring` | `inherit` (default: the recipe's `motion`, else today's curve), `snappy`, `smooth`, `gentle`, `bouncy` |
+| `duration` | `inherit` (default), `fast`, `standard`, `considered` |
 
 #### `ring` — roles: `step`, `burst`
 
@@ -259,6 +265,7 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | `irregularity` | number 0 to 4, default 1 |
 | `size` | number 0.3 to 4, default 1.6 |
 | `seed` | seed, integer 0 to 999999 (default 11) |
+| `spring` | `inherit` (default: the recipe's `motion`, else today's curve), `snappy`, `smooth`, `gentle`, `bouncy` |
 
 #### `particles` — roles: `step`, `burst`, `ambient`
 
@@ -271,6 +278,7 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | `gravity` | number -1 to 1, default 0.3 |
 | `size` | number 0.005 to 0.08, default 0.02 |
 | `seed` | seed, integer 0 to 999999 (default 13) |
+| `spring` | `inherit` (default: the recipe's `motion`, else today's curve), `snappy`, `smooth`, `gentle`, `bouncy` |
 
 #### `rays` — roles: `burst`, `ambient`
 
@@ -281,12 +289,15 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | `strength` | number 0 to 1, default 0.25 |
 | `angle` | number -80 to 80, default 25 |
 | `seed` | seed, integer 0 to 999999 (default 17) |
+| `duration` | `inherit` (default), `fast`, `standard`, `considered` |
 
 #### `pulse` — roles: `step`, `burst`
 
 | Parameter | Value |
 |---|---|
 | `strength` | number 0 to 1, default 0.5 |
+| `spring` | `inherit` (default: the recipe's `motion`, else today's curve), `snappy`, `smooth`, `gentle`, `bouncy` |
+| `duration` | `inherit` (default), `fast`, `standard`, `considered` |
 
 #### `shimmer` — roles: `ambient`
 
@@ -319,6 +330,55 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 - `edgeFade`: `left` number 0 to 0.2, default 0; `right` number 0 to 0.2, default 0; `bottom` number 0 to 0.3, default 0
 
 Quality levels (an element option, section 8): `full` keeps everything; `light` drops canvas blurs (glows become gradients), bloom, grain and rays, and halves particles; `minimal` draws flat: no details, no particles, no ambient life, no effects.
+
+## 5b. Motion: named springs, durations and tempo (contract 2, core 0.33.0)
+
+A skin never writes a raw time or constant for motion, only **names** from a closed table. Retuning the table in a later core changes every skin together, like the `--ov-*` tokens. A recipe **without `motion`** (and without a per-layer `spring` or `duration`) keeps **exactly** the curves of core 0.30 to 0.32: a test compares 810 frames before and after.
+
+| Spring | Frequency | Damping | Overshoot | Settles within 2 % | Meant for |
+|---|---|---|---|---|---|
+| `snappy` | 4 Hz | 0.70 | about 4.6 % | about 0.23 s | steps, nudges, the head of a bar, pulses |
+| `smooth` | 2 Hz | 1.00 (critical) | none | about 0.46 s | bar fill, a quick value glide |
+| `gentle` | 1 Hz | 1.00 (critical) | none | about 0.93 s | the default value glide (close to today's 0.9 s ease), calm movements |
+| `bouncy` | 2.6 Hz | 0.45 | about 20 % | about 0.55 s | celebrations, ring and shard launch, playful skins |
+
+| Duration | Value | Meant for |
+|---|---|---|
+| `fast` | 150 ms | the attack of a reaction (a flash coming on) |
+| `standard` | 300 ms | fades, colour changes, calm replacements for movement |
+| `considered` | 600 ms | slow fades and crossfades |
+
+| Tempo | Factor | Effect |
+|---|---|---|
+| `brisk` | 0.8 | step 720 ms, celebration 2 080 ms, glide 720 ms |
+| `steady` | 1 | today's step 900 ms, celebration 2 600 ms, glide 900 ms |
+| `stately` | 1.35 | slower and weightier (epic skins) |
+
+The values are this project's own, chosen by physics. A spring is used through its analytic **step response** (a pure function of time, no integrator), so a displayed value stays a function of the instant: two overlay pages show the same frame and a reload mid-glide shows the exact current frame. Springs are linear: when a second highlight arrives mid-glide the amounts add up and the velocity stays continuous.
+
+**The `motion` key.** Roles: `value` (the glide of the displayed value), `body` (the head of a bar), `reaction` (steps), `celebration` (milestones and goals), all springs; `fade` (a duration: the attack of flashes, rays and pulses), `tempo`. A role you leave out takes `value: gentle`, `body: smooth`, `reaction: snappy`, `celebration: bouncy`, `fade: fast`, `tempo: steady`. Shorthand: `"motion": "snappy"` sets `value`, `body` and `reaction` at once.
+
+```json
+{ "animateContract": 2, "motion": { "value": "gentle", "body": "smooth", "reaction": "snappy", "celebration": "bouncy", "fade": "standard", "tempo": "steady" }, "genres": { "gauge": {
+  "burst": [{ "draw": "flash", "duration": "fast" }, { "draw": "ring", "spring": "bouncy" }, { "draw": "particles", "spring": "bouncy" }] } } }
+```
+
+**Per layer.** `spring` (on `bar`, `flash`, `ring`, `particles`, `pulse`) and `duration` (on `flash`, `rays`, `pulse`) override the role for that layer only. `inherit` (the default) follows the recipe's `motion`, or today's curve when there is none.
+
+**What may overshoot.** Never a number: the displayed value and the progress used for texts are held between the old and the new value, whatever the spring. Only decoration moves past its target: the head of a bar (at most 5 % of the body, always inside its track), the size of a ring or a flash, the launch of pieces.
+
+**Calm mode** (`animCalm`, or `prefers-reduced-motion`): every spring becomes critically damped (same frequency, no overshoot), `fast` becomes `standard`, `tempo` is forced to `steady`, and movements stay removed as before (rings, flying pieces, sweeps), replaced by fades.
+
+**The same words in CSS.** The core defines `--ov-dur-fast`, `--ov-dur-standard`, `--ov-dur-considered` (150, 300, 600 ms) and `--ov-ease-snappy`, `--ov-ease-smooth`, `--ov-ease-gentle`, `--ov-ease-bouncy` (cubic-bezier fits of the springs; `bouncy` overshoots about 22 %). An overlay skin sheet may read them in `animation-duration` and `animation-timing-function` (and nowhere else, never define them): the core then adds them to the skin's sheet (pages and skins that do not read them are byte-identical to before). A module's own element copies them with `ctx.overlay.animateMotionCss()`; the table itself is `ctx.overlay.animateMotion`.
+
+## 5c. Contract 2 and the tolerant reader
+
+`animateContract` goes from 1 to 2 **additively**: contract 2 adds `motion`, `animateMinContract` and the per-layer `spring` / `duration`; everything of contract 1 keeps its meaning. `skinContract` stays 4.
+
+- A **contract-1** recipe keeps its strict reading (unknown role, primitive, parameter or effect is an error). It does not know `motion` (a warning) nor `spring` / `duration` (unknown parameters).
+- A recipe of **contract 2 or later** is read **tolerantly**: an unknown genre, role, primitive, parameter, effect or `motion` key is a **warning** and is skipped (the role then falls back to the basic rendering). Known words stay strict: a number out of its bounds, a bad colour, an unreadable text or an unknown spring name is still an error (an unknown name is a warning only when the recipe is written for a later contract).
+- **Negotiation.** `animateContract` is the contract the recipe was written for; `animateMinContract` (default: the same) the oldest one that can draw it faithfully. This core reads a recipe when its minimum is at most 2; if the recipe was written for a later contract it is read tolerantly (warning `animation-contract-ahead`, out-of-bounds values clamped); if the minimum is above 2 the animation is off and the skin installs with the basic rendering (`animation-contract-newer`). A skin written for contract 2 installs on core 0.30 to 0.32 with its animation off, and on 0.33 and later with everything it uses.
+- Checks have codes (EN and FR texts): `animation-motion-name` (a name that does not exist, with its path), `animation-motion-shape`, `animation-contract-ahead`, `animation-ignored` (skipped part).
 
 ## 6. Checking your skin
 
@@ -400,11 +460,13 @@ The example module `examples/overlay-demo` has an `animated` element: a gauge, a
 | night-neon | 3440 × 1440 | light | 30 | 2.31 / 7.4 | 12.7 fps, 14.89 / 38.4 |
 | night-neon | 3440 × 1440 | minimal | 30.3 | 1.06 / 0.8 | 14.2 fps, 6.93 / 6.6 |
 
+- **Motion costs nothing measurable** (core 0.33.0): building the draw list of a busy gauge takes about 0.06 to 0.10 ms with or without `motion` (a few `exp`, `cos` and `sin` per pending highlight, 40 at most). The browser bench with and without `motion` on both reference skins stays inside the table's noise (1764 × 717, full: neon 1.2 to 2.0 ms, stained glass 3.1 to 3.6 ms on a shared machine).
+
 Reading: at the real size of the brief (an element of 1764 × 717 on a 3440 × 1440 page), every skin holds 30 frames a second with about 1 to 2 ms per frame; a whole 3440 × 1440 element of stained glass costs more (choose "light" there, or let "auto" do it). With the CPU slowed four times (a stand-in for a computer busy with a game; another job shared the machine during that run, so those numbers are pessimistic), the stained glass needs "light" or "minimal" to keep 25-30 frames a second, which "auto" picks by itself. These figures come from software rendering in headless Chromium; OBS with a GPU usually does better, but it was **not** measured here.
 
 ## 9. What is checked, and security
 
 - `animation.json` is **data**: a closed grammar, bounded numbers, colours as `#rrggbb`. No code, no address, no file is ever read from it; it cannot add a text, hide a number or change what is counted. Third parties may publish animated skins with the same status as today's overlay skins.
-- Installation refuses a recipe out of grammar (`animation-invalid`, with its path), an unreadable one, an unreadable text (`animation-text-contrast`), a missing file, a skin that uses `animation` without contract 4 (`overlay-contract-v4`) or a site skin with an animation (`animation-overlay-only`). A recipe of a newer contract only warns (`animation-contract-newer`) and installs the skin without its animation.
+- Installation refuses a recipe out of grammar (`animation-invalid`, with its path), an unreadable one, an unreadable text (`animation-text-contrast`), a missing file, a skin that uses `animation` without contract 4 (`overlay-contract-v4`) or a site skin with an animation (`animation-overlay-only`). A recipe whose minimum contract is newer only warns (`animation-contract-newer`) and installs the skin without its animation; a motion name that does not exist is refused (`animation-motion-name`).
 - The engine clamps and defaults every value again with the same table (`src/core/animate/spec.ts`, sent with the engine), so a recipe that slipped through can never draw outside its bounds.
 - The engine reads nothing from the network, the page or the storage; it only draws on its canvas.

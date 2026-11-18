@@ -260,7 +260,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     d[key] = rows;
   }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
-  // Full powers (0.33.0) never come back from a backup: the settings are replaced and the key is not restored, so every access is off afterwards. The journal says so.
+  // Full powers (0.34.0) never come back from a backup: the settings are replaced and the key is not restored, so every access is off afterwards. The journal says so.
   const hadFullPowers = (await fullPowersIds().catch(() => [])).length > 0;
   const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
   opStep("replace");
