@@ -18,7 +18,7 @@
  * checked them with (second lock). Texts are drawn with `fillText`, never scaled on one axis, skewed or rotated: a skin can bend a lead line, never a digit.
  */
 export function animateEngine(win: any, SPEC: any): void {
-  var P = SPEC.primitives, TIMING = SPEC.timing, QUALITY = SPEC.quality, GENRES = SPEC.genres;
+  var P = SPEC.primitives, TIMING = SPEC.timing, QUALITY = SPEC.quality, GENRES = SPEC.genres, MOTION = SPEC.motion;
   var HEX = /^#[0-9a-fA-F]{6}$/;
   var FONTS: any = {
     sans: 'system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans",sans-serif',
@@ -37,6 +37,50 @@ export function animateEngine(win: any, SPEC: any): void {
   function noise1(seed: number): (x: number) => number { var R = rng(seed), v: number[] = []; for (var i = 0; i < 65; i++) v.push(R() * 2 - 1); v[64] = v[0]!; return function (x: number) { var u = ((x % 64) + 64) % 64, i = Math.floor(u), f = u - i, s = f * f * (3 - 2 * f); return v[i]! + (v[i + 1]! - v[i]!) * s; }; }
   function out3(u: number): number { u = clamp(u, 0, 1); return 1 - (1 - u) * (1 - u) * (1 - u); }
   function inOut(u: number): number { u = clamp(u, 0, 1); return u < 0.5 ? 4 * u * u * u : 1 - Math.pow(-2 * u + 2, 3) / 2; }
+  // ───────────────────────── motion tokens (contract 2): named springs, durations, tempo ─────────────────────────
+  /**
+   * The step response S(tau) of a damped spring (tau in seconds; 0 at 0, towards 1): a PURE function of time, so a displayed value stays a function of the
+   * instant (no integrator, nothing carried from frame to frame, a reloaded page shows the exact current frame). `z` < 1 overshoots, `z` = 1 does not.
+   */
+  function springS(o: any, tau: number): number {
+    if (tau <= 0) return 0;
+    if (o.z < 1) return 1 - Math.exp(-o.z * o.w * tau) * (Math.cos(o.wd * tau) + o.k * Math.sin(o.wd * tau));
+    return 1 - Math.exp(-o.w * tau) * (1 + o.w * tau);
+  }
+  /** The same step response held at 1 from its first crossing: monotone, NEVER above 1 (what a displayed number uses). */
+  function springNum(o: any, tau: number): number { return tau >= o.t1 ? 1 : springS(o, tau); }
+  var SPR: any = {};
+  /** A named spring; in calm mode every spring is critically damped (no overshoot), at the same frequency so timings stay familiar. */
+  function spring(name: any, calm: boolean): any {
+    var key = name + (calm ? ":c" : ""), o = SPR[key], d = MOTION.springs[name];
+    if (o) return o;
+    if (!d) return null;
+    var z = calm ? 1 : d.z, w = 2 * Math.PI * d.f;
+    o = { name: name, w: w, z: z, wd: 0, k: 0, t1: Infinity, settle: 0, run: 0 };
+    if (z < 1) { o.wd = w * Math.sqrt(1 - z * z); o.k = (z * w) / o.wd; o.t1 = (Math.PI - Math.acos(z)) / o.wd; }
+    for (var t = 0; t < 8; t += 0.005) if (Math.abs(1 - springS(o, t)) > 0.001) o.settle = t + 0.005;
+    o.run = Math.min(o.settle, o.t1);
+    SPR[key] = o;
+    return o;
+  }
+  /** A named duration in ms; in calm mode `fast` becomes `standard` (no abrupt onset). */
+  function durMs(name: any, calm: boolean): number | null { if (calm && name === "fast") name = "standard"; var v = MOTION.durations[name]; return typeof v === "number" ? v : null; }
+  /**
+   * The motion of a recipe at this instant's settings: null when the recipe says nothing (today's curves stay EXACTLY as they were). `force`: a layer asks for a
+   * spring or a duration without a `motion` key: the roles stay on today's curves (null), only that layer moves. Calm: tempo steady, springs critical, fast = standard.
+   */
+  function motionOf(recipe: any, calm: boolean, force: boolean): any {
+    var raw = recipe && typeof recipe.animateContract === "number" && recipe.animateContract >= 2 ? recipe.motion : undefined, present = !!raw && typeof raw === "object";
+    if (!present && !force) return null;
+    raw = present ? raw : {};
+    var D = MOTION.defaults, mo: any = { present: present, tempo: 1, hold: 0 };
+    function pick(k: string, table: any): string | null { var v = raw[k]; return typeof v === "string" && table[v] !== undefined ? v : present ? D[k] : null; }
+    var roles = ["value", "body", "reaction", "celebration"];
+    for (var i = 0; i < roles.length; i++) { var nm = pick(roles[i]!, MOTION.springs); mo[roles[i]!] = nm ? spring(nm, calm) : null; }
+    var fade = pick("fade", MOTION.durations); mo.fadeMs = fade ? durMs(fade, calm) : null;
+    var tp = pick("tempo", MOTION.tempos); mo.tempo = calm || !tp ? 1 : clamp(MOTION.tempos[tp], MOTION.tempoRange[0], MOTION.tempoRange[1]);
+    return mo;
+  }
   /** Envelope of a highlight: quick attack, slower decay (0 at both ends). */
   function env(u: number, attack: number): number { if (u <= 0 || u >= 1) return 0; return u < attack ? out3(u / attack) : 1 - inOut((u - attack) / (1 - attack)); }
   function rgb(h: string): number[] { return [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)]; }
@@ -90,7 +134,7 @@ export function animateEngine(win: any, SPEC: any): void {
     return out;
   }
   /** Is a recipe usable by this engine? An unknown contract, or not an object: no (the basic recipe applies). */
-  function usable(recipe: any): boolean { return !!recipe && typeof recipe === "object" && recipe.animateContract === SPEC.contract && !!recipe.genres && typeof recipe.genres === "object"; }
+  function usable(recipe: any): boolean { return !!recipe && typeof recipe === "object" && typeof recipe.animateContract === "number" && recipe.animateContract >= 1 && recipe.animateContract <= SPEC.contract && !!recipe.genres && typeof recipe.genres === "object"; }
 
   /** The basic recipe: what every role looks like without a skin animation, from the page's tokens. Every existing overlay skin restyles it. */
   function basicRecipe(): any {
@@ -136,28 +180,43 @@ export function animateEngine(win: any, SPEC: any): void {
     }
     return out;
   }
-  function view(raw: any, t: number): any {
+  function view(raw: any, t: number, mo?: any): any {
     var s = raw && raw.__norm ? raw : normState(raw);
+    // the engine moments, scaled by the tempo of the recipe's motion (1 without one: today's values)
+    var tm = mo ? mo.tempo : 1, T_STEP = TIMING.step * tm, T_CEL = TIMING.celebration * tm, T_EASE = TIMING.ease * tm;
     var gs = groups(s.highlights), active: any[] = [], line: any[] = [], end = -Infinity;
     for (var i = 0; i < gs.length; i++) {
       var g = gs[i], celebrate = g.kind === "milestone" || g.kind === "complete";
       if (celebrate) {
         var start = Math.max(g.at, end);
         // more than `queue` celebrations already waiting: this one is dropped (the value is kept, only the show is skipped), so the line never grows
-        if (start - g.at > TIMING.queue * TIMING.celebration) continue;
+        if (start - g.at > TIMING.queue * T_CEL) continue;
         line.push({ g: g, start: start });
-        end = start + TIMING.celebration;
+        end = start + T_CEL;
       }
       // a burst's reaction lasts while its events keep coming, then one step more
-      var dur = celebrate ? TIMING.celebration : TIMING.step + (g.last - g.at);
+      var dur = celebrate ? T_CEL : T_STEP + (g.last - g.at);
       var st = celebrate ? line[line.length - 1].start : g.at, u = (t - st) / dur;
       if (u >= 0 && u < 1) active.push({ id: g.id, kind: g.kind, count: g.count, amount: g.amount, intensity: g.intensity, u: u, start: st, dur: dur, celebrate: celebrate });
     }
     // the displayed value: amounts arrive over TIMING.ease after their highlight; a recalibration glides from its old value, without a highlight
-    var pending = 0;
-    for (var j = 0; j < s.highlights.length; j++) { var h = s.highlights[j], k = (t - h.at) / TIMING.ease; if (h.amount && k < 1) pending += h.amount * (1 - out3(k < 0 ? 0 : k)); }
+    var pending = 0, glides: any[] = [], hold = false, vs = mo ? mo.value : null;
+    for (var j = 0; j < s.highlights.length; j++) {
+      var h = s.highlights[j];
+      if (!h.amount) continue;
+      if (vs) {
+        // a spring glide (monotone: a displayed number never passes its new value); `glides` keeps the raw time for the decorative head of a bar
+        var tau = (t - h.at) / 1000 / tm;
+        if (mo.body && tau < 8) glides.push({ a: h.amount, tau: tau < 0 ? 0 : tau });
+        if (tau < vs.run) pending += h.amount * (1 - springNum(vs, tau < 0 ? 0 : tau));
+        if (tau >= 0 && tau < mo.hold) hold = true;
+      } else { var k = (t - h.at) / T_EASE; if (k < 1) pending += h.amount * (1 - out3(k < 0 ? 0 : k)); }
+    }
     var base = s.value;
-    if (s.rebase) { var kr = (t - s.rebase.at) / (TIMING.ease * 2); if (kr < 1) base = s.value + (s.rebase.from - s.value) * (1 - inOut(kr < 0 ? 0 : kr)); }
+    if (s.rebase) {
+      if (vs) { var tr = (t - s.rebase.at) / 1000 / tm / 2; if (tr < vs.run) base = s.value + (s.rebase.from - s.value) * (1 - springNum(vs, tr < 0 ? 0 : tr)); }
+      else { var kr = (t - s.rebase.at) / (T_EASE * 2); if (kr < 1) base = s.value + (s.rebase.from - s.value) * (1 - inOut(kr < 0 ? 0 : kr)); }
+    }
     var display = base - pending, remaining = null as null | number, ended = s.ended;
     if (s.format === "time" && s.timer) {
       var now = s.timer.pausedAt !== null ? Math.min(t, s.timer.pausedAt) : t;
@@ -167,7 +226,7 @@ export function animateEngine(win: any, SPEC: any): void {
     }
     var timerLeft = s.timer && s.format !== "time" ? Math.max(0, (s.timer.endsAt - (s.timer.pausedAt !== null ? Math.min(t, s.timer.pausedAt) : t)) / 1000) : null;
     var span = s.target - s.min, progress = span > 0 ? clamp((display - s.min) / span, 0, 1) : 0, overflow = span > 0 ? Math.max(0, (display - s.target) / span) : 0;
-    var moving = Math.abs(pending) > 1e-6 || (s.rebase && t - s.rebase.at < TIMING.ease * 2 && t >= s.rebase.at);
+    var moving = Math.abs(pending) > 1e-6 || (s.rebase && t >= s.rebase.at && (vs ? (t - s.rebase.at) / 1000 / tm / 2 < vs.run : t - s.rebase.at < T_EASE * 2));
     var phase = "rest", top = null as any;
     for (var a = 0; a < active.length; a++) if (active[a].celebrate && (!top || KIND_RANK[active[a].kind] > KIND_RANK[top.kind])) top = active[a];
     if (ended) phase = "ended";
@@ -176,7 +235,10 @@ export function animateEngine(win: any, SPEC: any): void {
     else if (overflow > 0) phase = "overflow";
     var reached = 0; for (var m = 0; m < s.milestones.length; m++) if (display >= s.milestones[m]) reached++;
     var timeLive = (s.format === "time" || !!s.timer) && !ended && !(s.timer && s.timer.pausedAt !== null);
-    return { genre: s.genre, format: s.format, value: s.value, display: display, target: s.target, min: s.min, progress: progress, overflow: overflow, phase: phase, highlights: active, level: s.level, label: s.label, timerLeft: timerLeft, timerTotal: s.timer ? s.timer.total : 0, remaining: remaining, milestones: s.milestones, reached: reached, moving: !!moving, timeLive: timeLive, currency: s.currency };
+    var res: any = { genre: s.genre, format: s.format, value: s.value, display: display, target: s.target, min: s.min, progress: progress, overflow: overflow, phase: phase, highlights: active, level: s.level, label: s.label, timerLeft: timerLeft, timerTotal: s.timer ? s.timer.total : 0, remaining: remaining, milestones: s.milestones, reached: reached, moving: !!moving, timeLive: timeLive, currency: s.currency };
+    // (contract 2 only) what a bar's decorative head needs: the value without the pending glide, the raw glides, the span
+    if (mo) { res.deco = { base: display + pending, glides: glides, min: s.min, span: span, rest: span > 0 ? clamp((display + pending - s.min) / span, 0, 1) : 0 }; res.hold = hold; }
+    return res;
   }
 
   // ───────────────────────── text formatting (language-free: digits, separators, symbols) ─────────────────────────
@@ -482,10 +544,24 @@ export function animateEngine(win: any, SPEC: any): void {
     out.key1 = "r" + full + ":" + v.level;
     return { shape: G.outer, head: head, box: { x: Lr[0]! - Lr[2]!, y: Lr[1]! - Lr[2]!, w: Lr[2]! * 2, h: Lr[2]! * 2 }, center: G.center };
   }
-  function drawBar(out: any, v: any, Lb: any, p: any): any {
+  /** The spring a layer moves with: its own `spring` parameter (contract 2), else the recipe's motion role (`body`, `reaction`, `celebration`), else none (today's curve). */
+  function springOf(p: any, role: string, ctx: any): any { if (p.spring && p.spring !== "inherit" && ctx.contract >= 2) return spring(p.spring, ctx.calm); return ctx.mo ? ctx.mo[role] : null; }
+  /** The attack of a light reaction as a fraction of its length: the layer's `duration`, else the motion's `fade`, else null (today's fixed attack). */
+  function attackOf(p: any, h: any, ctx: any): number | null {
+    var ms = p.duration && p.duration !== "inherit" && ctx.contract >= 2 ? durMs(p.duration, ctx.calm) : ctx.mo ? ctx.mo.fadeMs : null;
+    return ms === null || ms === undefined ? null : clamp((ms * (ctx.mo ? ctx.mo.tempo : 1)) / h.dur, 0.02, 0.5);
+  }
+  function drawBar(out: any, v: any, Lb: any, p: any, ctx: any): any {
     var th = Lb.h * p.thickness, y = Lb.y + (Lb.h - th) / 2, r = th * p.radius, track = roundRect(Lb.x, y, Lb.w, th, r);
     poly(out, 0, track, { f: p.track, a: p.trackAlpha });
-    var fw = Lb.w * v.progress;
+    var prog = v.progress, sp = springOf(p, "body", ctx);
+    if (sp && v.deco && v.deco.span > 0) {
+      // the DECORATIVE head may overshoot with a springy motion (at most 5 % of the body past its resting point, and always inside the track); the number never does
+      var dd = v.deco, disp = dd.base;
+      for (var gi = 0; gi < dd.glides.length; gi++) disp -= dd.glides[gi].a * (1 - springS(sp, dd.glides[gi].tau));
+      prog = clamp((disp - dd.min) / dd.span, 0, Math.min(1, dd.rest + 0.05));
+    }
+    var fw = Lb.w * prog;
     if (fw > 0.5) { var fill = roundRect(Lb.x, y, Math.max(fw, Math.min(Lb.w, r * 2)), th, r); poly(out, 3, fill, { f: p.fill, a: p.fillAlpha }); if (p.gradient > 0) poly(out, 3, fill, { f: linear(0, y, 0, y + th, [[0, rgba("#ffffff", p.gradient)], [0.6, rgba("#ffffff", 0)], [1, rgba("#000000", p.gradient * 0.6)]]) }); }
     return { shape: track, head: [Lb.x + fw, y + th / 2], box: { x: Lb.x, y: y, w: Lb.w, h: th } };
   }
@@ -594,13 +670,16 @@ export function animateEngine(win: any, SPEC: any): void {
   // ───────────────────────── reactions and life ─────────────────────────
   function drawReaction(out: any, layers: any[], h: any, body: any, L: any, Q: any, calm: boolean, ctx: any): void {
     var origin = h.celebrate ? L.center : body.head, size = Math.max(body.box.h, Math.min(L.w, L.h) * 0.35), u = h.u, I = 0.45 + 0.55 * h.intensity, seed = hash(h.id + ":" + h.kind);
+    var tm = ctx.mo ? ctx.mo.tempo : 1, rrole = h.celebrate ? "celebration" : "reaction";
     for (var i = 0; i < layers.length; i++) {
-      var p = layers[i];
-      if (p.draw === "flash") { var e = calm ? 0.6 * Math.sin(Math.PI * u) : env(u, 0.1), r = size * p.size * (0.8 + 0.4 * out3(u)); if (e > 0.002) circ(out, 3, origin[0], origin[1], r, { f: radial(origin[0], origin[1], r, [[0, rgba(p.color, p.strength * I * e)], [0.45, rgba(p.color, p.strength * I * e * 0.45)], [1, rgba(p.color, 0)]]), b: "lighter" }); }
-      else if (p.draw === "pulse") { var e2 = (calm ? 0.5 : 1) * Math.sin(Math.PI * u); if (e2 > 0.002) { out.ops.push({ k: "clip", L: 3, p: flat(body.shape) }); circ(out, 3, origin[0], origin[1], Math.max(body.box.w, body.box.h), { f: radial(origin[0], origin[1], Math.max(body.box.w, body.box.h), [[0, rgba("#ffffff", 0.35 * p.strength * I * e2)], [1, rgba("#ffffff", 0)]]), b: "lighter" }); out.ops.push({ k: "unclip", L: 3 }); } }
-      else if (p.draw === "ring" && !calm && Q.particles > 0) { var rr = size * p.size * out3(u) + 4, al = (1 - u) * I; if (al > 0.01) poly(out, 3, circlePts(origin[0], origin[1], rr, seed + p.seed, p.irregularity * 2, Math.max(24, Math.min(90, Math.round(rr / 6)))), { s: p.color, w: Math.max(1, Math.min(L.w, L.h) * p.width * (1 - 0.7 * u)), a: al, j: "round" }); }
-      else if (p.draw === "particles" && !calm && Q.particles > 0) drawParticles(out, p, origin, size, u, h.celebrate ? 1 : 0.5, I * Q.particles, seed, L);
-      else if (p.draw === "rays" && Q.rays) { var e3 = calm ? 0.4 * Math.sin(Math.PI * u) : env(u, 0.2); if (e3 > 0.01) drawRays(out, p, origin, size * 2.2, e3 * I, seed, (h.start / 1000) * 0.2 + u * 0.3, null); }
+      var p = layers[i], sp = springOf(p, rrole, ctx), at = attackOf(p, h, ctx);
+      // the travel of a piece: today's out3 curve, or the layer's spring (its step response over `span` ms of the highlight; the tempo stretches it)
+      var E: any = sp ? function (k: number, span: number): number { return springS(sp, (k * span) / 1000 / tm); } : function (k: number): number { return out3(k); };
+      if (p.draw === "flash") { var e = calm ? (at === null ? 0.6 * Math.sin(Math.PI * u) : 0.6 * env(u, at)) : env(u, at === null ? 0.1 : at), r = size * p.size * (0.8 + 0.4 * E(u, h.dur)); if (e > 0.002) circ(out, 3, origin[0], origin[1], r, { f: radial(origin[0], origin[1], r, [[0, rgba(p.color, p.strength * I * e)], [0.45, rgba(p.color, p.strength * I * e * 0.45)], [1, rgba(p.color, 0)]]), b: "lighter" }); }
+      else if (p.draw === "pulse") { var e2 = (calm ? 0.5 : 1) * (at === null ? Math.sin(Math.PI * u) : env(u, at)), pr = Math.max(body.box.w, body.box.h) * (sp ? 0.55 + 0.45 * E(u, h.dur) : 1); if (e2 > 0.002) { out.ops.push({ k: "clip", L: 3, p: flat(body.shape) }); circ(out, 3, origin[0], origin[1], pr, { f: radial(origin[0], origin[1], pr, [[0, rgba("#ffffff", 0.35 * p.strength * I * e2)], [1, rgba("#ffffff", 0)]]), b: "lighter" }); out.ops.push({ k: "unclip", L: 3 }); } }
+      else if (p.draw === "ring" && !calm && Q.particles > 0) { var rr = size * p.size * E(u, h.dur) + 4, al = (1 - u) * I; if (al > 0.01) poly(out, 3, circlePts(origin[0], origin[1], rr, seed + p.seed, p.irregularity * 2, Math.max(24, Math.min(90, Math.round(rr / 6)))), { s: p.color, w: Math.max(1, Math.min(L.w, L.h) * p.width * (1 - 0.7 * u)), a: al, j: "round" }); }
+      else if (p.draw === "particles" && !calm && Q.particles > 0) drawParticles(out, p, origin, size, u, h.celebrate ? 1 : 0.5, I * Q.particles, seed, L, E, h.dur);
+      else if (p.draw === "rays" && Q.rays) { var e3 = calm ? (at === null ? 0.4 * Math.sin(Math.PI * u) : 0.4 * env(u, at)) : env(u, at === null ? 0.2 : at); if (e3 > 0.01) drawRays(out, p, origin, size * 2.2, e3 * I, seed, (h.start / 1000) * 0.2 + u * 0.3, null); }
     }
     // the amount of the highlight, written like the value (never distorted: it only rises and fades)
     if (h.amount && (h.kind === "step" || h.kind === "extend") && ctx.valuePos) {
@@ -611,13 +690,13 @@ export function animateEngine(win: any, SPEC: any): void {
       drawText(out, txt, { x: ctx.valuePos.x, y: ctx.valuePos.y, align: ctx.valuePos.align, mw: ctx.valuePos.mw }, asz, ctx.valueStyle, Q, a, yy - ctx.valuePos.y, ctx);
     }
   }
-  function drawParticles(out: any, p: any, origin: number[], size: number, u: number, scale: number, I: number, seed: number, L: any): void {
+  function drawParticles(out: any, p: any, origin: number[], size: number, u: number, scale: number, I: number, seed: number, L: any, E: any, dur: number): void {
     var R = rng(seed + p.seed), n = Math.round(p.count * scale * I), m = Math.min(L.w, L.h), cols = p.colors;
     for (var i = 0; i < n; i++) {
       var ang = R() * Math.PI * 2, sp = (0.3 + R() * 0.9) * size * p.spread, life = 0.55 + R() * 0.45, k = u / life, col = cols[Math.floor(R() * cols.length) % cols.length], sz = m * p.size * (0.5 + R());
       var rot0 = R() * 6.28, spin = (R() - 0.5) * 8, wob = R();
       if (k >= 1 || k <= 0) continue;
-      var e = out3(k), x = origin[0]! + Math.cos(ang) * sp * e, y = origin[1]! + Math.sin(ang) * sp * e + p.gravity * size * k * k, al = 1 - k;
+      var e = E(k, dur * life), x = origin[0]! + Math.cos(ang) * sp * e, y = origin[1]! + Math.sin(ang) * sp * e + p.gravity * size * k * k, al = 1 - k;
       if (p.kind === "shards") { var ro = rot0 + spin * k, pts: Pt[] = [[x + Math.cos(ro) * sz * 1.6, y + Math.sin(ro) * sz * 1.6], [x + Math.cos(ro + 2.3) * sz, y + Math.sin(ro + 2.3) * sz], [x + Math.cos(ro + 4.1) * sz * 0.8, y + Math.sin(ro + 4.1) * sz * 0.8]]; poly(out, 3, pts, { f: col, a: al * 0.9, s: "#120c09", w: Math.max(0.6, sz * 0.12) }); }
       else if (p.kind === "sparks") { var dx = Math.cos(ang) * sz * 3 * (1 - k), dy = Math.sin(ang) * sz * 3 * (1 - k); poly(out, 3, [[x - dx, y - dy], [x, y]], { s: col, w: Math.max(1, sz * 0.5), a: al, open: true, cap: "round", b: "lighter" }); }
       else circ(out, 3, x + Math.sin(k * 6 + wob * 5) * sz * 2, y - (p.kind === "embers" ? size * 0.4 * k : 0), sz * (1 - k * 0.5), { f: col, a: al * (0.6 + 0.4 * Math.sin(k * 9 + wob * 6)), b: "lighter" });
@@ -682,12 +761,24 @@ export function animateEngine(win: any, SPEC: any): void {
    */
   function frame(stateRaw: any, recipe: any, t: number, size: any, opts: any): any {
     opts = opts || {};
-    var s = normState(stateRaw), v = view(s, t), w = Math.max(40, num(size && size.w, 40, 8192, 640)), h = Math.max(20, num(size && size.h, 20, 8192, 200));
+    var s = normState(stateRaw), w = Math.max(40, num(size && size.w, 40, 8192, 640)), h = Math.max(20, num(size && size.h, 20, 8192, 200));
     var qn = QUALITY[opts.quality] ? opts.quality : "full", Q = QUALITY[qn], calm = !!opts.calm;
     var tokens = { fg: HEX.test((opts.tokens || {}).fg || "") ? opts.tokens.fg : "#ffffff", accent: HEX.test((opts.tokens || {}).accent || "") ? opts.tokens.accent : "#e8a23b", surface: HEX.test((opts.tokens || {}).surface || "") ? opts.tokens.surface : "#14171c" };
-    var ok = usable(recipe), rc = ok ? recipe : null, cx: any = { tokens: tokens, colors: rc && rc.colors && typeof rc.colors === "object" ? rc.colors : {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: v };
-    var g = v.genre, roles = GENRES[g], lay: any = {};
+    var ok = usable(recipe), rc = ok ? recipe : null, cx: any = { tokens: tokens, colors: rc && rc.colors && typeof rc.colors === "object" ? rc.colors : {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: null as any, contract: rc ? rc.animateContract : SPEC.contract, mo: null as any };
+    var g = s.genre, roles = GENRES[g], lay: any = {};
     for (var i = 0; i < roles.length; i++) lay[roles[i]] = layersOf(rc, BASIC, g, roles[i], cx);
+    // motion (contract 2): the recipe's `motion`, or only the layers that ask for a spring or a duration; a recipe that says nothing keeps today's curves exactly
+    var force = false;
+    if (cx.contract >= 2) for (var ri = 0; ri < roles.length && !force; ri++) { var ls = lay[roles[ri]!]; for (var li = 0; li < ls.length; li++) if ((ls[li].spring && ls[li].spring !== "inherit") || (ls[li].duration && ls[li].duration !== "inherit")) force = true; }
+    var mo = motionOf(rc, calm, force);
+    if (mo) {
+      // the loop must keep drawing while the longest spring in use is still settling (a bar's head may outlast the value's glide)
+      mo.hold = Math.max(mo.value ? mo.value.settle : 0, mo.body ? mo.body.settle : 0);
+      var bl = (lay.body || [])[0];
+      if (bl && bl.draw === "bar" && bl.spring && bl.spring !== "inherit") { var bs = spring(bl.spring, calm); if (bs) mo.hold = Math.max(mo.hold, bs.settle); }
+      cx.mo = mo;
+    }
+    var v = view(s, t, mo); cx.v = v;
     var out = List(); out.animating = false; out.layerAlpha = [1, 1, 1];
     var valueStyle = textStyle(lay.value || []), labelStyle = (lay.label && lay.label.length) ? textStyle(lay.label) : valueStyle;
     var bodyLayer = (lay.body || [])[0] || null, bodyDraw = bodyLayer ? bodyLayer.draw : "none";
@@ -699,7 +790,7 @@ export function animateEngine(win: any, SPEC: any): void {
     else if (bodyDraw === "rose") body = L.rose ? drawRose(out, v, L.rose, bodyLayer, Q) : drawRose(out, v, [L.center[0], L.center[1], Math.min(L.body.w, L.body.h) / 2], bodyLayer, Q);
     else if (bodyDraw === "tube") body = drawTube(out, v, L.body, bodyLayer, Q);
     else if (bodyDraw === "cells") body = drawCells(out, v, L.body, bodyLayer, Q);
-    else body = drawBar(out, v, L.body, bodyLayer);
+    else body = drawBar(out, v, L.body, bodyLayer, cx);
     drawFrame(out, lay.frame || [], L, body, t, Q, calm);
     if (lay.ticks) drawTicks(out, lay.ticks, v, body, L);
     drawAmbient(out, lay.ambient || [], v, body, L, t, Q, calm);
@@ -712,7 +803,7 @@ export function animateEngine(win: any, SPEC: any): void {
     drawText(out, v.label, L.label, L.labelSize, labelStyle, Q, 1, 0, cx);
     drawText(out, valueTxt, L.value, L.valueSize, valueStyle, Q, 1, 0, cx);
     drawEffects(out, rc && rc.effects, v, body, L, t, Q, cx);
-    if (v.moving || v.timeLive) out.animating = true;
+    if (v.moving || v.timeLive || v.hold) out.animating = true;
     var base = [w, h, qn, calm ? 1 : 0, ok ? hash(JSON.stringify(rc)) : 0, cx.font, tokens.fg, tokens.accent].join("|");
     return { ops: out.ops, keys: [base, base + "|" + (out.key1 || "") + "|" + v.level, base], inc1: out.inc1 ? [base + "|" + out.inc1[0], out.inc1[1]] : null, layerAlpha: out.layerAlpha, animating: out.animating, view: v, size: { w: w, h: h }, skin: ok, quality: qn, calm: calm };
   }
@@ -893,6 +984,8 @@ export function animateEngine(win: any, SPEC: any): void {
     version: SPEC.version, contract: SPEC.contract, spec: SPEC,
     view: view, frame: frame, draw: draw, mount: mount, basicRecipe: basicRecipe, usable: usable, optionsFromQuery: optionsFromQuery,
     format: fmt, contrast: contrast,
+    /** The motion tokens, for tests and tools: `spring(name, tau seconds, calm)` is the step response (it overshoots only for the springy names, never in calm). */
+    motion: { spring: function (name: string, tau: number, calm?: boolean) { var o = spring(name, !!calm); return o ? springS(o, tau) : NaN; }, number: function (name: string, tau: number, calm?: boolean) { var o = spring(name, !!calm); return o ? springNum(o, tau) : NaN; }, settle: function (name: string, calm?: boolean) { var o = spring(name, !!calm); return o ? o.settle : NaN; }, duration: function (name: string, calm?: boolean) { return durMs(name, !!calm); }, names: { springs: Object.keys(MOTION.springs), durations: Object.keys(MOTION.durations), tempos: Object.keys(MOTION.tempos) } },
     /** Called by the core's overlay page when the page's skin (or an element's own skin) changes: every mounted element follows. */
     setSkin: function (r: any) { win.__curiosaAnimSkin = r || null; for (var i = 0; i < HANDLES.length; i++) HANDLES[i].setSkin(r || null); },
   };
