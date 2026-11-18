@@ -111,7 +111,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   };
   return (
     <div className="space-y-6">
-      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.helloIntro", { site: config.name })}>
+      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : undefined}>
         <div className="flex flex-wrap items-center gap-2">
           {plan.blocks.includes("health") && <Slot label={t("dash.loading")} height="h-10"><HealthPill c={c} /></Slot>}
           <a href="/" target="_blank" rel="noopener" className={`${ui.btn} min-h-11`}>{t("dash.view")}{ARROW}</a>

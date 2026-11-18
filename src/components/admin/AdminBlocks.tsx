@@ -13,7 +13,8 @@ import type { ComposeLabels } from "./ComposeEditor";
 import { composeOption } from "@/core/compose/option";
 import { galleryLibrary } from "@/core/gallery";
 import { ui } from "./ui";
-import { Checkbox, FieldLabel } from "./Field";
+import { Checkbox, FieldLabel, TextField } from "./Field";
+import { valueHintView } from "@/core/adminkit/valueHint";
 import { HelpBelow } from "./HelpTip";
 import { Switch, SwitchField } from "./Switch";
 import { Segmented, fitsSegmented } from "./Segmented";
@@ -78,6 +79,8 @@ export type FormLabels = {
   /** Le message d'un nombre hors bornes (par champ), à la place de la bulle du navigateur. */
   invalid?: Record<string, string>;
   fold?: { summary: string; count: number };
+  /** (core 0.36.0) The two sentences of `valueHint` (`field.kept`, `field.carried` with its `{source}`); present only when a field of the form has one. */
+  valueHint?: { kept: string; carried: string };
   /** Texts of the edit dialog (`presentation: "dialog"`); absent: the form stays in the page. */
   dialog?: DialogLabels;
   /** (core 0.14.0) Texts of the `gallery` field (the `gallery.*` keys); present only when the form has one. Absent: the field falls back to a text field. */
@@ -113,6 +116,17 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
   // Case à cocher : `value` « on », « 1 » ou « true » = cochée ; décochée, le champ est absent des `values` reçus par le module.
   if (f.kind === "checkbox") return <Checkbox label={f.label} name={f.name} value="on" defaultChecked={["on", "1", "true"].includes(f.value ?? "")} help={f.help} required={f.required} />;
   if (f.kind === "file") return <FileField f={f} />;
+  // (0.36.0) A secret, or a field whose value is set but not shown (`valueHint`): never looks like an empty field, and says that leaving it empty keeps the current value (R33.3).
+  if (f.kind === "secret") {
+    const hint = valueHintView(f, labels?.valueHint);
+    return <TextField label={f.label} name={f.name} help={f.help} example={hint?.line ?? (f.example && labels ? labels.example.replace("{example}", f.example) : undefined)} required={f.required && !hint} type="password"
+      placeholder={hint?.placeholder ?? f.placeholder} autoComplete="new-password" noManager />;
+  }
+  if (f.valueHint && labels?.valueHint) {
+    const hint = valueHintView(f, labels.valueHint);
+    return <TextField label={f.label} name={f.name} help={f.help} example={hint?.line ?? (f.example ? labels.example.replace("{example}", f.example) : undefined)} required={f.required && !hint} type={f.kind === "url" ? "url" : f.kind === "email" ? "email" : "text"}
+      placeholder={hint?.placeholder ?? f.placeholder} autoComplete="off" defaultValue="" />;
+  }
   const common = { id: `f_${f.name}`, name: f.name, required: f.required, defaultValue: f.value ?? "", className: ui.input, ...(example ? { "aria-describedby": `ex-${f.name}` } : {}) };
   // Un nouveau genre de champ sur un cœur qui ne le connaît pas (autre appelant) : un champ texte.
   const kind = f.kind === "segmented" || f.kind === "period" || f.kind === "datetime" || f.kind === "duration" || f.kind === "gallery" ? "text" : f.kind;

@@ -100,7 +100,6 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
             <RemoveChoices t={t} name={row.moduleId} keep={removeLegacyRowAction.bind(null, row.moduleId, true)} erase={removeLegacyRowAction.bind(null, row.moduleId, false)} />
             <form action={keepLegacyRowAction.bind(null, row.moduleId)} className="flex flex-col gap-2 rounded-xl border border-line bg-surface p-4 [&>button]:w-full">
               <ConfirmButton danger={false} confirmLabel={t("legacy.absent.keepYes")} message={t("legacy.absent.keepConfirm", { name: row.moduleId })}>{t("legacy.absent.keep")}</ConfirmButton>
-              <p className="text-sm leading-5 text-muted">{t("legacy.absent.keepHelp")}</p>
             </form>
           </div>
         )}

@@ -38,14 +38,14 @@ const BG_EXAMPLE = JSON.stringify([
 ], null, 2);
 
 /** Une couche de l'arrière-plan : numéro (du bas vers le haut), titre, ce qu'elle fait, puis ses réglages. */
-function LayerRow({ n, title, note, children }: { n: number; title: string; note: string; children: React.ReactNode }) {
+function LayerRow({ n, title, note, children }: { n: number; title: string; note?: string; children: React.ReactNode }) {
   return (
     <li className="flex gap-3">
       <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-line text-xs font-semibold text-muted">{n}</span>
       <div className="min-w-0 flex-1 space-y-3">
         <div>
           <p className="font-medium">{title}</p>
-          <p className={ui.help}>{note}</p>
+          {note && <p className={ui.help}>{note}</p>}
         </div>
         {children}
       </div>
@@ -211,7 +211,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
                 <p className={ui.help}>{t("settings.layersHelp")}</p>
               </div>
               <ol className="space-y-5">
-                <LayerRow n={1} title={t("settings.layer.color")} note={t("settings.layer.colorNote")}>
+                <LayerRow n={1} title={t("settings.layer.color")}>
                   <span className="inline-flex items-center gap-2 text-sm"><span aria-hidden="true" className="h-5 w-5 rounded-md border border-line" style={{ background: single.background }} />{single.background}</span>
                 </LayerRow>
                 <LayerRow n={2} title={t("settings.layer.glow")} note={t("settings.layer.glowNote")}>
@@ -242,7 +242,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
                     </ShowWhen>
                   )}
                 </LayerRow>
-                <LayerRow n={3} title={t("settings.layer.image")} note={t("settings.layer.imageNote")}>
+                <LayerRow n={3} title={t("settings.layer.image")}>
                   <ImageField name="bgImage" label={t("settings.bgImage")} defaultValue={config.bg.image} uploadLabel={t("action.upload")} />
                 </LayerRow>
                 <LayerRow n={4} title={t("settings.layer.pattern")} note={t("settings.layer.patternNote")}>
@@ -274,7 +274,6 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
                 </LayerRow>
               </ol>
             </div>
-            {advanced && <p className={ui.help}>{t("settings.appearanceHelp")}</p>}
           </ActionForm>
 
           {!legacy && (

@@ -26,7 +26,7 @@ export const manifest = () => ({
   provides: [{ topic: "full.item", label: { en: "Messages", fr: "Messages" } }],
   settings: [
     { key: "title", type: "text", default: "Messages", translatable: true, label: { en: "Page title", fr: "Titre de la page" }, help: { en: "Shown at the top of the page.", fr: "Affiché en haut de la page." } },
-    { key: "apiKey", type: "secret", optional: true, label: { en: "Access code (optional)", fr: "Code d'accès (facultatif)" } },
+    { key: "apiKey", type: "secret", optional: true, advanced: true, label: { en: "Access code (optional)", fr: "Code d'accès (facultatif)" } },
     { key: "site", type: "url", optional: true, label: { en: "Your website (optional)", fr: "Votre site (facultatif)" }, help: { en: "For example https://example.org", fr: "Par exemple https://exemple.org" } },
     { key: "perHour", type: "number", default: 5, advanced: true, label: { en: "Messages per hour", fr: "Messages par heure" } },
   ],

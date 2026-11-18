@@ -224,7 +224,7 @@ test("assistant : la progression n'affiche toujours aucun total et ne recule jam
 });
 
 const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
-const KEYS = ["setup.profile.title", "setup.profile.help", "setup.profile.other", "setup.profile.otherHelp", "setup.profile.skip", "setup.profile.skipButton", "setup.samples.title", "setup.samples.help", "setup.samples.summary", "setup.samples.summary.one",
+const KEYS = ["setup.profile.title", "setup.profile.help", "setup.profile.other", "setup.profile.skipButton", "setup.samples.title", "setup.samples.help", "setup.samples.summary", "setup.samples.summary.one",
   "entries.templates.title", "entries.templates.intro", "entries.templates.use", "entries.templates.open", "entries.createdFromTemplate"];
 
 test("textes : FR et EN à parité (mêmes clés, mêmes {variables}), avant le groupe final theme.custom … settings.contrast.accent2", () => {
