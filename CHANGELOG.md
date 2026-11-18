@@ -7,6 +7,51 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.35.0 — 2026-11-18
+
+**En bref.** Un nouvel interrupteur « Tous les pouvoirs » sur chaque accès d'assistant IA : une fois activé, cet assistant a tous les droits, y compris pour les outils que les prochaines mises à jour et les futures extensions ajouteront. Vous n'avez plus à recocher des droits après chaque mise à jour.
+
+**In short.** A new "Full powers" switch on each AI assistant access: once on, that assistant holds every right, including for the tools later updates and future extensions will add. You no longer have to tick rights again after each update.
+
+### Nouveautés
+
+- **Un interrupteur « Tous les pouvoirs » par accès.** Il se trouve sur la page de l'accès (Assistants IA). Il est éteint pour tous les accès, anciens comme nouveaux.
+- **(English) A "Full powers" switch per access.** It is on the access page (AI assistants). It is off for every access, old or new.
+- **Seule la personne propriétaire peut l'activer, avec une confirmation claire.** Une fenêtre dit ce que cela permet et ce que cela ne permet jamais, et vous écrivez le nom de l'accès pour confirmer. Aucun assistant ne peut se l'accorder ni l'accorder à un autre.
+- **(English) Only you can turn it on, with a clear confirmation.** A window says what it allows and what it never allows, and you type the name of the access to confirm. No assistant can give it to itself or to another.
+- **Les droits suivent le site.** Un outil ajouté par une mise à jour ou par une extension installée plus tard est accordé tout de suite, sans rien cocher. La liste des droits de l'accès est remplacée par une ligne qui le dit.
+- **(English) Rights follow the site.** A tool added by an update or by an extension installed later is granted at once, with nothing to tick. The access's rights list is replaced by one line saying so.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Une pastille rouge « Tous les pouvoirs » est visible partout où l'accès apparaît.** Elle est sur sa ligne dans l'Équipe et dans un bandeau en haut de la page Assistants IA, avec un bouton « Désactiver » au même endroit.
+- **(English) A red "Full powers" chip shows wherever the access appears.** It is on its row in the Team page and in a banner at the top of the AI assistants page, with a "Turn off" button in the same place.
+- **Le journal garde la trace.** Une ligne quand vous l'activez ou le désactivez, et une ligne pour chaque action dangereuse faite avec ce pouvoir (supprimer, désinstaller, publier…).
+- **(English) The journal keeps a trace.** One line when you turn it on or off, and one line for each dangerous action done with it (delete, uninstall, publish...).
+
+### À savoir côté sécurité
+
+- **Ce que « Tous les pouvoirs » ne permet jamais.** Gérer les accès, les droits ou cet interrupteur, lire des mots de passe ou des secrets, passer à une version d'essai, et dépasser les limites par heure ou d'envoi. Votre réglage de validation reste aussi inchangé : une installation attend toujours votre accord.
+- **(English) What "Full powers" never allows.** Managing accesses, rights or this switch, reading passwords or secrets, moving to a test version, and going past the hourly or upload limits. Your approval setting is also unchanged: an install always waits for your approval.
+- **Un accès en lecture seule ne peut pas l'avoir.** Une sauvegarde ne le contient jamais, et une restauration le désactive pour tous les accès.
+- **(English) A read-only access cannot have it.** A backup never contains it, and a restore turns it off for every access.
+- **À activer en connaissance de cause.** Un assistant avec tous les pouvoirs peut modifier ou supprimer n'importe quoi sur le site. Gardez cet interrupteur pour un assistant en qui vous avez confiance, et désactivez-le quand vous n'en avez plus besoin.
+- **(English) Turn it on knowingly.** An assistant with full powers can change or delete anything on the site. Keep this switch for an assistant you trust, and turn it off when you no longer need it.
+
+### Après la mise à jour
+
+- Rien à faire. Aucun accès n'a « Tous les pouvoirs » après la mise à jour : vous l'activez vous-même, accès par accès, si vous le souhaitez.
+- **(English)** Nothing to do. No access has "Full powers" after the update: you turn it on yourself, access by access, if you wish.
+
+### Pour les développeurs
+
+- **`canUse` computes the rights with the switch** (`services/mcp/access.ts`: `AccessToken.fullPowers`, `grantedByFullPowers`, `neverUnderFullPowers`, `dangerousUnderFullPowers`). Nothing is copied into `grants`; the flag is the core setting `mcp.fullPowers` (access ids, `services/mcp/fullPowers.ts`), read from the database on every request, with no migration.
+- **Owner only**: `assistants/fullPowersActions.ts` (`adminCtx("owner")`, typed name checked again on the server) is the only importer of `setFullPowers`, besides the revocation, which only turns it off. A test reads the source tree for it. No MCP tool, module action or access reaches it.
+- **Kept out of the switch**: tools whose name says token, secret, credential, password, oauth, grant, rights, permission, approval or full powers. The approval setting, `ALWAYS_HUMAN` installs, the stable-only core update, `slots.ts` and `uploadLift.ts` do not read the flag. The ceiling stays: only a write access can hold it.
+- **Journal**: `mcp.fullpowers.on|off|action|cleared` (EN+FR labels). `action` is written by `server.ts` before each destructive, request or publishing tool runs under the switch. Backups: `FULL_POWERS_KEY` is left out of the export and ignored by the restore, which also journals `cleared`.
+- **Also**: `maintenance_my_access` returns a `fullPowers` block; `accessRevision` includes the flag; `declaredTools` reports a tool as granted once installed for such an access. New UI: `FullPowersWindow` (typed-name window), the chip on the row, the banner on the page.
+- **Tests**: `tests/services/mcp-full-powers.test.mjs` (real MCP server: every tool granted, a tool added later, off at once, journal, source-tree check that MCP cannot reach the switch), `mcp-full-powers-approval.test.mjs`, `tests/core/backup-full-powers.test.mjs`, `tests/core/full-powers-ui.test.mjs` (window, wiring, EN+FR texts and the admin rules).
+
 ## 0.34.0 — 2026-11-18
 
 **En bref.** Une recherche dans tous les réglages, la même pour le site et pour les extensions. Les pages de réglages du site (Réglages, Apparence, Accueil et menu, Liens courts, Pages d'overlay) accueillent les sections que les extensions y ajoutent. Le catalogue se filtre par page de réglages, et les pastilles des extensions suivent leurs pages.

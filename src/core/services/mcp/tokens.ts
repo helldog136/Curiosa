@@ -3,6 +3,7 @@ import { prisma } from "@/core/db";
 import { getSetting, setSetting } from "@/core/settings";
 import { forgetListSeen } from "./listSeen";
 import { parseGrants, type Grants, type Scope } from "./access";
+import { fullPowersIds, setFullPowers } from "./fullPowers";
 
 export type TokenScope = Scope;
 
@@ -50,10 +51,11 @@ export async function findTokenId(token: string): Promise<string | null> {
 export async function revokeToken(id: string): Promise<void> {
   await prisma.apiToken.updateMany({ where: { id, revokedAt: null }, data: { revokedAt: new Date() } });
   await setUrlAccess(id, false);
+  await setFullPowers(id, false);
   await forgetListSeen(id);
 }
 
-export type AuthedToken = { id: string; name: string; scope: TokenScope; grants: Grants };
+export type AuthedToken = { id: string; name: string; scope: TokenScope; grants: Grants; /** Full powers (fullPowers.ts): read from the database on every request, like the grants. */ fullPowers: boolean };
 
 const TOKEN_FORMAT = /^vit_[A-Za-z0-9_-]{20,}$/;
 
@@ -79,7 +81,8 @@ async function authenticateValue(token: string, byUrl: boolean): Promise<AuthedT
   // Mise à jour discrète : une erreur ici ne doit jamais empêcher la requête.
   prisma.apiToken.update({ where: { id: row.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
   // Les accès sont relus en base à CHAQUE requête : modifier les droits d'un jeton est immédiat, sans le régénérer.
-  return { id: row.id, name: row.name, scope: row.scope === "write" ? "write" : "read", grants: parseGrants(row.grants) };
+  const scope: TokenScope = row.scope === "write" ? "write" : "read";
+  return { id: row.id, name: row.name, scope, grants: parseGrants(row.grants), fullPowers: scope === "write" && (await fullPowersIds()).includes(row.id) };
 }
 
 // Limitation de débit en mémoire : 120 requêtes / minute / jeton.
@@ -92,9 +95,11 @@ export function rateLimited(tokenId: string): boolean {
   return recent.length > 120;
 }
 
-export async function getTokenGrants(id: string): Promise<{ scope: TokenScope; grants: Grants } | null> {
+export async function getTokenGrants(id: string): Promise<{ scope: TokenScope; grants: Grants; fullPowers: boolean } | null> {
   const row = await prisma.apiToken.findUnique({ where: { id } });
-  return row && !row.revokedAt ? { scope: row.scope === "write" ? "write" : "read", grants: parseGrants(row.grants) } : null;
+  if (!row || row.revokedAt) return null;
+  const scope: TokenScope = row.scope === "write" ? "write" : "read";
+  return { scope, grants: parseGrants(row.grants), fullPowers: scope === "write" && (await fullPowersIds()).includes(id) };
 }
 
 export async function saveTokenGrants(id: string, grants: Grants): Promise<void> {

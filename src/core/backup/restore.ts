@@ -10,6 +10,7 @@ import { installFromCatalogue, installModule, type InstallResult } from "@/core/
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
+import { FULL_POWERS_KEY, fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
 import { isSystemKey } from "@/core/auth/rights";
@@ -259,6 +260,8 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     d[key] = rows;
   }
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
+  // Full powers (0.35.0) never come back from a backup: the settings are replaced and the key is not restored, so every access is off afterwards. The journal says so.
+  const hadFullPowers = (await fullPowersIds().catch(() => [])).length > 0;
   const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
   opStep("replace");
   try {
@@ -269,7 +272,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
       await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany(); await tx.uploadFile.deleteMany(); await tx.overlayPage.deleteMany();
 
       for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
-      for (const c of chunks(d.settings)) await tx.setting.createMany({ data: c.map((r) => ({ key: String(r.key), locale: String(r.locale ?? ""), value: JSON.stringify(r.value) })) });
+      for (const c of chunks(d.settings.filter((r) => String(r.key) !== FULL_POWERS_KEY))) await tx.setting.createMany({ data: c.map((r) => ({ key: String(r.key), locale: String(r.locale ?? ""), value: JSON.stringify(r.value) })) });
       for (const c of chunks(d.instances)) await tx.moduleInstance.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.instances, r)) as never });
       for (const c of chunks(d.instanceTranslations)) await tx.instanceTranslation.createMany({ data: c as never });
       for (const c of chunks(d.entries)) await tx.entry.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entries, r)) as never });
@@ -329,5 +332,6 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const skins = await restoreSkins({ before: skinsBefore, confirmCustom: opts.confirmCustom, actor: opts.actor });
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
+  if (hadFullPowers) await audit(opts.actor, "mcp.fullpowers.cleared", "restore");
   return { ok: true, modules: outcomes, skins, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }
