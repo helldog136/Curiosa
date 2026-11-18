@@ -153,6 +153,23 @@ test("readability: every text has a contrasting outline (4.5:1) or an opaque pla
   assert.ok(textOps(small).every((t) => t.sz >= 36 * 0.62 - 1e-9));
 });
 
+test("burst label: the \"+N\" of a step or an extension never leaves the frame, at any aspect ratio, in any genre, skin and instant", () => {
+  const sizes = [[700, 360], [1764, 717], [3440, 200], [1200, 150], [400, 300], [300, 700], [640, 360], [900, 120]];
+  const states = { ...STATES, goal: { genre: "gauge", value: 63, target: 100, label: "Goal", highlights: steps(1, T0) }, counter: { ...STATES.counter, highlights: steps(1, T0).map((h) => ({ ...h, amount: 5 })) } };
+  let checked = 0;
+  for (const [rn, rc] of Object.entries(RECIPES)) for (const [sn, st] of Object.entries(states)) for (const [w, h] of sizes) for (const d of [0, 100, 200, 300, 450, 600, 800, 1000]) for (const calm of [false, true]) {
+    const f = A.frame(st, rc, T0 + d, { w, h }, { calm });
+    for (const t of textOps(f).filter((o) => /^[+-]/.test(o.t))) {
+      const what = `${rn}/${sn} ${w}x${h} t=${d}${calm ? " calm" : ""} "${t.t}" y=${t.y} sz=${t.sz}`;
+      assert.ok(t.y - t.sz / 2 >= -0.01 && t.y + t.sz / 2 <= h + 0.01, `${what}: inside the frame vertically`);
+      const tw = Math.min(t.mw, t.t.length * t.sz * 0.6), x0 = t.al === "left" ? t.x : t.al === "right" ? t.x - tw : t.x - tw / 2;
+      assert.ok(x0 >= -0.01 && x0 + tw <= w + 0.01, `${what}: inside the frame horizontally`);
+      checked++;
+    }
+  }
+  assert.ok(checked > 200, `the burst label was found and checked (${checked})`);
+});
+
 test("calm motion (reduced motion) and quality levels: no ring, no flying piece, no flicker in calm; minimal has no blur, bloom or grain", () => {
   const busy = STATES.gauge;
   for (const rc of Object.values(RECIPES)) {

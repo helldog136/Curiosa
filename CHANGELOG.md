@@ -7,6 +7,29 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.31.1 — 2026-11-18
+
+**En bref.** Sur un compteur animé dans un cadre bas (par exemple 700 sur 360), le « +5 » affiché à chaque don sortait par le bas du cadre et était coupé. Il reste maintenant toujours dans le cadre, quelle que soit sa forme.
+
+**In short.** On an animated counter in a low frame (for example 700 by 360), the "+5" shown at each donation left the frame at the bottom and was cut off. It now always stays inside the frame, whatever its shape.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Le « +N » du compteur n'est plus coupé.** Le total, son titre et le « +N » se partagent le cadre sans déborder, en cadre bas comme en cadre très large. Le total est un peu plus petit qu'avant dans les cadres bas.
+- **(English) The counter's "+N" is no longer cut off.** The total, its title and the "+N" share the frame without overflowing, in a low frame as in a very wide one. The total is a little smaller than before in low frames.
+- **Même garantie pour les jauges et les niveaux.** Le « +N » de ces deux types reste lui aussi dans le cadre, par exemple quand le total est placé au-dessus de la jauge.
+- **(English) Same guarantee for gauges and levels.** The "+N" of these two types also stays inside the frame, for example when the total is placed above the gauge.
+
+### Après la mise à jour
+
+- Rien à faire : les overlays déjà installés en profitent tels quels.
+- **(English)** Nothing to do: overlays already installed benefit as they are.
+
+### Pour les développeurs
+
+- **`src/core/animate/engine.ts`**: the amount text of a highlight (`drawReaction`) is clamped so its box (size x 0.72 each side of its centre) stays inside `[0, h]`, in every genre. The `counter` layout uses three lanes (label 0.2 h, total 0.5 h, size `min(0.3 h, 0.2 w)`): the "+N" fell to 1.2 h at 700x360.
+- **Test**: `burst label: the "+N" ... never leaves the frame` sweeps 8 frame shapes (700x360, 1764x717, 3440x200 ...) x 3 skins x 5 states x 8 instants x calm; it failed before on `basic/counter 700x360`.
+
 ## 0.31.0 — 2026-11-18
 
 **En bref.** Les extensions peuvent maintenant ranger leurs réglages par tâche (« En direct › Alertes », « En direct › Récompenses ») au lieu d'avoir chacune sa page : le site réunit sur une seule page ce que plusieurs extensions y ajoutent. Les extensions actuelles ne changent pas tant qu'elles ne le demandent pas.
