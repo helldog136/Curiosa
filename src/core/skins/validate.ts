@@ -458,7 +458,9 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
         const r = checkAnimation(raw);
         for (const i of r.issues.slice(0, 12)) {
           if (i.code === "contract-newer") add("animation-contract-newer");
+          else if (i.code === "contract-ahead") add("animation-contract-ahead");
           else if (i.severity === "warning") add("animation-ignored", { detail: i.path });
+          else if (i.code === "motion-name" || i.code === "motion-shape") add(i.code === "motion-name" ? "animation-motion-name" : "animation-motion-shape", { detail: i.path });
           else add(i.code === "text-contrast" ? "animation-text-contrast" : "animation-invalid", { detail: `${i.code} ${i.path}` });
         }
         animation = r.ok ? r.recipe : null;

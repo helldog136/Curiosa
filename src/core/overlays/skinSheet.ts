@@ -2,6 +2,7 @@ import { parseColor } from "../skins/colorParse";
 import { composite, contrastRatio } from "../skins/readability";
 import { KEYFRAMES } from "./skinPresets";
 import { OV_TOKEN_DEFS } from "./skinTokens";
+import { motionCss } from "../animate/spec";
 
 /**
  * COMPILES AN OVERLAY SKIN INTO THE SHEET THE OVERLAY PAGE INJECTS INTO EACH ELEMENT (core 0.8.0). Pure.
@@ -127,6 +128,8 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
     rule(sel(id, ["stars", "winner"]), ["color:var(--ov-accent)"]);
     if (has("--ov-accent-fg")) rule(sel(id, ["badge"]), ["color:var(--ov-accent-fg)"]);
   }
+  // (0.33.0) the motion words (`--ov-dur-*`, `--ov-ease-*`) are defined for a skin whose rules read them; a skin that does not gets a sheet byte-identical to before
+  if (/var\(--ov-(dur|ease)-/.test(input.css)) out.push(motionCss(root(id)));
   out.push(input.css);
   const anim = tokens["--ov-anim"];
   let motion = false;
