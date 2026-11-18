@@ -332,7 +332,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
           </div>
         </section>
       )}
-        {/* (0.33.0) Sections that modules add to this page (places `site.general.*`), in the tab they name. */}
+        {/* (0.34.0) Sections that modules add to this page (places `site.general.*`), in the tab they name. */}
         <HostedSections page="site.general" base={SETTINGS_HREF} query={hostQuery} wrap={(tab, children) => <div data-tab={HOSTED_TAB[tab] ?? tab}>{children}</div>} />
       </Tabs>
     </div>

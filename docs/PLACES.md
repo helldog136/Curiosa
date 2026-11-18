@@ -1,4 +1,4 @@
-# Places: where settings live in the admin (core 0.31.0, extended in 0.33.0)
+# Places: where settings live in the admin (core 0.31.0, extended in 0.34.0)
 
 A **place** (FR « emplacement ») is where a module's settings and work lists show in the admin, written `group.page[.tab]`:
 `live.alerts.look` is the tab « Apparence » of the page « Alertes » in the group « En direct ».
@@ -47,7 +47,7 @@ A group id that equals the first segment of an existing admin address (`entries`
 `ADMIN_ROUTE_SEGMENTS`, kept in sync with `src/app/admin` by a test) is refused.
 
 Core pages keep their addresses (`/admin/settings`, `/admin/appearance`…): their place id leads there (`/admin/site/general/privacy` opens `/admin/settings#privacy`).
-**From core 0.33.0 a section that a module places on a core page is shown on that core page**, under the core's own content, in the tab it names
+**From core 0.34.0 a section that a module places on a core page is shown on that core page**, under the core's own content, in the tab it names
 (`site.general.privacy` → the « Privacy » tab of the settings; pages without client tabs show the sections under a small heading, at the end). The core's own sections are declared in
 `src/core/modules/coreSections.ts` (id, place, title, settings): the settings search covers them, their anchor is `core.<id>` (`/admin/site/general#core.privacy`).
 The core pages that host sections: `site.general`, `site.appearance`, `site.home` (home, menu, link and button, social buttons), `site.links`, `obs.pages`.
@@ -99,7 +99,7 @@ Rules:
   mode `advanced` settings stay hidden, as on the module page.
 - Hard limits (manifest refused): 12 sections per module, 1 new group, titles 40 characters, summary 60, intro 120, EN and FR both present,
   `order` 100 to 999, `seeAlso` only place ids, 8 tabs per page.
-- **Soft limit (0.33.0)**: more than 3 sections of one module on one page is a guideline. It warns (`placeAdvice`, the kit `places.budget`, `maintenance_places`) and never refuses;
+- **Soft limit (0.34.0)**: more than 3 sections of one module on one page is a guideline. It warns (`placeAdvice`, the kit `places.budget`, `maintenance_places`) and never refuses;
   the vocabulary page can write why it is fine (`sectionsReason`, like `tabsReason`). `live.alerts` has five tabs of one task and is such a case.
 - Spoofing guards: an inline title may not use the words of the core's own pages (password, security, payment, backup, team, extensions, account…),
   nor read like a vocabulary or core title (NFKC, accent-, case- and punctuation-free); no redundant word (Settings, Configuration, Extension, Module).
@@ -134,7 +134,7 @@ Rules:
 - An empty tab says so and links to the contributing modules (R18).
 - Journal: `module.<instance>.place.<section>.save` with the place and the changed keys (never a value).
 
-### Parameters, return address, field names (0.33.0)
+### Parameters, return address, field names (0.34.0)
 
 Three limits of 0.31.0 are gone. They only concern pages where sections of several modules (or instances) show together; a module's own page is unchanged.
 
@@ -146,14 +146,14 @@ Three limits of 0.31.0 are gone. They only concern pages where sections of sever
 - **DOM ids are unique.** Two sections that show the same setting key (two instances, or two modules with `enabled`) had the same `id` in one tab. The fields of a place section now carry a prefix unique per
   (instance, section) (`fieldNamespace`); the server removes it before saving and puts it back on the errors it returns, so a message lands under the right field.
 
-### Search (0.33.0)
+### Search (0.34.0)
 
 A search box at the top of the sidebar and the page `/admin/search?q=…` find any setting, module or core. The index (`searchEntriesFor`, route `/api/admin/settings-search`) lists every section and every setting the person can reach,
 with its breadcrumb (« En direct › Alertes › Apparence ») and its stable deep link `/admin/<group>/<page>[/<tab>]#<instance>.<section>` (a core section: `/admin/<group>/<page>#core.<id>`; settings of a module that places nothing lead to its page).
 It holds titles, helps and flags, never a value. The browser downloads it on the first focus and filters it while the person types: accents and capitals do not matter, every word must be found, titles come first, no module script runs.
 Filters, as chips or typed: `@module:<id or name>`, `@path:live.alerts`, `@advanced` (advanced mode only), `@modified` (a setting that is not at its default). The box is keyboard accessible (arrows, Enter, Escape, `/` to focus).
 
-### Badges (0.33.0)
+### Badges (0.34.0)
 
 The notification badge of a module (`adminBadge`) is carried onto **every place page that hosts one of its sections** (a module that placed everything has no entry of its own any more). The number is the sum of the badges of the instances
 that have a section on the page; a group counts an instance once, however many of its pages host it. The tooltip names the modules.
@@ -192,7 +192,7 @@ The catalogue can never set an address, a status, or a page of a reserved or add
 `maintenance_place_settings {place}` (level 2, read-only, granted separately like `maintenance_module_settings`): the settings of one place across modules.
 `maintenance_module_settings {instance, place?}`: the settings this instance shows at that place. Writing is unchanged: `maintenance_module_configure`.
 
-## 10. Topics: catalogue facets and AI query (0.33.0)
+## 10. Topics: catalogue facets and AI query (0.34.0)
 
 What a module adds settings to is a **facet** of the extension catalogue: « Ajoute des réglages à : Alertes, Récompenses ». The topics of a module are the place **pages** of its sections (`moduleTopics`, from the manifest alone).
 An index entry may carry them as `"places": ["live.alerts", "live.rewards"]` (so a module that is not installed is faceted without downloading it; an installed module's manifest wins). The page *Extensions › Ajouter* shows the facets as links

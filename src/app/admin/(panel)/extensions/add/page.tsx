@@ -49,7 +49,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const names = await buildNames(locale, config.defaultLocale, entries);
   const plans = new Map<string, PlanView>();
   for (const e of entries) if (!installed.has(e.id) && e.compatible && (e.needs?.length ?? 0) > 0) plans.set(e.id, await viewPlan(e.id, e.needs!, names, entries));
-  // (0.33.0) Topics as facets: what each module adds settings to (index, or the manifest when installed), and the filter by topic.
+  // (0.34.0) Topics as facets: what each module adds settings to (index, or the manifest when installed), and the filter by topic.
   const vocab = currentVocabulary();
   const manifests = new Map((await getInstalledModules()).map((m) => [m.manifest.id, m.manifest] as const));
   const topicsByEntry = new Map(entries.map((e) => [e.id, entryTopics(e, manifests.get(e.id), vocab.aliases)] as const));

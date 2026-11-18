@@ -3,7 +3,7 @@ import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import type { Facet } from "@/core/modules/catalogueFacets";
 
 /**
- * (core 0.33.0) Filter of the extension catalogue by what a module adds settings to: « Ajoute des réglages à : Alertes · Récompenses ». Links (the address is shareable, back works),
+ * (core 0.34.0) Filter of the extension catalogue by what a module adds settings to: « Ajoute des réglages à : Alertes · Récompenses ». Links (the address is shareable, back works),
  * grouped by sidebar group, each chip with the number of modules. Nothing when no module of the catalogue says where it puts its settings.
  */
 export function TopicFacets({ t, facets, current }: { t: Translator; facets: Facet[]; current: string | null }) {

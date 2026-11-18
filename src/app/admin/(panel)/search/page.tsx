@@ -6,7 +6,7 @@ import { searchEntriesFor } from "@/core/modules/placeSearchLoad";
 
 export const dynamic = "force-dynamic";
 
-/** (core 0.33.0) Settings search, full page: the answer is drawn by the server first (readable without a script), then the box filters it live. */
+/** (core 0.34.0) Settings search, full page: the answer is drawn by the server first (readable without a script), then the box filters it live. */
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   const { user, t, locale, config, advanced } = await adminCtx("member");
   const { q } = await searchParams;

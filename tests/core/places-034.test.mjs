@@ -1,4 +1,4 @@
-// PLACES 0.33.0: soft section limit, aliases, scoped parameters and field names, return address, settings search, core sections, badges carried onto place pages,
+// PLACES 0.34.0: soft section limit, aliases, scoped parameters and field names, return address, settings search, core sections, badges carried onto place pages,
 // topics as catalogue facets. Pure logic only (the pages are covered by the screenshots and the route tests).
 import test from "node:test";
 import assert from "node:assert/strict";

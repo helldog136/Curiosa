@@ -39,7 +39,7 @@ Facultatif : `i18n` (index published after core 0.6.6) : le nom et la descriptio
 c'est ce qui rend la mention « vérifié » vraie ; une branche mouvante ne l'est pas. `apiVersion` : la version de l'API des modules visée
 (autre que celle du framework = listé comme incompatible).
 
-Facultatif : `places` (core 0.33.0) : les pages d'administration auxquelles le module ajoute des réglages, comme identifiants de page (`["live.alerts", "live.rewards"]`, 12 au plus). Le catalogue les montre comme facettes (« Ajoute des réglages à ») et un assistant IA peut chercher par sujet ; un module installé les tire de son manifeste. Un cœur plus ancien ignore la clé.
+Facultatif : `places` (core 0.34.0) : les pages d'administration auxquelles le module ajoute des réglages, comme identifiants de page (`["live.alerts", "live.rewards"]`, 12 au plus). Le catalogue les montre comme facettes (« Ajoute des réglages à ») et un assistant IA peut chercher par sujet ; un module installé les tire de son manifeste. Un cœur plus ancien ignore la clé.
 
 Facultatif : `previews` (jusqu'à 6 visuels, recopiés tels quels du `module.json` : `file`, `caption`, `alt` en français et en anglais, `type`) annonce que la fiche du module a des images. Les images ne sont **jamais** dans l'index : le cœur les lit dans le dépôt du module, côté serveur. Voir [MODULES.md](../docs/MODULES.md), « Visuels de la fiche (`previews`) ».
 

@@ -65,7 +65,7 @@ export type VocabPage = Texts & {
   href?: string;
   /** More than 5 tabs is allowed with a written reason (owner decision E15: the cap is a soft guideline). */
   tabsReason?: string;
-  /** (0.33.0) More than 3 sections of one module on this page is allowed with a written reason (owner decision 2026-11-18: the limit is a soft guideline). */
+  /** (0.34.0) More than 3 sections of one module on this page is allowed with a written reason (owner decision 2026-11-18: the limit is a soft guideline). */
   sectionsReason?: string;
 };
 export type Vocabulary = { version: 1; groups: VocabGroup[]; pages: VocabPage[]; aliases: Record<string, string>; deprecated: Record<string, string> };
@@ -211,7 +211,7 @@ export const groupStatus = (id: string, vocab: Vocabulary): GroupStatus =>
 
 export const SECTION_ID_RE = /^[a-z][a-z0-9-]{1,23}$/;
 /**
- * Hard limits (a manifest that breaks one is refused): 12 sections per module, 1 new group, text lengths. `perPage` is a SOFT guideline since core 0.33.0
+ * Hard limits (a manifest that breaks one is refused): 12 sections per module, 1 new group, text lengths. `perPage` is a SOFT guideline since core 0.34.0
  * (owner decision 2026-11-18): more than 3 sections of one module on one page only warns, unless the vocabulary page writes a `sectionsReason`.
  */
 export const LIMITS = { sections: 12, perPage: 3, inlineGroups: 1, title: 40, summary: 60, intro: 120, seeAlso: 3 } as const;
@@ -397,7 +397,7 @@ export function placeIssues(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCAB
 }
 
 /**
- * Advice about a manifest's places (core 0.33.0): what the ergonomic guidelines would flag, never a refusal. Today: more than 3 sections of this module on one page
+ * Advice about a manifest's places (core 0.34.0): what the ergonomic guidelines would flag, never a refusal. Today: more than 3 sections of this module on one page
  * (soft limit, owner decision 2026-11-18). A vocabulary page may write a `sectionsReason` to say why it is fine (`live.alerts` has 5 tabs).
  */
 export function placeAdvice(m: PlacesManifest, vocab: Vocabulary = BUILTIN_VOCABULARY): string[] {
@@ -628,7 +628,7 @@ export function addedInList(sections: readonly PlaceSection[], vocab: Vocabulary
 /** Is this page a core page (it keeps its own address; module sections show there from core 0.32.0)? */
 export const isCorePage = (place: ParsedPlace, vocab: Vocabulary): boolean => !!vocab.pages.find((p) => p.id === pageId(place))?.href;
 
-/* ───────────── Badges carried onto place pages (core 0.33.0) ───────────── */
+/* ───────────── Badges carried onto place pages (core 0.34.0) ───────────── */
 
 export type PlaceBadge = {
   /** What this page shows: the sum of the badges of the instances that have a section here. */

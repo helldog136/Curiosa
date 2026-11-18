@@ -44,7 +44,7 @@ export default async function PlacePage({ params, searchParams }: { params: Prom
   // Sections load side by side, each within its own time budget: a slow or broken module never holds the page.
   const loaded = (await Promise.all(current.sections.map(async (s) => {
     const active = actives.find((a) => a.instance.id === s.instanceId);
-    // (0.33.0) Each module reads its own namespaced parameters only (docs/PLACES.md, « Parameters »).
+    // (0.34.0) Each module reads its own namespaced parameters only (docs/PLACES.md, « Parameters »).
     return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, found.modules.length === 1) }) : null;
   }))).filter((x): x is NonNullable<typeof x> => x !== null);
   const showOrigin = (p: IndexedPage, siblings: boolean) => p.modules.length > 1 || siblings || p.inline;

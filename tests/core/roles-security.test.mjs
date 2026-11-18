@@ -562,7 +562,7 @@ test("les sites qui s'ouvrent à « tout accès » (member) sont connus : aucune
     `${PANEL}/[group]/[page]/[[...tab]]/page.tsx`,
     `${PANEL}/account/actions.ts`, `${PANEL}/account/page.tsx`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`,
     `${PANEL}/layout.tsx`, `${PANEL}/mode/actions.ts`, `${PANEL}/mode/page.tsx`, `${PANEL}/page.tsx`,
-    // (0.33.0) The settings search opens to any access: the index only lists what that person may reach (core sections by role, module sections by the same rules as the place pages).
+    // (0.34.0) The settings search opens to any access: the index only lists what that person may reach (core sections by role, module sections by the same rules as the place pages).
     `${PANEL}/search/page.tsx`,
   ]);
 });

@@ -99,7 +99,7 @@ export async function loadSectionBlocks(active: ActiveInstance, section: PlaceSe
     return out;
   };
   const got = await withBudget(run(), opts.budgetMs ?? SECTION_BUDGET_MS);
-  // (0.33.0) Every `?…` link of the module is moved to its own namespace: two modules on one page never read each other's parameters.
+  // (0.34.0) Every `?…` link of the module is moved to its own namespace: two modules on one page never read each other's parameters.
   return got.ok ? { blocks: Array.isArray(got.value) ? scopeBlocks(got.value, active.instance.key) : [], state: "ok" } : { blocks: [], state: got.reason };
 }
 

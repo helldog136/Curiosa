@@ -45,7 +45,7 @@ export async function loadPlaceSection(section: IndexedSection, active: ActiveIn
  */
 export async function PlaceSectionCard({ loaded, t, locale, config, advanced, showOrigin, base }: {
   loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean; showOrigin: boolean;
-  /** (0.33.0) Address of the page that shows the section (`/admin/live/alerts`, or the core page that hosts it): the module's actions come back to it. */
+  /** (0.34.0) Address of the page that shows the section (`/admin/live/alerts`, or the core page that hosts it): the module's actions come back to it. */
   base: string;
 }) {
   const { section, active } = loaded;

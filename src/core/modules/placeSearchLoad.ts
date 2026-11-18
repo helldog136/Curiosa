@@ -13,7 +13,7 @@ import type { SearchEntry } from "./placeSearch";
 import { localized, type SettingField } from "./types";
 
 /**
- * The settings search index for one person (core 0.33.0): every section and every setting this person can reach, module or core, with its breadcrumb and its deep
+ * The settings search index for one person (core 0.34.0): every section and every setting this person can reach, module or core, with its breadcrumb and its deep
  * link. Built from manifests and from the stored values' presence only (never a value, never a secret): the browser downloads it once and filters it locally.
  * Advanced settings are listed only in advanced mode (a link to a setting that the page hides would lead nowhere).
  */

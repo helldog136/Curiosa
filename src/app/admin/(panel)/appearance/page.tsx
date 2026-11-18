@@ -329,7 +329,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
 
         <p className={ui.help}><Link href={SETTINGS_HREF} className="text-accent hover:underline">{t("appearance.toSettings")}</Link></p>
       </div>
-      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
       <HostedSections page="site.appearance" base={APPEARANCE_HREF} query={plainQuery(sp as Record<string, string | string[] | undefined>)} />
     </AppearanceLabelsProvider>
   );

@@ -65,7 +65,7 @@ export default async function NavigationPage() {
           strings={strings}
         />
       </ActionForm>
-      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
       <HostedSections page="site.home" base={NAVIGATION_HREF} tabs={["menu"]} />
     </div>
   );

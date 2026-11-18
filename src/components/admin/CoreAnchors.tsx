@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 /**
- * (core 0.33.0) Stable deep links to the core's own sections: `/admin/site/general#core.privacy` leads to the core page, and this component turns the anchor `#core.privacy`
+ * (core 0.34.0) Stable deep links to the core's own sections: `/admin/site/general#core.privacy` leads to the core page, and this component turns the anchor `#core.privacy`
  * into the page's own (`#privacy`, the tab) as soon as the page is drawn. The server never sees the anchor, so it is done here; no module script is involved.
  */
 export function CoreAnchors({ map }: { map: Record<string, string> }) {

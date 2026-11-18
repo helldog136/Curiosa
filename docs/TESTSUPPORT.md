@@ -549,7 +549,7 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 
 **Placed sections stay short, and older cores keep working** — niveau : **conseil**
 
-- **Ce qui est vérifié.** Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). More than 3 sections of the module on one page is a guideline, not a refusal (core 0.33.0): the vocabulary page can write why it is fine. A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).
+- **Ce qui est vérifié.** Each placed section shows at most 7 simple settings (R5) and its declared settings fit the field budget (R4: 5 visible fields, the rest rare or advanced). More than 3 sections of the module on one page is a guideline, not a refusal (core 0.34.0): the vocabulary page can write why it is fine. A module with places keeps `adminMenu` for cores older than 0.31.0, and uses `tabs[].place` only with minCore 0.31.0 (an older core refuses that key).
 - **Pourquoi.** A shared page gathers several modules: one long section pushes the others down. During the transition, sites on an older core still need the module's own entry.
 - **Comment corriger.** Mark rare settings `rare: true`, split a long section, keep `adminMenu` until minCore 0.33.0, or move tabs[].place to places[].fromTab.
 

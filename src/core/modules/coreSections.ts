@@ -1,7 +1,7 @@
 import { APPEARANCE_HREF, HOME_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAYS_OBS_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF } from "../adminLinks";
 
 /**
- * CORE PAGES AS CONTRIBUTORS (core 0.33.0): the core's own settings pages say what they hold in the same place model as the modules do
+ * CORE PAGES AS CONTRIBUTORS (core 0.34.0): the core's own settings pages say what they hold in the same place model as the modules do
  * (`group.page.tab`, a section id, a title, the settings it shows). Two uses:
  *  1. the global settings search covers them (docs/PLACES.md, « Search »);
  *  2. a module can add labelled sections to the additive core pages (`site.*`, `obs.pages`), shown on the core page itself (`HostedSections`).

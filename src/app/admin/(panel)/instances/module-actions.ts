@@ -35,7 +35,7 @@ export async function runModuleAdminAction(instanceId: string, action: string, _
 }
 
 /**
- * (core 0.33.0) The same action, run from a PLACE page (or a core page that hosts the section): `returnBase` is that page's address, so a `redirect: "?…"` answer comes
+ * (core 0.34.0) The same action, run from a PLACE page (or a core page that hosts the section): `returnBase` is that page's address, so a `redirect: "?…"` answer comes
  * back to it, with the module's own namespaced parameters, instead of leading to the module page. The address comes from the browser: it is re-checked (`returnTarget`).
  */
 export async function runPlaceAdminAction(instanceId: string, action: string, returnBase: string, _prev: ActionState, formData: FormData): Promise<ActionState> {

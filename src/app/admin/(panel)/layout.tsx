@@ -49,7 +49,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
   const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
   type PlaceItem = TreeItem & { href: string; place: true; badgeTip: string };
-  // (0.33.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
+  // (0.34.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
   const instanceBadge = new Map(allNav.map((m) => [m.id, m.badge] as const));
   const carried = placeBadges(placeIndex, (instanceId) => instanceBadge.get(instanceId) ?? 0);
   const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({

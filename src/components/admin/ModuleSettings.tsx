@@ -54,7 +54,7 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
   advanced?: boolean;
   /** Dans un onglet (page en onglets, 0.2.2) : un bloc seul n'a pas besoin de titre visible. */
   tabbed?: boolean;
-  /** (0.33.0) Prefix of the field names and DOM ids, unique per section on a place page (`fieldNamespace`): two sections that show the same setting key never share an id. The server strips it. Empty on the module page. */
+  /** (0.34.0) Prefix of the field names and DOM ids, unique per section on a place page (`fieldNamespace`): two sections that show the same setting key never share an id. The server strips it. Empty on the module page. */
   ns?: string;
 }) {
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, defaultLocale);

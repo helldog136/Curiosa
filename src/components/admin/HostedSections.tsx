@@ -7,7 +7,7 @@ import { sectionQuery } from "@/core/modules/placeScope";
 import { PlaceSectionCard, loadPlaceSection } from "./PlaceSection";
 
 /**
- * (core 0.33.0) Sections that modules add to a CORE page (`site.general.privacy`, `site.appearance.colors`, `obs.pages.addresses`…), shown on the core page itself, under
+ * (core 0.34.0) Sections that modules add to a CORE page (`site.general.privacy`, `site.appearance.colors`, `obs.pages.addresses`…), shown on the core page itself, under
  * its own content: the same card as on a place page (origin always shown, its own save, isolation of a failing module). `tabs` limits the places shown here (a core page that
  * has tabs puts each tab's sections in that tab; the rest of the page shows the others). Nothing when no module adds anything: the core page is exactly what it was.
  * `base` is the address of the core page, where the module's actions come back to.

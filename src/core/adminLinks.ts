@@ -47,7 +47,7 @@ export const SETTINGS_ADDRESS_HREF = "/admin/settings/address";
 export const SETTINGS_ADDRESS_AFTER_HREF = "/admin/settings/address/after";
 // `/admin/settings/rawg-covers` (published by modules, "Not the right game?" links) keeps working: it is a route file, not a constant.
 export const SOCIAL_HREF = "/admin/social";
-/** (core 0.33.0) The settings search page, with the words asked. */
+/** (core 0.34.0) The settings search page, with the words asked. */
 export const SEARCH_HREF = "/admin/search";
 export const searchHref = (q: string): string => `${SEARCH_HREF}?q=${encodeURIComponent(q)}`;
 /** Old address of "AI visibility" (now a tab of the settings): kept, it redirects to SETTINGS_AI_HREF. */

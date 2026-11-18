@@ -1,7 +1,7 @@
 import { parsePlace, placeId } from "./places";
 
 /**
- * GLOBAL SETTINGS SEARCH (core 0.33.0), pure part: entries, the query language and the ranking. No database, no React, no network.
+ * GLOBAL SETTINGS SEARCH (core 0.34.0), pure part: entries, the query language and the ranking. No database, no React, no network.
  * Entries come from the place index (module sections and their settings) and from the core's own sections (`coreSections.ts`); the server builds them
  * (`placeSearchLoad.ts`), the browser filters them with these same functions while the person types (no module script runs, only data).
  *

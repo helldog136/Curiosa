@@ -164,7 +164,7 @@ export async function savePlaceSection(_prev: ActionState, formData: FormData): 
   const found = await resolvePlaceSection(id, sectionId);
   if (!found) return { error: t("error.generic") };
   const keys = new Set(found.section.settings);
-  // (0.33.0) The form's field names carry a prefix that is unique per section (two sections on one page never share a DOM id): the server works with the plain names and puts the prefix back on the errors it returns.
+  // (0.34.0) The form's field names carry a prefix that is unique per section (two sections on one page never share a DOM id): the server works with the plain names and puts the prefix back on the errors it returns.
   const ns = fieldNamespace(found.instanceKey, sectionId);
   const result = await applySettings({ t, config, id, mod: found.mod, formData: stripFieldNamespace(formData.entries(), ns), inForm: (f) => keys.has((f as { key?: string }).key ?? "") });
   if (!result.saved) return result.state?.errors ? { ...result.state, errors: addFieldNamespace(result.state.errors, ns) } : result.state;

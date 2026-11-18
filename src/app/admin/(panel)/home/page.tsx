@@ -67,7 +67,7 @@ export default async function HomeAdminPage() {
             sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />
         {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
-      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
       <HostedSections page="site.home" base={HOME_HREF} tabs={["home", "banners"]} />
     </div>
   );

@@ -45,7 +45,7 @@ export type CatalogueEntry = {
   /** Services offerts / exigés (index du catalogue) : lus SANS installer, pour dire ce que l'installation apportera. */
   offers?: ServiceOffer[];
   needs?: ServiceNeed[];
-  /** (core 0.33.0) Place pages the module adds settings to (`live.alerts`): facets of the catalogue and of the AI query by topic. Written by the index; an installed module also reads them from its manifest. */
+  /** (core 0.34.0) Place pages the module adds settings to (`live.alerts`): facets of the catalogue and of the AI query by topic. Written by the index; an installed module also reads them from its manifest. */
   topics?: string[];
   /** Visuels annoncés par l'index (légende, texte alternatif, type) : sert à dire qu'il y en a, sans rien télécharger. Les images viennent du dépôt du module, lues par le cœur (previewServe.ts). */
   previews?: PreviewDecl[];

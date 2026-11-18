@@ -1,7 +1,7 @@
 import { moduleTopics, parseTopic, topicGroupTitle, topicTitle, type PlacesManifest, type Vocabulary } from "./places";
 
 /**
- * CATALOGUE FACETS (core 0.33.0): what a module adds settings to, as a facet of the extension catalogue (« Ajoute des réglages à : Alertes, Récompenses ») and as a query
+ * CATALOGUE FACETS (core 0.34.0): what a module adds settings to, as a facet of the extension catalogue (« Ajoute des réglages à : Alertes, Récompenses ») and as a query
  * for an AI assistant. Pure logic. The topics of an entry come from the index (`places`) and, for a module that is installed, from its manifest (which wins).
  */
 export type TopicEntry = { id: string; topics?: string[] };

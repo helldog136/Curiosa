@@ -6,7 +6,7 @@ import { searchEntriesFor } from "@/core/modules/placeSearchLoad";
 export const dynamic = "force-dynamic";
 
 /**
- * (core 0.33.0) The settings search index of the signed-in person: sections and settings with their breadcrumb and deep link (never a value). The admin downloads it once
+ * (core 0.34.0) The settings search index of the signed-in person: sections and settings with their breadcrumb and deep link (never a value). The admin downloads it once
  * (first focus of the search box) and filters it in the browser. Private, never cached. Only people with an admin sign-in get it; what they may reach decides the content.
  */
 export async function GET(): Promise<Response> {

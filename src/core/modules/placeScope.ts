@@ -1,5 +1,5 @@
 /**
- * PLACE SCOPE (core 0.33.0): what keeps two modules that share one place page from stepping on each other. Pure logic, no database, no React.
+ * PLACE SCOPE (core 0.34.0): what keeps two modules that share one place page from stepping on each other. Pure logic, no database, no React.
  *
  *  - URL parameters. A module writes `?edit=3` in its links, reads `query.edit`, and answers an action with `redirect: "?done=1"` (module contract, unchanged).
  *    On a place page several modules show side by side, so the core gives each of them its own namespace: the address carries `<instance>.edit=3`, the module

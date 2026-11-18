@@ -11,7 +11,7 @@ export type SettingsSearchLabels = {
 };
 
 /**
- * Global settings search (core 0.33.0). Two shapes of one component:
+ * Global settings search (core 0.34.0). Two shapes of one component:
  *  - `menu`: a box at the top of the sidebar. The index is fetched once, on the first focus; results drop down under the box while the person types (no button, no reload),
  *    arrow keys and Enter work, Escape closes, Enter with nothing chosen opens the full page.
  *  - `page`: the page `/admin/search`: the box, the filters (module, advanced, modified) and every result with its breadcrumb. The entries come with the page, so the

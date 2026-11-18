@@ -32,7 +32,7 @@ export function Tabs({ tabs, initial, children }: { tabs: TabDef[]; initial?: st
     return () => el?.removeEventListener("invalid", onInvalid, true);
   }, [tabs]);
 
-  // (0.33.0) A deep link to a section hosted on this page (`#<instance>.<section>`): open the tab that holds it, then bring it into view.
+  // (0.34.0) A deep link to a section hosted on this page (`#<instance>.<section>`): open the tab that holds it, then bring it into view.
   useEffect(() => {
     if (!hash || known(hash)) return;
     const el = document.getElementById(hash);

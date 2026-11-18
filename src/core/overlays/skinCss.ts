@@ -21,7 +21,7 @@ const COMPOUND_RE = new RegExp(`^\\[data-ov-(part|region)="(${NAME})"\\](:first-
 const SELECTOR_RE = new RegExp(`^\\[data-ov-(?:part|region)="${NAME}"\\](?::first-child|:last-child)?(?: \\[data-ov-(?:part|region)="${NAME}"\\](?::first-child|:last-child)?){0,2}(::before|::after)?$`);
 export const ANIM_NAMES = ["ov-fade", "ov-rise", "ov-pop", "ov-glow"] as const;
 
-type Kind = "color" | "bg" | "len" | "shadow" | "font" | "weight" | "num" | "transform" | "anim-name" | "time" | "style" | "content" | "deco-len" | "align" | "radius" | "pos" | "enum" | "margin" | "xform" | "maxw" | "stretch";
+type Kind = "color" | "bg" | "len" | "shadow" | "font" | "weight" | "num" | "transform" | "anim-name" | "time" | "style" | "content" | "deco-len" | "align" | "radius" | "pos" | "enum" | "margin" | "xform" | "maxw" | "stretch" | "ease";
 
 const PROPS: Record<string, Kind> = {
   color: "color", "background-color": "color", "border-color": "color", "border-top-color": "color", "border-bottom-color": "color", "border-left-color": "color", "border-right-color": "color",
@@ -31,7 +31,7 @@ const PROPS: Record<string, Kind> = {
   border: "len", "border-top": "len", "border-bottom": "len", "border-left": "len", "border-right": "len",
   "border-radius": "radius", "box-shadow": "shadow", "text-shadow": "shadow", "font-family": "font", "font-weight": "weight", "font-style": "style", "font-size": "len",
   "letter-spacing": "len", "line-height": "num", "text-transform": "transform", "text-decoration": "style", padding: "len", "padding-top": "len", "padding-bottom": "len", "padding-left": "len", "padding-right": "len",
-  opacity: "num", "animation-name": "anim-name", "animation-duration": "time", "animation-delay": "time", "text-align": "align", "backdrop-filter": "len",
+  opacity: "num", "animation-name": "anim-name", "animation-duration": "time", "animation-delay": "time", "animation-timing-function": "ease", "text-align": "align", "backdrop-filter": "len",
   "flex-direction": "enum", order: "num", "align-items": "enum", "justify-content": "enum", gap: "len", margin: "margin", "margin-top": "margin", "margin-bottom": "margin", "margin-left": "margin", "margin-right": "margin", "max-width": "maxw", transform: "xform", "font-variant-caps": "enum", "word-spacing": "len",
   width: "deco-len", height: "deco-len", position: "pos", top: "deco-len", bottom: "deco-len", left: "deco-len", right: "deco-len", inset: "deco-len", "z-index": "num", content: "content", "pointer-events": "style",
 };
@@ -159,7 +159,9 @@ function checkValue(prop: string, kind: Kind, value: string, deco: boolean): str
     }
     case "transform": return /^(none|uppercase|lowercase|capitalize|var\(--ov-heading-transform(\s*,\s*[^()]+)?\))$/.test(v) ? v : bad;
     case "anim-name": return (ANIM_NAMES as readonly string[]).includes(v) || v === "none" ? v : bad;
-    case "time": { const m = /^(\d{1,4}(?:\.\d{1,3})?)(ms|s)$/.exec(v); const ms = m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : NaN; return ms >= 0 && ms <= 5000 ? v : bad; }
+    // (0.33.0) the motion words of the core: `var(--ov-dur-fast|standard|considered)` for a duration, `var(--ov-ease-snappy|smooth|gentle|bouncy)` for a curve; nothing else
+    case "ease": return /^var\(--ov-ease-(snappy|smooth|gentle|bouncy)\)$/.test(v) ? v : bad;
+    case "time": { if (/^var\(--ov-dur-(fast|standard|considered)\)$/.test(v)) return v; const m = /^(\d{1,4}(?:\.\d{1,3})?)(ms|s)$/.exec(v); const ms = m ? Number(m[1]) * (m[2] === "s" ? 1000 : 1) : NaN; return ms >= 0 && ms <= 5000 ? v : bad; }
     case "align": return /^(left|center|right|start|end)$/.test(v) ? v : bad;
     case "pos": return deco && /^(absolute|relative)$/.test(v) ? v : bad;
     case "enum": return (ENUMS[prop] ?? []).includes(v) ? v : bad;
