@@ -367,9 +367,10 @@ export function animateEngine(win: any, SPEC: any): void {
     L.valueSize = vs; L.labelSize = ls;
     if (genre === "counter") {
       L.frame = { x: pad, y: pad, w: w - 2 * pad, h: h - 2 * pad };
-      L.valueSize = Math.max(minText, Math.min(h * 0.4, w * 0.2)) * valueStyle.size; L.labelSize = Math.max(minText * 0.75, L.valueSize * 0.38);
-      L.value = { x: w / 2, y: hasLabel ? h * 0.6 : h / 2, align: "center", mw: w - 4 * pad };
-      L.label = { x: w / 2, y: h * 0.26, align: "center", mw: w - 4 * pad };
+      // three lanes that always fit the frame: the label on top, the total in the middle, the "+N" of a burst free to fall below it (it is also clamped, see drawReaction)
+      L.valueSize = Math.max(minText, Math.min(h * 0.3, w * 0.2)) * valueStyle.size; L.labelSize = Math.max(minText * 0.75, L.valueSize * 0.38);
+      L.value = { x: w / 2, y: h / 2, align: "center", mw: w - 4 * pad };
+      L.label = { x: w / 2, y: h * 0.2, align: "center", mw: w - 4 * pad };
       L.body = L.frame; L.center = [w / 2, h / 2];
       return L;
     }
@@ -604,7 +605,10 @@ export function animateEngine(win: any, SPEC: any): void {
     // the amount of the highlight, written like the value (never distorted: it only rises and fades)
     if (h.amount && (h.kind === "step" || h.kind === "extend") && ctx.valuePos) {
       var a = Math.sin(Math.PI * clamp(u * 1.2, 0, 1)), txt = amountText(h, ctx.v.format, ctx.lang, ctx.v.currency);
-      drawText(out, txt, { x: ctx.valuePos.x, y: ctx.valuePos.y, align: ctx.valuePos.align, mw: ctx.valuePos.mw }, L.valueSize * 0.62, ctx.valueStyle, Q, a, (ctx.v.genre === "counter" ? 1 : -1) * L.valueSize * (calm ? 1.05 : 0.9 + 0.4 * out3(u)), ctx);
+      // the "+N" travels from the value, but its box (the text, its outline, a plate) always stays inside the frame, whatever the size or the shape of the frame
+      var asz = L.valueSize * 0.62, half = asz * 0.72, dyRaw = (ctx.v.genre === "counter" ? 1 : -1) * L.valueSize * (calm ? 1.05 : 0.9 + 0.4 * out3(u));
+      var lo = half, hi = L.h - half, yy = lo > hi ? L.h / 2 : clamp(ctx.valuePos.y + dyRaw, lo, hi);
+      drawText(out, txt, { x: ctx.valuePos.x, y: ctx.valuePos.y, align: ctx.valuePos.align, mw: ctx.valuePos.mw }, asz, ctx.valueStyle, Q, a, yy - ctx.valuePos.y, ctx);
     }
   }
   function drawParticles(out: any, p: any, origin: number[], size: number, u: number, scale: number, I: number, seed: number, L: any): void {
