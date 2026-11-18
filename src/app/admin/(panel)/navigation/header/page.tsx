@@ -1,3 +1,5 @@
+import { NAVIGATION_HEADER_HREF } from "@/core/adminLinks";
+import { HostedSections } from "@/components/admin/HostedSections";
 import { floatingLabels } from "@/components/admin/floating";
 import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
@@ -38,6 +40,8 @@ export default async function HeaderLinksPage() {
         </div>
         <p className={ui.help}>{t("settings.header.linksHelp")}</p>
       </ActionForm>
+      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      <HostedSections page="site.home" base={NAVIGATION_HEADER_HREF} tabs={["header"]} />
     </div>
   );
 }

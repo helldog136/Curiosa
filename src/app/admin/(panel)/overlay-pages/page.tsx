@@ -1,3 +1,5 @@
+import { HostedSections } from "@/components/admin/HostedSections";
+import { plainQuery } from "@/core/modules/coreSections";
 import Link from "next/link";
 import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
@@ -94,6 +96,8 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
           })}
         </ul>
       )}
+      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      <HostedSections page="obs.pages" base={OVERLAY_PAGES_HREF} tabs={["main", "skins"]} query={plainQuery(sp as Record<string, string | string[] | undefined>)} />
     </div>
   );
 }

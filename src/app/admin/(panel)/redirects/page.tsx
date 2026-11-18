@@ -1,3 +1,5 @@
+import { HostedSections } from "@/components/admin/HostedSections";
+import { plainQuery } from "@/core/modules/coreSections";
 import Link from "next/link";
 import { adminCtx } from "@/core/admin";
 import { listInstances } from "@/core/instances";
@@ -232,6 +234,8 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
           </div>
         )}
       </section>
+      {/* (0.33.0) Sections that modules add to this core page (docs/PLACES.md). */}
+      <HostedSections page="site.links" base={REDIRECTS_HREF} query={plainQuery(sp as Record<string, string | string[] | undefined>)} />
     </div>
   );
 }

@@ -17,6 +17,7 @@ import { menuEligible } from "@/core/modules/menuEligibility";
 import { setInstanceInMenu } from "@/core/menuStore";
 import { defaultPlacement, parsePlacement, placementSettingKey, placementsFor } from "@/core/modules/menuPlacement";
 import { groupFlagName, judgeGroup } from "@/core/modules/groups";
+import { addFieldNamespace, fieldNamespace, stripFieldNamespace } from "@/core/modules/placeScope";
 import { valueErrorKey } from "@/core/adminkit/hints";
 import { isHalfPeriod } from "@/core/adminkit/values";
 import { checkFieldInput, checkMultiInput, resolveDefault, shouldStore } from "@/core/modules/settingValues";
@@ -163,8 +164,10 @@ export async function savePlaceSection(_prev: ActionState, formData: FormData): 
   const found = await resolvePlaceSection(id, sectionId);
   if (!found) return { error: t("error.generic") };
   const keys = new Set(found.section.settings);
-  const result = await applySettings({ t, config, id, mod: found.mod, formData, inForm: (f) => keys.has((f as { key?: string }).key ?? "") });
-  if (!result.saved) return result.state;
+  // (0.33.0) The form's field names carry a prefix that is unique per section (two sections on one page never share a DOM id): the server works with the plain names and puts the prefix back on the errors it returns.
+  const ns = fieldNamespace(found.instanceKey, sectionId);
+  const result = await applySettings({ t, config, id, mod: found.mod, formData: stripFieldNamespace(formData.entries(), ns), inForm: (f) => keys.has((f as { key?: string }).key ?? "") });
+  if (!result.saved) return result.state?.errors ? { ...result.state, errors: addFieldNamespace(result.state.errors, ns) } : result.state;
   // The journal names the place and the keys that changed (never a value: a secret never reaches it).
   await audit(user.email, `module.${found.instanceKey}.place.${sectionId}.save`, `${placeId(found.section.place)} (${result.changed.join(", ")})`.slice(0, 300), { module: found.mod.manifest.id, instance: found.instanceKey });
   return result.state;
