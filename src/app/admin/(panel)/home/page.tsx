@@ -15,6 +15,7 @@ import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
 import { PageHeader } from "@/components/admin/Page";
 import { resolveSize } from "@/core/home";
 import { SECTION_SIZES, type SectionSize } from "@/core/modules/types";
+import { entriesHref, entryHref } from "@/core/adminLinks";
 import { HomeBuilder, type HomeBlock, type HomeChoice } from "@/components/admin/HomeBuilder";
 import { AssistantUndoNotice } from "@/components/admin/AssistantUndoNotice";
 import { homeRestorePoint } from "@/core/maintenance/siteHome";
@@ -35,6 +36,7 @@ export default async function HomeAdminPage() {
       icon: mod.manifest.icon ?? "🧩",
       title: L(s.label),
       subtitle: labeler.label(instance),
+      ...(mod.manifest.content ? { content: { entriesHref: entriesHref(instance.key), ...(s.id === ENTRY_SECTION_ID ? { entryOption: "entry", editHrefs: Object.fromEntries((entryChoices.get(instance.key) ?? []).map((e) => [e.id, entryHref(e.id)])) } : {}) } } : {}),
       defaultSize: resolveSize({}, s.size),
       options: ((s.options ?? []) as SettingField[]).map((o) => s.id === ENTRY_SECTION_ID && o.key === "entry"
         ? { key: o.key, type: o.type, label: L(o.label), default: entryChoices.get(instance.key)?.[0]?.id, options: (entryChoices.get(instance.key) ?? []).map((e) => ({ value: e.id, label: e.title })) }
@@ -63,7 +65,7 @@ export default async function HomeAdminPage() {
       {undo && <AssistantUndoNotice text={t("aim.undo.home", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.home.button")} action={restoreAssistantHome} />}
       <ActionForm action={saveHome} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <HomeBuilder choices={choices} initial={initial} locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))} blockLabels={blockLabels}
-          labels={{ editBlock: t("home.editBlock"), coreGroup: t("home.coreGroup"), modulesGroup: t("home.modulesGroup"), noFeatures: t("home.noFeatures"), cancel: t("home.cancel"), layoutHelpTitle: t("home.layoutHelpTitle"), empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"),
+          labels={{ editBlock: t("home.editBlock"), coreGroup: t("home.coreGroup"), modulesGroup: t("home.modulesGroup"), noFeatures: t("home.noFeatures"), cancel: t("home.cancel"), layoutHelpTitle: t("home.layoutHelpTitle"), empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"), editEntries: t("home.editEntries"), editEntry: t("home.editEntry"),
             sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />
         {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>

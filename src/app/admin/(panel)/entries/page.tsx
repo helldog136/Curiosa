@@ -6,11 +6,12 @@ import { localeName } from "@/core/i18n/locales";
 import { getActiveInstances } from "@/core/modules/registry";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { getInstanceLabeler } from "@/core/modules/labels";
-import { cleanQuery, listAdminEntries, parseAdminState, SEARCH_MAX } from "@/core/content/adminList";
+import { cleanQuery, listAdminEntries, parseAdminState } from "@/core/content/adminList";
 import { parsePageParam } from "@/core/content/pagination";
 import { entryState, type EntryState } from "@/core/content/state";
 import { entryStateCounts } from "@/core/content/dashboardCounts";
 import { ui } from "@/components/admin/ui";
+import { LiveSearch, NoResults } from "@/components/admin/LiveSearch";
 import { Pagination } from "@/components/site/Pagination";
 import { ENTRIES_HREF, entriesHref, entryHref, entryNewHref, entryTemplatesHref, instanceHref } from "@/core/adminLinks";
 
@@ -25,6 +26,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
   // Même ordre que sur le site : ce qu'on voit ici en premier est ce que le visiteur voit en premier. 50 par page ; recherche et état se font dans la requête.
   const q = cleanQuery(typeof qRaw === "string" ? qRaw : "");
   const state = parseAdminState(stateRaw);
+  const stateFilter = state;
   const param = parsePageParam(pageRaw);
   const list = await listAdminEntries({ instance: collection, defaultLocale: config.defaultLocale, page: param.kind === "page" ? param.page : 1, q, state });
   const { sort } = list;
@@ -75,17 +77,9 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                 className={`${ui.btn} ${state === st ? "!border-accent !bg-accent/10 font-semibold" : ""}`}>{t(`entries.chip.${st}`)} <span className="text-muted">{counts[st]}</span></a>
             ))}
           </nav>
-          <form method="get" action={ENTRIES_HREF} role="search" className="flex flex-wrap items-end gap-3" data-testid="entries-filter">
-            <input type="hidden" name="c" value={collection.key} />
-            <div className="min-w-0 flex-1 basis-56">
-              <label htmlFor="entries-q" className={ui.label}>{t("entries.searchLabel")}</label>
-              <input id="entries-q" name="q" type="search" defaultValue={q} maxLength={SEARCH_MAX} placeholder={t("entries.searchPlaceholder")} className={ui.input} />
-            </div>
-            {state !== "all" && <input type="hidden" name="state" value={state} />}
-            <button type="submit" className={ui.btn}>{t("entries.filter")}</button>
-            {filtered && <a href={entriesHref(collection.key)} className="self-center text-sm underline hover:text-accent">{t("entries.clearFilter")}</a>}
-          </form>
-          {entries.length === 0 && <p className="text-sm text-muted" role="status">{t("entries.noMatch")}</p>}
+          <LiveSearch mode="server" scope="entries" action={ENTRIES_HREF} keep={{ c: collection.key, ...(state !== "all" ? { state } : {}) }} initialQuery={q}
+            placeholder={t("entries.searchPlaceholder")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
+          {entries.length === 0 && <NoResults message={t("entries.noMatch")} clearLabel={t("search.clear")} href={entriesHref(collection.key, state !== "all" ? { state } : {})} />}
           {entries.length > 0 && <ul className={`${ui.card} divide-y divide-line !p-0`}>
             {entries.map(({ e, main }) => {
               const state = entryState(e);
@@ -103,7 +97,8 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
                     <p className="mt-0.5 text-xs text-muted">{t("entries.updatedOn", { date: fmt.format(e.updatedAt) })}</p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>
+                    {/* Only what sets the row apart (R14): "Published" is the norm, and the active state filter already says it. */}
+                    {state !== "published" && state !== stateFilter && <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>}
                     {note && <span className="text-xs text-muted">{note}</span>}
                   </div>
                   {config.locales.length > 1 && (

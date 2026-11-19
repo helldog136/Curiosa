@@ -7,6 +7,35 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.41.0 — 2026-11-19
+
+**En bref.** Vos contenus se retrouvent enfin : un bouton « Contenu » sur chaque extension, des liens vers les entrées depuis l'accueil, la recherche qui trouve aussi vos pages, et une liste d'entrées qui filtre pendant la frappe. La carte « Stockage » dit clairement ce que prend votre site.
+
+**In short.** Your content is finally easy to find: a "Content" button on each extension, links to the entries from the home page, a search that also finds your pages, and an entries list that filters as you type. The "Storage" card says clearly how much your site takes.
+
+### Nouveautés
+
+- **Un bouton « Contenu » sur chaque extension qui a des entrées.** Il ne se cache plus dans le menu « ⋯ ».
+- **(English) A "Content" button on every extension that has entries.** It is no longer hidden in the "⋯" menu.
+- **L'accueil renvoie vers ce qu'il affiche.** Un bloc d'une extension de contenu propose « Modifier les entrées », et le bloc « une page » propose « Modifier cette page ».
+- **(English) The home page links to what it shows.** A block from a content extension offers "Edit the entries", and the "one page" block offers "Edit this page".
+- **La recherche trouve aussi vos contenus.** Écrivez un mot du titre : les pages, billets et liens correspondants s'ouvrent directement dans leur éditeur (vingt au plus).
+- **(English) The search also finds your content.** Type a word from the title: matching pages, posts and links open straight in their editor (twenty at most).
+- **La liste des entrées filtre pendant la frappe,** sans bouton « Filtrer », et la pastille « Publiée » n'est plus répétée sur chaque ligne : seuls les brouillons, programmations et expirations sont signalés.
+- **(English) The entries list filters as you type,** with no "Filter" button, and the "Published" badge is no longer repeated on every row: only drafts, scheduled and expired entries are flagged.
+
+### Corrections
+
+- **La carte « Stockage » dit ce que représente chaque couleur.** La barre a une légende (votre site, reste du serveur, libre) avec les tailles exactes, et la part de votre site reste visible même sur un très gros disque.
+- **(English) The "Storage" card says what each colour means.** The bar has a legend (your site, rest of the server, free) with exact sizes, and your site's share stays visible even on a very large disk.
+- **« Nom affiché » devient « Nom dans les menus »,** avec une info-bulle qui dit où ce nom apparaît.
+- **(English) "Display name" becomes "Name in the menus",** with a tooltip saying where the name appears.
+
+### Pour les développeurs
+
+- `searchContentEntries` (`core/content/adminSearch.ts`) et `GET /api/admin/content-search?q=` (rôle éditeur, 20 résultats, titres et adresses seulement) ; `SearchEntry.kind` accepte `"entry"` ; `SettingsSearch` prend `contentEndpoint` et `initialContent`.
+- `HomeChoice.content` (`entriesHref`, `editHrefs`, `entryOption`) ; `StorageView` gagne `barSite`, `barOther` et `legend`.
+
 ## 0.40.1 — 2026-11-19
 
 **En bref.** Les boutons et pastilles dont l'adresse commence par « ? » (enregistrer l'application Twitch, filtres, « Ajouter… ») refonctionnent. Le menu reste en français sans catalogue, et plusieurs textes en double ou trop techniques disparaissent.

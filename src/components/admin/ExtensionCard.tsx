@@ -23,14 +23,13 @@ function ObsLine({ t, url }: { t: Translator; url: string }) {
   );
 }
 
-/** A-t-elle des actions rares à ranger dans « ⋯ » ? (voir son contenu, épingler / retirer du menu). Sans action, pas de bouton « ⋯ ». */
-const hasActions = (i: InstalledInstance) => i.content || !!i.unpinTo;
+/** A-t-elle des actions rares à ranger dans « ⋯ » ? (épingler / retirer du menu). Sans action, pas de bouton « ⋯ ». */
+const hasActions = (i: InstalledInstance) => !!i.unpinTo;
 
-/** Les actions rares d'une instance, dans le menu « ⋯ » : voir son contenu, épingler / retirer du menu. Le reste (réglages, retrait) est dans la fenêtre « Réglages ». */
+/** Les actions rares d'une instance, dans le menu « ⋯ » : épingler / retirer du menu. Le reste (réglages, retrait) est dans la fenêtre « Réglages ». */
 function InstanceActions({ t, i }: { t: Translator; i: InstalledInstance }) {
   return (
     <>
-      {i.content && <a href={entriesHref(i.key)} className={ITEM}>{t("integrations.items")}</a>}
       {i.unpinTo && (
         <form action={setPlacementAction.bind(null, i.id, i.pinned ? i.unpinTo : "menu")}>
           <button className={ITEM} data-testid={i.pinned ? "unpin" : "pin"}>📌 {i.pinned ? t("placement.unpin") : t("placement.pin")}</button>
@@ -82,6 +81,7 @@ export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledM
           {m.loaded && m.count === 0 && m.kept === 0
             ? <form action={addInstance.bind(null, m.id)}><PendingButton variant="primary" pendingLabel={t("progress.creating")}>{t("modules.setUp")}</PendingButton></form>
             : <Link href={settingsHref} scroll={false} aria-label={`${t("integrations.settings")} — ${m.name}`} data-testid={`settings-${m.id}`} className={`${ui.btn} !px-3`}>{t("integrations.settings")}</Link>}
+          {single?.content && <Link href={entriesHref(single.key)} aria-label={`${t("integrations.items")} — ${m.name}`} data-testid={`content-${m.id}`} className={`${ui.btn} !px-3`}>{t("integrations.items")}</Link>}
           {hasMenu && (
             <RowMenu label={t("extensions.menu", { name: m.name })}>
               <InstanceActions t={t} i={single} />
@@ -106,6 +106,7 @@ export function ExtensionCard({ t, m, advanced }: { t: Translator; m: InstalledM
                   {i.state !== "on" && <InstanceState t={t} state={i.state} missing={i.setup} />}
                   {i.badge > 0 && <span data-testid="admin-badge" className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{i.badge}<span className="sr-only"> {t("nav.badge.todo")}</span></span>}
                   <Link href={instanceHref(i.id)} scroll={false} aria-label={`${t("integrations.settings")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.settings")}</Link>
+                  {i.content && <Link href={entriesHref(i.key)} aria-label={`${t("integrations.items")} — ${i.name}`} className={`${ui.btn} !px-3 !py-1.5`}>{t("integrations.items")}</Link>}
                   {hasActions(i) && <RowMenu label={t("extensions.menu", { name: i.name })}><InstanceActions t={t} i={i} /></RowMenu>}
                 </div>
                 {i.obsUrl && <ObsLine t={t} url={i.obsUrl} />}
