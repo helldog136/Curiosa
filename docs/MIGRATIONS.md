@@ -29,7 +29,7 @@ The CHANGELOG of a release that raises the floor says so in plain words: **"Olde
    run `npm run migrations:sunset -- --floor <new floor>`, delete what it lists as EXPIRED, raise `minFrom`, move the entries to `removed`.
 4. `tests/core/migration-registry.test.mjs` fails when a conversion is still present although the floor is at or above its `removableAtFloor`, when a removed one comes back, and
    when a registry entry no longer matches the code. `npm run migrations:sunset` warns about conversions older than 3 minor releases (`--strict` makes it fail).
-5. Backups keep their format whatever the site version: reading an old backup is a file-format reader, listed in the registry with its own removal floor. A reader can also be removed by a format decision: since 0.32.0 a backup from before 0.1.20 that lists switched-off items is refused with a clear message (`legacy-off`).
+5. Backups keep their format whatever the site version, and a backup file never expires: what a deleted conversion did is rebuilt as a pure function on the data of the backup (`src/core/backup/conversion/coreConversions.ts`), or the backup is refused with a clear message. Every registry entry and every Prisma migration that moves data says which (`backup` / `schemaMigrations` in `migrations-registry.json`); `tests/core/backup-conversion-coverage.test.mjs` fails for a conversion removed without one. Since 0.39.0 a backup from before 0.1.20 that lists switched-off items is converted (set aside, data kept), no longer refused.
 6. Module data conversions (`dataVersion` in a module manifest) are a permanent contract between the core and modules, not core legacy: they run when a module is installed or updated.
 
 ## Registry
@@ -37,11 +37,15 @@ The CHANGELOG of a release that raises the floor says so in plain words: **"Olde
 | id | Introduced in | Removable once the floor reaches | State |
 |---|---|---|---|
 | `startup-sweep` | 0.2.0 | permanent (module `dataVersion` contract) | runs once per state (`core.legacySweepState`), no longer on every start |
-| `menu-freeze` | 0.2.6 | not removable by a floor raise (reader of old backups, rule 5) | the start-up call is gone; the freeze and the fallback remain for new instances and for restored backups made before the stored menu; removable after a backup-format decision, as was done for `legacy-off` |
-| `rawg-handover` | 0.3.0 | removed with the floor 0.6.18 | deleted (start-up hook, hook after install/update/restore, relay wait; `ctx.api.rawg` relay, the old-address redirect and the MCP short names stay) |
-| `legacy-off` | 0.1.20 | removed in 0.32.0 | deleted with the columns `Module.enabled` and `ModuleInstance.enabled` (migration `20261118090000_drop_enabled_columns` sets aside any switched-off row, data kept; a pre-0.1.20 backup listing switched-off items is refused) |
-| `placement-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |
+| `menu-freeze` | 0.2.6 | not removable by a floor raise (fallback of brand-new sites) | the start-up call is gone; the fallback remains for new sites; a restored backup made before the stored menu is frozen by the restore itself (`freezeMenu`) |
+| `rawg-handover` | 0.3.0 | removed with the floor 0.6.18 | deleted; a restored backup from before 0.3.0 is handled by `rawgCarryOver` + `applyRawgHandover` (start-up hook, hook after install/update/restore, relay wait; `ctx.api.rawg` relay, the old-address redirect and the MCP short names stay) |
+| `legacy-off` | 0.1.20 | removed in 0.32.0 | deleted with the columns `Module.enabled` and `ModuleInstance.enabled` (migration `20261118090000_drop_enabled_columns` sets aside any switched-off row, data kept); a pre-0.1.20 backup listing switched-off items is converted the same way by `convertSwitchedOff` (0.39.0) |
+| `placement-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted; a restored backup without the marker gets `freezePlacements` |
 | `startup-menu-freeze` | 0.2.6 | removed with the floor 0.6.10 | deleted |
+
+## Modules in a restored old backup
+
+A restore does not replay the SQL migrations; it converts the rows it reads. For a module whose data is older than the `dataFloor` of the catalogue version, it installs the bridge (the latest release of the module repository whose own floor accepts the data), lets it convert, repeats from the data version reached, then installs the catalogue version (`src/core/backup/conversion/moduleChain.ts`; the table of bridges is in the modules repository, `docs/MIGRATIONS.md`). A step that cannot run is reported with the folder of the readable copy; the rest of the restore goes on.
 
 ## What a site skipping versions experiences
 

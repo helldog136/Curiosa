@@ -167,7 +167,8 @@ test("restauration : une copie de la base actuelle est gardée avant de la rempl
   await setSetting("site.name", "Version d'avant restauration");
   const report = await Rs.applyRestore(Rs.openBackup(b.buffer, PW, FAST).backup, { confirmCustom: [], actor: "o" });
   assert.ok(report.safetyCopy && fs.existsSync(report.safetyCopy));
-  assert.match(path.basename(report.safetyCopy), /^pre-restore-\d+\.db$/);
+  assert.match(path.basename(report.safetyCopy), /^pre-restore-\d+$/);
+  assert.ok(fs.existsSync(path.join(report.safetyCopy, "database.db")), "the snapshot holds the database (and the uploads, fonts and modules folders)");
 });
 
 test("restauration : refus net — mauvais mot de passe, fichier étranger, archive altérée ou tronquée, fichier ajouté, version plus récente, sans propriétaire", async () => {
@@ -189,14 +190,14 @@ test("restauration : refus net — mauvais mot de passe, fichier étranger, arch
     fs_.find((f) => f.path === "backup.json").content = Buffer.from(JSON.stringify(m));
   });
   assert.equal(Rs.openBackup(noOwner, PW, FAST).error, "no-owner", "une restauration ne doit jamais verrouiller l'admin");
-  // Written before 0.1.20: a module or an instance "switched off" (since 0.32.0 that state no longer exists: the backup is refused whole, before anything is touched).
-  assert.equal(Rs.openBackup(edit((m) => { m.modules.push({ id: "old", source: "git", version: "1", origin: "catalogue", name: "Old", enabled: false, repoUrl: null, ref: null, commit: null }); }), PW, FAST).error, "switched-off");
+  // Written before 0.1.20: a module or an instance "switched off" is no longer refused (0.39.0): it is accepted and converted by the restore (set aside, data kept; tests/core/backup-conversion.test.mjs).
+  assert.equal(Rs.openBackup(edit((m) => { m.modules.push({ id: "old", source: "git", version: "1", origin: "catalogue", name: "Old", enabled: false, repoUrl: null, ref: null, commit: null }); }), PW, FAST).ok, true);
   const offInstance = tamper((fs_) => {
     const inst = fs_.find((f) => f.path === "data/instances.json"); inst.content = Buffer.from(JSON.stringify([{ id: "i1", moduleId: "blog", key: "blog", enabled: false }]));
     const m = JSON.parse(fs_.find((f) => f.path === "backup.json").content); m.files.find((f) => f.path === "data/instances.json").sha256 = F.sha256(inst.content);
     fs_.find((f) => f.path === "backup.json").content = Buffer.from(JSON.stringify(m));
   });
-  assert.equal(Rs.openBackup(offInstance, PW, FAST).error, "switched-off");
+  assert.equal(Rs.openBackup(offInstance, PW, FAST).ok, true);
   assert.equal(Rs.openBackup(b.buffer, PW, FAST).ok, true, "a current backup (every module on) is accepted");
 });
 

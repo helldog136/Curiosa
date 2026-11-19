@@ -1,31 +1,36 @@
 import fs from "node:fs";
 import path from "node:path";
-import { Prisma } from "@prisma/client";
 import { FONTS_DIR, UPLOADS_DIR } from "@/core/config";
+import { DATA_DIR, MODULES_DIR } from "@/core/config";
+import { emptyReport, type BackupData, type ConversionReport, type ReportItem } from "./conversion/types";
+import { freezePlacements, rawgCarryOver, runCoreConversions } from "./conversion/coreConversions";
+import { applyRawgHandover } from "./conversion/rawgApply";
+import { buildConversionPlan, planModuleSteps, type ConversionPlan } from "./conversion/plan";
+import { installFirstRelease, walkRemaining, type ModuleChain } from "./conversion/moduleChain";
+import { checkWritten, isFontName, isUploadName, replaceData, restoreDirFrom, sanitizeUserLevel, stageDir, swapDir, takeSnapshot, validateOnStagingCopy } from "./conversion/stage";
+
 import { UPLOAD_NAME_RE as FONT_NAME_RE } from "@/core/fonts/registry";
 import { reconcileUploads } from "@/core/fonts/uploads";
 import { prisma } from "@/core/db";
-import { migrateAllInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
-import { installFromCatalogue, installModule, type InstallResult } from "@/core/modules/installer";
+import { migrateModuleInstances, type MigrationOutcome } from "@/core/modules/dataMigrations";
+import { installFromCatalogue, installModule, purgeModule, type InstallResult } from "@/core/modules/installer";
+import { listModuleRows, readGitManifest } from "@/core/modules/registry";
 import { getCatalogue } from "@/core/modules/catalogue";
 import { resetModuleRegistry } from "@/core/modules/registry";
 import { audit } from "@/core/permissions";
-import { FULL_POWERS_KEY, fullPowersIds } from "@/core/services/mcp/fullPowers";
+import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
-import { isSystemKey } from "@/core/auth/rights";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup, decryptBackupAsync } from "./crypto";
 import { runAsync, runSync, sha256Steps, tick, type Steps } from "./steps";
 import { applyUpgrades, currentSchemaVersion, isNewerSchema, pickKnownColumns } from "./schema";
-import { safetyCopy } from "./files";
 import { bumpGenerations, readGenerations } from "@/core/services/store";
 import { DATA_FILES, FORMAT, FORMAT_VERSION, LEGACY_FORMATS, type BackupManifest, type BackupModule } from "./format";
 import { readTarGz, readTarGzAsync, type TarFile } from "./tar";
 import { linksFor, orderByDependencies, previewMissing, settleRestored, type DependencyIssue } from "./restoreDeps";
 import type { Missing } from "@/core/modules/dependencyInstaller";
 import { opStep } from "../operations/tracker";
-import { fromBackupRows } from "@/core/overlays/backup";
 import { planSkins, restoreSkins, skinsBeforeRestore, skinsOfBackup, type SkinOutcome, type SkinPlan } from "@/core/skins/restore";
 
 type Row = Record<string, unknown>;
@@ -36,7 +41,7 @@ export type ParsedBackup = {
   /** Polices envoyées (0.7.0 ; absent avant : aucune). */
   fonts?: { name: string; content: Buffer }[];
 };
-export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner" | "switched-off";
+export type ParseError = "not-a-backup" | "wrong-password" | "corrupt" | "tampered" | "newer-format" | "newer-schema" | "no-owner";
 
 /** Une sauvegarde faite par un schéma de base PLUS RÉCENT que le nôtre ne peut pas être lue : il faut d'abord mettre le framework à jour. */
 export async function checkSchema(manifest: BackupManifest): Promise<"ok" | "newer-schema"> {
@@ -113,9 +118,7 @@ function* checkFiles(tar: TarFile[]): Steps<Parsed> {
   const modules = manifest.modules;
   const d = data as Record<"users" | "settings" | "instances" | "instanceTranslations" | "entries" | "entryTranslations" | "redirects" | "records", Row[]>;
   if (!d.users.some((u) => levelOf(u) === "owner" && typeof u.email === "string" && typeof u.passwordHash === "string")) return { ok: false, error: "no-owner" };
-  // Since 0.32.0 a module or an instance can no longer be "installed but switched off" (the state ended with 0.1.20). A backup written before that still says so
-  // (`enabled: false`): restoring it would switch the item on, so it is refused, before anything is touched, with a message that says why.
-  if (modules.some((m) => (m as { enabled?: unknown }).enabled === false) || d.instances.some((i) => i.enabled === false)) return { ok: false, error: "switched-off" };
+  // A backup written before 0.1.20 can list switched-off items (`enabled: false`): they are converted by the restore (set aside, data kept), never refused (conversion/coreConversions.ts).
   const uploads = [...files.entries()].filter(([p]) => p.startsWith("uploads/") && UPLOAD_NAME_RE.test(p.slice(8))).map(([p, content]) => ({ name: p.slice(8), content }));
   const fonts = [...files.entries()].filter(([p]) => p.startsWith("fonts/") && FONT_NAME_RE.test(p.slice(6))).map(([p, content]) => ({ name: p.slice(6), content }));
   return { ok: true, backup: { manifest, data: { ...d, modules, retired, roles, userRoles, uploadFiles, overlayPages }, uploads, fonts } };
@@ -159,6 +162,7 @@ async function planModulesBase(modules: BackupModule[]): Promise<ModulePlan[]> {
   });
 }
 
+
 /* ───────────── Application ───────────── */
 
 export type ModuleOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed" | "unavailable"; error?: string; /** Avec l'erreur « modules.error.core » : cœur demandé par le module. */ needsCore?: string };
@@ -167,45 +171,22 @@ export async function planBackupSkins(backup: ParsedBackup): Promise<SkinPlan[]>
   return planSkins(skinsOfBackup(backup.manifest.skins, backup.data.settings));
 }
 
-export type RestoreReport = { ok: false; error: "newer-schema"; modules: ModuleOutcome[] } | { ok: true; modules: ModuleOutcome[]; /** Skins réinstallés depuis leur dépôt (basic s'applique tant qu'un skin manque). */ skins: SkinOutcome[]; migrations: MigrationOutcome[]; /** Modules actifs restaurés auxquels il manque encore un fournisseur (restaurés avec leurs données, à compléter). */ dependencies: DependencyIssue[]; /** Fournisseurs installés d'office pour eux. */ provided: string[]; counts: Record<string, number>; safetyCopy: string | null } | { ok: false; error: "invalid" | "failed"; modules: ModuleOutcome[] };
+/** What the preview shows: the module plans, the skins and the conversion plan (version gap, core conversions, module paths). Nothing is written. */
+export async function previewRestore(backup: ParsedBackup): Promise<{ modules: ModulePlan[]; skins: SkinPlan[]; conversion: ConversionPlan | null }> {
+  const data = backup.data as unknown as BackupData;
+  const modules = await planModules(backup.data.modules);
+  const market = await getCatalogue().catch(() => []);
+  const conversion = await buildConversionPlan({ data, frameworkVersion: backup.manifest.frameworkVersion, createdAt: backup.manifest.createdAt, modules: modules.map((m) => ({ id: m.id, status: m.status, entry: market.find((e) => e.id === m.id) })) }).catch(() => null);
+  return { modules, skins: await planBackupSkins(backup).catch(() => []), conversion };
+}
 
-type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult> };
+type Failure = { ok: false; error: "newer-schema" | "invalid" | "failed"; modules: ModuleOutcome[]; report: ConversionReport; safetyCopy?: string | null };
+export type RestoreReport = Failure | { ok: true; modules: ModuleOutcome[]; /** Skins réinstallés depuis leur dépôt (basic s'applique tant qu'un skin manque). */ skins: SkinOutcome[]; migrations: MigrationOutcome[]; /** Modules actifs restaurés auxquels il manque encore un fournisseur (restaurés avec leurs données, à compléter). */ dependencies: DependencyIssue[]; /** Fournisseurs installés d'office pour eux. */ provided: string[]; counts: Record<string, number>; safetyCopy: string | null; /** Converted, set aside and failed items, with where to look by hand in the unpacked archive. */ report: ConversionReport };
+
+type Installers = { fromCatalogue: (id: string) => Promise<InstallResult>; fromRepo: (url: string) => Promise<InstallResult>; firstRelease?: (id: string, chain: ModuleChain) => Promise<InstallResult> };
 // Sans cascade ici : l'ordre et la vérification des dépendances se font pour toute la sauvegarde (restoreDeps.ts).
 // `confirmExtra` : restaurer remet un module que le propriétaire avait déjà installé (et il confirme la restauration) ; ce n'est pas une installation d'office.
-const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false, confirmExtra: true }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }) };
-
-const MODEL_BY_FILE = { users: "User", settings: "Setting", instances: "ModuleInstance", instanceTranslations: "InstanceTranslation", entries: "Entry", entryTranslations: "EntryTranslation", redirects: "Redirect", records: "ModuleRecord" } as const;
-
-function rightsList(v: unknown): string[] {
-  if (typeof v === "string") { try { v = JSON.parse(v); } catch { return []; } }
-  return Array.isArray(v) ? v.filter((x): x is string => typeof x === "string").slice(0, 500) : [];
-}
-
-/** Le drapeau « coordinateur » d'une sauvegarde ne vaut que sur un compte « admin » (sinon il est effacé) ; absent d'une sauvegarde plus ancienne = faux. Jamais cru sur parole. */
-function sanitizeUserLevel(row: Row): Row {
-  return { ...row, coordinator: levelOf(row) === "coordinator" };
-}
-
-/** Rôles d'une sauvegarde : colonnes connues, dates relues, droits en texte JSON, `system` recalculé d'après la clé (jamais cru sur parole). */
-function restorableRoles(rows: Row[]): Row[] {
-  const seen = new Set<string>();
-  const out: Row[] = [];
-  for (const raw of rows) {
-    const r = reviveDates("Role", pickKnownColumns("roles", raw));
-    if (typeof r.id !== "string" || typeof r.key !== "string" || typeof r.name !== "string" || seen.has(r.key) || seen.has(`id:${r.id}`)) continue;
-    seen.add(r.key); seen.add(`id:${r.id}`);
-    out.push({ ...r, system: isSystemKey(r.key), rights: isSystemKey(r.key) ? "[]" : JSON.stringify(rightsList(r.rights)) });
-  }
-  return out;
-}
-
-/** Les colonnes DateTime d'un modèle, lues dans le schéma : le JSON de la sauvegarde les porte en texte ISO. */
-function reviveDates(model: string, row: Row): Row {
-  const fields = Prisma.dmmf.datamodel.models.find((m) => m.name === model)?.fields ?? [];
-  const out: Row = { ...row };
-  for (const f of fields) if (f.type === "DateTime" && typeof out[f.name] === "string") out[f.name] = new Date(out[f.name] as string);
-  return out;
-}
+const realInstallers: Installers = { fromCatalogue: (id) => installFromCatalogue(id, { dependencies: false, restoreKept: false, confirmExtra: true }), fromRepo: (url) => installModule(url, { dependencies: false, restoreKept: false }), firstRelease: (id, chain) => installFirstRelease(id, chain) };
 
 const SLICE_ROWS = 2000;
 /** `structuredClone` de la sauvegarde lue, mais tableau par tableau et par tranches : la boucle d'événements respire entre deux tranches. */
@@ -220,112 +201,175 @@ async function cloneInSlices(data: ParsedBackup["data"]): Promise<ParsedBackup["
   return out as ParsedBackup["data"];
 }
 
-const chunks = <T,>(list: T[], n = 200) => Array.from({ length: Math.ceil(list.length / n) }, (_, i) => list.slice(i * n, (i + 1) * n));
+const pathOfInstances = (d: { instances: Row[] }, moduleId: string): string => {
+  const keys = d.instances.filter((i) => i.moduleId === moduleId).map((i) => String(i.key)).filter(Boolean);
+  return keys.length ? keys.map((k) => `readable/modules/${k}/`).join(", ") : "data/module-records.json";
+};
+
+/** What the data conversion of a module says, as report items (nothing is swallowed: every failed or set-aside instance is named). */
+function migrationItems(outcomes: MigrationOutcome[], moduleId: string, path: string, rep: ConversionReport): void {
+  const done = outcomes.filter((m) => m.status === "ok");
+  if (done.length) rep.converted.push({ id: `module.${moduleId}`, note: "moduleData", params: { module: moduleId, from: Math.min(...done.map((m) => m.from)), to: Math.max(...done.map((m) => m.to)) } });
+  for (const m of outcomes) {
+    if (m.status === "failed" && m.error?.startsWith("floor")) rep.setAside.push({ id: `module.${moduleId}.${m.key}`, note: "moduleFloor", params: { module: moduleId, key: m.key, from: m.from }, path });
+    else if (m.status === "failed") rep.failed.push({ id: `module.${moduleId}.${m.key}`, note: "moduleMigration", params: { module: moduleId, key: m.key, error: String(m.error ?? "").slice(0, 160) }, path });
+    else if (m.status === "newer") rep.setAside.push({ id: `module.${moduleId}.${m.key}`, note: "moduleNewer", params: { module: moduleId, key: m.key }, path });
+  }
+}
 
 /**
- * Restaure une sauvegarde : réinstalle les modules (catalogue ; dépôts personnels SEULEMENT si confirmés un par un),
- * REMPLACE les données par celles de la sauvegarde dans une seule transaction (tout ou rien), puis les images.
- * Une copie de la base actuelle est gardée avant. Les modules présents ici mais absents de la sauvegarde restent installés.
+ * Restaure une sauvegarde, au mieux (docs/BACKUP.md, « Anciennes sauvegardes »). Rien n'est installé avant les contrôles de format et de schéma. Les données sont converties
+ * (conversions du cœur, fonctions pures), les modules réinstallés (catalogue ; dépôts personnels SEULEMENT si confirmés ; chaîne de versions quand les données sont plus
+ * anciennes que ce que la version actuelle convertit), l'ensemble est écrit dans une COPIE de la base et vérifié, puis échangé : dossiers (images, polices) et base dans UNE
+ * transaction qui revérifie les comptes avant de valider. Un cliché complet (base, images, polices, modules) est gardé avant. Ce qui ne marche pas n'arrête pas le reste :
+ * c'est dit dans le bilan (`report`), avec le chemin exact du fichier lisible. Les modules présents ici mais absents de la sauvegarde restent installés.
  */
 export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: string[]; actor: string; installers?: Installers; dataDir?: string }): Promise<RestoreReport> {
-  opStep("modules");
+  const rep = emptyReport();
+  // Contrôles d'abord : un schéma plus récent est refusé AVANT que quoi que ce soit soit installé.
+  if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [], report: rep };
+
+  const dataDir = opts.dataDir ?? DATA_DIR;
   const installers = opts.installers ?? realInstallers;
   const confirmed = new Set(opts.confirmCustom);
-  const planned = await planModulesBase(backup.data.modules);
-  // Fournisseurs d'abord : les liens connus (manifeste installé, catalogue) donnent l'ordre ; un module sans lien connu garde sa place.
-  const links = await linksFor(planned.map((p) => p.id));
-  const plan = orderByDependencies(planned, (id) => links.get(id));
-  const outcomes: ModuleOutcome[] = [];
 
-  for (const m of plan) {
-    if (m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
-    if (m.status === "unavailable") { outcomes.push({ id: m.id, outcome: "unavailable" }); continue; }
-    if (m.status === "custom" && !confirmed.has(m.id)) { outcomes.push({ id: m.id, outcome: "skipped" }); continue; }
-    if (m.needsCore) { outcomes.push({ id: m.id, outcome: "failed", error: "modules.error.core", needsCore: m.needsCore }); continue; }
-    const result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
-    outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error, ...(result.needsCore ? { needsCore: result.needsCore } : {}) });
-  }
-
-  if ((await checkSchema(backup.manifest)) === "newer-schema") return { ok: false, error: "newer-schema", modules: [] };
-  const skinsBefore = await skinsBeforeRestore();
-  opStep("safety");
-  const copy = safetyCopy("pre-restore", opts.dataDir);
-  // Sauvegarde d'un schéma plus ancien : transformations explicites, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
-  // (Copie et tri des colonnes par tranches de 2 000 lignes, en laissant respirer la boucle d'événements : 20 000 fiches ne figent pas le site.)
+  // Données : copie, transformations explicites du schéma, conversions du cœur, puis seules les colonnes encore connues (les nouvelles prennent leur défaut).
   const d = await cloneInSlices(backup.data);
   applyUpgrades(d, backup.manifest.schemaVersion);
+  const core = runCoreConversions(d as unknown as BackupData, new Date(backup.manifest.createdAt));
+  rep.converted.push(...core.converted); rep.setAside.push(...core.setAside);
+  const rawg = rawgCarryOver(d as unknown as BackupData);
   for (const key of ["users", "instances", "instanceTranslations", "entries", "entryTranslations", "redirects", "records"] as const) {
     const rows: Row[] = [];
     for (let i = 0; i < d[key].length; i += SLICE_ROWS) { rows.push(...d[key].slice(i, i + SLICE_ROWS).map((r) => (key === "users" ? sanitizeUserLevel(pickKnownColumns(key, r)) : pickKnownColumns(key, r)))); await tick(); }
     d[key] = rows;
   }
+
+  // Modules.
+  opStep("modules");
+  const planned = await planModulesBase(d.modules);
+  const links = await linksFor(planned.map((p) => p.id));
+  const plan = orderByDependencies(planned, (id) => links.get(id));
+  const market = await getCatalogue().catch(() => []);
+  const { chains } = await planModuleSteps(d as unknown as BackupData, plan.map((m) => ({ id: m.id, status: m.status, entry: market.find((e) => e.id === m.id) }))).catch(() => ({ chains: new Map<string, ModuleChain>() }));
+  const outcomes: ModuleOutcome[] = [];
+  const installedNow: string[] = [];
+  const walk = new Map<string, ModuleChain>();
+
+  for (const m of plan) {
+    const path = pathOfInstances(d, m.id);
+    if (m.status === "installed") { outcomes.push({ id: m.id, outcome: "kept" }); continue; }
+    if (m.status === "unavailable") { outcomes.push({ id: m.id, outcome: "unavailable" }); rep.setAside.push({ id: `module.${m.id}`, note: "moduleMissing", params: { module: m.id }, path }); continue; }
+    if (m.status === "custom" && !confirmed.has(m.id)) { outcomes.push({ id: m.id, outcome: "skipped" }); rep.setAside.push({ id: `module.${m.id}`, note: "moduleSkipped", params: { module: m.id }, path }); continue; }
+    if (m.needsCore) { outcomes.push({ id: m.id, outcome: "failed", error: "modules.error.core", needsCore: m.needsCore }); rep.failed.push({ id: `module.${m.id}`, note: "moduleNeedsCore", params: { module: m.id, core: m.needsCore }, path }); continue; }
+    const chain = chains.get(m.id);
+    let result: InstallResult | null = null;
+    if (chain?.tags.length && installers.firstRelease) {
+      result = await installers.firstRelease(m.id, chain);
+      if (result.ok) walk.set(m.id, chain);
+      else rep.failed.push({ id: `module.${m.id}.chain`, note: "moduleChainInstall", params: { module: m.id, tag: chain.tags[0]! }, path });
+    } else if (chain?.blocked) {
+      rep.setAside.push({ id: `module.${m.id}.chain`, note: "moduleNoRelease", params: { module: m.id, from: chain.dataVersion }, path });
+    }
+    if (!result?.ok) result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
+    if (result.ok) installedNow.push(m.id);
+    outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error, ...(result.needsCore ? { needsCore: result.needsCore } : {}) });
+    if (!result.ok) rep.failed.push({ id: `module.${m.id}`, note: "moduleInstall", params: { module: m.id }, path });
+  }
+  const undoModules = async () => { for (const id of installedNow) await purgeModule(id).catch(() => {}); };
+
+  // Placement of overlay modules (before 0.2.6): needs the manifests, so it runs once the modules are back.
+  const placed = freezePlacements(d as unknown as BackupData, (id) => readGitManifest(id), backup.manifest.frameworkVersion);
+  rep.converted.push(...(placed.converted ?? []));
+
+  const skinsBefore = await skinsBeforeRestore();
+
+  // Cliché complet avant toute écriture : base, images, polices, modules.
+  opStep("safety");
+  let snap: Awaited<ReturnType<typeof takeSnapshot>> | null = null;
+  try { snap = await takeSnapshot(dataDir, { uploads: UPLOADS_DIR, fonts: FONTS_DIR, modules: MODULES_DIR }); } catch (e) { console.error("[backup] snapshot failed:", (e as Error)?.message); }
+  if (!snap) { await undoModules(); rep.failed.push({ id: "check.snapshot", note: "checkSnapshot" }); return { ok: false, error: "failed", modules: outcomes, report: rep }; }
+  const copy = snap.dir;
+
+  // Copie de travail : les données sont écrites et vérifiées ici d'abord. Un problème s'arrête là : le site n'a pas été touché.
+  opStep("replace");
+  const uploadNames = new Set(backup.uploads.map((u) => u.name));
+  const problems = await validateOnStagingCopy(d, uploadNames, dataDir);
+  if (problems.length) { await undoModules(); rep.failed.push(...problems); return { ok: false, error: "invalid", modules: outcomes, report: rep, safetyCopy: copy }; }
+
   // Compteurs de génération du stockage d'AVANT : la restauration remet ceux de la sauvegarde, mais un compteur ne recule jamais.
   // Full powers (0.35.0) never come back from a backup: the settings are replaced and the key is not restored, so every access is off afterwards. The journal says so.
   const hadFullPowers = (await fullPowersIds().catch(() => [])).length > 0;
   const generationsBefore = await readGenerations().catch(() => new Map<string, number>());
-  opStep("replace");
+
+  // Échange : dossiers d'abord (renommage quand c'est possible), puis la base en UNE transaction qui revérifie les comptes ; au moindre échec, tout revient du cliché.
+  const stageRoot = path.join(dataDir, "tmp", "restore-staging");
+  const asideRoot = path.join(dataDir, "tmp", "restore-aside");
+  fs.mkdirSync(stageRoot, { recursive: true }); fs.mkdirSync(asideRoot, { recursive: true });
+  const rollbackFiles = () => { restoreDirFrom(UPLOADS_DIR, path.join(snap!.dir, "uploads")); restoreDirFrom(FONTS_DIR, path.join(snap!.dir, "fonts")); };
+  try {
+    opStep("files");
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true }); fs.mkdirSync(FONTS_DIR, { recursive: true });
+    const stagedUploads = stageDir(UPLOADS_DIR, stageRoot, "uploads", backup.uploads, isUploadName);
+    const stagedFonts = stageDir(FONTS_DIR, stageRoot, "fonts", backup.fonts ?? [], isFontName);
+    swapDir(UPLOADS_DIR, stagedUploads, path.join(asideRoot, "uploads"), (n) => !isUploadName(n));
+    swapDir(FONTS_DIR, stagedFonts, path.join(asideRoot, "fonts"), (n) => !isFontName(n));
+  } catch (error) {
+    console.error("[backup] file swap failed:", (error as Error)?.message);
+    try { rollbackFiles(); } catch (e) { console.error("[backup] file rollback failed:", (e as Error)?.message); }
+    await undoModules();
+    rep.failed.push({ id: "check.files", note: "checkFiles", params: { error: String((error as Error)?.message ?? error).slice(0, 160) } });
+    return { ok: false, error: "failed", modules: outcomes, report: rep, safetyCopy: copy };
+  }
   try {
     await prisma.$transaction(async (tx) => {
-      await tx.moduleRecord.deleteMany(); await tx.entryTranslation.deleteMany(); await tx.entry.deleteMany();
-      await tx.instanceTranslation.deleteMany(); await tx.moduleInstance.deleteMany(); await tx.redirect.deleteMany();
-      await tx.userRole.deleteMany(); await tx.role.deleteMany();
-      await tx.setting.deleteMany(); await tx.user.deleteMany(); await tx.retiredInstance.deleteMany(); await tx.uploadFile.deleteMany(); await tx.overlayPage.deleteMany();
-
-      for (const c of chunks(d.users)) await tx.user.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.users, r)) as never });
-      for (const c of chunks(d.settings.filter((r) => String(r.key) !== FULL_POWERS_KEY))) await tx.setting.createMany({ data: c.map((r) => ({ key: String(r.key), locale: String(r.locale ?? ""), value: JSON.stringify(r.value) })) });
-      for (const c of chunks(d.instances)) await tx.moduleInstance.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.instances, r)) as never });
-      for (const c of chunks(d.instanceTranslations)) await tx.instanceTranslation.createMany({ data: c as never });
-      for (const c of chunks(d.entries)) await tx.entry.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entries, r)) as never });
-      for (const c of chunks(d.entryTranslations)) await tx.entryTranslation.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.entryTranslations, r)) as never });
-      for (const c of chunks(d.redirects)) await tx.redirect.createMany({ data: c.map((r) => reviveDates(MODEL_BY_FILE.redirects, r)) as never });
-      for (const c of chunks(d.records)) await tx.moduleRecord.createMany({ data: c.map((r) => ({ ...reviveDates(MODEL_BY_FILE.records, r), data: JSON.stringify(r.data) })) as never });
-      // Rôles : un rôle n'est « prédéfini » que par sa clé (owner, admin, editor) ; une affectation vers une personne ou un rôle absent est ignorée.
-      const roles = restorableRoles(d.roles ?? []);
-      for (const c of chunks(roles)) await tx.role.createMany({ data: c as never });
-      const userIds = new Set(d.users.map((u) => String(u.id)));
-      const roleIds = new Set(roles.map((r) => String(r.id)));
-      const links = (d.userRoles ?? []).filter((r) => userIds.has(String(r.userId)) && roleIds.has(String(r.roleId))).map((r) => ({ userId: String(r.userId), roleId: String(r.roleId) }));
-      for (const c of chunks([...new Map(links.map((l) => [`${l.userId}|${l.roleId}`, l])).values()])) await tx.userRole.createMany({ data: c });
-      for (const c of chunks(d.retired ?? [])) await tx.retiredInstance.createMany({ data: c.map((r) => ({ ...reviveDates("RetiredInstance", pickKnownColumns("retired", r)), payload: JSON.stringify(r.payload) })) as never });
-
-      // Propriétaires des fichiers revendiqués : seulement pour les fichiers que cette sauvegarde contient (sinon la ligne n'aurait rien à désigner).
-      const inBackup = new Set(backup.uploads.map((u) => u.name));
-      const owned = (d.uploadFiles ?? []).filter((r) => typeof r.name === "string" && inBackup.has(r.name) && typeof r.ownerInstance === "string" && typeof r.ownerModule === "string");
-      for (const c of chunks(owned)) await tx.uploadFile.createMany({ data: c.map((r) => ({
-        name: String(r.name), uploaderId: typeof r.uploaderId === "string" ? r.uploaderId : null, bytes: Number.isFinite(Number(r.bytes)) ? Math.max(0, Math.trunc(Number(r.bytes))) : 0,
-        createdAt: new Date(String(r.createdAt)), ownerModule: String(r.ownerModule), ownerInstance: String(r.ownerInstance), claimedAt: typeof r.claimedAt === "string" ? new Date(r.claimedAt) : null,
-      })).map((r) => (Number.isNaN(r.createdAt.getTime()) ? { ...r, createdAt: new Date() } : r)) });
-
-      // Pages d'overlay : mêmes adresses secrètes qu'avant (OBS continue de fonctionner), bornes dures réappliquées.
-      for (const c of chunks(fromBackupRows(d.overlayPages))) await tx.overlayPage.createMany({ data: c });
+      await replaceData(tx, d, uploadNames);
+      const bad = await checkWritten(tx, d, uploadNames);
+      if (bad.length) throw Object.assign(new Error("checks failed"), { items: bad });
     }, { timeout: 120_000, maxWait: 10_000 });
   } catch (error) {
     console.error("[backup] restore failed:", (error as Error)?.message);
-    return { ok: false, error: "failed", modules: outcomes };
+    try { rollbackFiles(); } catch (e) { console.error("[backup] file rollback failed:", (e as Error)?.message); }
+    await undoModules();
+    const items = (error as { items?: ReportItem[] }).items;
+    rep.failed.push(...(items ?? [{ id: "check.write", note: "checkWrite", params: { error: String((error as Error)?.message ?? error).slice(0, 160) } }]));
+    return { ok: false, error: "failed", modules: outcomes, report: rep, safetyCopy: copy };
   }
+  fs.rmSync(asideRoot, { recursive: true, force: true });
 
   // Toutes les instances restaurées (et celles qui existaient avant) ont un stockage remplacé de l'extérieur : leur génération augmente.
   await bumpGenerations([...new Set([...d.instances.map((r) => String(r.id)), ...generationsBefore.keys()])], generationsBefore)
     .catch((e) => console.error("[backup] store generation bump failed:", (e as Error)?.message));
-
-  // Images : on remplace celles du site par celles de la sauvegarde.
-  opStep("files");
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  for (const f of fs.readdirSync(UPLOADS_DIR)) if (UPLOAD_NAME_RE.test(f)) fs.rmSync(path.join(UPLOADS_DIR, f), { force: true });
-  for (const u of backup.uploads) fs.writeFileSync(path.join(UPLOADS_DIR, u.name), u.content);
-  // Polices envoyées : celles du site sont remplacées par celles de la sauvegarde, puis la liste (restaurée avec les réglages) et les fichiers sont remis d'accord
-  // (un fichier qui n'est pas une vraie police est écarté, jamais écrit tel quel dans la liste servie).
-  fs.mkdirSync(FONTS_DIR, { recursive: true });
-  for (const f of fs.readdirSync(FONTS_DIR)) if (FONT_NAME_RE.test(f)) fs.rmSync(path.join(FONTS_DIR, f), { force: true });
-  for (const f of backup.fonts ?? []) fs.writeFileSync(path.join(FONTS_DIR, f.name), f.content);
+  // La liste des polices (restaurée avec les réglages) et les fichiers sont remis d'accord (un fichier qui n'est pas une vraie police est écarté).
   await reconcileUploads(FONTS_DIR).catch((e) => console.error("[backup] fonts reconcile failed:", (e as Error)?.message));
 
   resetModuleRegistry();
   opStep("finish");
-  // Rôles prédéfinis présents et affectations alignées sur `User.role` (sauvegarde d'avant la 0.2.0 : c'est ce qui crée toute l'affectation).
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
-  // Les données restaurées peuvent être celles d'une ancienne version d'un module, réinstallée plus récente : on les met à niveau.
-  const migrations = (await migrateAllInstances().catch(() => [])).filter((m) => m.status !== "none");
+
+  // Données des modules : chacun converti avec le code de sa version ; les erreurs sont toutes dans le bilan.
+  const migrations: MigrationOutcome[] = [];
+  for (const row of await listModuleRows().catch(() => [])) {
+    const path = pathOfInstances(d, row.id);
+    try {
+      const out = (await migrateModuleInstances(row.id)).filter((m) => m.status !== "none");
+      migrations.push(...out);
+      migrationItems(out, row.id, path, rep);
+    } catch (e) { rep.failed.push({ id: `module.${row.id}`, note: "moduleMigration", params: { module: row.id, key: row.id, error: String((e as Error)?.message ?? e).slice(0, 160) }, path }); }
+    const chain = walk.get(row.id);
+    if (chain) {
+      const steps = await walkRemaining(row.id, chain).catch((e) => [{ step: "?", ok: false, error: String((e as Error)?.message ?? e) }]);
+      const bad = steps.find((s) => !s.ok);
+      if (bad) rep.failed.push({ id: `module.${row.id}.chain`, note: "moduleStep", params: { module: row.id, step: bad.step, error: String(bad.error ?? "").slice(0, 160) }, path });
+      else rep.converted.push({ id: `module.${row.id}.chain`, note: "moduleChain", params: { module: row.id, steps: chain.tags.length } });
+    }
+  }
+  // RAWG : repris par le module « Jaquettes de jeux » une fois le module en place.
+  if (rawg) {
+    const r = await applyRawgHandover(rawg, opts.actor);
+    if (r.converted) rep.converted.push(r.converted);
+    if (r.failed) rep.failed.push(r.failed);
+  }
   // Les modules actifs retrouvent ce dont ils ont besoin (fournisseur disponible installé avec son instance) ; sinon le bilan le dit.
   const active = d.modules.filter((m) => !["skipped", "failed", "unavailable"].includes(outcomes.find((o) => o.id === m.id)?.outcome ?? "")).map((m) => m.id);
   // Skins : réinstallés depuis leur dépôt (les réglages ont été restaurés d'un bloc avec les autres) ; sinon basic s'applique en attendant, sans rien perdre.
@@ -333,5 +377,5 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   const settled = await settleRestored(active).catch(() => ({ issues: [] as DependencyIssue[], provided: [] as string[] }));
   await audit(opts.actor, "backup.restore", backup.manifest.createdAt);
   if (hadFullPowers) await audit(opts.actor, "mcp.fullpowers.cleared", "restore");
-  return { ok: true, modules: outcomes, skins, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
+  return { ok: true, modules: outcomes, skins, migrations, dependencies: settled.issues, provided: settled.provided, safetyCopy: copy, report: rep, counts: { users: d.users.length, entries: d.entries.length, instances: d.instances.length, records: d.records.length, retired: (d.retired ?? []).length, uploads: backup.uploads.length } };
 }

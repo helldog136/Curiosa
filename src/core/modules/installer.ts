@@ -492,9 +492,10 @@ async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
   } finally { f.cleanup(); }
 }
 
-async function updateSubdirModule(row: Module, chain: string[]): Promise<InstallResult> {
+async function updateSubdirModule(row: Module, chain: string[], toRef?: string): Promise<InstallResult> {
   const id = row.id;
-  const { ref, fromCatalogue } = await subdirTarget(row);
+  // `toRef`: a step of a restored backup (one release of the chain), not the version the catalogue pins.
+  const { ref, fromCatalogue } = toRef ? { ref: toRef, fromCatalogue: true } : await subdirTarget(row);
   if (!fromCatalogue && isCommitRef(row.ref)) return { ok: false, error: "modules.error.pinned" };
   const target = moduleDir(id);
   const backup = `${target}.previous-${process.pid}`;
@@ -559,7 +560,7 @@ async function updateSubdirModule(row: Module, chain: string[]): Promise<Install
 }
 
 /** Toutes les versions stables (`vX.Y.Z`) du dépôt, de la plus ancienne à la plus récente. */
-async function remoteTags(repoUrl: string): Promise<string[]> {
+export async function remoteTags(repoUrl: string): Promise<string[]> {
   const out = await git(["ls-remote", "--tags", "--refs", "--", repoUrl]);
   const tags = out.split("\n").map((l) => l.split("refs/tags/")[1]?.trim()).filter((t): t is string => !!t && TAG_RE.test(t));
   return tags.sort(compareVersions);
@@ -622,6 +623,16 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
  */
 export async function updateModule(id: string): Promise<InstallResult> {
   return updateModuleWithin(id, [id]);
+}
+
+/**
+ * One step of the chain of a restored old backup: moves a module installed in a folder of a repository to the release `toRef` (tag or commit) and converts its data with
+ * the code of THAT release. The caller walks the releases in order (src/core/backup/conversion/moduleChain.ts). Same checks, same rollback as an update.
+ */
+export async function updateModuleToRef(id: string, toRef: string): Promise<InstallResult> {
+  const row = await prisma.module.findUnique({ where: { id } });
+  if (!row || row.source !== "git" || !row.repoUrl || !row.subdir) return { ok: false, error: "modules.error.notfound" };
+  return updateSubdirModule(row, [id], toRef);
 }
 
 /** `chain` : chaîne des modules en cours de mise à jour ou d'installation (un fournisseur mis à jour par la cascade ne peut pas redemander l'un d'eux). */
