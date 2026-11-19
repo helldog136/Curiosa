@@ -403,3 +403,31 @@ test("textes : toutes les clés du tableau de bord existent en français et en a
   }
   assert.deepEqual(Object.keys(en).filter((k) => k.startsWith("dash.") && !(k in fr)), []);
 });
+
+test("dashboard activity: lines that differ only by their target are one line followed by the number of similar ones", async () => {
+  const A = await import("@/core/dashboard/activity");
+  const at = (min) => new Date(Date.UTC(2026, 5, 15, 10, 0) - min * 60000);
+  const row = (id, target, min, state = "creds_missing", actor = "module:a") => ({ id, action: "type.state", actor, target, module: "m", createdAt: at(min), data: JSON.stringify({ type: target, state }) });
+  const rows = [row("1", "redeem", 0), row("2", "hype", 0), row("3", "raid", 0), row("4", "redeem", 0, "listening"), row("5", "hype", 200)];
+  const g = A.groupSimilar(rows);
+  assert.deepEqual(g.rows.map((r) => r.id), ["1", "4", "5"], "the newest of a group is kept; another state or another hour is another line");
+  assert.equal(g.similar.get("1"), 2);
+  assert.equal(g.similar.has("4"), false);
+  // A core line (no module) or a line without target is never grouped.
+  const core = [{ id: "a", action: "entry.create", actor: "x", target: "Page", module: "", createdAt: at(0), data: "" }, { id: "b", action: "entry.create", actor: "x", target: "Autre", module: "", createdAt: at(0), data: "" }];
+  assert.deepEqual(A.groupSimilar(core).rows.map((r) => r.id), ["a", "b"]);
+});
+
+test("journal: an internal state code in a line is shown with plain words, in both languages", async () => {
+  const { renderEvent, STATE_CODES, isStateCode } = await import("@/core/journal/events");
+  const { makeTranslator } = await import("@/core/i18n/dictionary");
+  const decl = { label: { en: "Type {type}: {state}", fr: "Type {type} : {state}" } };
+  for (const lang of ["en", "fr"]) {
+    const t = makeTranslator(lang);
+    const code = (v) => (isStateCode(v) ? t(`journal.code.${v}`) : undefined);
+    const text = renderEvent(decl, { type: "redeem", state: "creds_missing" }, { locale: lang, defaultLocale: "en", yes: "y", no: "n", code });
+    assert.doesNotMatch(text, /creds_missing|_/, lang);
+    for (const c of STATE_CODES) assert.notEqual(t(`journal.code.${c}`), `journal.code.${c}`, `${lang} ${c}`);
+  }
+  assert.match(renderEvent(decl, { type: "a_b", state: "x" }, { locale: "en", defaultLocale: "en", yes: "y", no: "n", code: () => undefined }), /a_b/);
+});

@@ -62,8 +62,31 @@ export function collapse<T extends { action: string; actor: string; target: stri
   return out;
 }
 
+/**
+ * Lines that differ only by the thing they are about (ten subscriptions that all report the same state at the same moment) are one line followed by "and N similar".
+ * The key is the module, the action, the person and the data without the value that names the target. Rows come newest first; the newest of a group is kept.
+ */
+export function groupSimilar<T extends { id: string; action: string; actor: string; target: string; module: string; data?: string; createdAt: Date }>(rows: readonly T[], windowMs: number = ACTIVITY_LIMITS.collapseMs): { rows: T[]; similar: Map<string, number> } {
+  const first = new Map<string, { at: number; id: string }>();
+  const similar = new Map<string, number>();
+  const out: T[] = [];
+  for (const r of rows) {
+    let rest = "";
+    try {
+      const d = JSON.parse(r.data || "{}") as Record<string, unknown>;
+      rest = JSON.stringify(Object.entries(d).filter(([, v]) => !(r.target !== "" && String(v) === r.target)).sort(([a], [b]) => a.localeCompare(b)));
+    } catch { rest = r.data ?? ""; }
+    const key = r.module && r.target ? `${r.module}|${r.action}|${r.actor}|${rest}` : "";
+    const head = key ? first.get(key) : undefined;
+    if (head && head.at - r.createdAt.getTime() < windowMs) { similar.set(head.id, (similar.get(head.id) ?? 0) + 1); continue; }
+    if (key) first.set(key, { at: r.createdAt.getTime(), id: r.id });
+    out.push(r);
+  }
+  return { rows: out, similar };
+}
+
 export type ActivityOpts = { t: Translator; locale: string; defaultLocale: string; advanced: boolean; limit?: number };
-export type Activity = { lines: JournalLine[]; /** Le Journal d'audit complet est ouvert à cette personne. */ fullJournal: boolean };
+export type Activity = { lines: (JournalLine & { similar: number })[]; /** Le Journal d'audit complet est ouvert à cette personne. */ fullJournal: boolean };
 
 /** Les derniers événements que cette personne a le droit de voir, du plus récent au plus ancien. Ne lève jamais : sans base, une liste vide. */
 export async function recentActivity(user: AdminUser, opts: ActivityOpts): Promise<Activity> {
@@ -73,7 +96,7 @@ export async function recentActivity(user: AdminUser, opts: ActivityOpts): Promi
   const declared = new Map<string, ReturnType<typeof eventsOf>>();
   let before: { createdAt: Date; id: string } | null = null;
   try {
-    for (let i = 0; i < ACTIVITY_LIMITS.batches && kept.length < limit; i++) {
+    for (let i = 0; i < ACTIVITY_LIMITS.batches && groupSimilar(kept).rows.length < limit; i++) {
       const rows: AuditRow[] = await prisma.auditLog.findMany({
         where: before ? { OR: [{ createdAt: { lt: before.createdAt } }, { createdAt: before.createdAt, id: { lt: before.id } }] } : {},
         orderBy: [{ createdAt: "desc" }, { id: "desc" }],
@@ -94,6 +117,7 @@ export async function recentActivity(user: AdminUser, opts: ActivityOpts): Promi
   } catch {
     return { lines: [], fullJournal };
   }
-  const lines = await describeRows(kept.slice(0, limit), { t: opts.t, locale: opts.locale, defaultLocale: opts.defaultLocale }).catch(() => []);
+  const grouped = groupSimilar(kept);
+  const lines = (await describeRows(grouped.rows.slice(0, limit), { t: opts.t, locale: opts.locale, defaultLocale: opts.defaultLocale }).catch(() => [])).map((l) => ({ ...l, similar: grouped.similar.get(l.id) ?? 0 }));
   return { lines, fullJournal };
 }

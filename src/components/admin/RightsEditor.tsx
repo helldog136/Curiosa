@@ -48,7 +48,7 @@ export function RightsEditor({ groups, selected, labels, name = "right" }: { gro
 
   return (
     <div className="space-y-3" data-rights-editor="">
-      <SearchField value={query} onChange={setQuery} onClear={() => setQuery("")} placeholder={labels.search} clearLabel={labels.clear} />
+      <SearchField value={query} onChange={setQuery} onClear={() => setQuery("")} placeholder={labels.search} clearLabel={labels.clear} hideClear={!anyMatch} />
       <p className="text-sm text-muted" role="status" aria-live="polite">{labels.chosen.replace("{n}", String(total))}</p>
       {!anyMatch && (
         <div role="status" className={`${ui.card} space-y-2 text-[15px]`} data-testid="live-search-none">

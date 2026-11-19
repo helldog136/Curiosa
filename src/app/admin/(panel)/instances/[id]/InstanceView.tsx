@@ -125,7 +125,12 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   // Un réglage à remplir (clé, adresse, identifiant… encore vide, sans valeur par défaut) : son onglet s'ouvre d'office plutôt que de le cacher.
   const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
   const missingFields = missingSettings(mod.manifest.settings, grouped, fillable);
-  const missingItems = missingLinks(missingFields, (key) => L(mod.manifest.settings.find((f) => f.key === key)?.label ?? key));
+  // R33.7: one place says what is missing. A module that shows a connection card owns its state (the card says "not configured", why and what to do, or "configured"
+  // when the value comes from elsewhere, e.g. a channel carried over from another module): the core adds neither the box nor the "to fill" flag next to it.
+  // Without a card, one missing field is already flagged on the field itself (its tab opens first): the box is only a shortcut for two or more.
+  const ownsState = panel.some((b) => b.type === "connection");
+  const flagged = ownsState ? [] : missingFields;
+  const missingItems = flagged.length > 1 ? missingLinks(flagged, (key) => L(mod.manifest.settings.find((f) => f.key === key)?.label ?? key)) : [];
   const placement = resolvePlacement(mod.manifest, await getSetting(placementSettingKey(id)));
   const placementIsDefault = placement === defaultPlacement(mod.manifest);
 
@@ -160,7 +165,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const { tabs: visible, split } = groupTabs([...visibleTabs(plan, filled), ...(canHistory ? [{ id: HISTORY_TAB, builtin: true, label: undefined }] : [])]);
   const tabLabel = (tab: (typeof visible)[number]) => (tab.label !== undefined ? L(tab.label) : t(`moduleTabs.${tab.id}`));
   const requested = typeof sp.tab === "string" ? sp.tab : null;
-  const toFillTab = manage && missingFields[0] ? settingTab(plan, missingFields[0]) : null;
+  const toFillTab = manage && flagged[0] ? settingTab(plan, flagged[0]) : null;
   const firstTab = initialTab(visible, { requested, toFill: toFillTab }) ?? "general";
 
   /** Les blocs du panneau qui s'affichent dans l'onglet `tab` (dans l'ordre du panneau), au-dessus du reste de l'onglet. */
@@ -179,7 +184,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
         <input type="hidden" name="__tab" value={tab} />
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <ModuleSettings t={t} locale={locale} defaultLocale={config.defaultLocale} locales={config.locales} fields={fields} allFields={mod.manifest.settings}
-          groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} missing={new Set(missingFields.map((f) => f.key))}
+          groups={mod.manifest.optionalGroups ?? []} stored={stored} siteByLocale={siteByLocale} theme={theme} missing={new Set(flagged.map((f) => f.key))}
           instanceId={instance.id} choices={choices} advanced={advanced} tabbed />
       </ActionForm>
     );
@@ -362,6 +367,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
     const sourcesFirst = tab === "sources";
     return (
       <>
+        {manage && tab === toFillTab && <MissingBox title={t("missing.title")} items={missingItems} />}
         {here("use") && overlayNode}
         {panelFor(tab)}
         {manage && sourcesFirst && here("sources") && sourcesForm}
@@ -389,7 +395,6 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
         <p className="max-w-[70ch]">{L(mod.manifest.description)}</p>
         {/* (0.31.0) Per-module view: where this module's settings now live (places), each with a direct link. */}
         <WhereSettings t={t} locale={locale} sections={moduleSections(mod.manifest, currentVocabulary().aliases)} instanceKey={instance.key} />
-        {manage && <MissingBox title={t("missing.title")} items={missingItems} />}
         {manage && dataStatus && (
           <div role="alert" className="space-y-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">
             <p>{dataStatus.error === "floor" ? t("migration.floor", { from: dataStatus.from ?? "?", floor: dataStatus.floor ?? "?" }) : dataStatus.error === "timeout" ? t("migration.timeout") : t(dataStatus.status === "newer" ? "migration.newer" : "migration.failed")}</p>
