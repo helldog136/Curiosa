@@ -104,6 +104,7 @@ Use the same word for the same thing everywhere.
 | default readability | lisibilité par défaut | (0.21.0) the readability preset of an overlay page, worn by every element set to "Like the page" |
 | skin retouches | retouches du skin | (0.21.0) accent, panel colour, font and corners changed for one overlay page, without changing the installed skin |
 | skin of this element | skin de cet élément | (0.21.0) an overlay skin worn by one element instead of the page's skin |
+| skin of this page | skin de cette page | (0.45.0) an installed site skin that one page wears instead of the site's; "Same as the site" ("Comme le site") is the default and never shown as a label on a row |
 
 | place | emplacement | (0.31.0) where a module's settings show in the admin, written `group.page.tab` (`live.alerts.look`); not to be confused with a topic (sujet), which is a data channel |
 | group | groupe | (0.31.0) a heading of the admin sidebar that holds pages (En direct, Agenda, Communauté…) |

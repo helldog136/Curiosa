@@ -56,7 +56,7 @@ export type Plan = {
    * a fingerprint of the text so that a draft edited after the request is NOT published without a new look).
    */
   site?: { changes: { field: string; locale?: string; from: string; fromFp: string; to: string }[]; names: string };
-  entry?: { instance: string; locale?: string; items: { id: string; title: string; locales: string[]; fp: string }[] };
+  entry?: { instance: string; locale?: string; items: { id: string; title: string; locales: string[]; fp: string; /** (0.45.0) the page skin the entry will show with, named in the approval text. */ skin?: string }[] };
   /**
    * `navigation_set` / `home_sections_set`: the whole new menu (`entries`: menu nodes) or home page (`entries`: sections), frozen when the request is made, with a
    * fingerprint of the state it was made from (`before`: a change made by someone else in between is NOT overwritten) and a summary in labels only for the owner.

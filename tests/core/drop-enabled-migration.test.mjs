@@ -165,7 +165,8 @@ test("the kept data the SQL wrote is identical to what the application writes, a
       translations: [...p.translations].sort((a, b) => a.id.localeCompare(b.id)),
       entryTranslations: [...p.entryTranslations].sort((a, b) => a.id.localeCompare(b.id)),
       records: [...p.records].sort((a, b) => a.id.localeCompare(b.id)),
-      entries: [...p.entries].sort((a, b) => a.id.localeCompare(b.id)),
+      // `Entry.skin` (core 0.45.0) was added after this migration: the SQL cannot write it, the application writes null. A payload without it restores with the default (null).
+      entries: [...p.entries].map(({ skin, ...row }) => { void skin; return row; }).sort((a, b) => a.id.localeCompare(b.id)),
     });
     for (const id of ids) {
       const line = await Ret.retireInstance(id, "legacy");

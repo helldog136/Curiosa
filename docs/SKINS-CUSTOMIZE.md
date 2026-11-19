@@ -113,3 +113,5 @@ An unknown control type, an unknown key, or a `customize.version` newer than the
 ```
 
 The reference skin is `feodal` (banner colour, pennant set, banner picture and shield with upload, parchment tone, corner radius, a trim colour in an advanced group, four looks); the core keeps a copy in `tests/fixtures/skins/customizable`.
+
+A page can also be shown with one installed skin of its own (a showcase with one page per skin); the owner's customization of that skin applies there too. See [PAGE-SKIN.md](PAGE-SKIN.md).

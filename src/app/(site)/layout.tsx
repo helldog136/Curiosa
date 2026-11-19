@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { cookies, headers } from "next/headers";
 import { siteIconLinks } from "@/core/favicon";
+import { requestedPageSkin } from "@/core/content/pageSkin";
 import { resolveLook } from "@/core/skins/render";
 import { PREVIEW_HEADER, verifyPreview } from "@/core/skins/previewToken";
 import { getAuthSecret } from "@/core/secret";
@@ -77,7 +78,10 @@ export default async function SiteLayout({ children }: { children: React.ReactNo
   // L'apparence : basic < pièces des modules < skin actif (`skin.active`, absent = basic) < retouches de la personne (core/skins/render.ts). Sans skin choisi,
   // la feuille est celle d'avant les skins (mêmes valeurs) ; elle ne touche jamais l'administration.
   const preview = await previewedSkin();
-  const look = await resolveLook(localized, preview !== null ? { previewSkinId: preview } : {});
+  // (0.45.0) A page may ask for an installed site skin of its own (page setting "Skin for this page"): the WHOLE frame (header, menu, footer, tray) then wears it, so the page is a
+  // faithful preview of that skin. The address decides, and every address is a full document load, so nothing leaks to another page. A preview link wins over it.
+  const pageSkin = preview === null ? await requestedPageSkin(await currentPath(), locale) : null;
+  const look = await resolveLook(localized, preview !== null ? { previewSkinId: preview } : pageSkin !== null ? { pageSkinId: pageSkin } : {});
   const css = look.sheet;
   const layers = look.layers;
   const headerConfig = look.headerLayout === localized.header.layout ? localized : { ...localized, header: { ...localized.header, layout: look.headerLayout } };

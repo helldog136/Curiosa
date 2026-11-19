@@ -364,7 +364,7 @@ test("éditeur d'entrée : l'aperçu porte les jetons EFFECTIFS du skin (retouch
   assert.match(html, /Écrivez…/);
   // le formulaire d'entrée l'inclut, et seulement si l'entrée a un texte
   const form = read("src/app/admin/(panel)/entries/EntryForm.tsx");
-  assert.match(form, /has\("body"\) && <EntryPreviewBox t=\{t\} locale=\{adminLocale\} \/>/);
+  assert.match(form, /has\("body"\) && <EntryPreviewBox t=\{t\} locale=\{adminLocale\} pageSkinIds=\{hasSkin \? pageSkins\.map\(\(k\) => k\.id\) : \[\]\} \/>/);   // 0.45.0: the box follows the "Skin for this page" choice when there is one
 });
 
 test("actions « Revenir au skin » et « Annuler » : réservées aux administrateurs, rien ne part sans le marqueur du formulaire, le message dit ce qui s'est passé", async () => {

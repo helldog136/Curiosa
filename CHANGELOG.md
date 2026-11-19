@@ -7,6 +7,31 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.45.0 — 2026-11-20
+
+**En bref.** Une page peut maintenant s'afficher avec un autre skin que celui du site : parfait pour une vitrine qui montre un skin par page.
+
+**In short.** A page can now be shown with a skin other than the site's: ideal for a showcase with one page per skin.
+
+### Nouveautés
+
+- **Un réglage « Skin de cette page ».** Dans l'éditeur d'une page, sous « Options », choisissez un des skins installés ; « Comme le site » reste le choix de départ. Le réglage n'apparaît que si le site a au moins deux skins installés.
+- **(English) A "Skin for this page" setting.** In a page's editor, under "Options", choose one of the installed skins; "Same as the site" stays the default. The setting only shows when the site has at least two skins installed.
+- **La page est un vrai aperçu du skin.** L'en-tête, le menu et le pied de page prennent aussi ce skin, avec les réglages que vous lui avez faits dans « Personnaliser » ; le clair et le sombre suivent le visiteur. Les autres pages ne changent pas.
+- **(English) The page is a real preview of the skin.** The header, menu and footer wear that skin too, with the settings you made for it in "Customize"; light and dark follow the visitor. Other pages do not change.
+- **Rien ne casse si le skin est retiré.** La page reprend alors le skin du site, et l'éditeur le dit. Le choix est gardé dans les sauvegardes.
+- **(English) Nothing breaks if the skin is removed.** The page then shows the site's skin, and the editor says so. The choice is kept in backups.
+- **Les assistants IA peuvent choisir ce skin** quand ils écrivent un brouillon de page. La page reste un brouillon ; si vous la publiez par leur demande, la demande nomme le skin.
+- **(English) AI assistants can choose this skin** when they write a page draft. The page stays a draft; if they ask to publish it, the request names the skin.
+
+### Pour les développeurs
+
+- Nouvelle fonction de contenu `skin` (`content.features`, `minCore` 0.45.0) : colonne `Entry.skin` (migration `entry_skin`, sans valeur par défaut), vérifiée par `checkPageSkin` (skins de site installés seulement, deux au moins), lue avec tolérance au rendu (`requestedPageSkin`, une seule lecture de plus). Détails : `docs/PAGE-SKIN.md`.
+- **(English)** New content feature `skin` (`content.features`, `minCore` 0.45.0): column `Entry.skin` (migration `entry_skin`, no default), checked by `checkPageSkin` (installed site skins only, at least two), read tolerantly at render (`requestedPageSkin`, one extra read). Details: `docs/PAGE-SKIN.md`.
+- Outils de contenu : `skin` facultatif sur `create_draft` et `update_draft`, `skin` et `skinInstalled` dans `get_entry` (instances qui ont la fonction).
+- **(English)** Content tools: optional `skin` on `create_draft` and `update_draft`, `skin` and `skinInstalled` in `get_entry` (instances that have the feature).
+
+
 ## 0.44.0 — 2026-11-19
 
 **En bref.** Un skin peut maintenant vous laisser changer ses couleurs, ses images et ses détails : une page « Personnaliser » dans Apparence, avec l'aperçu de votre vrai site qui bouge pendant que vous choisissez.

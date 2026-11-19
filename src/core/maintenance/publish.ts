@@ -34,12 +34,13 @@ export function publishInput(locales: string[]): JsonSchemaLite {
   };
 }
 
-type Item = { id: string; title: string; locales: string[]; fp: string };
+type Item = { id: string; title: string; locales: string[]; fp: string; skin?: string };
 
 /** A fingerprint of the texts of an entry (not the texts): lets the approval cover exactly what the owner saw. */
-function fingerprint(translations: { locale: string; title: string; summary: string; body: string }[]): string {
+function fingerprint(translations: { locale: string; title: string; summary: string; body: string }[], skin: string | null = null): string {
   const rows = translations.map((t) => [t.locale, t.title, t.summary, t.body]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-  return crypto.createHash("sha256").update(JSON.stringify(rows)).digest("hex").slice(0, 16);
+  // (0.45.0) the page skin is part of what the owner approves: a draft whose skin changed after the request is not published
+  return crypto.createHash("sha256").update(JSON.stringify(skin ? [rows, skin] : rows)).digest("hex").slice(0, 16);
 }
 
 const idList = (args: { id?: unknown; ids?: unknown }): string[] => {
@@ -80,7 +81,7 @@ export async function prepareEntryPublish(action: "entry_publish" | "entry_unpub
       if (missing.length) { problems.push(`${id}: the ${missing.join(", ")} version is missing and this site shows each language only when it is written; add it with update_draft (locale) first, nothing was published`); continue; }
     }
     const shown = e.translations.find((t) => t.locale === config.defaultLocale) ?? e.translations[0];
-    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations) });
+    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations, e.skin), ...(e.skin ? { skin: e.skin } : {}) });
   }
   if (problems.length) throw new McpToolError(`Not ${publish ? "published" : "unpublished"}: ${problems.join("; ")}.`);
   return { entry: { instance: instance.key, ...(locale ? { locale } : {}), items } };

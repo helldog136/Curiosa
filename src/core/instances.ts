@@ -3,7 +3,7 @@ import type { InstanceTranslation, ModuleInstance } from "@prisma/client";
 import { prisma } from "./db";
 
 /** Champs de base qu'une instance à contenu peut activer dans l'éditeur d'entrée. */
-export const FEATURES = ["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags"] as const;
+export const FEATURES = ["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags", "skin"] as const;
 export type Feature = (typeof FEATURES)[number];
 
 export const DISPLAYS = ["cards", "list", "links", "codes"] as const;

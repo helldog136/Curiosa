@@ -177,7 +177,7 @@ const entryTemplate = z.object({
 const content = z.object({
   display: z.enum(["cards", "list", "links", "codes"]),
   clickAction: z.enum(["detail", "external"]),
-  features: z.array(z.enum(["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags"])).max(9),
+  features: z.array(z.enum(["cover", "icon", "summary", "body", "url", "code", "expiresAt", "featured", "tags", "skin"])).max(10),
   fieldSchema: z
     .array(z.object({ key: z.string().regex(/^[a-zA-Z][a-zA-Z0-9_]{0,30}$/), label: z.string().max(100), type: z.enum(["text", "url", "number", "boolean", "ref"]), topic: topicId.optional() }))
     .max(20)

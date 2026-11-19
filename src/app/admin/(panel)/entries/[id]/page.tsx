@@ -12,6 +12,7 @@ import { ui } from "@/components/admin/ui";
 import { EntryForm } from "../EntryForm";
 import { EntryPanels } from "@/components/admin/EntryPanels";
 import { deleteEntry, deleteTranslation } from "../actions";
+import { pageSkinOptions } from "@/core/skins/pageSkin";
 import { entriesHref, entryHref } from "@/core/adminLinks";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
@@ -56,9 +57,9 @@ export default async function EditEntryPage({ params, searchParams }: {
       {created === "template" && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700" data-testid="created-from-template">{t("entries.createdFromTemplate")}</p>}
       {created === "1" && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("entries.created")}</p>}
       <EntryForm
-        refOptions={refOptions} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={locale}
+        refOptions={refOptions} pageSkins={await pageSkinOptions(collection.features, adminLocale)} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={locale}
         data={{
-          id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, url: entry.url, code: entry.code,
+          id: entry.id, status: entry.status, cover: entry.cover, icon: entry.icon, skin: entry.skin, url: entry.url, code: entry.code,
           featured: entry.featured, tags: parseTags(entry.tags).join(", "), expiresAt: day(entry.expiresAt), publishedAt: day(entry.publishedAt), fields,
           translations: entry.translations.map((tr) => ({ locale: tr.locale, slug: tr.slug, title: tr.title, summary: tr.summary, body: tr.body })),
         }}

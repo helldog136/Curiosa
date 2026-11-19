@@ -10,6 +10,8 @@ import { createEntry } from "@/core/content/service";
 import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/content/entries";
 import { audit, can } from "@/core/permissions";
+import { checkPageSkin } from "@/core/skins/pageSkinCheck";
+import { installedSiteSkinIds } from "@/core/skins/pageSkin";
 import { slugify } from "@/core/slug";
 import { isSafeExternalUrl, normalizeLinkInput } from "@/core/url";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -51,6 +53,16 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   const mayPublish = can(user, "core:entries.publish");
   if (status === "published" && !mayPublish) return { error: t("entries.error.publish") };
 
+  // (0.45.0) "Skin for this page": only when the field was on screen (`__skin`) and the instance has the feature; checked against the installed site skins, whoever sent it.
+  // The value already stored is always accepted back unchanged (a skin removed since then must not block other changes).
+  let skin: string | null | undefined;
+  if (formData.get("__skin") === "1" && collection.features.includes("skin")) {
+    const stored = id ? (await prisma.entry.findUnique({ where: { id }, select: { skin: true } }))?.skin ?? null : null;
+    const checked = checkPageSkin(String(formData.get("skin") ?? ""), await installedSiteSkinIds(), stored);
+    if (!checked.ok) return { errors: { skin: t("error.pageSkin") } };
+    skin = checked.skin;
+  }
+
   const fields: Record<string, unknown> = {};
   for (const f of collection.fieldSchema) {
     const raw = formData.get(`field_${f.key}`);
@@ -67,6 +79,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
     code,
     expiresAt: date("expiresAt"),
     fields: JSON.stringify(fields),
+    ...(skin !== undefined ? { skin } : {}),
   };
   if (adv) {
     shared.featured = formData.get("featured") === "on";
@@ -109,7 +122,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
     update: { slug, ...text },
   });
 
-  await audit(user.email, id ? "entry.update" : "entry.create", `${collection.key}/${slug}`);
+  await audit(user.email, id ? "entry.update" : "entry.create", `${collection.key}/${slug}${skin ? ` skin:${skin}` : ""}`);
   if (!id) redirect(entryHref(entryId, { locale, created: "1" }));
   return { ok: t("action.saved") };
 }

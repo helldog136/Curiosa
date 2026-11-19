@@ -207,6 +207,8 @@ model Entry {
   url          String?
   code         String?
   featured     Boolean   @default(false)
+  // (0.45.0) Skin du site demandé par cette page seule (identifiant d'un skin de site installé) ; null = celui du site. Lu avec tolérance : un skin retiré = celui du site.
+  skin         String?
   // Étiquettes libres (JSON : ["sponsor", "gaming"]) : filtrage côté modules consommateurs.
   tags         String    @default("[]")
   position     Int       @default(0)
