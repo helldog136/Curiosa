@@ -29,7 +29,7 @@ export const PICTURE_LIMITS = {
 
 export type PictureError = {
   ok: false;
-  code: "format" | "toolarge" | "pixels" | "small" | "ratio" | "heavy" | "frames" | "animation" | "busy" | "engine" | "failed" | "svg" | "unreadable";
+  code: "format" | "toolarge" | "pixels" | "small" | "big" | "ratio" | "heavy" | "frames" | "animation" | "busy" | "engine" | "failed" | "svg" | "unreadable";
   /** Numbers and words the message names (the size got and needed, the heaviest allowed). */
   detail?: Record<string, number | string>;
 };
@@ -44,12 +44,16 @@ const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0
 /** Chunks an animated PNG needs to be displayed. Every other chunk (text, EXIF, profiles, physical size, time stamp, anything private) is dropped. */
 const PNG_KEEP = new Set(["IHDR", "PLTE", "tRNS", "acTL", "fcTL", "fdAT", "IDAT", "IEND"]);
 
-export type PngRewrite = { ok: true; png: Buffer; frames: number; width: number; height: number; animated: boolean } | { ok: false };
-/** Rewrites a PNG keeping only the whitelisted chunks, each with a valid checksum. Anything malformed is refused. */
+export type PngRewrite = { ok: true; png: Buffer; frames: number; width: number; height: number; animated: boolean; framePixels: number } | { ok: false; reason?: "frames" | "pixels" };
+/**
+ * Rewrites a PNG keeping only the whitelisted chunks, each with a valid checksum. Anything malformed is refused.
+ * An animation is never trusted for its own `acTL` claim: the frames are COUNTED (`fcTL`), their sequence numbers must run 0, 1, 2… across `fcTL` and `fdAT`,
+ * each frame must fit the canvas, and the pixels of all the real frames are summed.
+ */
 export function rewritePng(buf: Buffer): PngRewrite {
   if (buf.length < 45 || !buf.subarray(0, 8).equals(PNG_SIGNATURE)) return { ok: false };
   const parts: Buffer[] = [PNG_SIGNATURE];
-  let at = 8, width = 0, height = 0, frames = 1, animated = false, sawEnd = false, count = 0, fctl = 0;
+  let at = 8, width = 0, height = 0, claimed = 0, hasActl = false, sawEnd = false, count = 0, fctl = 0, seq = 0, framePixels = 0, sawIdat = false;
   while (at + 12 <= buf.length) {
     if (++count > 5000) return { ok: false };
     const len = buf.readUInt32BE(at);
@@ -59,14 +63,26 @@ export function rewritePng(buf: Buffer): PngRewrite {
     if (crc32(buf.subarray(at + 4, at + 8 + len)) !== buf.readUInt32BE(at + 8 + len)) return { ok: false };
     if (count === 1 && type !== "IHDR") return { ok: false };
     if (type === "IHDR") { if (len !== 13) return { ok: false }; width = data.readUInt32BE(0); height = data.readUInt32BE(4); }
-    if (type === "acTL") { if (len !== 8) return { ok: false }; frames = data.readUInt32BE(0); animated = frames > 1; }
-    if (type === "fcTL") fctl++;
+    if (type === "IDAT") sawIdat = true;
+    if (type === "acTL") { if (len !== 8 || hasActl || sawIdat) return { ok: false }; hasActl = true; claimed = data.readUInt32BE(0); if (claimed < 1) return { ok: false }; }
+    if (type === "fcTL") {
+      if (len !== 26 || !hasActl) return { ok: false };
+      if (data.readUInt32BE(0) !== seq++) return { ok: false };
+      const w = data.readUInt32BE(4), h = data.readUInt32BE(8), x = data.readUInt32BE(12), y = data.readUInt32BE(16);
+      if (!w || !h || x + w > width || y + h > height) return { ok: false };
+      if (++fctl > PICTURE_LIMITS.frames) return { ok: false, reason: "frames" };
+      framePixels += w * h;
+      if (framePixels > PICTURE_LIMITS.animatedPixels) return { ok: false, reason: "pixels" };
+    }
+    if (type === "fdAT") { if (len < 5 || !hasActl || data.readUInt32BE(0) !== seq++) return { ok: false }; }
     if (PNG_KEEP.has(type)) parts.push(buf.subarray(at, at + 12 + len));
     at += 12 + len;
     if (type === "IEND") { sawEnd = true; break; }   // anything after IEND (trailing data, a hidden archive) is not copied
   }
-  if (!sawEnd || !width || !height || (animated && fctl < 1)) return { ok: false };
-  return { ok: true, png: Buffer.concat(parts), frames, width, height, animated };
+  if (!sawEnd || !width || !height) return { ok: false };
+  if (hasActl && (fctl < 1 || fctl !== claimed)) return { ok: false };
+  const frames = hasActl ? fctl : 1;
+  return { ok: true, png: Buffer.concat(parts), frames, width, height, animated: frames > 1, framePixels: hasActl ? framePixels : width * height };
 }
 
 // ── The pipeline ─────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -111,7 +127,7 @@ async function rasterPicture(sharp: Sharp, input: Buffer, kind: "png" | "jpg" | 
     if (kind === "png") {
       // a PNG is rewritten from its whitelisted chunks first: no metadata, nothing after the end, valid checksums; an animated one keeps its animation
       const r = rewritePng(buf);
-      if (!r.ok) return no("unreadable");
+      if (!r.ok) return r.reason === "frames" ? no("frames", { max: PICTURE_LIMITS.frames }) : r.reason === "pixels" ? no("pixels") : no("unreadable");
       buf = r.png;
       apng = r.animated;
       apngFrames = r.frames;
@@ -155,7 +171,7 @@ async function rasterPicture(sharp: Sharp, input: Buffer, kind: "png" | "jpg" | 
     if (apng) {
       // an animated PNG is kept as the rewritten file: it fits the slot as it is, or it is refused (no frame-by-frame resize without a decoder)
       if (buf.length > maxBytes) return no("heavy", { max: rule.maxKb });
-      if (W > rule.maxPx[0] || H > rule.maxPx[1]) return no("small", { got: W, need: rule.maxPx[0] });
+      if (W > rule.maxPx[0] || H > rule.maxPx[1]) return no("big", { got: W, max: rule.maxPx[0] });
       await sharp(buf, { limitInputPixels: PICTURE_LIMITS.inputPixels, failOn: "error" }).raw().toBuffer();   // really decodable
       const first = await make(80, 1, true);
       return { ok: true, main: buf, ext: "png", still: first.out, lum: await luminance(sharp, first.out), width: W, height: H, frames };

@@ -26,7 +26,8 @@ async function apng(w, h, n, { extra = [], trailing = Buffer.alloc(0) } = {}) {
   const fctl = (seq) => { const d = Buffer.alloc(26); d.writeUInt32BE(seq, 0); d.writeUInt32BE(w, 4); d.writeUInt32BE(h, 8); d.writeUInt16BE(10, 20); d.writeUInt16BE(100, 22); return chunk("fcTL", d); };
   const actl = Buffer.alloc(8); actl.writeUInt32BE(n, 0);
   const out = [Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]), chunk("IHDR", ihdr.data), chunk("acTL", actl), ...extra, fctl(0), ...idat.map((p) => chunk("IDAT", p.data))];
-  for (let i = 1; i < n; i++) { out.push(fctl(2 * i - 1)); for (const p of idat) out.push(chunk("fdAT", Buffer.concat([Buffer.from([0, 0, 0, 2 * i]), p.data]))); }
+  let seq = 1;   // sequence numbers run 0, 1, 2… across fcTL and fdAT chunks, one per chunk
+  for (let i = 1; i < n; i++) { out.push(fctl(seq++)); for (const p of idat) { const s = Buffer.alloc(4); s.writeUInt32BE(seq++); out.push(chunk("fdAT", Buffer.concat([s, p.data]))); } }
   out.push(chunk("IEND", Buffer.alloc(0)), trailing);
   return Buffer.concat(out);
 }
@@ -132,6 +133,65 @@ test("animations are allowed: GIF and animated WebP keep their frames and get a 
   // frames are capped
   const many = await sharp(await Promise.all(Array.from({ length: 101 }, (_, i) => solid(64, 12, { r: i * 2, g: 255 - i * 2, b: i % 7 * 30 }).png().toBuffer())), { join: { animated: true } }).gif({ delay: Array(101).fill(40), loop: 0 }).toBuffer();
   assert.equal((await I.processPicture(many, rule({ minPx: [64, 12], maxPx: [64, 12], ratio: [16, 3] }))).code, "frames");
+});
+
+test("an animation is capped at 24 million pixels in total, by its header, before decoding", async () => {
+  const t0 = Date.now();
+  // one frame of 12.25 million pixels is fine as a still, but two of them are 24.5 million: refused
+  assert.equal((await I.processPicture(await apng(3500, 3500, 2), rule({ formats: ["png"] }))).code, "pixels");
+  assert.ok(Date.now() - t0 < 15000);
+  assert.notEqual((await I.processPicture(await apng(3400, 3500, 2), rule({ formats: ["png"] }))).code, "pixels", "23.8 million is under the cap");
+});
+
+/** An APNG skeleton (no real pixels needed: the rewrite reads the structure): `claimed` frames in acTL, then the given fcTL/fdAT list in order. */
+function skeleton(w, h, claimed, items) {
+  const sig = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(w, 0); ihdr.writeUInt32BE(h, 4); ihdr[8] = 8; ihdr[9] = 2;
+  const actl = Buffer.alloc(8); actl.writeUInt32BE(claimed, 0);
+  const out = [sig, chunk("IHDR", ihdr), chunk("acTL", actl)];
+  for (const it of items) {
+    if (it.t === "fcTL") { const d = Buffer.alloc(26); d.writeUInt32BE(it.seq, 0); d.writeUInt32BE(it.w ?? w, 4); d.writeUInt32BE(it.h ?? h, 8); d.writeUInt32BE(it.x ?? 0, 12); d.writeUInt32BE(it.y ?? 0, 16); d.writeUInt16BE(10, 20); d.writeUInt16BE(100, 22); out.push(chunk("fcTL", d)); }
+    else if (it.t === "fdAT") { const d = Buffer.alloc(8); d.writeUInt32BE(it.seq, 0); out.push(chunk("fdAT", d)); }
+    else out.push(chunk("IDAT", zlib.deflateSync(Buffer.alloc(64))));
+  }
+  out.push(chunk("IEND", Buffer.alloc(0)));
+  return Buffer.concat(out);
+}
+const frameItems = (n, w, h) => { const l = [{ t: "fcTL", seq: 0, w, h }, { t: "IDAT" }]; let seq = 1; for (let i = 1; i < n; i++) { l.push({ t: "fcTL", seq: seq++, w, h }, { t: "fdAT", seq: seq++ }); } return l; };
+
+test("an animated PNG is never trusted for its own frame count: frames are counted, sequence numbers and sizes checked (a lie is refused)", async () => {
+  const honest = I.rewritePng(skeleton(40, 20, 3, frameItems(3, 40, 20)));
+  assert.equal(honest.ok && honest.frames, 3);
+  // claims 2 frames, carries 50: refused, not decoded
+  assert.equal(I.rewritePng(skeleton(40, 20, 2, frameItems(50, 40, 20))).ok, false);
+  // claims 50, carries 2
+  assert.equal(I.rewritePng(skeleton(40, 20, 50, frameItems(2, 40, 20))).ok, false);
+  // claims 1 (so "a still") but carries frames
+  assert.equal(I.rewritePng(skeleton(40, 20, 1, frameItems(5, 40, 20))).ok, false);
+  // more than 100 real frames: the frame error, whatever acTL says
+  const many = I.rewritePng(skeleton(8, 4, 101, frameItems(101, 8, 4)));
+  assert.deepEqual([many.ok, many.reason], [false, "frames"]);
+  const manyLie = I.rewritePng(skeleton(8, 4, 2, frameItems(101, 8, 4)));
+  assert.equal(manyLie.ok, false);
+  // sequence numbers out of order, repeated, or skipped
+  const items = frameItems(3, 40, 20);
+  assert.equal(I.rewritePng(skeleton(40, 20, 3, items.map((it) => (it.t === "fdAT" ? { ...it, seq: it.seq + 5 } : it)))).ok, false);
+  assert.equal(I.rewritePng(skeleton(40, 20, 3, items.map((it) => (it.t === "fcTL" ? { ...it, seq: 0 } : it)))).ok, false);
+  // a frame that does not fit the canvas
+  assert.equal(I.rewritePng(skeleton(40, 20, 2, [{ t: "fcTL", seq: 0, w: 40, h: 20 }, { t: "IDAT" }, { t: "fcTL", seq: 1, w: 40, h: 20, x: 10 }, { t: "fdAT", seq: 2 }])).ok, false);
+  assert.equal(I.rewritePng(skeleton(40, 20, 2, [{ t: "fcTL", seq: 0, w: 0, h: 20 }, { t: "IDAT" }, { t: "fcTL", seq: 1 }, { t: "fdAT", seq: 2 }])).ok, false);
+  // the pixels of the REAL frames are summed against the 24 million budget (a small acTL claim does not hide them)
+  const heavy = I.rewritePng(skeleton(3500, 3500, 2, frameItems(2, 3500, 3500)));
+  assert.deepEqual([heavy.ok, heavy.reason], [false, "pixels"]);
+  assert.equal((await I.processPicture(skeleton(3500, 3500, 2, frameItems(2, 3500, 3500)), rule({ formats: ["png"] }))).code, "pixels");
+  assert.equal((await I.processPicture(skeleton(40, 20, 2, frameItems(50, 40, 20)), rule({ formats: ["png"] }))).code, "unreadable");
+});
+
+test("a picture that is too big for its slot says so (\"big\"), not that it is too small", async () => {
+  // an animated PNG is kept as it is, so it must fit the slot (a GIF or WebP is resized instead)
+  const r = await I.processPicture(await apng(2400, 450, 2), rule({ formats: ["png"], maxKb: 1000 }));
+  assert.equal(r.code, "big");
+  assert.deepEqual([r.detail.got, r.detail.max], [2400, 1920]);
 });
 
 test("an animated PNG keeps its animation, loses its text chunks and everything after its end", async () => {

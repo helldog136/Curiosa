@@ -98,3 +98,21 @@ test("a hard-to-read colour is applied as chosen and reported (nothing is correc
   assert.equal(late.ok, false);
   await assert.rejects(() => SK.prepareSkinCustomize({ look: "royal" }), /declares nothing/);
 });
+
+test("(0.44.0) the owner is told when an uploaded picture would stop being used (and that it is deleted after one day)", async () => {
+  await setup();
+  const sharp = (await import("sharp")).default;
+  const { definitionOf } = await import("@/core/skins/appearanceView");
+  const d = await definitionOf("customizable");
+  const u = await db.prisma.user.create({ data: { email: "o@example.org", name: "o", role: "owner", passwordHash: "x" } });
+  const png = await sharp({ create: { width: 1600, height: 300, channels: 3, background: "#445566" } }).png().toBuffer();
+  const up = await C.storePicture({ id: d.id, version: d.version, customize: d.customize }, "banner-image", png, { uploaderId: u.id });
+  assert.equal(up.ok, true);
+  assert.equal((await C.saveCustom({ id: d.id, version: d.version, customize: d.customize }, { values: { "banner-image": up.value } })).ok, true);
+  const swap = await SK.prepareSkinCustomize({ values: [{ id: "banner-image", value: "stone" }] });
+  assert.match(swap.customize.names, /uploaded picture of banner-image stops being used and is deleted after one day/);
+  const reset = await SK.prepareSkinCustomize({ reset: ["all"] });
+  assert.match(reset.customize.names, /uploaded picture of banner-image/);
+  const harmless = await SK.prepareSkinCustomize({ values: [{ id: "corner", value: "0.5" }] });
+  assert.ok(!/uploaded picture/.test(harmless.customize.names), "nothing is said when no picture is affected");
+});

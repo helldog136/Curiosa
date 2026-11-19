@@ -285,7 +285,15 @@ export async function prepareSkinCustomize(args: Record<string, unknown>): Promi
   if (reset.some((r) => r !== "all" && !controls.some((c) => c.id === r))) return refuse("reset names a setting that does not exist.");
   if (!look && Object.keys(values).length === 0 && reset.length === 0) return refuse("Give a look, some values, or settings to reset.");
   const names = [look ? `look ${look}` : "", ...Object.entries(values).filter(([k]) => !look || !(def.customize!.looks.find((l) => l.id === look)!.values[k] === values[k])).map(([k, v]) => `${k} ${typeof v === "object" ? "(picture)" : String(v)}`), reset.length ? `back to the skin's own: ${reset.join(", ")}` : ""].filter(Boolean).join("; ");
-  return { skin: view.activeId, customize: { values, ...(look ? { look } : {}), reset, names } };
+  // R24: say what would be lost. A picture the owner uploaded stops being used (and is deleted after one day) when its setting is reset or set to something else.
+  const cur = await readStored(view.activeId);
+  const after: Record<string, unknown> = { ...(cur?.values ?? {}) };
+  if (reset.includes("all")) for (const k of Object.keys(after)) delete after[k];
+  else for (const id of reset) delete after[id];
+  Object.assign(after, values);
+  const lost = Object.entries(cur?.values ?? {}).filter(([k, v]) => v && typeof v === "object" && JSON.stringify(after[k]) !== JSON.stringify(v)).map(([k]) => k);
+  const warned = lost.length ? `${names}; the uploaded picture of ${lost.join(", ")} stops being used and is deleted after one day` : names;
+  return { skin: view.activeId, customize: { values, ...(look ? { look } : {}), reset, names: warned } };
 }
 
 /** Level 3, execution: merges onto the CURRENT saved values (what the owner changed in between is kept) and saves through the same function as the page. */

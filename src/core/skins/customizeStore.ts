@@ -65,10 +65,12 @@ async function destroy(name: string): Promise<void> {
 
 /** Deletes the pictures of this skin that nothing refers to (`keep`), optionally only the old ones. */
 export async function pruneUnreferenced(skinId: string, keep: ReadonlySet<string>, olderThanMs = 0): Promise<number> {
-  const rows = await prisma.uploadFile.findMany({ where: { ownerModule: ownerModule(skinId) }, select: { name: true, createdAt: true } });
+  const rows = await prisma.uploadFile.findMany({ where: { ownerModule: ownerModule(skinId) }, select: { name: true, createdAt: true, claimedAt: true } });
   let n = 0;
   for (const r of rows) {
-    if (keep.has(r.name) || (olderThanMs > 0 && Date.now() - r.createdAt.getTime() < olderThanMs)) continue;
+    // `claimedAt`: when the owner stopped using the file (empty while it is staged or in use); the day counts from the later of that and its creation
+    const since = Math.max(r.createdAt.getTime(), r.claimedAt?.getTime() ?? 0);
+    if (keep.has(r.name) || (olderThanMs > 0 && Date.now() - since < olderThanMs)) continue;
     await destroy(r.name);
     n++;
   }
@@ -87,7 +89,7 @@ export type SaveResult =
 
 /**
  * Saves the customization of one skin: the FULL set of values the owner wants (a control left out is back at the skin's own). Every value is checked; a picture must be a
- * file of this skin and this slot. Only differences from the defaults are stored. Pictures no longer used are deleted.
+ * file of this skin and this slot. Only differences from the defaults are stored. A picture no longer used is deleted a day later (the staged window), not at once.
  */
 export async function saveCustom(skin: Declared, input: SaveInput, opts: { actor?: string } = {}): Promise<SaveResult> {
   const errors: Record<string, "invalid" | "picture"> = {};
@@ -103,12 +105,16 @@ export async function saveCustom(skin: Declared, input: SaveInput, opts: { actor
     values[id] = r.value;
   }
   // a picture is a file of THIS skin and THIS slot (an upload of another slot or skin is refused)
+  const relabel: { names: string[]; slot: string }[] = [];
   for (const [id, v] of Object.entries(values)) {
     if (!v || typeof v !== "object") continue;
     const pic = v as UploadedPicture;
-    const rows = await prisma.uploadFile.findMany({ where: { name: { in: [pic.upload, ...(pic.still ? [pic.still] : [])] } }, select: { name: true, ownerInstance: true } });
+    const rows = await prisma.uploadFile.findMany({ where: { name: { in: [pic.upload, ...(pic.still ? [pic.still] : [])] } }, select: { name: true, ownerModule: true, ownerInstance: true } });
     const need = pic.still ? 2 : 1;
-    if (rows.length !== need || rows.some((r) => r.ownerInstance !== ownerSlot(skin.id, id))) errors[id] = "picture";
+    // the slot's own id, or one it had before a rename (`was`): the picture is then moved to the new id below
+    const slots = new Set([ownerSlot(skin.id, id), ...(known.get(id)?.was ?? []).map((w) => ownerSlot(skin.id, w))]);
+    if (rows.length !== need || rows.some((r) => r.ownerModule !== ownerModule(skin.id) || !r.ownerInstance || !slots.has(r.ownerInstance))) errors[id] = "picture";
+    else relabel.push({ names: rows.map((r) => r.name), slot: ownerSlot(skin.id, id) });
   }
   if (Object.keys(errors).length) return { ok: false, errors };
   const look = typeof input.look === "string" && skin.customize.looks.some((l) => l.id === input.look) ? input.look : null;
@@ -116,14 +122,19 @@ export async function saveCustom(skin: Declared, input: SaveInput, opts: { actor
   const next: StoredCustom | null = empty ? null : { v: 1, skinVersion: skin.version, ...(look ? { look } : {}), values };
   if (next && JSON.stringify(next).length > CUSTOMIZE_LIMITS.storedBytes) return { ok: false, errors: {}, error: "too-big" };
   const before = await readStored(skin.id);
+  for (const r of relabel) await prisma.uploadFile.updateMany({ where: { name: { in: r.names }, ownerModule: ownerModule(skin.id) }, data: { ownerInstance: r.slot } });
   const changed = JSON.stringify(before ? { look: before.look ?? null, values: before.values } : null) !== JSON.stringify(next ? { look: next.look ?? null, values: next.values } : null);
   if (next) await setSetting(customKey(skin.id), next); else await deleteSetting(customKey(skin.id));
-  await pruneUnreferenced(skin.id, new Set(namesIn(values)));
+  // A picture the owner stops using is KEPT for the staged window (one day) before it is deleted: a mistaken reset or choice is not final at once.
+  const kept = new Set(namesIn(values));
+  const dropped = namesIn(before?.values ?? {}).filter((n) => !kept.has(n));
+  if (dropped.length) await prisma.uploadFile.updateMany({ where: { name: { in: dropped }, ownerModule: ownerModule(skin.id) }, data: { claimedAt: new Date() } });
+  await pruneUnreferenced(skin.id, kept, ABANDONED_MS);
   if (changed) { invalidateSkinCache(); await audit(opts.actor ?? "system", "skin.custom", `${skin.id}: ${Object.keys(values).join(",")}`.slice(0, 190)); }
   return { ok: true, changed, stored: next };
 }
 
-/** Back to the skin's own: everything, or some controls. Deletes the pictures that are no longer used. */
+/** Back to the skin's own: everything, or some controls. The pictures that are no longer used are deleted a day later. */
 export async function resetCustom(skin: Declared, which: "all" | string[], opts: { actor?: string } = {}): Promise<SaveResult> {
   const cur = await readStored(skin.id);
   if (which === "all") return saveCustom(skin, { values: {} }, opts);
@@ -167,7 +178,7 @@ export async function storePicture(skin: Declared, slotId: string, buf: Buffer, 
   const put = async (data: Buffer, ext: "webp" | "png" | "svg"): Promise<string> => {
     const name = newPictureName(ext);
     await fs.writeFile(path.join(UPLOADS_DIR, name), data);
-    await prisma.uploadFile.create({ data: { name, uploaderId: opts.uploaderId, bytes: data.length, ownerModule: ownerModule(skin.id), ownerInstance: ownerSlot(skin.id, slotId), claimedAt: new Date() } });
+    await prisma.uploadFile.create({ data: { name, uploaderId: opts.uploaderId, bytes: data.length, ownerModule: ownerModule(skin.id), ownerInstance: ownerSlot(skin.id, slotId) } });   // claimedAt stays empty: it is set when the owner stops using the file
     return name;
   };
   const main = await put(made.main, made.ext);

@@ -176,10 +176,18 @@ test("a picture: re-encoded by the core, owned by this skin and slot, saved with
   const r2 = await C.storePicture(skin, "banner-image", await banner(1800, 338), { uploaderId: u.id });
   assert.deepEqual(uploads().sort(), [r.value.upload, r2.value.upload].sort());
   await C.saveCustom(skin, { values: { "banner-image": r2.value } });
-  assert.deepEqual(uploads(), [r2.value.upload], "the replaced picture is deleted at the save");
+  // (0.44.0) a picture the owner stops using is KEPT for a day (a mistaken choice is not final), then deleted
+  assert.deepEqual(uploads().sort(), [r.value.upload, r2.value.upload].sort(), "the replaced picture is still there right after the save");
+  const age = (name) => db.prisma.uploadFile.update({ where: { name }, data: { claimedAt: new Date(Date.now() - 25 * 3600_000), createdAt: new Date(Date.now() - 26 * 3600_000) } });
+  await age(r.value.upload);
+  await C.saveCustom(skin, { values: { "banner-image": r2.value, corner: 1 } });
+  assert.deepEqual(uploads(), [r2.value.upload], "after a day it is deleted");
   assert.deepEqual((await owned()).map((x) => x.name), [r2.value.upload]);
-  // back to a bundled picture: the file goes
+  // back to a bundled picture: the file is kept for a day, then goes
   await C.saveCustom(skin, { values: { "banner-image": "stone" } });
+  assert.deepEqual(uploads(), [r2.value.upload], "kept: the owner may change their mind");
+  await age(r2.value.upload);
+  await C.saveCustom(skin, { values: { "banner-image": "stone", corner: 1 } });
   assert.deepEqual(uploads(), []);
   assert.deepEqual(await owned(), []);
 });
@@ -258,7 +266,33 @@ test("reset: some controls or all; pictures no longer used go with them", async 
   assert.equal(uploads().length, 1);
   await C.resetCustom(skin, "all");
   assert.equal(await C.readStored("customizable"), null);
+  assert.equal(uploads().length, 1, "the picture is kept for a day after a reset");
+  await db.prisma.uploadFile.updateMany({ where: {}, data: { claimedAt: new Date(Date.now() - 25 * 3600_000), createdAt: new Date(Date.now() - 26 * 3600_000) } });
+  await C.resetCustom(skin, "all");
   assert.deepEqual(uploads(), []);
+});
+
+test("(0.44.0) a renamed picture slot (`was`) keeps its uploaded picture: the save is accepted and the file moves to the new slot", async () => {
+  await install("customizable");
+  const skin = await declared();
+  const u = await person();
+  const up = await C.storePicture(skin, "banner-image", await banner(), { uploaderId: u.id });
+  assert.equal((await C.saveCustom(skin, { values: { "banner-image": up.value } })).ok, true);
+  // a new version of the skin renames the control "hero", and says so
+  const next = structuredClone(skin);
+  next.version = "1.1.0";
+  for (const g of next.customize.groups) for (const c of g.controls) if (c.id === "banner-image") { c.id = "hero"; c.was = ["banner-image"]; }
+  const l = await C.loadResolved(next);
+  assert.deepEqual(l.resolved.values.hero, up.value, "the stored picture follows the rename");
+  const r = await C.saveCustom(next, { values: { ...l.resolved.values, corner: 0.5 } });
+  assert.equal(r.ok, true, JSON.stringify(r));
+  assert.equal((await owned())[0].ownerInstance, "skin:customizable:hero", "the file now belongs to the new slot");
+  assert.equal(uploads().includes(up.value.upload), true);
+  // a slot that was never this one's ancestor is still refused, and so is a file of another skin
+  const other = await C.storePicture(skin, "emblem", await emblem(), { uploaderId: u.id });
+  assert.deepEqual((await C.saveCustom(next, { values: { hero: other.value } })).errors, { hero: "picture" });
+  await db.prisma.uploadFile.update({ where: { name: other.value.upload }, data: { ownerModule: "skin:another", ownerInstance: "skin:customizable:emblem" } });
+  assert.deepEqual((await C.saveCustom(skin, { values: { emblem: other.value } })).errors, { emblem: "picture" }, "the owner module is compared too");
 });
 
 // ── the upload route ────────────────────────────────────────────────────────────────────────────────────────────────

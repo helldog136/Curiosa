@@ -63,12 +63,14 @@ An unknown control type, an unknown key, or a `customize.version` newer than the
 
 * Untouched, a skin renders **exactly as shipped**: the defaults are always written.
 * Every value is validated again at each read, whoever sent it (the page, an assistant, a restored backup): a colour is parsed and written back as `#rrggbb`; a number is clamped, snapped to its step and written with a unit from the closed list; a choice, a look and a picture alternative are ids looked up in your declaration; an uploaded picture is a server-made name `^[0-9a-f-]{36}\.(webp|png|svg)$`. A last filter writes a variable only if its name and its value have one of a few exact shapes. There is **no free text** anywhere.
+* **`--sk-cz-*` variables paint, nothing else.** The sheet may read them only in colour, background, border and outline properties (and not through another custom property). Anywhere else (`display`, sizes, fonts, opacity, positions) the skin is refused (`var-name-not-allowed`): the sheet cannot see the owner's value, so a fallback could not be checked.
 * **Legibility is never enforced.** There is no refusal at installation and no correction at rendering. The page only **signals** a risk, next to the control, when the owner's value breaks a pair you declared ("Hard to read: contrast 2.1 instead of 4.5"); nothing is shown when all is fine, nor for your own default.
 
 ## 4. Storage and versions
 
 * One setting per skin, `skin.custom.<skinId>`: only the differences from your defaults (4 KB at most). It is **kept when the owner switches skins** and when the skin is removed.
 * A stored key that no control (or former `was` id) claims, or whose value no longer fits, is **ignored** and kept in storage until the next save, so going back to a previous version of the skin finds it again.
+* A picture the owner stops using (another choice, a reset) is kept for one day, then deleted; the assistant's approval summary says so. A renamed picture control keeps its picture through `was`.
 * Backups carry the setting and the pictures (`uploads/`, with their owner `skin:<id>:<control>` in `upload-files.json`).
 
 ## 5. Contrast pairs and signals
@@ -79,7 +81,7 @@ An unknown control type, an unknown key, or a `customize.version` newer than the
 
 ## 6. Pictures an owner uploads
 
-`POST /api/admin/skin-custom/upload` (not `/api/admin/upload`): Administration role, same site only, a slot the skin declares. The file is **never stored as received**: type from the bytes, 5 MB and 40 million pixels at most (checked from the header), 45 s deadline, two jobs at a time, EXIF orientation applied, cropped to the slot's shape around the chosen focal point, scaled down to the slot's largest size, **re-encoded** (WebP; EXIF, GPS, XMP and anything after the image are gone), under the slot's `maxKb`. SVG goes through the same sanitiser as logos. **Animated pictures are allowed** (GIF, animated WebP, APNG): at most 100 frames and 24 million pixels in all, never cropped (their shape must fit), and a still (first frame) is made and swapped in under `prefers-reduced-motion`. An animated PNG keeps its frames through a chunk whitelist rewrite.
+`POST /api/admin/skin-custom/upload` (not `/api/admin/upload`): Administration role, same site only, a slot the skin declares. The file is **never stored as received**: type from the bytes, 5 MB and 40 million pixels at most (checked from the header), 45 s deadline, two jobs at a time, EXIF orientation applied, cropped to the slot's shape around the chosen focal point, scaled down to the slot's largest size, **re-encoded** (WebP; EXIF, GPS, XMP and anything after the image are gone), under the slot's `maxKb`. SVG goes through the same sanitiser as logos. **Animated pictures are allowed** (GIF, animated WebP, APNG): at most 100 frames and 24 million pixels in all, never cropped (their shape must fit), and a still (first frame) is made and swapped in under `prefers-reduced-motion`. An animated PNG keeps its frames through a chunk whitelist rewrite, and its frame count, sequence numbers and sizes are counted from its own chunks, never taken from its header.
 
 ## 7. Assistants
 

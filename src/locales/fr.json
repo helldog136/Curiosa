@@ -2666,6 +2666,7 @@
   "appearance.cz.img.toolarge": "Ce fichier est trop lourd ({max} Mo au plus). Choisissez une image plus légère, par exemple moins de 2 Mo.",
   "appearance.cz.img.pixels": "Cette image est trop grande. Choisissez-en une de moins de 6000 pixels de large, par exemple 1600.",
   "appearance.cz.img.small": "Cette image est trop petite ({got} px de large). Choisissez-en une d'au moins {need} px de large, par exemple 1600.",
+  "appearance.cz.img.big": "Cette image est trop grande ({got} px de large). Choisissez-en une d'au plus {max} px de large, par exemple 1600.",
   "appearance.cz.img.ratio": "Cette animation n'a pas la bonne forme. Utilisez une forme de {want}, par exemple 1600 x 300.",
   "appearance.cz.img.heavy": "Cette image reste trop lourde après réduction ({max} Ko au plus). Choisissez-en une plus simple.",
   "appearance.cz.img.frames": "Cette animation a trop d'images ({max} au plus). Choisissez-en une plus courte.",

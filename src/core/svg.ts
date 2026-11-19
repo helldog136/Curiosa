@@ -14,6 +14,9 @@
  */
 export const MAX_SVG_BYTES = 24_000;
 const MAX_ELEMENTS = 1500;
+/** (0.44.0) At most this many `use` elements in a drawing. */
+const MAX_USES = 100;
+
 /** Wider limits for a logo (a detailed drawing weighs more than a background pattern). */
 export const LOGO_SVG_LIMITS = { maxBytes: 300_000, maxElements: 6000 } as const;
 
@@ -67,7 +70,11 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
 
   const out: string[] = [];
   const stack: string[] = [];
-  let count = 0, rootSeen = false, i = 0;
+  let count = 0, rootSeen = false, i = 0, uses = 0;
+  // (0.44.0) `use` is the only way a small drawing can grow into a huge one when drawn: a `use` may not point at something that holds or is a `use`, and there are few of them
+  const openIds: (string | null)[] = [];
+  const holdsUse = new Set<string>();
+  const useTargets: string[] = [];
   const TAG = /<(\/?)([A-Za-z][\w:.-]*)((?:\s+[^<>]*?)?)\s*(\/?)>/y;
   while (i < src.length) {
     if (src[i] !== "<") {
@@ -88,6 +95,7 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
     }
     if (closing) {
       if (stack.pop() !== name) return fail(`the </${name}> tag is misplaced`);
+      openIds.pop();
       out.push(`</${name}>`);
       continue;
     }
@@ -115,6 +123,7 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
       if (/javascript|expression|@import|data:/i.test(value)) return `value not accepted for ${key}`;
       if ((key === "fill" || key === "stroke" || key === "stop-color" || key === "flood-color") && !(/^#[0-9a-fA-F]{3,8}$/.test(value) || NAMED_COLORS.has(value) || /^url\(#[\w-]+\)$/.test(value) || /^(rgb|rgba|hsl|hsla)\([\d\s.,%]+\)$/.test(value)))
         return `${key}: colour “${value}” not recognised`;
+      if (key === "stdDeviation" && !/^\d{1,2}(\.\d{1,2})?(\s+\d{1,2}(\.\d{1,2})?)?$/.test(value)) return "stdDeviation: a blur of 99 at most";
       attrs.push([key, value]);
       return null;
     };
@@ -139,6 +148,14 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
       }
       const error = accept(key, value);
       if (error) return fail(error);
+    }
+    if (name === "use") {
+      if (++uses > MAX_USES) return fail(`too many <use> elements (${MAX_USES} at most)`);
+      const target = attrs.find(([k]) => k === "href" || k === "xlink:href")?.[1];
+      if (target) useTargets.push(target.slice(1));
+      for (const id of openIds) if (id) holdsUse.add(id);
+      const own = attrs.find(([k]) => k === "id")?.[1];
+      if (own) holdsUse.add(own);
     }
     if (name === "svg") {
       // The drawing fills the whole area: the aspect (fill / contain) is set here, not by the drawing.
@@ -169,9 +186,11 @@ export function sanitizeSvg(input: unknown, theme?: Partial<Record<Token, string
         continue;
       }
       stack.push(name);
+      openIds.push(attrs.find(([k]) => k === "id")?.[1] ?? null);
     }
   }
   if (!rootSeen) return fail("no <svg> found");
+  if (useTargets.some((t) => holdsUse.has(t))) return fail("a <use> may not point at another <use> or at something that contains one");
   if (stack.length) return fail(`the <${stack[stack.length - 1]}> tag is never closed`);
   return { ok: true, svg: out.join("") };
 }

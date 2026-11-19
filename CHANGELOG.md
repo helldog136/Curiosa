@@ -36,6 +36,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** `skinContract` 4: a site skin may declare `customize` (data only, no code), read by a tolerant reader with limits fixed by the core. The `--sk-cz-<id>` variables come only from validated values; defaults are always written. Reference: `docs/SKINS-CUSTOMIZE.md`.
 - Nouvelle route d'envoi `POST /api/admin/skin-custom/upload` (rôle Administration, même site, 5 Mo, 40 millions de pixels, fichier refabriqué), distincte de `/api/admin/upload`. Nouvel outil `maintenance_skin_customize` (niveau 3).
 - **(English)** New upload route `POST /api/admin/skin-custom/upload` (Administration role, same site, 5 MB, 40 million pixels, file rebuilt), separate from `/api/admin/upload`. New tool `maintenance_skin_customize` (level 3).
+- Une image que vous n'utilisez plus est gardée un jour avant d'être supprimée ; les assistants IA le disent avant que vous approuviez. Renommer un réglage d'image dans une nouvelle version du skin ne perd plus l'image envoyée.
+- **(English)** A picture you stop using is kept for one day before it is deleted; AI assistants say so before you approve. Renaming a picture setting in a new version of a skin no longer loses the uploaded picture.
+- Durcissement : les variables `--sk-cz-*` ne se lisent plus que dans des propriétés de couleur, de fond, de bordure et de contour ; une image animée est comptée image par image ; un dessin SVG est limité en `<use>` et en flou.
+- **(English)** Hardening: `--sk-cz-*` variables can only be read in colour, background, border and outline properties; an animated picture is counted frame by frame; an SVG drawing is limited in `<use>` and blur.
+
 
 ## 0.41.0 — 2026-11-19
 

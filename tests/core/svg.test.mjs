@@ -150,3 +150,20 @@ test("svg : alignement du dessin quand la fenêtre n'a pas ses proportions (gauc
   const css = B.backgroundCss(B.parseBackground([{ type: "svg", svg: d, align: "left" }]).layers, theme);
   assert.ok(Buffer.from(/base64,([A-Za-z0-9+/=]+)"/.exec(css)[1], "base64").toString().includes("xMinYMid slice"));
 });
+
+test("(0.44.0) a drawing cannot grow when drawn: few <use>, none pointing at a <use> or at something that holds one, and a bounded blur", () => {
+  const wrap = (body) => `<svg viewBox="0 0 10 10">${body}</svg>`;
+  const ok = (body) => assert.equal(sanitizeSvg(wrap(body)).ok, true, body);
+  const no = (body, re) => { const r = sanitizeSvg(wrap(body)); assert.equal(r.ok, false, body); assert.match(r.error, re); };
+  ok('<defs><rect id="a" width="2" height="2"/></defs><use href="#a"/><use href="#a" x="3"/>');
+  // a chain: b is a use of a, c uses b
+  no('<defs><rect id="a" width="2" height="2"/><use id="b" href="#a"/></defs><use href="#b"/>', /use/);
+  // a group that holds a use, used again
+  no('<defs><g id="g"><use href="#r"/></g><rect id="r" width="2" height="2"/></defs><use href="#g"/>', /use/);
+  // too many
+  no(`<defs><rect id="a" width="2" height="2"/></defs>${'<use href="#a"/>'.repeat(101)}`, /too many <use>/);
+  ok(`<defs><rect id="a" width="2" height="2"/></defs>${'<use href="#a"/>'.repeat(100)}`);
+  // blur
+  ok('<defs><filter id="f"><feGaussianBlur stdDeviation="4"/></filter></defs><rect width="2" height="2" filter="url(#f)"/>');
+  no('<defs><filter id="f"><feGaussianBlur stdDeviation="500"/></filter></defs><rect width="2" height="2" filter="url(#f)"/>', /stdDeviation/);
+});
