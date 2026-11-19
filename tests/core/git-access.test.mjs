@@ -22,7 +22,8 @@ mode=$(cat "${MODE}")
 {
   echo "ARGV: $*"
   env | grep -E '^GIT_CONFIG_(COUNT|KEY_|VALUE_)' | sed 's/^/ENV: /'
-  case " $* " in *" fetch "*|*" clone "*|*" ls-remote "*) [ -f .git/config ] && sed 's/^/CONFIG: /' .git/config;; esac
+  # Only the .git/config of a checkout the test made (under the temporary folder): when the suite runs from a CI checkout, its own .git/config holds the runner's extraheader.
+  case " $* " in *" fetch "*|*" clone "*|*" ls-remote "*) case "$PWD" in "\${TMPDIR:-/tmp}"/*) [ -f .git/config ] && sed 's/^/CONFIG: /' .git/config;; esac;; esac
   echo "--"
 } >> "${LOG}"
 case " $* " in
