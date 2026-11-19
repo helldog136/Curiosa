@@ -12,11 +12,14 @@ export type UpdateChannel = "stable" | "rc";
  * (0.42.0) A repository that holds several skins or modules can tag each one with its own series: `<id>/v1.2.0` (the way the official skins repository does).
  * `<id>` is a lowercase name (letters, digits, dashes). The plain `v1.2.0` series keeps working exactly as before.
  */
-export const PREFIXED_TAG_RE = /^([a-z0-9][a-z0-9-]{0,62})\/(v?\d+\.\d+\.\d+)$/;
-/** A stable release tag in either form: `v1.2.0` or `<id>/v1.2.0`. */
-export const isReleaseTag = (ref: string | null | undefined): ref is string => !!ref && (TAG_RE.test(ref) || PREFIXED_TAG_RE.test(ref));
-/** The `<id>/` of a prefixed tag (with its slash), "" for a plain tag. */
-export const tagPrefix = (ref: string | null | undefined): string => { const m = ref ? PREFIXED_TAG_RE.exec(ref) : null; return m ? `${m[1]}/` : ""; };
+export const PREFIXED_TAG_RE = /^([a-z0-9][a-z0-9-]{0,62})\/(v\d+\.\d+\.\d+)$/;
+/**
+ * A stable release tag: `v1.2.0`, or `<id>/v1.2.0` ONLY when `<id>` is the id of the skin or module that asks. A branch such as `release/v1.2.0` or `hotfix/v2.0.1` is
+ * therefore never taken for a tag series (it keeps being followed as a branch), and another module's tag is never one of ours.
+ */
+export const isReleaseTag = (ref: string | null | undefined, id?: string): ref is string => !!ref && (TAG_RE.test(ref) || (!!id && ref.startsWith(`${id}/`) && PREFIXED_TAG_RE.test(ref)));
+/** The `<id>/` of a prefixed release tag of `id` (with its slash), "" for a plain tag or anything else. */
+export const tagPrefix = (ref: string | null | undefined, id?: string): string => (id && isReleaseTag(ref, id) && !TAG_RE.test(ref!) ? `${id}/` : "");
 const unprefixed = (v: string): string => PREFIXED_TAG_RE.exec(v)?.[2] ?? v;
 
 export function isPrerelease(v: string): boolean { return /-rc\.\d+$/.test(v); }

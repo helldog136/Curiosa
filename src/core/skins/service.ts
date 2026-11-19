@@ -251,7 +251,7 @@ function specOf(row: SkinRow): Spec | Failure {
 }
 
 /** `vX.Y.Z` or, for a repository that holds several skins, `<id>/vX.Y.Z` (0.42.0). */
-const isStableTag = isReleaseTag;
+const isStableTag = (ref: string | null | undefined, id: string): ref is string => isReleaseTag(ref, id);
 
 export type UpdateCheck = { available: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean; /** (0.42.0) Elle a échoué parce que le dépôt refuse l'accès : un code d'accès expiré ou retiré. */ access?: boolean };
 
@@ -266,8 +266,8 @@ async function targetOf(row: SkinRow, fresh = false): Promise<Target> {
   if (entry) return { spec: { url: base.url, ref: entry.ref ?? base.ref, subdir: base.subdir }, fromCatalogue: true, entry };
   if (row.source === "catalogue" && cat.unreachable) return fail("skins.error.catalogue");
   if (isCommitRef(row.ref)) return { none: "pinned" };
-  if (isStableTag(row.ref)) {
-    const latest = await latestStableTag(base.url, tagPrefix(row.ref));
+  if (isStableTag(row.ref, row.id)) {
+    const latest = await latestStableTag(base.url, tagPrefix(row.ref, row.id));
     if (!latest || !classify(row.ref, latest)) return { none: "uptodate" };
     return { spec: { url: base.url, ref: latest, subdir: base.subdir }, fromCatalogue: false };
   }
@@ -288,7 +288,7 @@ export async function checkUpdate(id: string, opts: { fresh?: boolean } = {}): P
       const available = (!!e.version && compareVersions(e.version, row.version) > 0) || (!e.version && !!e.ref && e.ref !== row.ref);
       return available ? { available, target: e.version ?? e.ref, level: e.version ? classify(row.version, e.version) ?? undefined : undefined, needsCore: e.needsNewerCore } : { available: false };
     }
-    if (isStableTag(t.spec.ref) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
+    if (isStableTag(t.spec.ref, row.id) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
     const head = await remoteHead(t.spec.url, t.spec.ref);
     return head && head !== row.commit ? { available: true, target: head.slice(0, 7) } : { available: false };
   } catch (error) { return { available: false, failed: true, ...(isGitAccessError(error) ? { access: true } : {}) }; }

@@ -2472,7 +2472,7 @@
   "access.field.label": "Access code (read-only)",
   "access.field.example": "For example: github_pat_11AB…",
   "access.field.keep": "Leave empty to keep the current one",
-  "access.field.help": "On GitHub, open github.com/settings/personal-access-tokens/new. Under Repository access, choose “Only select repositories” and pick this repository. Under Permissions, set “Contents” to “Read-only”. Choose an expiry (one year at most), create the code and paste it here. It is never shown again.",
+  "access.field.help": "On GitHub, open github.com/settings/personal-access-tokens/new. Under Repository access, choose “Only select repositories” and pick this repository. Under Permissions, set “Contents” to “Read-only”. Choose an expiry (one year at most), create the code and paste it here. It is never shown again. An extension you install runs inside the site and could read this code: use a read-only code limited to this one repository.",
   "appearance.update.access": "Access refused: updates are no longer checked. Enter a new access code.",
   "audit.action.git.access.set": "Access code of a private repository saved",
   "audit.action.git.access.remove": "Access code of a private repository removed",

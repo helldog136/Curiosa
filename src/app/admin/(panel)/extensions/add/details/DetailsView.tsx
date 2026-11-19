@@ -71,7 +71,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
   let rateLimited = false;
   let refused = false;
   // Attente bornée : au-delà, un message clair et « Réessayer » (la lecture continue en coulisse, la tentative suivante en profite).
-  if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; refused = isGitAccessError(e); timedOut = e instanceof PreviewTimeout; rateLimited = e instanceof PreviewFailure && e.reason === "rate-limit"; } }
+  if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS, stored: isOwner }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; refused = isGitAccessError(e); timedOut = e instanceof PreviewTimeout; rateLimited = e instanceof PreviewFailure && e.reason === "rate-limit"; } }
 
   const m = preview?.manifest ?? null;
   const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
@@ -99,7 +99,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
   const toItems = (list: Awaited<ReturnType<typeof getPreviewImages>>): GalleryItem[] => list.map((i) => ({ src: previewUrl(source, i.index, version), width: i.width, height: i.height, caption: L(i.decl.caption), alt: L(i.decl.alt), typeLabel: t(`fiche.gallery.type.${i.decl.type}`) }));
   const declared = m?.previews?.length ?? 0;
   const gallery: GalleryItem[] = installedImages ? toItems(installedImages) : [];
-  const remoteGallery = !installedImages && target && declared > 0 ? <Suspense fallback={<GallerySkeleton label={t("fiche.gallery.loading")} count={declared} />}><RemoteGallery target={target} toItems={toItems} labels={galleryLabels(t)} /></Suspense> : null;
+  const remoteGallery = !installedImages && target && declared > 0 ? <Suspense fallback={<GallerySkeleton label={t("fiche.gallery.loading")} count={declared} />}><RemoteGallery stored={isOwner} target={target} toItems={toItems} labels={galleryLabels(t)} /></Suspense> : null;
 
   // Résumé d'une ligne des détails techniques : « Garde des données de votre public · Demande 3 autorisations · Installe aussi Contacts ».
   const alsoInstalls = (planView?.lines ?? []).filter((l) => l.action === "install").map((l) => l.name);
@@ -154,7 +154,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
 
 
 /** La galerie d'un dépôt distant : lue après la fiche (et en parallèle), sans jamais la retarder. Sans image valable : rien (pas de trou). */
-async function RemoteGallery({ target, toItems, labels }: { target: PreviewTarget; toItems: (l: Awaited<ReturnType<typeof getPreviewImages>>) => GalleryItem[]; labels: ReturnType<typeof galleryLabels> }) {
-  const items = toItems(await getPreviewImages(target));
+async function RemoteGallery({ target, toItems, labels, stored }: { stored: boolean; target: PreviewTarget; toItems: (l: Awaited<ReturnType<typeof getPreviewImages>>) => GalleryItem[]; labels: ReturnType<typeof galleryLabels> }) {
+  const items = toItems(await getPreviewImages(target, { stored }));
   return items.length ? <PreviewGallery items={items} labels={labels} /> : null;
 }

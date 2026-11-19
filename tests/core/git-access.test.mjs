@@ -265,6 +265,17 @@ test("backup: only the sealed value travels, the readable summary masks it, and 
   assert.equal((await G.accessState(PRIVATE)).state, "configured");
 });
 
+test("only the owner-gated admin actions can save or remove a code, and nothing reaches them from the assistant's side (import graph, not a word search)", () => {
+  const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ts|tsx)$/.test(p)) out.push(p.replaceAll("\\", "/")); } return out; };
+  const all = walk("src");
+  const importersOf = (needle) => all.filter((f) => new RegExp(`from "[^"]*${needle}"`).test(fs.readFileSync(f, "utf8")));
+  assert.deepEqual(importersOf("gitAccessAdmin").sort(), ["src/app/admin/(panel)/access/actions.ts", "src/app/admin/(panel)/appearance/actions.ts"]);
+  // Who imports the access actions (by their full path): admin pages and components only, never the assistant's code or an API route.
+  const users = all.filter((f) => /access\/actions"/.test(fs.readFileSync(f, "utf8")) && f !== "src/app/admin/(panel)/access/actions.ts");
+  assert.ok(users.length >= 2);
+  for (const f of users) assert.ok(f.startsWith("src/components/admin/") || f.startsWith("src/app/admin/"), f);
+});
+
 test("no tool of the assistant (MCP) can read or set an access code: none of its files touches the store", () => {
   const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ts|tsx|mjs)$/.test(p)) out.push(p); } return out; };
   const files = [...walk("src/core/maintenance"), ...walk("src/core/services/mcp"), ...walk("src/app/api")].filter((f) => fs.statSync(f).isFile());

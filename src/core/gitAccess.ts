@@ -6,12 +6,12 @@
  *     the backup carries only the ciphertext, and the site secret is not in the backup, so a restore on another server asks for the code again);
  *   - it reaches git ONLY through the environment of the child process, inside the single `git()` helper (modules/installer.ts): never in a URL, never in argv,
  *     never in `.git/config` (the checkout of a module stays on disk and its code can read it), never in a log, a journal line, an error, an MCP answer or a page;
- *   - the header is scoped to the exact repository address (`http.<url>.extraheader`), so a redirect to another host or another path does not carry it.
+ *   - the header is scoped to the exact repository address (`http.<url>.extraheader`). That is defence in depth only: real git re-applies its extra headers after a
+ *     redirect, so every call that carries a code also forbids redirects and any protocol but https (see `runGit`).
  * This file holds no network code: the check that a code works is in gitAccessAdmin.ts.
  */
 import { prisma } from "./db";
 import { seal, unseal } from "./seal";
-import { redactSecrets } from "./maintenance/redact";
 
 export const ACCESS_SETTING = "git.secret.access";
 const PURPOSE = "git-access-seal";
@@ -32,15 +32,30 @@ export function checkCodeFormat(code: string): CodeCheck {
 }
 
 /** `owner/repo` (lowercase) of a github.com repository address, or null (another host, another shape). Accepts `https://github.com/owner/repo[.git][/]`. */
+/**
+ * Test seam ONLY (nothing in the product sets it): lets tests use a real git against a local server on 127.0.0.1 (any port) instead of github.com, so that what git
+ * really does with the header (redirects, partial clones) is tested and not only what the core hands to it.
+ */
+export const testSeam = { loopback: false };
+
 export function accessTarget(url: string | null | undefined): { host: string; repo: string } | null {
+  const raw = String(url ?? "");
+  if (/[\u0000-\u0020\u007f]/.test(raw)) return null;   // a tab or a line break would be silently dropped by the URL parser, but not by git
   let u: URL;
-  try { u = new URL(String(url ?? "")); } catch { return null; }
-  if (u.protocol !== "https:" || u.hostname.toLowerCase() !== ACCESS_HOST || u.username || u.password || u.search) return null;
+  try { u = new URL(raw); } catch { return null; }
+  if (testSeam.loopback && u.protocol === "http:" && u.hostname === "127.0.0.1" && !u.username && !u.password && !u.search && !u.hash) {
+    const m = /^\/([\w.-]{1,39})\/([\w.-]{1,100}?)(?:\.git)?\/?$/.exec(u.pathname);
+    return m ? { host: `127.0.0.1:${u.port}`, repo: `${m[1]}/${m[2]}`.toLowerCase() } : null;
+  }
+  if (u.protocol !== "https:" || u.hostname.toLowerCase() !== ACCESS_HOST || u.port || u.username || u.password || u.search || u.hash) return null;
   const m = /^\/([A-Za-z0-9][\w.-]{0,38})\/([\w.-]{1,100}?)(?:\.git)?\/?$/.exec(u.pathname);
   return m ? { host: ACCESS_HOST, repo: `${m[1]}/${m[2]}`.toLowerCase() } : null;
 }
 
 type Entry = { host: string; repo: string; sealed: string; savedAt: string };
+
+/** The ciphertext is bound to its repository: an entry moved to another repository by someone who can write the database no longer opens. */
+const aadOf = (e: { host: string; repo: string }): string => `${e.host}/${e.repo}`;
 
 async function readEntries(): Promise<Entry[]> {
   try {
@@ -62,7 +77,7 @@ export async function accessCodeFor(url: string | null | undefined): Promise<str
   const t = accessTarget(url);
   if (!t) return null;
   const e = (await readEntries()).find((x) => x.host === t.host && x.repo === t.repo);
-  const code = e ? unseal(PURPOSE, e.sealed) : null;
+  const code = e ? unseal(PURPOSE, e.sealed, aadOf(e)) : null;
   return code && FINE_GRAINED_RE.test(code) ? code : null;
 }
 
@@ -73,12 +88,15 @@ export async function accessState(url: string | null | undefined): Promise<Acces
   if (!t) return { state: "none" };
   const e = (await readEntries()).find((x) => x.host === t.host && x.repo === t.repo);
   if (!e) return { state: "none", repo: t.repo };
-  return { state: unseal(PURPOSE, e.sealed) ? "configured" : "reenter", repo: t.repo, savedAt: e.savedAt };
+  return { state: unseal(PURPOSE, e.sealed, aadOf(e)) ? "configured" : "reenter", repo: t.repo, savedAt: e.savedAt };
 }
+
+/** True when at least one code is saved (a cheap test before looking at the `origin` of a checkout). */
+export async function hasAnyAccess(): Promise<boolean> { return (await readEntries()).length > 0; }
 
 /** The saved repositories, without any secret (for a summary line). */
 export async function listAccess(): Promise<{ repo: string; savedAt: string; readable: boolean }[]> {
-  return (await readEntries()).map((e) => ({ repo: e.repo, savedAt: e.savedAt, readable: !!unseal(PURPOSE, e.sealed) }));
+  return (await readEntries()).map((e) => ({ repo: e.repo, savedAt: e.savedAt, readable: !!unseal(PURPOSE, e.sealed, aadOf(e)) }));
 }
 
 /** Stores (or replaces) the code of one repository, sealed. The caller has already checked that the code works. */
@@ -86,7 +104,7 @@ export async function storeAccess(url: string, code: string): Promise<boolean> {
   const t = accessTarget(url);
   if (!t || checkCodeFormat(code) !== "ok") return false;
   const rest = (await readEntries()).filter((e) => !(e.host === t.host && e.repo === t.repo));
-  await writeEntries([...rest, { host: t.host, repo: t.repo, sealed: seal(PURPOSE, code.trim()), savedAt: new Date().toISOString() }].sort((a, b) => (a.repo < b.repo ? -1 : 1)));
+  await writeEntries([...rest, { host: t.host, repo: t.repo, sealed: seal(PURPOSE, code.trim(), `${t.host}/${t.repo}`), savedAt: new Date().toISOString() }].sort((a, b) => (a.repo < b.repo ? -1 : 1)));
   return true;
 }
 
@@ -115,14 +133,21 @@ export function accessEnv(url: string, code: string, inherited: NodeJS.ProcessEn
   return env;
 }
 
-/** Text of a git failure with the code (and its encoded form) removed, whatever else it holds. */
+/**
+ * Text of a git failure with the code removed: the code itself, its encoded forms, and anything that looks like a GitHub code or an Authorization header. Nothing
+ * else is touched (commit ids, paths and long words stay readable in the operator's logs).
+ */
 export function scrub(text: unknown, code?: string | null): string {
   let s = typeof text === "string" ? text : text instanceof Error ? text.message : String(text ?? "");
   if (code) {
     const b64 = Buffer.from(`x-access-token:${code}`).toString("base64");
     for (const secret of [code, b64, encodeURIComponent(code)]) if (secret) s = s.split(secret).join("[masked]");
   }
-  return redactSecrets(s, 4000);
+  return s
+    .replace(/\b(github_pat_[A-Za-z0-9_]{10,}|gh[pousr]_[A-Za-z0-9]{16,})/g, "[masked]")
+    .replace(/(Authorization:\s*(?:Basic|Bearer)\s+)[A-Za-z0-9+/=._~-]+/gi, "$1[masked]")
+    .replace(/(x-access-token:)[^\s@/]+/gi, "$1[masked]")
+    .slice(0, 4000);
 }
 
 /** A refusal by the host: wrong or expired code, no access, or no such repository (GitHub answers "not found" for a private one: the two read the same on purpose). */

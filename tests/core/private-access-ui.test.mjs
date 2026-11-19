@@ -17,6 +17,8 @@ const { AppearanceLabelsProvider } = await import("@/app/admin/(panel)/appearanc
 const { PersonalRepo } = await import("@/app/admin/(panel)/appearance/PersonalRepo");
 const { ACCESS_LABEL_KEYS, PrivateRepoGate } = await import("@/components/admin/PrivateAccess");
 const { HelpTipProvider } = await import("@/components/admin/HelpTip");
+const G = await import("@/core/gitAccess");
+const { AccessSummary } = await import("@/components/admin/PrivateAccess");
 
 const render = (locale, initial) => renderToStaticMarkup(React.createElement(AppearanceLabelsProvider, { labels: appearanceLabels(makeTranslator(locale)) }, React.createElement(PersonalRepo, { locale, initial: { open: true, ...initial } })));
 const inputs = (html, type) => [...html.matchAll(/<input[^>]*>/g)].filter((m) => m[0].includes(` type="${type}"`)).length;
@@ -95,4 +97,48 @@ test("the texts follow the rules of the person: no code words (R9), labels short
   assert.equal(en["skins.error.access"], "Address or access code to check.");
   assert.equal(fr["skins.error.access"], "Adresse ou code d'accès à vérifier.");
   assert.equal(fr["modules.error.access"], fr["skins.error.access"]);
+});
+
+const CODE = "github_pat_11FAKEFAKE0AbCdEfGhIjKl_0123456789zYxWvUtSrQp";
+
+test("F4: every form that holds a password field posts (method=post): a submit before the page is ready never puts the code in a URL", () => {
+  const labels = Object.fromEntries(ACCESS_LABEL_KEYS.map((k) => [k, makeTranslator("en")(k)]));
+  const wrap = (el) => renderToStaticMarkup(React.createElement(HelpTipProvider, { label: "Help: {name}" }, el));
+  const pages = [
+    wrap(React.createElement(PrivateRepoGate, { url: URL_, access: { state: "none" }, labels, error: "x" })),
+    wrap(React.createElement(AccessSummary, { url: URL_, access: { state: "configured", repo: REPO }, labels, onChanged: () => {} })),
+    wrap(React.createElement(AccessSummary, { url: URL_, access: { state: "reenter", repo: REPO }, labels, onChanged: () => {} })),
+    render("en", { url: URL_, needsCode: true }),
+    render("en", { url: URL_, access: { state: "configured", repo: REPO } }),
+  ];
+  let forms = 0;
+  for (const html of pages) for (const m of html.matchAll(/<form\b[^>]*>/g)) { forms++; assert.match(m[0], /method="post"/i, m[0]); }
+  assert.ok(forms >= 4);
+  // And the code field itself is never in a form that GETs, nor has an `action` with a code in it.
+  for (const html of pages) assert.ok(!/<form\b[^>]*method="get"/i.test(html));
+  const sources = ["src/components/admin/PrivateAccess.tsx", "src/app/admin/(panel)/appearance/PersonalRepo.tsx"].map((f) => fs.readFileSync(f, "utf8")).join("\n");
+  assert.ok((sources.match(/<form\b/g) ?? []).length === (sources.match(/<form\b[^>]*method="post"/g) ?? []).length, "every <form> of these files says method=post");
+});
+
+test("no code in the markup, rendered WITH a saved code: neither the code, nor its encoded form, nor the sealed value reaches any screen", async () => {
+  assert.equal(await G.storeAccess(URL_, CODE), true);
+  const row = await db.prisma.setting.findUnique({ where: { key_locale: { key: G.ACCESS_SETTING, locale: "" } } });
+  const sealed = JSON.parse(row.value).entries[0].sealed;
+  const b64 = Buffer.from(`x-access-token:${CODE}`).toString("base64");
+  const view = await G.accessState(URL_);
+  assert.equal(view.state, "configured");
+  assert.deepEqual(Object.keys(view).sort(), ["repo", "savedAt", "state"], "the view carries no secret field");
+  for (const locale of ["fr", "en"]) {
+    const t = makeTranslator(locale);
+    const labels = Object.fromEntries(ACCESS_LABEL_KEYS.map((k) => [k, t(k)]));
+    const pages = [
+      render(locale, { url: URL_, access: view }),
+      render(locale, { url: URL_, access: view, needsCode: true }),
+      renderToStaticMarkup(React.createElement(HelpTipProvider, { label: "?" }, React.createElement(PrivateRepoGate, { url: URL_, access: view, labels, error: t("modules.error.access") }))),
+    ];
+    for (const html of pages) for (const secret of [CODE, b64, sealed, "x-access-token"]) assert.ok(!html.includes(secret), `${locale}: ${secret.slice(0, 12)}…`);
+    for (const html of pages) assert.ok(!/<input[^>]*type="password"[^>]*value="[^"]+"/.test(html), "a password field is never pre-filled");
+  }
+  const r = await G.accessState("https://github.com/someone-else/other-repo");
+  assert.equal(r.state, "none");
 });

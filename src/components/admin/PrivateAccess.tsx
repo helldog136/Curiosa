@@ -35,7 +35,7 @@ function EditForm({ url, state, labels, onChanged }: { url: string; state: Acces
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => { clearSecrets(form.current); if (res?.ok) onChanged(); }, [res, onChanged]);
   return (
-    <form ref={form} onSubmit={submitKeepingValues(act)} className="space-y-4" data-testid="access-edit-form">
+    <form ref={form} method="post" autoComplete="off" onSubmit={submitKeepingValues(act)} className="space-y-4" data-testid="access-edit-form">
       <input type="hidden" name="url" value={url} />
       <CodeField labels={labels} keep={state === "configured"} error={res?.errors?.code} />
       <div className="flex flex-wrap items-center gap-3">
@@ -50,7 +50,7 @@ function RemoveForm({ url, repo, labels, onChanged }: { url: string; repo: strin
   const [res, act] = useActionState(removeAccessAction, null);
   useEffect(() => { if (res?.ok) onChanged(); }, [res, onChanged]);
   return (
-    <form onSubmit={submitKeepingValues(act)}>
+    <form method="post" onSubmit={submitKeepingValues(act)}>
       <input type="hidden" name="url" value={url} />
       <ConfirmButton message={fill(labels["access.remove.confirm"], repo)} pendingLabel={labels["access.removing"]}>{labels["access.remove"]}</ConfirmButton>
     </form>
@@ -101,7 +101,7 @@ export function PrivateRepoGate({ url, access, labels, error }: { url: string; a
           <AccessSummary url={url} access={access} labels={labels} onChanged={onSaved} />
         </>
       ) : (
-        <form ref={form} onSubmit={submitKeepingValues(act)} className="space-y-3">
+        <form ref={form} method="post" autoComplete="off" onSubmit={submitKeepingValues(act)} className="space-y-3">
           <input type="hidden" name="url" value={url} />
           <CodeField labels={labels} error={res?.errors?.code ?? error} />
           <PendingButton variant="primary" pending={pending} pendingLabel={labels["access.checking"]}>{labels["access.edit.save"]}</PendingButton>

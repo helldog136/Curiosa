@@ -2472,7 +2472,7 @@
   "access.field.label": "Code d'accès (lecture seule)",
   "access.field.example": "Par exemple : github_pat_11AB…",
   "access.field.keep": "Laisser vide pour garder l'actuel",
-  "access.field.help": "Sur GitHub, ouvrez github.com/settings/personal-access-tokens/new. Sous « Repository access », choisissez « Only select repositories » et sélectionnez ce dépôt. Sous « Permissions », mettez « Contents » sur « Read-only ». Choisissez une expiration (un an au plus), créez le code et collez-le ici. Il ne sera plus jamais affiché.",
+  "access.field.help": "Sur GitHub, ouvrez github.com/settings/personal-access-tokens/new. Sous « Repository access », choisissez « Only select repositories » et sélectionnez ce dépôt. Sous « Permissions », mettez « Contents » sur « Read-only ». Choisissez une expiration (un an au plus), créez le code et collez-le ici. Il ne sera plus jamais affiché. Une extension installée tourne dans le site et pourrait lire ce code : utilisez un code en lecture seule limité à ce seul dépôt.",
   "appearance.update.access": "Accès refusé : les mises à jour ne sont plus vérifiées. Entrez un nouveau code d'accès.",
   "audit.action.git.access.set": "Code d'accès d'un dépôt privé enregistré",
   "audit.action.git.access.remove": "Code d'accès d'un dépôt privé retiré",

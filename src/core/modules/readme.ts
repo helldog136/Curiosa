@@ -4,6 +4,7 @@ import { DATA_DIR } from "../config";
 import { git, gitBlob, isCommitRef, parseRepoUrl } from "./installer";
 import { checkPreviewImage, loadPreviewImages, PREVIEW_CACHE_BYTES, PREVIEW_LIMITS, type PreviewImage } from "./previews";
 import { parseManifest, type ParsedManifest } from "./manifest";
+import { accessState, accessTarget, GitAccessError } from "../gitAccess";
 import { clearFicheDiskCache, ficheKey, MUTABLE_TTL, readEntry, touch, writeEntry, type FicheKey } from "./ficheCache";
 import { MAX_REQUESTS_PER_FICHE, rawBase, rawFileUrl, RawError, rawGet, setRawFetch } from "./rawRead";
 
@@ -255,7 +256,8 @@ const withDeadline = <T>(p: Promise<T>, ms: number): Promise<T> => new Promise<T
  * `PreviewFailure` s'il est injoignable. `waitMs` : n'attend pas plus longtemps (lève `PreviewTimeout`) ; la lecture continue et remplit la copie, « Réessayer » la reprend.
  * Les visuels ne sont PAS attendus ici : voir `getPreviewImages`.
  */
-export async function getModulePreview(target: PreviewTarget, opts: { waitMs?: number } = {}): Promise<ModulePreview> {
+export async function getModulePreview(target: PreviewTarget, opts: { waitMs?: number; stored?: boolean } = {}): Promise<ModulePreview> {
+  await gateStored(target, opts.stored);
   const key = keyOf(target);
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL) return hit.value;
@@ -273,23 +275,33 @@ export async function getModulePreview(target: PreviewTarget, opts: { waitMs?: n
   return opts.waitMs ? withDeadline(reading, opts.waitMs) : reading;
 }
 
+/**
+ * (0.42.0) A repository that has a saved access code is private: what is read from it (manifest, README, visuals, and the copies kept in memory and on disk) is shown ONLY
+ * to a caller who holds the right that guards the code (`core:modules.install`), who says so with `stored: true`. Anyone else gets the same refusal as a wrong code,
+ * before any copy is looked at and before git is started: a plain admin never reads private content through the site's code.
+ */
+async function gateStored(target: PreviewTarget, stored: boolean | undefined): Promise<void> {
+  if (stored === true || !accessTarget(target.url)) return;
+  if ((await accessState(target.url)).state !== "none") throw new GitAccessError();
+}
+
 /** Les visuels vérifiés d'un module (liste vide s'il n'y en a pas ou s'ils ne conviennent pas). Jamais d'erreur : une image absente n'empêche pas la fiche. */
-export async function getPreviewImages(target: PreviewTarget): Promise<PreviewImage[]> {
+export async function getPreviewImages(target: PreviewTarget, opts: { stored?: boolean } = {}): Promise<PreviewImage[]> {
   const key = keyOf(target);
   try {
-    await getModulePreview(target);
+    await getModulePreview(target, { stored: opts.stored });
     const kept = imageCache.get(key);
     if (kept && Date.now() - kept.at < TTL) return kept.value.images;
     const reading = imageReads.get(key);
     if (reading) return await reading;
     // Images écartées de la mémoire (bornée) : on relit (la copie sur disque d'abord).
     cache.delete(key);
-    await getModulePreview(target);
+    await getModulePreview(target, { stored: opts.stored });
     return (await imageReads.get(key)) ?? imageCache.get(key)?.value.images ?? [];
   } catch { return []; }
 }
 
 /** Réchauffe la lecture d'une fiche (survol du bouton, ouverture de la liste) : texte ET visuels, rend la main tout de suite, n'échoue jamais. */
-export function warmModulePreview(target: PreviewTarget): void {
-  void getPreviewImages(target);
+export function warmModulePreview(target: PreviewTarget, opts: { stored?: boolean } = {}): void {
+  void getPreviewImages(target, opts);
 }
