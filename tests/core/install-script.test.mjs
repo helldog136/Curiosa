@@ -209,6 +209,21 @@ test("Node trop ancien : sans accord on s'arrête avant toute modification ; hor
   assert.deepEqual(L.snapshot(), before);
 });
 
+test("versions de Node.js pour une installation neuve : 22.12+ et 24 sont acceptés ; 20 (fin de maintenance), 22.11 et 26 sont refusés", async (t) => {
+  const L = await lab(t);
+  const fake = (v) => fs.writeFileSync(path.join(L.bin, "node"), `#!/bin/sh\n[ "$1" = -v ] && echo ${v}\nexit 0\n`, { mode: 0o755 });
+  for (const v of ["v22.12.0", "v22.23.4", "v24.0.0", "v24.22.3"]) {
+    fake(v);
+    const r = await L.run([...BASE_ARGS, "--dry-run"]);
+    assert.equal(r.code, 0, `${v}\n${r.out}`); assert.match(r.out, new RegExp(`Node\\.js ${v.replace(/\./g, "\\.")}`));
+  }
+  for (const v of ["v20.20.2", "v22.11.0", "v26.0.0"]) {
+    fake(v);
+    const r = await L.run([...BASE_ARGS]);
+    assert.equal(r.code, 1, v); assert.match(r.out, /trop ancien ou pas pris en charge \(il faut 22\.12\+ ou 24\)/, v);
+  }
+});
+
 test("sans systemd : arrêt expliqué avant toute modification", async (t) => {
   const L = await lab(t); fs.rmSync(path.join(L.root, "run"), { recursive: true });
   const before = L.snapshot();

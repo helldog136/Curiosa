@@ -71,7 +71,7 @@ export async function discoverModules(repo: ParsedRepo, opts: { fresh?: boolean;
     const checkout = path.join(tmp, "repo");
     await git(["init", "-q", checkout]);
     await git(["remote", "add", "origin", repo.url], checkout);
-    await git(["fetch", "-q", "--depth", "1", "origin", repo.ref || "HEAD"], checkout).catch((e) => {
+    await git(["fetch", "-q", "--depth", "1", "--", "origin", repo.ref || "HEAD"], checkout).catch((e) => {
       if (repo.ref && isCommitRef(repo.ref)) return git(["fetch", "-q", "origin"], checkout);
       throw e;
     });

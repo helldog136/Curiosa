@@ -42,6 +42,73 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** Hardening: `--sk-cz-*` variables can only be read in colour, background, border and outline properties; an animated picture is counted frame by frame; an SVG drawing is limited in `<use>` and blur.
 
 
+## 0.43.0 — 2026-11-19
+
+**En bref.** Node.js 24 devient la version proposée pour les nouveaux sites et pour l'image Docker. Le tableau de bord vous prévient quand la version de Node.js de votre serveur n'est plus (ou bientôt plus) maintenue. Vos sites actuels continuent de fonctionner tels quels.
+
+**In short.** Node.js 24 becomes the version offered for new sites and for the Docker image. The dashboard tells you when the Node.js version of your server is no longer (or soon no longer) maintained. Your current sites keep working as they are.
+
+### Nouveautés
+
+- **Une alerte quand Node.js n'est plus maintenu.** Si le serveur tourne sous une version de Node.js dont la fin de maintenance est passée, ou arrive dans moins de six mois, la pastille de santé du tableau de bord le dit en une ligne, avec les étapes à suivre dans la bulle « ? ». Rien n'apparaît quand tout va bien.
+- **(English) A warning when Node.js is no longer maintained.** If the server runs a Node.js version whose end of maintenance has passed, or comes within six months, the health chip on the dashboard says so in one line, with the steps in the "?" bubble. Nothing appears when all is well.
+- **Les nouveaux sites s'installent avec Node.js 24.** Le script d'installation installe Node.js 24 et accepte aussi Node.js 22 (22.12 ou plus). Node.js 20, qui n'est plus maintenu depuis le 30 avril 2026, n'est plus accepté pour une nouvelle installation.
+- **(English) New sites are installed with Node.js 24.** The install script installs Node.js 24 and also accepts Node.js 22 (22.12 or later). Node.js 20, no longer maintained since April 30, 2026, is not accepted for a new install any more.
+- **L'image Docker est construite sur Node.js 24.**
+- **(English) The Docker image is built on Node.js 24.**
+- **Un guide pour changer la version de Node.js d'un site existant.** Sauvegarde, changement, vérification et retour en arrière, une étape à la fois.
+- **(English) A guide to change the Node.js version of an existing site.** Backup, switch, check and rollback, one step at a time.
+
+### Pour les développeurs
+
+- Le guide est `docs/NODE-MIGRATION.md`.
+- Les sites qui tournent sous Node.js 20 continuent de démarrer et de se mettre à jour : `engines` garde `^20.19.0` et l'archive garde le pilote SQLite de Node.js 20 (ABI 115). Ils seront retirés quand plus aucun site n'est sous Node.js 20. La mise à jour depuis l'admin ne change jamais la version de Node.js du serveur.
+- `maintenance_status` : `runtime.support` (`state` : `ok`, `ending-soon`, `end-of-life` ou `unknown`, et `endsOn`), calculé en local depuis `process.version` et un petit tableau (`src/core/maintenance/nodeSupport.ts`) ; `glance()` gagne `node` ; `maintenance_diagnose` ajoute une remarque quand l'état n'est pas `ok`. Node.js 26 n'est pas encore pris en charge (`better-sqlite3` n'a pas de pilote pour lui).
+- Intégration continue : Node.js 24 partout, fumée de l'archive sous Node.js 24, 22 et 20 ; `checkout@v6`, `setup-node@v6`, `upload-artifact@v6`, `download-artifact@v7`, actions Docker en version Node.js 24 ; `.nvmrc` à 24 ; `@types/node` ^24 (`backup/crypto.ts` n'utilise plus les types `Cipher`/`Decipher`).
+- `scripts/test.mjs` lit `CURIOSA_TEST_REPORTER` ; les tests qui lisent les totaux TAP demandent `--test-reporter=tap` (Node.js 24 écrit le rapport « spec » quand la sortie n'est pas un terminal).
+
+## 0.42.0 — 2026-11-19
+
+**En bref.** Vous pouvez maintenant ajouter un skin (ou une extension personnelle) depuis un dépôt GitHub privé, avec un code d'accès en lecture seule limité à ce seul dépôt. Le code est gardé chiffré et n'apparaît nulle part.
+
+**In short.** You can now add a skin (or a personal extension) from a private GitHub repository, with a read-only access code limited to that one repository. The code is kept encrypted and appears nowhere.
+
+### Nouveautés
+
+- **Ajouter depuis un dépôt privé.** Dans Apparence, collez l'adresse : si le dépôt est privé, un champ pour le code d'accès en lecture seule apparaît, avec les étapes GitHub dans son aide. Le code n'est gardé que s'il marche.
+- **(English) Add from a private repository.** In Appearance, paste the address: if the repository is private, a field for the read-only access code appears, with the GitHub steps in its help. The code is kept only if it works.
+- **Un code par dépôt, jamais ailleurs.** Une fois réglé, une ligne « Dépôt privé configuré », un bouton « Modifier » et « Retirer l'accès », qui dit ce qui s'arrête : les mises à jour ne sont plus vérifiées, ce qui est installé reste.
+- **(English) One code per repository, nowhere else.** Once set: a "Private repository configured" line, an "Edit" button and "Remove access", which says what stops: updates are no longer checked, what is installed stays.
+- **Les extensions personnelles aussi.** Dans Extensions, « Ajouter depuis une adresse » fonctionne de la même façon pour un dépôt privé.
+- **(English) Personal extensions too.** In Extensions, "Add from an address" works the same way for a private repository.
+- **Sauvegarde.** Le code est chiffré dans la sauvegarde. Sur un autre serveur, la page dit « Code d'accès à saisir de nouveau » : collez-le de nouveau.
+- **(English) Backup.** The code is encrypted in the backup. On another server, the page says "Access code to enter again": paste it again.
+- **Un seul message quand l'accès est refusé.** « Adresse ou code d'accès à vérifier. » : code faux, expiré ou dépôt introuvable, c'est le même texte.
+- **(English) One message when access is refused.** "Address or access code to check.": wrong code, expired code or missing repository, the same text.
+- **Un dépôt qui regroupe plusieurs skins.** La recherche de mise à jour comprend les étiquettes « nom-du-skin/v1.2.0 » en plus de « v1.2.0 ».
+- **(English) A repository that holds several skins.** The update check understands "skin-name/v1.2.0" tags as well as "v1.2.0".
+
+### Sécurité
+
+- **Retirer l'accès efface aussi les copies.** Ce qui a été lu avec le code (fiche, présentation) ne reste plus lisible ensuite par un autre administrateur.
+- **(English) Removing access also erases the copies.** What was read with the code (details page, readme) can no longer be read by another administrator afterwards.
+- **Rien ne sort du serveur par git.** Les commandes git ne reçoivent plus les secrets du serveur, et les fichiers de grande taille (Git LFS) ne sont jamais téléchargés : aucune requête vers une adresse choisie par le dépôt.
+- **(English) Nothing leaves the server through git.** Git commands no longer receive the server's secrets, and large files (Git LFS) are never downloaded: no request goes to an address chosen by the repository.
+- **Deux enregistrements en même temps** ne s'écrasent plus ; une référence qui commence par un tiret est refusée partout ; les séries « nom/v1.2.0 » sont comprises par les mises à jour de l'assistant et la conversion des sauvegardes.
+- **(English) Two saves at the same time** no longer overwrite each other; a reference that starts with a dash is refused everywhere; "name/v1.2.0" series are understood by the assistant's updates and by backup conversion.
+
+### Suites connues (0.42.1)
+
+- Liste des codes enregistrés pour le propriétaire, portée exacte du jeton GitHub vérifiée à l'enregistrement, et les points N3, N6, N7 et N9 de la seconde revue.
+- **(English) Known follow-ups (0.42.1):** list of saved codes for the owner, check of the exact scope of the GitHub token when saving, and items N3, N6, N7 and N9 of the second review.
+
+### Pour les développeurs
+
+- `gitAccess.ts` (stockage scellé `git.secret.access`, en-tête limité à l'adresse exacte), `gitAccessAdmin.ts` (essai, enregistrement, audit sans le code), `seal.ts`. Le code ne passe que par l'environnement du processus fils dans `git()` : jamais argv, adresse, `.git/config`, journal ni erreur.
+- `gitEnv.ts` (environnement par liste blanche et options sans LFS de tout processus git), `gitRef.ts` (un seul validateur de référence), `ficheCache.purgeRepoFromDisk` et `onAccessChange` (copies effacées à chaque changement de code). Test : `git-access-review2.test.mjs`.
+- Tests : `git-access.test.mjs` (fuites), `skins-prefixed-tags.test.mjs`, `private-access-ui.test.mjs`. `pickLatestTag(sortie, préfixe)`, `isReleaseTag`, `tagPrefix` dans `updates/versions.ts`.
+- La recette de test `stained-glass.json` est remplacée par `mosaic-sample.json` ; seuls les condensats `mosaic/*` de `golden-0.32.0.json` changent (`basic` et `neon` identiques).
+
 ## 0.41.0 — 2026-11-19
 
 **En bref.** Vos contenus se retrouvent enfin : un bouton « Contenu » sur chaque extension, des liens vers les entrées depuis l'accueil, la recherche qui trouve aussi vos pages, et une liste d'entrées qui filtre pendant la frappe. La carte « Stockage » dit clairement ce que prend votre site.

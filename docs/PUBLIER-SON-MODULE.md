@@ -13,7 +13,7 @@ Ce guide s'adresse à **une personne ou une entreprise qui n'a jamais travaillé
 
 ## 1. Ce qu'il vous faut (5 minutes)
 
-- **Node 20 ou plus** (22 conseillé) et **git**.
+- **Node 24** (22.12 ou plus fonctionne aussi) et **git**.
 - Un dépôt **public** sur GitHub, GitLab, Codeberg ou Bitbucket (les hôtes que les sites acceptent par défaut, voir [hôtes autorisés](#hôtes-autorisés)).
 - Le **cœur de Curiosa cloné à côté** de votre dépôt : il ne sert qu'à **tester** (le kit de test en fait partie). Vous n'avez pas à faire tourner le site.
 
@@ -134,17 +134,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Trouver la dernière version publiée de Curiosa
         id: core
         run: |
           ref=$(git ls-remote --tags --refs https://github.com/helldog136/Curiosa 'refs/tags/v*' | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
           test -n "$ref" || { echo "Aucune version publiée de Curiosa trouvée"; exit 1; }
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { repository: helldog136/Curiosa, ref: "${{ steps.core.outputs.ref }}", path: curiosa-core }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+      - uses: actions/setup-node@v6
+        with: { node-version: 24 }
       - run: npm ci --omit=dev --ignore-scripts && npx prisma generate
         working-directory: curiosa-core
       - run: node curiosa-core/testsupport/check.mjs .
@@ -156,7 +156,7 @@ Quand une nouvelle version de Curiosa sort, le prochain envoi re-teste tout : un
 
 ## Hôtes autorisés
 
-L'administrateur d'un site n'accepte que les dépôts `https://` des hôtes de `MODULES_ALLOWED_HOSTS` : **par défaut `github.com`, `gitlab.com`, `codeberg.org`, `bitbucket.org`** (`*` = tous). Pas d'identifiant dans l'adresse, pas de `www.`, pas de `?paramètres`. Un dépôt privé ne s'installe pas (le serveur n'a aucun identifiant). Si vous hébergez ailleurs, les personnes qui l'utilisent doivent ajouter votre hôte à `MODULES_ALLOWED_HOSTS` sur leur serveur : préférez un des quatre hôtes. **Cela ne concerne que le dépôt, pas les services que votre code appelle** : `ctx.api.net` accepte n'importe quelle adresse `https://` (aucune liste à déclarer côté cœur ; dites dans votre README quels services vous contactez).
+L'administrateur d'un site n'accepte que les dépôts `https://` des hôtes de `MODULES_ALLOWED_HOSTS` : **par défaut `github.com`, `gitlab.com`, `codeberg.org`, `bitbucket.org`** (`*` = tous). Pas d'identifiant dans l'adresse, pas de `www.`, pas de `?paramètres`. Un dépôt privé GitHub s'installe depuis le cœur 0.42.0 : la personne qui gère le site colle un code d'accès en lecture seule limité à ce seul dépôt (voir docs/SKINS.md §21.4b), gardé chiffré et jamais écrit dans l'adresse ni dans le dépôt cloné. Si vous hébergez ailleurs, les personnes qui l'utilisent doivent ajouter votre hôte à `MODULES_ALLOWED_HOSTS` sur leur serveur : préférez un des quatre hôtes. **Cela ne concerne que le dépôt, pas les services que votre code appelle** : `ctx.api.net` accepte n'importe quelle adresse `https://` (aucune liste à déclarer côté cœur ; dites dans votre README quels services vous contactez).
 
 ## Ce que voit la personne à l'installation
 
