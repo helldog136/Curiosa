@@ -31,7 +31,7 @@ export function previewUrl(src: PreviewSource, n: number, v?: string): string {
 
 export type PreviewDeps = {
   catalogueTarget(id: string): Promise<PreviewTarget | null>;
-  repoPreview(target: PreviewTarget): Promise<PreviewImage[]>;
+  repoPreview(target: PreviewTarget, stored?: boolean): Promise<PreviewImage[]>;
   installedImages(id: string): Promise<PreviewImage[]>;
 };
 
@@ -55,35 +55,36 @@ export const realPreviewDeps: PreviewDeps = {
     const entry = await findCatalogueEntry(id, { staleOk: true });
     return entry ? targetOf(entry) : null;
   },
-  repoPreview: (target) => getPreviewImages(target),
+  repoPreview: (target, stored) => getPreviewImages(target, { stored }),
   installedImages: (id) => readInstalledPreviews(id),
 };
 
 /** Les visuels vérifiés d'une source (liste vide si rien à montrer ou si la source est refusée). */
-export async function previewImages(src: PreviewSource, deps: PreviewDeps = realPreviewDeps): Promise<PreviewImage[]> {
+/** `stored`: the caller holds the right that guards the access codes (see `gateStored` in readme.ts): without it a private repository shows nothing. */
+export async function previewImages(src: PreviewSource, deps: PreviewDeps = realPreviewDeps, stored = false): Promise<PreviewImage[]> {
   try {
     if ("installed" in src) return ID_RE.test(src.installed) ? await deps.installedImages(src.installed) : [];
     if ("id" in src) {
       if (!ID_RE.test(src.id)) return [];
       const target = await deps.catalogueTarget(src.id);
-      return target ? await deps.repoPreview(target) : [];
+      return target ? await deps.repoPreview(target, stored) : [];
     }
     const parsed = parseRepoUrl(src.repo);
-    return parsed.ok ? await deps.repoPreview({ kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }) : [];
+    return parsed.ok ? await deps.repoPreview({ kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }, stored) : [];
   } catch { return []; }
 }
 
 export type PreviewReply = { status: 200; mime: string; bytes: Buffer } | { status: 400 | 404 };
 
 /** Réponse à `GET ?id|repo|installed=…&n=…` : une seule source, un rang entier de 0 à 5, sinon 400 ; image absente ou refusée : 404. */
-export async function servePreview(params: URLSearchParams, deps: PreviewDeps = realPreviewDeps): Promise<PreviewReply> {
+export async function servePreview(params: URLSearchParams, deps: PreviewDeps = realPreviewDeps, stored = false): Promise<PreviewReply> {
   const sources = (["id", "repo", "installed"] as const).filter((k) => params.has(k));
   const n = params.get("n") ?? "";
   if (sources.length !== 1 || !/^[0-5]$/.test(n) || Number(n) >= PREVIEW_LIMITS.max) return { status: 400 };
   const value = params.get(sources[0]!) ?? "";
   if (!value || value.length > 300) return { status: 400 };
   const src: PreviewSource = sources[0] === "id" ? { id: value } : sources[0] === "repo" ? { repo: value } : { installed: value };
-  const image = (await previewImages(src, deps)).find((i) => i.index === Number(n));
+  const image = (await previewImages(src, deps, stored)).find((i) => i.index === Number(n));
   return image ? { status: 200, mime: image.mime, bytes: image.bytes } : { status: 404 };
 }
 
@@ -92,15 +93,15 @@ export async function servePreview(params: URLSearchParams, deps: PreviewDeps = 
  * Rend la main tout de suite (jamais d'attente, jamais d'erreur) ; la lecture est la même que celle de la fiche (une seule à la fois par module, voir readme.ts).
  * Même règle que les visuels : l'adresse d'un module du catalogue vient du catalogue, celle d'un dépôt personnel est contrôlée par `parseRepoUrl`.
  */
-export async function warmFiche(src: { id: string } | { repo: string }): Promise<void> {
+export async function warmFiche(src: { id: string } | { repo: string }, stored = false): Promise<void> {
   try {
     if ("id" in src) {
       if (!ID_RE.test(src.id)) return;
       const target = await realPreviewDeps.catalogueTarget(src.id);
-      if (target) warmModulePreview(target);
+      if (target) warmModulePreview(target, { stored });
       return;
     }
     const parsed = parseRepoUrl(src.repo);
-    if (parsed.ok) warmModulePreview({ kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir });
+    if (parsed.ok) warmModulePreview({ kind: "repo", url: parsed.repo.url, ref: parsed.repo.ref, subdir: parsed.repo.subdir }, { stored });
   } catch { /* réchauffer est un plus */ }
 }

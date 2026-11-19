@@ -22,6 +22,8 @@ import { AppearanceLabelsProvider } from "./AppearanceLabels";
 import { CatalogueCard, type CatalogueCardModel } from "./CatalogueCard";
 import { ColorSection } from "./ColorSection";
 import { ManageSkin, type ManagedSkin } from "./ManageSkin";
+import { accessState } from "@/core/gitAccess";
+import { readRows } from "@/core/skins/registry";
 import { PersonalRepo } from "./PersonalRepo";
 import { SkinCards, SwatchTile } from "./SkinCards";
 import { FontPickers } from "./FontPickers";
@@ -113,7 +115,13 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const single = legacy ? { background: config.background, accent: config.accent, accent2: config.accent2, surface: config.surface, text: config.textColor } : view.single;
   const formKey = JSON.stringify([view.activeId, view.retouches, view.palette, view.raw]);
 
-  const managed: ManagedSkin[] = view.cards.filter((c) => c.source !== "basic").map((c) => ({ id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status }));
+  // (0.42.0) A skin from a private repository: where it comes from and what is saved for it (never the code), for the summary line in its management area.
+  const repos = new Map((isOwner ? await readRows() : []).map((r) => [r.id, r.repo] as const));
+  const managed: ManagedSkin[] = await Promise.all(view.cards.filter((c) => c.source !== "basic").map(async (c) => {
+    const repo = repos.get(c.id);
+    const access = c.source === "personal" && repo ? await accessState(repo) : undefined;
+    return { id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status, ...(repo && access && access.state !== "none" ? { repo, access } : {}) };
+  }));
 
   return (
     <AppearanceLabelsProvider labels={labels}>

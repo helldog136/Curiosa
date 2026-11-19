@@ -32,6 +32,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { SKINS_DIR } from "../config";
+import { isGitAccessError } from "../gitAccess";
 import { getCoreVersion } from "../modules/compat";
 import { audit } from "../permissions";
 import { SKIN_ID_RE } from "./allowlist";
@@ -43,7 +44,7 @@ import type { SkinManifest } from "./manifest";
 import { makeIssue, type SkinIssue, type Text } from "./messages";
 import type { ReadabilityIssue } from "./readability";
 import { fallBackToBasic, filesPresent, pruneUnclaimed, readActiveSetting, readRows, serial, skinDir, writeRows, type SkinRow, type SkinSource } from "./registry";
-import { classify, compareVersions, TAG_RE, type UpdateLevel } from "./semver";
+import { classify, compareVersions, isReleaseTag, tagPrefix, type UpdateLevel } from "./semver";
 import { fetchSkinSource, isCommitRef, latestStableTag, parseSkinRepoUrl, remoteHead, repoAddress, sameRepoUrl, type Fetched, type SkinRepo } from "./source";
 import { fingerprintOf, hasErrors, hasSignature, validateSkinFolder, type SkinTokens, type SkinValidation } from "./validate";
 
@@ -161,6 +162,8 @@ async function download(spec: Spec): Promise<{ ok: true; fetched: Fetched } | Fa
   catch (error) {
     const code = (error as { code?: string })?.code;
     if (code === "skins.error.nosubdir") return fail("skins.error.nosubdir");
+    // A refusal by the host (wrong or missing access code, or no such repository: GitHub says the same for both) reads the same everywhere (0.42.0).
+    if (isGitAccessError(error)) return fail("skins.error.access");
     console.error("[skins] fetch failed:", (error as Error)?.message?.split("\n")[0]);
     return fail("skins.error.clone");
   }
@@ -247,9 +250,10 @@ function specOf(row: SkinRow): Spec | Failure {
   return p.ok ? { url: p.repo.url, ref: p.repo.ref ?? null, subdir: p.repo.subdir ?? null } : fail(p.error);
 }
 
-const isStableTag = (ref: string | null | undefined): ref is string => !!ref && TAG_RE.test(ref);
+/** `vX.Y.Z` or, for a repository that holds several skins, `<id>/vX.Y.Z` (0.42.0). */
+const isStableTag = (ref: string | null | undefined, id: string): ref is string => isReleaseTag(ref, id);
 
-export type UpdateCheck = { available: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean };
+export type UpdateCheck = { available: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean; /** (0.42.0) Elle a échoué parce que le dépôt refuse l'accès : un code d'accès expiré ou retiré. */ access?: boolean };
 
 type Target = { spec: Spec; fromCatalogue: boolean; entry?: SkinCatalogueEntry } | Failure | { none: "pinned" | "uptodate" };
 
@@ -262,8 +266,8 @@ async function targetOf(row: SkinRow, fresh = false): Promise<Target> {
   if (entry) return { spec: { url: base.url, ref: entry.ref ?? base.ref, subdir: base.subdir }, fromCatalogue: true, entry };
   if (row.source === "catalogue" && cat.unreachable) return fail("skins.error.catalogue");
   if (isCommitRef(row.ref)) return { none: "pinned" };
-  if (isStableTag(row.ref)) {
-    const latest = await latestStableTag(base.url);
+  if (isStableTag(row.ref, row.id)) {
+    const latest = await latestStableTag(base.url, tagPrefix(row.ref, row.id));
     if (!latest || !classify(row.ref, latest)) return { none: "uptodate" };
     return { spec: { url: base.url, ref: latest, subdir: base.subdir }, fromCatalogue: false };
   }
@@ -284,10 +288,10 @@ export async function checkUpdate(id: string, opts: { fresh?: boolean } = {}): P
       const available = (!!e.version && compareVersions(e.version, row.version) > 0) || (!e.version && !!e.ref && e.ref !== row.ref);
       return available ? { available, target: e.version ?? e.ref, level: e.version ? classify(row.version, e.version) ?? undefined : undefined, needsCore: e.needsNewerCore } : { available: false };
     }
-    if (isStableTag(t.spec.ref) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
+    if (isStableTag(t.spec.ref, row.id) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
     const head = await remoteHead(t.spec.url, t.spec.ref);
     return head && head !== row.commit ? { available: true, target: head.slice(0, 7) } : { available: false };
-  } catch { return { available: false, failed: true }; }
+  } catch (error) { return { available: false, failed: true, ...(isGitAccessError(error) ? { access: true } : {}) }; }
 }
 
 export type UpdateOk = { ok: true; id: string; version: string; from: string; level: UpdateLevel | null; warnings: SkinIssue[] };
@@ -338,6 +342,7 @@ export async function update(id: string, opts: Opts & { acceptMajor?: boolean } 
       await audit(who, "skin.update", `${id}@${m.version}`);
       return { ok: true, id, version: m.version, from: row.version, level, warnings: v.issues.filter((i) => i.severity === "warning") };
     } catch (error) {
+      if (isGitAccessError(error)) return fail("skins.error.access", { kept: row.version });
       console.error("[skins] update failed:", (error as Error)?.message);
       return fail("skins.error.failed", { kept: row.version });
     } finally {

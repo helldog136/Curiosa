@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "@/core/config";
 import { git, installModule, parseRepoUrl, updateModule, updateModuleToRef, type InstallResult } from "@/core/modules/installer";
-import { compareVersions, TAG_RE } from "@/core/updates/versions";
+import { compareVersions, isReleaseTag } from "@/core/updates/versions";
 import type { Row } from "./types";
 
 /**
@@ -34,7 +34,8 @@ type ManifestLite = { dataVersion: number; dataFloor: number; version: string };
 
 /** A shallow, blob-less copy of a module repository, read with `git show` (one clone per repository, shared by the modules of the pass). */
 export type RepoReader = {
-  tags: () => Promise<string[]>;
+  /** The release tags, oldest first. With `id`, also the module's own series `<id>/vX.Y.Z` (a repository that tags each module separately). */
+  tags: (id?: string) => Promise<string[]>;
   manifestAt: (ref: string, subdir: string | null) => Promise<ManifestLite | null>;
   close: () => void;
 };
@@ -48,7 +49,7 @@ export async function openRepo(url: string): Promise<RepoReader> {
   const fetchAll = (filter: boolean) => git(["fetch", "-q", ...(filter ? ["--filter=blob:none"] : []), "--tags", "origin", "+refs/heads/*:refs/remotes/origin/*"], dir, undefined, 180_000);
   await fetchAll(true).catch(() => fetchAll(false));
   return {
-    tags: async () => (await git(["tag", "--list"], dir)).split("\n").map((t) => t.trim()).filter((t) => TAG_RE.test(t)).sort(compareVersions),
+    tags: async (id?: string) => (await git(["tag", "--list"], dir)).split("\n").map((t) => t.trim()).filter((t) => isReleaseTag(t, id)).sort(compareVersions),
     manifestAt: async (ref, subdir) => {
       try {
         const raw = await git(["show", `${ref}:${subdir ? `${subdir}/` : ""}module.json`], dir);
@@ -77,14 +78,14 @@ const MAX_HOPS = 6;
  * The chain of one module. `target`: where the restore installs it from (catalogue pin: `ref` may be a tag or a commit). `upTo`: highest release to consider.
  * Reads only what it needs: the manifest of the pinned version, and, when the data is below its floor, the manifests of the releases from the newest downwards.
  */
-export async function planChain(reader: RepoReader, input: { repo: string; subdir: string | null; targetRef: string | null; dataVersion: number }): Promise<ModuleChain> {
+export async function planChain(reader: RepoReader, input: { id?: string; repo: string; subdir: string | null; targetRef: string | null; dataVersion: number }): Promise<ModuleChain> {
   const { repo, subdir, dataVersion } = input;
   const head = await reader.manifestAt(input.targetRef ?? "refs/remotes/origin/HEAD", subdir) ?? await reader.manifestAt("refs/remotes/origin/main", subdir) ?? await reader.manifestAt("refs/remotes/origin/master", subdir);
   const floor = head?.dataFloor ?? 1;
   const base: ModuleChain = { dataVersion, floor, tags: [], repo, subdir };
   if (dataVersion >= floor) return base;
 
-  const tags = (await reader.tags()).reverse();   // newest first
+  const tags = (await reader.tags(input.id)).reverse();   // newest first
   const hops: string[] = [];
   let have = dataVersion;
   while (have < floor) {

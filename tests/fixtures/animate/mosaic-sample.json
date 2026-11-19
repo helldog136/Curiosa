@@ -1,0 +1,318 @@
+{
+  "animateContract": 1,
+  "colors": {
+    "sky": "#5aa9d6",
+    "teal": "#2f8f8f",
+    "slate": "#4a5d73",
+    "plum": "#6b3f6e",
+    "sage": "#7aa07a",
+    "paper": "#f2f5f7",
+    "frame": "#0c1116",
+    "spark": "#9fe3ff"
+  },
+  "genres": {
+    "gauge": {
+      "body": {
+        "draw": "mosaic",
+        "shape": "roundArch",
+        "pattern": "grid",
+        "cells": 28,
+        "jitter": 0.5,
+        "seed": 4107,
+        "order": "x",
+        "palette": [
+          "@sky",
+          "@teal",
+          "@slate",
+          "@plum",
+          "@sage",
+          "#d9e2e8"
+        ],
+        "unlit": 0.25,
+        "tint": 0.6,
+        "bubbles": 0.5,
+        "streaks": 0.5,
+        "mottle": 0.6,
+        "lead": "@frame",
+        "leadWidth": 0.026,
+        "irregularity": 2,
+        "glow": 0.6,
+        "glowColor": "@spark"
+      },
+      "ticks": {
+        "draw": "node",
+        "color": "#3d4a57",
+        "lit": "#bfefff",
+        "size": 0.06,
+        "irregularity": 2
+      },
+      "value": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 800,
+        "color": "@paper",
+        "outline": "@frame",
+        "outlineWidth": 0.1,
+        "plate": "lead",
+        "plateColor": "#0a0f14",
+        "plateAlpha": 0.9,
+        "plateEdge": "@frame"
+      },
+      "label": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 700,
+        "color": "@paper",
+        "outline": "@frame",
+        "outlineWidth": 0.1,
+        "size": 0.75
+      },
+      "timer": {
+        "draw": "gaugeline",
+        "color": "@spark",
+        "track": "#3d4a57",
+        "trackAlpha": 0.5
+      },
+      "step": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.45,
+          "size": 0.7
+        },
+        {
+          "draw": "particles",
+          "kind": "shards",
+          "colors": [
+            "@sky",
+            "@slate",
+            "#d9e2e8"
+          ],
+          "count": 8,
+          "spread": 0.6,
+          "gravity": 0.6,
+          "size": 0.012
+        }
+      ],
+      "burst": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.7,
+          "size": 1.6
+        },
+        {
+          "draw": "ring",
+          "color": "#bfefff",
+          "irregularity": 3,
+          "width": 0.02
+        },
+        {
+          "draw": "particles",
+          "kind": "shards",
+          "colors": [
+            "@sky",
+            "@plum",
+            "@sage",
+            "#d9e2e8"
+          ],
+          "count": 36,
+          "spread": 1.4,
+          "gravity": 0.5,
+          "size": 0.016
+        }
+      ],
+      "ambient": [
+        {
+          "draw": "shimmer",
+          "color": "#f4fbff",
+          "strength": 0.1,
+          "period": 9
+        },
+        {
+          "draw": "rays",
+          "color": "#e6f7ff",
+          "count": 4,
+          "strength": 0.08,
+          "angle": 35
+        }
+      ]
+    },
+    "levels": {
+      "body": {
+        "draw": "rose",
+        "rings": 3,
+        "segments": 9,
+        "seed": 9,
+        "irregularity": 2,
+        "palette": [
+          "@sky",
+          "@slate",
+          "@plum",
+          "@sage",
+          "@teal"
+        ],
+        "lead": "@frame",
+        "glowColor": "@spark",
+        "center": "#d9e2e8"
+      },
+      "value": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 900,
+        "color": "@paper",
+        "outline": "@frame",
+        "outlineWidth": 0.12
+      },
+      "label": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 700,
+        "color": "@paper",
+        "outline": "@frame",
+        "outlineWidth": 0.1,
+        "size": 0.75
+      },
+      "timer": [
+        {
+          "draw": "gaugeline",
+          "color": "@spark",
+          "track": "#3d4a57",
+          "trackAlpha": 0.5
+        }
+      ],
+      "step": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.5,
+          "size": 0.6
+        },
+        {
+          "draw": "pulse",
+          "strength": 0.4
+        }
+      ],
+      "burst": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.5,
+          "size": 1
+        },
+        {
+          "draw": "rays",
+          "color": "#e6f7ff",
+          "count": 7,
+          "strength": 0.16
+        },
+        {
+          "draw": "particles",
+          "kind": "shards",
+          "colors": [
+            "@sky",
+            "@plum",
+            "@sage"
+          ],
+          "count": 30,
+          "spread": 1.2
+        }
+      ],
+      "ambient": {
+        "draw": "breathe",
+        "strength": 0.15,
+        "period": 6
+      }
+    },
+    "counter": {
+      "frame": {
+        "draw": "lead",
+        "color": "@frame",
+        "width": 0.045,
+        "irregularity": 2,
+        "backing": "#0a0f14",
+        "backingAlpha": 0.88
+      },
+      "value": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 900,
+        "color": "@paper",
+        "outline": "@frame",
+        "outlineWidth": 0.06,
+        "glow": 0.4,
+        "glowColor": "@spark"
+      },
+      "label": {
+        "draw": "text",
+        "font": "serif",
+        "weight": 700,
+        "color": "@sky",
+        "outline": "@frame",
+        "outlineWidth": 0.1,
+        "size": 0.8
+      },
+      "step": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.4
+        },
+        {
+          "draw": "particles",
+          "kind": "shards",
+          "colors": [
+            "@sky",
+            "@slate",
+            "#d9e2e8"
+          ],
+          "count": 10,
+          "spread": 0.8
+        }
+      ],
+      "burst": [
+        {
+          "draw": "flash",
+          "color": "#e6f7ff",
+          "strength": 0.7,
+          "size": 1.5
+        },
+        {
+          "draw": "ring",
+          "color": "#bfefff",
+          "irregularity": 3
+        },
+        {
+          "draw": "particles",
+          "kind": "shards",
+          "colors": [
+            "@sky",
+            "@plum",
+            "@sage"
+          ],
+          "count": 28
+        }
+      ]
+    }
+  },
+  "effects": {
+    "glow": {
+      "strength": 0.5
+    },
+    "bloom": {
+      "strength": 0.25
+    },
+    "vignette": {
+      "strength": 0.22,
+      "color": "#05080c"
+    },
+    "grain": {
+      "amount": 0.05
+    },
+    "edgeFade": {
+      "left": 0.02,
+      "right": 0.02,
+      "bottom": 0.04
+    }
+  }
+}

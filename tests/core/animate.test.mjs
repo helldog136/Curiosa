@@ -24,9 +24,9 @@ const { getCoreVersion } = await import("@/core/modules/compat");
 /** A fresh engine, run from its page text exactly as OBS runs it. */
 const engine = () => { const win = {}; new Function("window", K.animateScript())(win); return win.CuriosaAnimate; };
 const A = engine();
-const glass = JSON.parse(fs.readFileSync("tests/fixtures/animate/stained-glass.json", "utf8"));
+const mosaic = JSON.parse(fs.readFileSync("tests/fixtures/animate/mosaic-sample.json", "utf8"));
 const neon = JSON.parse(fs.readFileSync("tests/fixtures/animate/night-neon.json", "utf8"));
-const RECIPES = { basic: null, glass, neon };
+const RECIPES = { basic: null, mosaic, neon };
 const T0 = 1_800_000_000_000;
 const SIZE = { w: 1764, h: 717 };
 const steps = (n, from, gap = 150) => Array.from({ length: n }, (_, i) => ({ id: `s${from}-${i}`, at: from + i * gap, kind: "step", amount: 1 }));
@@ -50,9 +50,9 @@ test("frame by frame: the same state at the same instant gives the same draw lis
   }
 });
 
-test("seeded procedural drawing: the same seed gives the same stained glass, another seed another one; geometry is cut inside the frame", () => {
+test("seeded procedural drawing: the same seed gives the same stained mosaic, another seed another one; geometry is cut inside the frame", () => {
   const st = { genre: "gauge", value: 50, target: 100 };
-  const withSeed = (seed) => ({ ...glass, genres: { gauge: { ...glass.genres.gauge, body: { ...glass.genres.gauge.body, seed } } } });
+  const withSeed = (seed) => ({ ...mosaic, genres: { gauge: { ...mosaic.genres.gauge, body: { ...mosaic.genres.gauge.body, seed } } } });
   const a = A.frame(st, withSeed(1), T0, SIZE, {}), b = A.frame(st, withSeed(1), T0, SIZE, {}), c = A.frame(st, withSeed(2), T0, SIZE, {});
   assert.deepEqual(a.ops, b.ops);
   assert.notDeepEqual(a.ops.filter((o) => o.L === 0), c.ops.filter((o) => o.L === 0));
@@ -60,17 +60,17 @@ test("seeded procedural drawing: the same seed gives the same stained glass, ano
   assert.ok(panes.length >= 20, `a tessellated window (${panes.length} panes)`);
   for (const o of a.ops) if (o.k === "poly" && o.L !== 3) for (let i = 0; i < o.p.length; i += 2) { assert.ok(o.p[i] >= -60 && o.p[i] <= SIZE.w + 60, "x in frame"); assert.ok(o.p[i + 1] >= -60 && o.p[i + 1] <= SIZE.h + 60, "y in frame"); }
   // lead edges are welded and drawn once: as many lead strokes as unique edges, not twice per pane
-  const lead = a.ops.filter((o) => o.L === 2 && o.k === "poly" && o.f === glass.colors.lead);
+  const lead = a.ops.filter((o) => o.L === 2 && o.k === "poly" && o.f === mosaic.colors.lead);
   assert.ok(lead.length > panes.length && lead.length < panes.length * 4, `${lead.length} lead strokes for ${panes.length} panes`);
 });
 
 test("progress lights panes one by one: the lit layer key changes only when one more pane is lit (cache), and grows monotonically", () => {
   let last = -1, keys = new Set();
   for (let v = 0; v <= 100; v += 2.5) {
-    const f = A.frame({ genre: "gauge", value: v, target: 100 }, glass, T0, SIZE, {});
+    const f = A.frame({ genre: "gauge", value: v, target: 100 }, mosaic, T0, SIZE, {});
     const lit = f.ops.filter((o) => o.L === 1 && o.k === "poly" && o.pr !== undefined && o.a === 1).length;
     assert.ok(lit >= last, `value ${v}`); last = lit; keys.add(f.keys[1]);
-    assert.equal(f.keys[0], A.frame({ genre: "gauge", value: 0, target: 100 }, glass, T0, SIZE, {}).keys[0], "the unlit window never changes");
+    assert.equal(f.keys[0], A.frame({ genre: "gauge", value: 0, target: 100 }, mosaic, T0, SIZE, {}).keys[0], "the unlit window never changes");
   }
   assert.ok(keys.size > 10 && keys.size <= 41);
 });
@@ -109,7 +109,7 @@ test("subathon: a countdown gauge whose time left grows by the amounts added, wi
   const before = A.view(st, T0), after = A.view(st, T0 + 2000);
   assert.ok(Math.abs(before.display - (7200 - 300)) < 0.01, "the added time arrives gradually");
   assert.ok(Math.abs(after.display - (7200 - 2)) < 0.01, "then the clock runs");
-  const f = A.frame(st, glass, T0 + 400, SIZE, {});
+  const f = A.frame(st, mosaic, T0 + 400, SIZE, {});
   assert.ok(textOps(f).some((o) => o.t === "+5:00"), "the +time highlight is written");
   assert.ok(textOps(f).some((o) => /^\d:\d\d:\d\d$/.test(o.t)), "the time left as h:mm:ss");
   assert.equal(A.view({ ...st, highlights: [] }, T0 + 7300e3).phase, "ended");
@@ -119,12 +119,12 @@ test("subathon: a countdown gauge whose time left grows by the amounts added, wi
 
 // ── fallback and contracts ────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 test("fallback: a role the skin does not draw uses the basic rendering; an unknown recipe contract draws exactly the basic rendering", () => {
-  const partial = { animateContract: 1, genres: { gauge: { body: glass.genres.gauge.body } } };
+  const partial = { animateContract: 1, genres: { gauge: { body: mosaic.genres.gauge.body } } };
   const f = A.frame(STATES.gauge, partial, T0 + 300, SIZE, { tokens: { fg: "#ffffff", accent: "#e8a23b" } });
   assert.equal(f.skin, true);
   assert.ok(f.ops.some((o) => o.k === "poly" && o.L === 0 && o.p.length > 8), "the skin's window");
   assert.ok(textOps(f).some((o) => o.t === "62 / 100" || /\/ 100$/.test(o.t)), "the basic value text");
-  for (const future of [{ ...glass, animateContract: 3 }, { genres: glass.genres }, "nonsense", 42]) {
+  for (const future of [{ ...mosaic, animateContract: 3 }, { genres: mosaic.genres }, "nonsense", 42]) {
     const a = A.frame(STATES.gauge, future, T0, SIZE, {}), b = A.frame(STATES.gauge, null, T0, SIZE, {});
     assert.equal(a.skin, false); assert.deepEqual(a.ops, b.ops);
   }
@@ -149,7 +149,7 @@ test("readability: every text has a contrasting outline (4.5:1) or an opaque pla
     }
   }
   // the TV minimum: a tiny frame still gets 24 px x factor text
-  const small = A.frame(STATES.gauge, glass, T0, { w: 400, h: 120 }, { minText: 36 });
+  const small = A.frame(STATES.gauge, mosaic, T0, { w: 400, h: 120 }, { minText: 36 });
   assert.ok(textOps(small).every((t) => t.sz >= 36 * 0.62 - 1e-9));
 });
 
@@ -182,9 +182,9 @@ test("calm motion (reduced motion) and quality levels: no ring, no flying piece,
     const m = A.frame(busy, rc, T0 + 300, SIZE, { quality: "minimal" });
     assert.ok(m.ops.every((o) => !o.g && o.k !== "bloom" && o.k !== "grain"), "minimal: no blur, bloom, grain");
   }
-  const full = A.frame(busy, glass, T0 + 300, SIZE, { quality: "full" });
+  const full = A.frame(busy, mosaic, T0 + 300, SIZE, { quality: "full" });
   assert.ok(full.ops.some((o) => o.k === "bloom") && full.ops.some((o) => o.k === "grain") && full.ops.some((o) => o.g > 0));
-  const light = A.frame(busy, glass, T0 + 300, SIZE, { quality: "light" });
+  const light = A.frame(busy, mosaic, T0 + 300, SIZE, { quality: "light" });
   assert.ok(light.ops.every((o) => !o.g && o.k !== "bloom" && o.k !== "grain"), "light: glows drawn with gradients, no canvas blur");
   // a flicker never blinks faster than 3 Hz: count the dips over 10 s at 60 samples a second
   let dips = 0, was = false; for (let i = 0; i < 600; i++) { const a = A.frame({ genre: "gauge", value: 50, target: 100 }, neon, T0 + i * 16.67, SIZE, {}).layerAlpha[1] < 0.98; if (a && !was) dips++; was = a; }
@@ -193,7 +193,7 @@ test("calm motion (reduced motion) and quality levels: no ring, no flying piece,
 
 // ── the recipe checker and the skin folder ────────────────────────────────────────────────────────────────────────────────────────────────
 test("recipe checker: the two reference recipes pass; out of grammar is refused with its path; a newer contract switches the animation off cleanly", () => {
-  for (const rc of [glass, neon]) { const r = RC.checkAnimation(rc); assert.equal(r.ok, true, JSON.stringify(r.issues)); assert.ok(r.recipe.genres.gauge); }
+  for (const rc of [mosaic, neon]) { const r = RC.checkAnimation(rc); assert.equal(r.ok, true, JSON.stringify(r.issues)); assert.ok(r.recipe.genres.gauge); }
   const bad = (patch, code, where) => { const r = RC.checkAnimation({ animateContract: 1, genres: { gauge: patch } }); assert.equal(r.ok, false); assert.ok(r.issues.some((i) => i.code === code && i.path.includes(where)), `${code} ${where}: ${JSON.stringify(r.issues)}`); };
   bad({ body: { draw: "text" } }, "draw", "gauge.body.draw");
   bad({ wings: { draw: "bar" } }, "role", "gauge.wings");
@@ -220,7 +220,7 @@ test("state checker: a module's state is checked with the same words as the engi
 
 const WEBP = Buffer.concat([Buffer.from("RIFF"), Buffer.from([0x24, 0, 0, 0]), Buffer.from("WEBP"), Buffer.alloc(24)]);
 const GOOD = { "--ov-fg": "#ffffff", "--ov-surface": "rgba(10,10,20,0.85)", "--ov-accent": "#e8a23b" };
-function skinFolder(id, { manifest = {}, animation = glass, kind = "overlay" } = {}) {
+function skinFolder(id, { manifest = {}, animation = mosaic, kind = "overlay" } = {}) {
   const dir = makeTempDir(`anim-${id}-`);
   fs.writeFileSync(path.join(dir, "skin.json"), JSON.stringify({ skinContract: 4, kind, id, name: { fr: id, en: id }, description: { fr: "Un skin d'essai.", en: "A test skin." }, version: "1.0.0", minCore: "0.8.0", license: "MIT", tokens: "tokens.json", animation: "animation.json", previews: [{ file: "previews/a.webp", width: 640, alt: { fr: "Aperçu", en: "Preview" } }], ...(kind === "site" ? { modes: ["dark"] } : {}), ...manifest }));
   fs.writeFileSync(path.join(dir, "tokens.json"), JSON.stringify({ tokens: GOOD }));
@@ -249,7 +249,7 @@ test("skin folder, contract 4: an overlay skin ships animation.json; refusals ar
 // ── the overlay page hands the recipe over ────────────────────────────────────────────────────────────────────────────────────────────────
 const layout = { iframeW: 640, iframeH: 260, scale: 1, offsetX: 0, offsetY: 0, boxW: 640, boxH: 260 };
 const look0 = { skin: null, byContext: { enabled: false, instance: null, context: null, rules: [] } };
-function page({ anim = glass, contextual = false, src = "/el/0" } = {}) {
+function page({ anim = mosaic, contextual = false, src = "/el/0" } = {}) {
   const pg = { id: "p", name: "P", width: 1280, height: 720, active: true, style: { text: "light", background: "transparent", corners: "round" }, look: { ...look0, skin: "glassy" }, elements: [], rev: 1, testUntil: null };
   const elements = [{ el: { uid: "u0abcdefgh", instance: "i", element: "e", x: 0, y: 0, w: 640, h: 260, visible: true, options: {} }, title: "E0", status: "ok", layout, follows: true, src }];
   const skin = { ...SS.compileSkin({ id: "glassy", version: "1.0.0", tokens: GOOD, css: "" }), key: "glassy@1", ...(anim ? { anim } : {}) };

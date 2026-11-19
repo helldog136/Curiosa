@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { DATA_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
-import { classify, isPrerelease } from "@/core/updates/versions";
+import { classify, isPrerelease, isReleaseTag, PREFIXED_TAG_RE } from "@/core/updates/versions";
 import { listInstances } from "@/core/instances";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { requirementGaps } from "@/core/modules/dependencies";
@@ -190,7 +190,7 @@ export type ModuleLine = {
 const refused = (b: BlockedUpdate | null, row: { version: string }): ModuleLine["lastRefusedUpdate"] =>
   b && b.to !== row.version ? { at: b.at, stayedOn: row.version, refusedVersion: b.to, cause: redactSecrets(b.reason, 200) } : undefined;
 
-const isStableTagRef = (ref: string | null | undefined) => !!ref && /^v?\d+\.\d+\.\d+$/.test(ref);
+const isStableTagRef = (ref: string | null | undefined, id: string) => isReleaseTag(ref, id);
 
 /** Languages as the assistant reads them: status ("official" or "community"), coverage of the interface ("complete" or "partial: 82%") and of the installed modules. */
 export type LanguageLine = { code: string; name: string; status: string; enabled: boolean; interface: string; modules: string };
@@ -217,7 +217,7 @@ export async function modules(opts: { updates?: Promise<UpdateReport> } = {}): P
       id: row.id, version: row.version, source: sourceKind(row), repository: publicRepo(row.repoUrl), ref: row.ref ? redactSecrets(row.ref, 60) : null,
       loadable: !!mod, instances: lineInstances,
       missingDependencies: gaps.map((g) => ({ service: g.service, neededVersion: g.min, availableVersion: g.have })),
-      update: { available: !!outdated, ...(outdated ? { target: outdated.target, level: outdated.level, ...(outdated.needsCore ? { needsCore: outdated.needsCore } : {}) } : {}), followsStableTag: row.source !== "git" || isStableTagRef(row.ref) },
+      update: { available: !!outdated, ...(outdated ? { target: outdated.target, level: outdated.level, ...(outdated.needsCore ? { needsCore: outdated.needsCore } : {}) } : {}), followsStableTag: row.source !== "git" || isStableTagRef(row.ref, row.id) },
     } satisfies ModuleLine;
   });
   const status = await i18nStatus().catch(() => null);
@@ -236,10 +236,11 @@ export type UpdatesView = {
 };
 
 /** Pourquoi une IA ne peut pas mettre ce module à jour elle-même (undefined : elle peut, avec l'accord prévu). */
-export function moduleUpdateRefusal(o: { ref: string | null | undefined; source: string; target: string; needsCore?: string }): string | undefined {
+export function moduleUpdateRefusal(o: { id: string; ref: string | null | undefined; source: string; target: string; needsCore?: string }): string | undefined {
   if (o.needsCore) return `needs core ${o.needsCore} or newer: update the core first`;
-  if (o.source === "git" && !isStableTagRef(o.ref)) return "this module follows a branch or a fixed commit, not stable release tags: only a human can update it";
-  if (!isStableVersion(o.target) || isPrerelease(o.target)) return "the target is not a stable release (pre-releases and snapshots are never installed by an AI)";
+  if (o.source === "git" && !isStableTagRef(o.ref, o.id)) return "this module follows a branch or a fixed commit, not stable release tags: only a human can update it";
+  // `<id>/vX.Y.Z` (a repository that tags each module with its own series) is a stable release like `vX.Y.Z`; the core's own tags stay plain (isStableVersion).
+  if (!(isStableVersion(o.target) || PREFIXED_TAG_RE.test(o.target)) || isPrerelease(o.target)) return "the target is not a stable release (pre-releases and snapshots are never installed by an AI)";
   return undefined;
 }
 
@@ -283,7 +284,7 @@ export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: 
     core,
     modules: (report?.outdated ?? []).map((o) => {
       const row = rows.get(o.id);
-      const base = moduleUpdateRefusal({ ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore });
+      const base = moduleUpdateRefusal({ id: o.id, ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore });
       // Cette version précise a déjà été refusée (elle ne se charge pas) : la réessayer ne sert à rien tant que l'auteur n'en a pas publié une autre.
       const again = blocked.get(o.id);
       const alreadyRefused = again && again.to === o.target ? { at: again.at, cause: redactSecrets(again.reason, 200) } : undefined;
