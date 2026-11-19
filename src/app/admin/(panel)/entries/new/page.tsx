@@ -4,6 +4,7 @@ import { getInstanceByKey } from "@/core/instances";
 import { getRefOptions } from "@/core/services/topics";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { EntryForm } from "../EntryForm";
+import { pageSkinOptions } from "@/core/skins/pageSkin";
 import { entriesHref } from "@/core/adminLinks";
 
 export default async function NewEntryPage({ searchParams }: { searchParams: Promise<{ c?: string; locale?: string }> }) {
@@ -23,8 +24,8 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
         <p className="mt-1 text-sm text-muted">{t("entries.newIntro")}</p>
       </div>
       <EntryForm
-        refOptions={refOptions} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={entryLocale}
-        data={{ status: "draft", cover: null, icon: null, url: null, code: null, featured: false, tags: "", expiresAt: "", publishedAt: "", fields: {}, translations: [] }}
+        refOptions={refOptions} pageSkins={await pageSkinOptions(collection.features, adminLocale)} advanced={advanced} adminLocale={adminLocale} t={t} collection={collection} locales={config.locales} locale={entryLocale}
+        data={{ status: "draft", cover: null, icon: null, skin: null, url: null, code: null, featured: false, tags: "", expiresAt: "", publishedAt: "", fields: {}, translations: [] }}
       />
     </div>
   );

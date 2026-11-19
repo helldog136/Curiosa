@@ -67,10 +67,15 @@ async function previewSkin(id: string, moduleParts: Readonly<Record<string, read
  * Le rendu du skin pour la configuration localisée du site.
  * `previewSkinId` : aperçu d'un skin (docs/SKINS.md §10.3) : ce skin SANS les retouches de la personne ni ses options, c'est ce que donnerait « Utiliser ce skin ».
  */
-export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?: string } = {}): Promise<SkinLook> {
+export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?: string; pageSkinId?: string } = {}): Promise<SkinLook> {
   const moduleLayer = await getModuleSkinLayer();
-  const preview = opts.previewSkinId !== undefined;
-  const { skin, serial } = preview ? await previewSkin(opts.previewSkinId!, moduleLayer.byModule) : await activeSkin(moduleLayer.byModule);
+  // (0.45.0) `pageSkinId`: ONE page asks for an installed site skin other than the site's (docs/SKINS.md "Skin for this page"). It is rendered exactly like the preview of that
+  // skin (the skin as shipped plus its own saved customization, never the retouches or options the owner made for the site's skin), and it is the only extra skin loaded
+  // by the request. An unusable skin (removed, modified, invalid) falls back to the site's skin, never to basic. A preview link (Appearance page) wins over it.
+  let forced = opts.previewSkinId !== undefined ? await previewSkin(opts.previewSkinId, moduleLayer.byModule) : opts.pageSkinId !== undefined ? await previewSkin(opts.pageSkinId, moduleLayer.byModule) : null;
+  if (forced && opts.previewSkinId === undefined && forced.skin === BASIC) forced = null;
+  const preview = forced !== null;
+  const { skin, serial } = forced ?? await activeSkin(moduleLayer.byModule);
   const isBasic = skin === BASIC;
   const raw = new Map<string, unknown>();
   if (!preview) for (const key of RETOUCH_READ_KEYS) raw.set(key, await getSetting(key));

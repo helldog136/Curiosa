@@ -19,6 +19,8 @@ export type EntryView = {
   body: string;
   cover: string | null;
   icon: string | null;
+  /** (0.45.0) Id of the site skin this page asks for (stored value, NOT checked here: see core/content/pageSkin.ts), or null = the site skin. */
+  skin: string | null;
   url: string | null;
   code: string | null;
   featured: boolean;
@@ -88,6 +90,7 @@ function toView(
     body: picked.tr.body,
     cover: entry.cover,
     icon: entry.icon,
+    skin: entry.skin ?? null,
     url: entry.url,
     code: entry.code,
     featured: entry.featured,

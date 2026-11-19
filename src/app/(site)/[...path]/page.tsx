@@ -7,6 +7,7 @@ import { pickDescription, pickName, type InstanceView } from "@/core/instances";
 import { pageScriptTags } from "@/core/modules/pageScripts";
 import { pageRobots } from "@/core/modules/pageMeta";
 import { getActiveInstances, type ActiveInstance } from "@/core/modules/registry";
+import { mountedAtRoot, mountedOnBase } from "@/core/modules/mountOrder";
 import { RESERVED_PATHS, siteUrl } from "@/core/config";
 import { pickLogo } from "@/core/logos";
 import { breadcrumbDocument, jsonLd, languageAlternates, pageUrl, socialMeta, type BreadcrumbItem } from "@/core/seo";
@@ -70,14 +71,14 @@ async function resolve(segments: string[]): Promise<Resolved> {
     return rest.length === 1 ? { kind: "entry", active, slug: rest[0]! } : { kind: "none" };
   };
 
-  const byBase = mounted.find((a) => a.instance.basePath && a.instance.basePath === first);
+  const byBase = mountedOnBase(mounted, first);
   if (byBase) return serve(byBase, segs.slice(1), false);
 
   // Un lien court désactivé se comporte exactement comme un lien qui n'existe pas (même réponse, même repli) : seuls les actifs réclament le chemin.
   if (await prisma.redirect.findFirst({ where: { path: segs.join("/"), active: true }, select: { id: true } })) {
     return { kind: "redirect", path: segs.join("/") };
   }
-  const root = mounted.find((a) => a.instance.basePath === "");
+  const root = mountedAtRoot(mounted);
   return root ? serve(root, segs, true) : { kind: "none" };
 }
 

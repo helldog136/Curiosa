@@ -235,8 +235,19 @@ export async function activePreviewTokens(): Promise<PreviewTokens> {
   const optionsRaw = fresh.get(SETTING_OPTIONS);
   const options = optionsRaw && typeof optionsRaw === "object" && !Array.isArray(optionsRaw) ? (optionsRaw as Record<string, string>) : {};
   const c = composeSkin({ skin: def === BASIC ? null : def, retouches: retouchesFrom((k) => fresh.get(k)), options, moduleTokens: layer.tokens, modulePairs: layer.pairs });
-  return {
-    skinId: def.id, name: def.name,
-    modes: c.modes.map((m) => ({ mode: m.mode, tokens: Object.fromEntries(Object.entries(m.tokens).filter(([k, v]) => /^--(v|sk)-[a-z0-9-]+$/.test(k) && !k.startsWith("--sk-m-") && typeof v === "string" && safeValue(v))) })),
-  };
+  return { skinId: def.id, name: def.name, modes: previewModes(c) };
+}
+
+const previewModes = (c: ReturnType<typeof composeSkin>): PreviewTokens["modes"] =>
+  c.modes.map((m) => ({ mode: m.mode, tokens: Object.fromEntries(Object.entries(m.tokens).filter(([k, v]) => /^--(v|sk)-[a-z0-9-]+$/.test(k) && !k.startsWith("--sk-m-") && typeof v === "string" && safeValue(v))) }));
+
+/**
+ * (0.45.0) The tokens of ANY installed site skin as shipped (no retouches of the active skin), for the "Skin for this page" choice of the entry editor: the preview box
+ * follows the choice before saving, so a draft can be looked at. Null when the skin cannot be read. Same filter as above: common tokens only, never an address.
+ */
+export async function skinPreviewTokens(id: string): Promise<PreviewTokens | null> {
+  const layer = await getModuleSkinLayer();
+  const def = await definitionOf(id, layer);
+  if (!def || def === BASIC) return null;
+  return { skinId: def.id, name: def.name, modes: previewModes(composeSkin({ skin: def, moduleTokens: layer.tokens, modulePairs: layer.pairs })) };
 }
