@@ -130,3 +130,13 @@ test("encadré « Il reste à renseigner » : présent dans la vue des réglages
   assert.match(fr["integrations.state.setupOne"], /^À configurer : \{label\}$/);
   assert.match(fr["missing.title"], /Il reste à renseigner/);
 });
+
+test("« Il reste à renseigner » : dit une seule fois (R33.7), jamais à côté d'une carte de connexion, et seulement dans l'onglet du champ", () => {
+  const view = read("src/app/admin/(panel)/instances/[id]/InstanceView.tsx");
+  assert.match(view, /const ownsState = panel\.some\(\(b\) => b\.type === "connection"\)/, "a connection card owns the state of its module");
+  assert.match(view, /const flagged = ownsState \? \[\] : missingFields/);
+  assert.match(view, /flagged\.length > 1 \? missingLinks\(flagged/, "one missing field is flagged on the field itself, the box is for two or more");
+  assert.match(view, /missing=\{new Set\(flagged\.map/, "the flag next to the field follows the same rule");
+  assert.match(view, /tab === toFillTab && <MissingBox/, "the box lives in the tab of the field, not above every tab");
+  assert.doesNotMatch(view, /\{manage && <MissingBox/, "no box in the shared header");
+});

@@ -18,16 +18,17 @@ import { ui } from "./ui";
  *    rend alors la bonne page (et le message « aucun résultat » de la liste, voir `NoResults`).
  */
 /** Le champ « Rechercher » lui-même (partagé avec le bloc `table`) : loupe, bouton « Effacer la recherche » dès qu'il y a du texte, Échap efface. */
-export function SearchField({ value, onChange, onClear, placeholder, clearLabel, busy, inputRef }: {
+export function SearchField({ value, onChange, onClear, placeholder, clearLabel, busy, inputRef, hideClear }: {
   value: string; onChange: (v: string) => void; onClear: () => void; placeholder: string; clearLabel: string; busy?: boolean; inputRef?: React.Ref<HTMLInputElement>;
+  /** The "no result" message below already offers the same button: show it once. */ hideClear?: boolean;
 }) {
   return (
     <div className="relative">
       <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">🔍</span>
       <input ref={inputRef} type="search" value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape" && value) { e.preventDefault(); onClear(); } }}
         placeholder={placeholder} aria-label={placeholder} autoComplete="off" spellCheck={false} data-testid="live-search" aria-busy={busy || undefined}
-        className={`${ui.input} min-h-11 rounded-full py-3 pl-11 ${value ? "pr-28" : "pr-4"}`} />
-      {value && <button type="button" onClick={onClear} className="absolute right-2 top-1/2 min-h-9 -translate-y-1/2 rounded-full px-3 text-sm text-muted hover:text-fg">{clearLabel}</button>}
+        className={`${ui.input} min-h-11 rounded-full py-3 pl-11 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-cancel-button]:appearance-none ${value && !hideClear ? "pr-28" : "pr-4"}`} />
+      {value && !hideClear && <button type="button" onClick={onClear} className="absolute right-2 top-1/2 min-h-9 -translate-y-1/2 rounded-full px-3 text-sm text-muted hover:text-fg">{clearLabel}</button>}
     </div>
   );
 }
@@ -79,6 +80,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
   const [pills, setPills] = useState<Record<string, string>>({});
   const [none, setNone] = useState(false);
   const [counts, setCounts] = useState<{ shown: number; total: number } | null>(null);
+  const [serverNone, setServerNone] = useState(false);
   const [busy, startBusy] = useTransition();
   const input = useRef<HTMLInputElement>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -104,6 +106,12 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
     return () => cancelAnimationFrame(frame);
   }, [mode, scope, query, pills]);
 
+  // Mode serveur : la page rend elle-même « Aucun résultat » (NoResults) ; son bouton remplace celui du champ.
+  useEffect(() => {
+    if (mode !== "server") return;
+    const frame = requestAnimationFrame(() => setServerNone(!!document.querySelector('[data-testid="live-search-none"][data-server]')));
+    return () => cancelAnimationFrame(frame);
+  }, [mode, busy, query, initialQuery]);
   useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
@@ -136,7 +144,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
   const count = counts && countLabel && (query || Object.values(pills).some((v) => v !== "all")) ? countLabel.replace("{shown}", String(counts.shown)).replace("{total}", String(counts.total)) : "";
   return (
     <div className={`space-y-3 ${className}`} data-live-search={scope}>
-      <SearchField value={query} onChange={change} onClear={clear} placeholder={placeholder} clearLabel={clearLabel} busy={busy} inputRef={input} />
+      <SearchField value={query} onChange={change} onClear={clear} placeholder={placeholder} clearLabel={clearLabel} busy={busy} inputRef={input} hideClear={none || serverNone} />
       {filters.map((f) => (
         <Pills key={f.key} pillKey={f.key} label={f.allLabel} allLabel={f.allLabel} options={f.options} value={pills[f.key] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [f.key]: v }))} />
       ))}
@@ -154,7 +162,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
 /** Le message « Aucun résultat » d'une liste paginée par le serveur (mode `server`) : une phrase, puis « Effacer la recherche » (un lien, qui marche aussi sans JavaScript). */
 export function NoResults({ message, clearLabel, href }: { message: string; clearLabel: string; href: string }) {
   return (
-    <div role="status" className={`${ui.card} space-y-3 text-[15px]`} data-testid="live-search-none">
+    <div role="status" className={`${ui.card} space-y-3 text-[15px]`} data-testid="live-search-none" data-server="">
       <p className="font-medium">{message}</p>
       <a href={href} className={`${ui.btn} min-h-11`}>{clearLabel}</a>
     </div>

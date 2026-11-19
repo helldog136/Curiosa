@@ -10,10 +10,15 @@ export function isSafeExternalUrl(value: string | null | undefined): value is st
   }
 }
 
-/** Lien affichable : externe valide, ou chemin interne ("/page"). Sinon "#". */
+/**
+ * A link that may be rendered: a valid external address, an internal path ("/page"), or a relative address made only of a query of the current page
+ * ("?edit=app", "?status=open": the buttons and filter chips of modules). Anything else becomes "#". A bare query cannot lead anywhere but the current
+ * page, so only control characters and the backslash (read as "/" by some browsers) are refused.
+ */
 export function safeHref(value: string | null | undefined): string {
   if (!value) return "#";
   if (value.startsWith("/") && !value.startsWith("//")) return value;
+  if (value.startsWith("?") && !/[\u0000-\u001f\u007f\\]/.test(value)) return value;
   return isSafeExternalUrl(value) ? value : "#";
 }
 

@@ -302,3 +302,11 @@ test("the places code names no module", () => {
     for (const id of ids) assert.ok(!new RegExp(`["'\`]${id}["'\`]`).test(code), `${f} names ${id}`);
   }
 });
+
+test("a page with no vocabulary entry and ONE contributing module takes that module's own name in the site language (menu stays French without the catalogue)", () => {
+  const bare = P.BUILTIN_VOCABULARY;
+  const one = P.buildPlaceIndex(contrib("faq-like", [sec("main", "content.faq-like")], { name: "Questions fréquentes" }), bare, "fr");
+  assert.equal(one.groups[0].pages[0].title, "Questions fréquentes");
+  const two = P.buildPlaceIndex([...contrib("a-mod", [sec("main", "content.shared")], { name: "Un" }), ...contrib("b-mod", [sec("main", "content.shared")], { name: "Deux" })], bare, "fr");
+  assert.equal(two.groups[0].pages[0].title, "Shared", "several modules: nothing to prefer, the derived title stays");
+});

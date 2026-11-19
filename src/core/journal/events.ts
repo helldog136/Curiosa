@@ -160,14 +160,22 @@ export function actorKindOf(actor: string): ActorKind {
 }
 
 /** La phrase d'un événement : le libellé de la langue demandée (sinon celle du site, puis l'anglais), `{champ}` remplacé par la valeur. */
-export function renderEvent(decl: Pick<LogEventDecl, "label">, data: Record<string, string | number | boolean>, opts: { locale: string; defaultLocale: string; yes: string; no: string }): string {
+export function renderEvent(decl: Pick<LogEventDecl, "label">, data: Record<string, string | number | boolean>, opts: { locale: string; defaultLocale: string; yes: string; no: string; /** Plain words for a value that is an internal state code (see `STATE_CODES`); undefined: show the value as is. */ code?: (value: string) => string | undefined }): string {
   const label = pickText(decl.label, opts.locale, opts.defaultLocale);
   return label.replace(PLACEHOLDER_RE, (_all, name: string) => {
     const v = data[name];
     if (v === undefined) return "—";
+    if (typeof v === "string" && opts.code) { const plain = opts.code(v); if (plain) return plain; }
     return typeof v === "boolean" ? (v ? opts.yes : opts.no) : String(v);
   });
 }
 
 /** Normalise ce que le manifeste a déclaré (zod garantit la forme) en liste d'événements utilisables. */
 export const eventsOf = (manifest: { logEvents?: readonly LogEventDecl[] | null } | null | undefined): LogEventDecl[] => [...(manifest?.logEvents ?? [])];
+
+/**
+ * Internal state codes that modules write into their log lines (`creds_missing`, `need_reconnect`…). A value equal to one of them is shown with the plain
+ * words `journal.code.<code>` (EN + FR) instead of the code (R9, R33.2). Generic wording: it names no service.
+ */
+export const STATE_CODES = ["creds_missing", "need_connect", "need_reconnect", "need_more", "no_channel", "channel_unknown", "site_private", "refused", "twitch_down", "twitch_busy", "slow", "revoked", "listening", "off", "ready"] as const;
+export const isStateCode = (v: string): v is (typeof STATE_CODES)[number] => (STATE_CODES as readonly string[]).includes(v);

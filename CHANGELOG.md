@@ -7,6 +7,35 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.40.1 — 2026-11-19
+
+**En bref.** Les boutons et pastilles dont l'adresse commence par « ? » (enregistrer l'application Twitch, filtres, « Ajouter… ») refonctionnent. Le menu reste en français sans catalogue, et plusieurs textes en double ou trop techniques disparaissent.
+
+**In short.** Buttons and chips whose address starts with "?" (register the Twitch application, filters, "Add…") work again. The menu stays in French without the catalogue, and several duplicated or too technical texts are gone.
+
+### Corrections
+
+- **Les boutons de modules qui ouvrent une fenêtre ou filtrent une liste ne restaient plus sans effet.** « Enregistrer l'application », les pastilles de filtre et les liens « Ajouter… » ne faisaient rien : ils fonctionnent.
+- **(English) Module buttons that open a window or filter a list did nothing.** "Register the application", the filter chips and the "Add…" links work again.
+- **« Il reste à renseigner » ne le dit plus qu'une fois.** L'encadré n'apparaît plus à côté d'une carte de connexion qui dit déjà l'état, ni pour un seul champ déjà signalé, et il n'est plus répété dans chaque onglet. Une chaîne reprise d'un autre module n'est plus signalée « à remplir ».
+- **(English) "Still to fill in" says it only once.** The box no longer appears next to a connection card that already gives the state, nor for a single field already flagged, and it is no longer repeated in every tab. A channel carried over from another module is no longer flagged "to fill".
+- **« Ce qui s'est passé » est lisible.** Les codes internes (comme « creds_missing ») sont écrits en clair, et les lignes qui ne diffèrent que par leur objet n'en font qu'une, suivie de « et 9 semblables ».
+- **(English) "What happened" is readable.** Internal codes (such as "creds_missing") are written in plain words, and lines that differ only by what they are about make one line followed by "and 9 similar".
+- **Les envois des assistants ne montrent plus de bouton plein sans raison.** Le réglage des limites est replié avec le décompte en résumé ; « Repartir de zéro » n'apparaît que s'il y a quelque chose à remettre à zéro.
+- **(English) Assistant uploads no longer show a filled button for no reason.** The limits are folded with the count as summary; "Start over" appears only when there is something to reset.
+- **Le menu reste en français quand le catalogue est injoignable.** Une page rangée par une seule extension prend le nom français de l'extension (« Annuaire », « Questions fréquentes ») au lieu de son identifiant.
+- **(English) The menu keeps the site language when the catalogue is unreachable.** A page filled by a single extension takes the extension's own name in the site language instead of its identifier.
+- **La restauration est plus claire.** Un seul avertissement, qui dit ce qui est remplacé, sans majuscules ; les nombres s'accordent (« 1 entrée », « 12 entrées »).
+- **(English) Restoring is clearer.** One warning that says what is replaced, without capitals; counts agree ("1 entry", "12 entries").
+- **La recherche n'affiche plus deux fois « Effacer la recherche »,** et la croix du navigateur ne recouvre plus le bouton du champ.
+- **(English) Search no longer shows "Clear search" twice,** and the browser's own cross no longer overlaps the field's button.
+
+### Pour les développeurs
+
+- `safeHref` (`src/core/url.ts`) accepte une adresse réduite à une requête (`?edit=app`), comme `safeTarget` de la carte de connexion ; `javascript:`, `//hôte`, `data:` et les caractères de contrôle restent refusés.
+- `missingSettings` ne change pas : c'est `InstanceView` qui n'affiche ni l'encadré ni le marquage « à remplir » quand le panneau du module contient une carte `connection`. Un module qui garde une valeur hors de ses réglages (la chaîne reprise de `twitch-channel`) doit la déclarer par une carte.
+- `groupSimilar` (`dashboard/activity.ts`), `STATE_CODES` et les textes `journal.code.*` (`journal/events.ts`) ; `SearchField` prend `hideClear`.
+
 ## 0.40.0 — 2026-11-19
 
 **En bref.** Un skin d'overlay peut maintenant dessiner une barre avec ses propres images : la lanterne qui avance, les pétales d'un palier. Le cœur ne fournit que la barre abstraite ; les skins existants et les extensions n'ont rien à changer.

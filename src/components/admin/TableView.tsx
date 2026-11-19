@@ -107,7 +107,7 @@ export function TableView({ block, instanceId, entry, labels, parts, server }: {
     <div className="space-y-3" data-admin-table="" ref={top}>
       {(block.searchable || filters.length > 0) && (
         <div className="space-y-3">
-          {block.searchable && <SearchField value={query} onChange={server ? type : setQuery} onClear={clear} busy={busy} placeholder={block.searchPlaceholder ?? labels.search} clearLabel={labels.clear} />}
+          {block.searchable && <SearchField value={query} onChange={server ? type : setQuery} onClear={clear} busy={busy} placeholder={block.searchPlaceholder ?? labels.search} clearLabel={labels.clear} hideClear={shown.length === 0} />}
           {filters.map((f, i) => (
             <Pills key={i} pillKey={`f${i}`} label={block.columns[f.column] ?? ""} allLabel={f.allLabel ?? labels.all} value={pills[`f${i}`] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [`f${i}`]: v }))}
               options={pillOptions(rows.map((r) => r.cells[f.column]?.text ?? "")).map((o) => ({ value: o.value, label: o.value, count: o.count }))} />
