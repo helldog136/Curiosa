@@ -69,7 +69,7 @@ async function fetchGitSource(row: Module): Promise<Source> {
     const checkout = path.join(tmp, "repo");
     await git(["init", "-q", checkout]);
     await git(["remote", "add", "origin", row.repoUrl!], checkout);
-    await git(["fetch", "-q", "--depth", "1", "origin", ref || "HEAD"], checkout).catch((e) => {
+    await git(["fetch", "-q", "--depth", "1", "--", "origin", ref || "HEAD"], checkout).catch((e) => {
       if (ref && isCommitRef(ref)) return git(["fetch", "-q", "origin"], checkout);
       throw e;
     });

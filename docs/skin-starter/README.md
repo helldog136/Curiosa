@@ -17,7 +17,7 @@ Point de départ pour créer un skin (l'apparence d'un site Curiosa) dans **votr
 
 ## Essayer en 3 commandes
 
-Il faut Node 22, git et le cœur de Curiosa à côté de ce dépôt (il ne sert qu'à tester, vous ne lancez pas de site) :
+Il faut Node 24, git et le cœur de Curiosa à côté de ce dépôt (il ne sert qu'à tester, vous ne lancez pas de site) :
 
 ```bash
 git clone --depth 1 https://github.com/helldog136/Curiosa ../Curiosa

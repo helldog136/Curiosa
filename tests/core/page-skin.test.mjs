@@ -125,6 +125,29 @@ test("a page with its own skin: the other skin's sheet and customization only, t
   assert.match(page.sheet, /--sk-cz-banner:#5e1414/i, "the owner's saved customization of that skin applies");
 });
 
+test("customization never crosses skins: a page wearing a skin gets ITS OWN customization, or none, never the site skin's values", async () => {
+  await install("duo");
+  await install("customizable");
+  const d = await definitionOf("customizable");
+  await C.saveCustom({ id: d.id, version: d.version, customize: d.customize }, { values: { banner: "crimson" } });
+  // site skin is the customized one; the page wears "duo", which declares no customization: no --sk-cz-* variable at all, none of the site's values
+  await setSetting("skin.active", "customizable");
+  const config = await getSiteConfig();
+  const site = await resolveLook(config);
+  assert.match(site.sheet, /--sk-cz-banner:#5e1414/i, "the site skin keeps its customization");
+  const page = await resolveLook(config, { pageSkinId: "duo" });
+  assert.equal(page.composed.skinId, "duo");
+  assert.ok(!/--sk-cz-/.test(page.sheet), "a skin without customization gets no customization variable");
+  assert.ok(!/5e1414/i.test(page.sheet), "the site skin's chosen colour does not leak into the page");
+  // reverse: site wears "duo"; the page wears the customized skin and gets its own saved values (covered above), and a different saved value changes only that page
+  await setSetting("skin.active", "duo");
+  const siteDuo = await resolveLook(config);
+  assert.ok(!/--sk-cz-/.test(siteDuo.sheet), "the site skin has none either");
+  const other = await resolveLook(config, { pageSkinId: "customizable" });
+  assert.match(other.sheet, /--sk-cz-banner:#5e1414/i);
+  assert.ok(!/--sk-cz-/.test((await resolveLook(config)).sheet), "and the site's pages stay free of it");
+});
+
 test("light and dark follow the visitor: a two-mode page skin keeps the switch and both modes in the sheet", async () => {
   await install("duo");
   await install("customizable");

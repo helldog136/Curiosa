@@ -102,7 +102,7 @@ Rien n'est compilé chez vous : on installe une **release** déjà compilée (pu
 **Il faut :**
 
 - un serveur Linux **x64** (testé sur Ubuntu 20.04 et plus récent ; Debian aussi) ;
-- **Node.js 20.9 ou plus** (`node -v`) et `git` (utilisé seulement pour installer des modules depuis le catalogue ou un dépôt) ;
+- **Node.js 24** (`node -v` ; 22.12 ou plus fonctionne aussi) et `git` (utilisé seulement pour installer des modules depuis le catalogue ou un dépôt) ;
 - un nom de domaine qui pointe vers le serveur, et un proxy HTTPS devant le site (nginx, Caddy…) ;
 - un accès administrateur (`sudo`).
 

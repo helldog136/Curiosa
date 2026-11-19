@@ -16,6 +16,9 @@ import { repoAddress } from "@/core/skins/source";
 import { BASIC_ID } from "@/core/skins/constants";
 import { addUpload, removeUpload, type UploadErrorCode } from "@/core/fonts/uploads";
 import { UPLOAD_LIMITS } from "@/core/fonts/types";
+import { accessState, type AccessState } from "@/core/gitAccess";
+import { saveAccessCode } from "@/core/gitAccessAdmin";
+import { parseSkinRepoUrl } from "@/core/skins/source";
 
 /**
  * Actions de la page Apparence. Choisir, retoucher, revenir au skin, annuler : « admin » (comme les réglages). Ajouter, mettre à jour, retirer un skin,
@@ -109,16 +112,26 @@ export type InspectView = {
   previews?: { alt: string; dataUrl: string; mode?: string }[];
   issues?: string[]; unreadable?: string[];
   candidates?: { subdir: string; id: string; name: string }[];
-} | { ok: false; error: string };
+  /** (0.42.0) What is saved for this repository: none, configured, or to enter again. Never the code. */
+  access?: AccessState;
+} | { ok: false; error: string; /** The access code field is needed (private repository, or an address or code to check). */ needsCode?: boolean; field?: "url" | "code"; access?: AccessState };
 
 /** Lit un dépôt SANS rien installer : README, licences, aperçus, contrôle de lisibilité. */
-export async function inspectSkinAction(url: string): Promise<InspectView> {
-  const { t, locale } = await adminCtx({ right: "core:modules.install" });
+export async function inspectSkinAction(url: string, code?: string): Promise<InspectView> {
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const text = (x: { fr: string; en: string }) => (locale === "fr" ? x.fr : x.en);
-  const r = await skins.inspect(String(url).slice(0, 400));
-  if (!r.ok) return { ok: false, error: await failureText(r, t, locale) };
+  const address = String(url).slice(0, 400);
+  const parsed = parseSkinRepoUrl(address);
+  // (0.42.0) An access code pasted with the address is tried against the repository and stored sealed ONLY if it works; it is never sent back.
+  if (parsed.ok && code && code.trim()) {
+    const saved = await saveAccessCode(parsed.repo.url, String(code).slice(0, 400), user.email);
+    if (!saved.ok) return { ok: false, error: t(`access.error.${saved.error}`), field: "code", needsCode: saved.error !== "address", access: await accessState(parsed.repo.url) };
+  }
+  const access = parsed.ok ? await accessState(parsed.repo.url) : undefined;
+  const r = await skins.inspect(address);
+  if (!r.ok) return { ok: false, error: await failureText(r, t, locale), field: "url", ...(r.error === "skins.error.access" ? { needsCode: true } : {}), ...(access ? { access } : {}) };
   if (!r.summary) {
-    return { ok: true, mode: "candidates", url, origin: r.origin, compatible: true, installable: false, candidates: r.candidates.map((c) => ({ subdir: c.subdir, id: c.id, name: text(c.name) })) };
+    return { ok: true, mode: "candidates", url, origin: r.origin, compatible: true, installable: false, candidates: r.candidates.map((c) => ({ subdir: c.subdir, id: c.id, name: text(c.name) })), ...(access ? { access } : {}) };
   }
   const s = r.summary;
   return {
@@ -129,6 +142,7 @@ export async function inspectSkinAction(url: string): Promise<InspectView> {
     previews: s.previews.map((p) => ({ alt: text(p.alt), dataUrl: p.dataUrl, mode: p.mode })),
     issues: r.issues.map((i) => text(i.message)),
     unreadable: r.readability.filter((i) => i.severity === "error").map((i) => text(i.message)),
+    ...(access ? { access } : {}),
   };
 }
 
@@ -149,12 +163,12 @@ export async function installPersonalAction(_prev: ActionState, fd: FormData): P
   return { ok: t("appearance.installedOk") };
 }
 
-export type UpdateView = { ok: true; available: boolean; target?: string; level?: string; needsCore?: string; failed?: boolean } | { ok: false; error: string };
+export type UpdateView = { ok: true; available: boolean; target?: string; level?: string; needsCore?: string; failed?: boolean; access?: boolean } | { ok: false; error: string };
 
 export async function checkUpdateAction(id: string): Promise<UpdateView> {
   await adminCtx({ right: "core:modules.install" });
   const c = await skins.checkUpdate(String(id), { fresh: true });
-  return { ok: true, available: c.available, target: c.target, level: c.level ?? undefined, needsCore: c.needsCore, failed: c.failed };
+  return { ok: true, available: c.available, target: c.target, level: c.level ?? undefined, needsCore: c.needsCore, failed: c.failed, ...(c.access ? { access: true } : {}) };
 }
 
 export async function updateSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {

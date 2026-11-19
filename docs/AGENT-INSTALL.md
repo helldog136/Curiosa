@@ -145,10 +145,10 @@ sudo bash install.sh --site monsite --domain monsite.example.org --user monsite-
 
 ### Ce que fait le script, dans l'ordre
 
-1. **Regarde** (sans rien modifier) : droits administrateur, processeur x86_64 (sinon **s'arrête ici**, avec l'explication), système, systemd, mémoire, outils (curl, git, tar, sha256sum, openssl), Node.js 20.9+, serveur web présent, pare-feu ufw.
+1. **Regarde** (sans rien modifier) : droits administrateur, processeur x86_64 (sinon **s'arrête ici**, avec l'explication), système, systemd, mémoire, outils (curl, git, tar, sha256sum, openssl), Node.js 22.12+ ou 24, serveur web présent, pare-feu ufw.
 2. **Pose les trois questions**, vérifie qu'un dossier existant n'est pas écrasé (refus s'il n'est pas vide et pas à lui), choisit un **port libre à partir de 3000** sans toucher à l'occupant, vérifie l'espace disque et que le **DNS** pointe vers ce serveur.
 3. **Cherche la dernière release stable**, annonce le plan, demande les accords (installer Node.js, Caddy, ouvrir 80/443). `--dry-run` s'arrête ici.
-4. **Installe** : outils et Node.js 22 si absents (Ubuntu/Debian), téléchargement de l'archive **dans un dossier provisoire** et vérification du **SHA-256** (rien n'est déplié si elle ne correspond pas), création de l'utilisateur système (home = dossier d'installation, sans droits d'administration), `.env` privé (`SITE_URL` en `https://…` sans `/` final, `CURIOSA_SUPERVISED=1`, code d'installation aléatoire **jamais affiché**), création de la base de données, service systemd (chemin absolu de `node` + `next start`, jamais `npx`, à l'écoute en local seulement), démarrage.
+4. **Installe** : outils et Node.js 24 si absents (Ubuntu/Debian), téléchargement de l'archive **dans un dossier provisoire** et vérification du **SHA-256** (rien n'est déplié si elle ne correspond pas), création de l'utilisateur système (home = dossier d'installation, sans droits d'administration), `.env` privé (`SITE_URL` en `https://…` sans `/` final, `CURIOSA_SUPERVISED=1`, code d'installation aléatoire **jamais affiché**), création de la base de données, service systemd (chemin absolu de `node` + `next start`, jamais `npx`, à l'écoute en local seulement), démarrage.
 5. **Met le site en HTTPS** : serveur web existant -> y **ajoute** un site (nginx : sauvegarde de l'ancienne configuration, `nginx -t` avant rechargement, retour arrière si le test échoue ; Caddy et Apache de même) ; sinon installe **Caddy**, qui obtient le certificat tout seul. Ouvre 80/443 dans ufw si actif et si vous êtes d'accord.
 6. **Vérifie** : HTTP 200 sur `/admin/setup` en local, puis via le domaine. Affiche **une page de fin** : l'adresse à ouvrir et la commande pour lire le code d'installation.
 
@@ -230,7 +230,7 @@ ls -la /var/www 2>/dev/null                # dossiers existants (ne pas écraser
 | Constat | Conséquence |
 |---|---|
 | Architecture ≠ `x86_64` | Pas d'archive prête : s'arrêter et le dire (ARM non publié pour l'instant). |
-| Node < 20.9 ou absent | Installer Node 20+ (gestionnaire de paquets de la distribution, NodeSource, ou `nvm` pour l'utilisateur du site) avant de continuer. |
+| Node < 22.12 ou absent | Installer Node 24 (gestionnaire de paquets de la distribution, NodeSource, ou `nvm` pour l'utilisateur du site) avant de continuer. |
 | Pas de systemd | Utiliser un autre superviseur (pm2, Docker `restart:`) ; garder `CURIOSA_SUPERVISED=1`. |
 | Port 3000 occupé | Prendre un port libre (3001…) et l'utiliser partout (service + proxy). Ne pas toucher à l'autre processus. |
 | nginx/Apache/Caddy déjà présent | **Ajouter** un site ; ne pas remplacer la configuration des autres. Lire la configuration existante du domaine avant de la modifier, en garder une copie, tester (`nginx -t`) avant de recharger. |

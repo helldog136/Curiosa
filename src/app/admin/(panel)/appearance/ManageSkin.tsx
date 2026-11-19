@@ -4,13 +4,15 @@ import { APPEARANCE_HREF } from "@/core/adminLinks";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ActionForm, type ActionState } from "@/components/admin/ActionForm";
+import { AccessSummary, ACCESS_LABEL_KEYS } from "@/components/admin/PrivateAccess";
+import type { AccessState } from "@/core/gitAccess";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import { useAL } from "./AppearanceLabels";
 import { BigCheckbox } from "./Controls";
 import { checkUpdateAction, removeSkinAction, revertSkinAction, updateSkinAction, type UpdateView } from "./actions";
 
-export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** Pictures the owner uploaded for this skin (kept when it is removed unless asked). */ pictures?: number };
+export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** (0.42.0) Private repository: its address and what is saved for it (never the code). */ repo?: string; access?: AccessState; /** Pictures the owner uploaded for this skin (kept when it is removed unless asked). */ pictures?: number };
 
 /** Mises à jour (avec retour arrière), retrait : par skin installé, dans une zone repliée. Retirer ne change JAMAIS le contenu du site. */
 export function ManageSkin({ skin }: { skin: ManagedSkin }) {
@@ -37,10 +39,12 @@ export function ManageSkin({ skin }: { skin: ManagedSkin }) {
         <section className="space-y-2" aria-label={al("appearance.update.title")}>
           <h4 className="text-sm font-semibold">{al("appearance.update.title")}</h4>
           <PendingButton type="button" variant="btn" pending={busy} pendingLabel={al("appearance.update.checking")} onClick={check}>{al("appearance.update.check")}</PendingButton>
+          {skin.repo && skin.access && <AccessSummary url={skin.repo} access={skin.access} labels={Object.fromEntries(ACCESS_LABEL_KEYS.map((k) => [k, al(k)]))} onChanged={() => router.refresh()} />}
           {result && !result.ok && <p role="alert" className="text-sm text-red-700">{result.error}</p>}
           {result?.ok && (
             <div role="status" className="space-y-2 text-sm" data-testid="update-result">
-              {result.failed ? <p>{al("appearance.update.failed")}</p>
+              {result.access ? <p>{al("appearance.update.access")}</p>
+                : result.failed ? <p>{al("appearance.update.failed")}</p>
                 : result.needsCore ? <p>{al("appearance.update.needsCore", { version: result.needsCore })}</p>
                 : result.available ? <p>{al("appearance.update.available", { version: result.target ?? "" })}</p>
                 : <p>{al("appearance.update.none")}</p>}

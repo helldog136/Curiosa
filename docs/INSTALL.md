@@ -5,7 +5,7 @@ dépend d'un site en particulier : tout ce qui vous est propre (nom, textes, mod
 
 ## Ce qu'il faut
 
-- Un serveur **Linux (x64)** avec **Node.js 22** (22.12+ ; 20.19+ et 24 fonctionnent aussi) et **git** (git sert seulement à installer des modules depuis le catalogue ou un dépôt). **Aucun compilateur** : les releases sont déjà compilées.
+- Un serveur **Linux (x64)** avec **Node.js 24** (22.12+ fonctionne aussi ; Node.js 20 n'est plus maintenu depuis le 30 avril 2026 : voir [NODE-MIGRATION.md](NODE-MIGRATION.md) pour un site existant) et **git** (git sert seulement à installer des modules depuis le catalogue ou un dépôt). **Aucun compilateur** : les releases sont déjà compilées.
 - Un nom de domaine et un proxy HTTPS devant le site (nginx, Caddy…). Le framework écoute en HTTP sur un port local.
 - Un utilisateur système dédié (sans droits d'administration) qui possède le dossier d'installation.
 

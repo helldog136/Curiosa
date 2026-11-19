@@ -21,9 +21,11 @@ const repo = path.resolve(import.meta.dirname, "..");
 const runRoot = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-tests-"));
 const patterns = process.argv.length > 2 ? process.argv.slice(2) : ["tests/**/*.test.mjs"];
 
+// CURIOSA_TEST_REPORTER=tap : the TAP report (Node.js 24 prints the "spec" report when the output is not a terminal); used by the tests that read the totals.
+const reporter = process.env.CURIOSA_TEST_REPORTER ? [`--test-reporter=${process.env.CURIOSA_TEST_REPORTER}`] : [];
 const child = spawn(
   process.execPath,
-  ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "--test", "--test-concurrency=6", ...patterns],
+  ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--import", "./tests/helpers/register.mjs", "--test", "--test-concurrency=6", ...reporter, ...patterns],
   { cwd: repo, stdio: "inherit", env: { ...process.env, TMPDIR: runRoot, TMP: runRoot, TEMP: runRoot } },
 );
 for (const sig of ["SIGINT", "SIGTERM"]) process.on(sig, () => child.kill(sig));

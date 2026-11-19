@@ -15,7 +15,7 @@ const [mode = "shots", ...rest] = process.argv.slice(2);
 const T0 = 1_800_000_000_000;
 
 function recipes(files) {
-  const list = files.length ? files : ["tests/fixtures/animate/stained-glass.json", "tests/fixtures/animate/night-neon.json"];
+  const list = files.length ? files : ["tests/fixtures/animate/mosaic-sample.json", "tests/fixtures/animate/night-neon.json"];
   return [{ name: "basic", recipe: null }, ...list.map((f) => ({ name: path.basename(f, ".json"), recipe: JSON.parse(fs.readFileSync(f, "utf8")) }))];
 }
 /** The scenes: a follower goal, a subathon time gauge, a hype train, a session counter; highlights placed around T0. */

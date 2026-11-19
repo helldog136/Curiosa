@@ -33,7 +33,7 @@ Le rapport est écrit dans `<candidate>/compare/` : `rapport.txt`, `rapport.html
 
 ## Prérequis
 
-- Node 22 ; le cœur construit (`npm run build`) dans le dossier où vous lancez les commandes : **le code testé est toujours celui du dépôt qui contient ce harnais**.
+- Node 24 ; le cœur construit (`npm run build`) dans le dossier où vous lancez les commandes : **le code testé est toujours celui du dépôt qui contient ce harnais**.
 - Chromium de Playwright (`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers`, exécutable `/opt/pw-browsers/chromium`, variable `CHROMIUM_PATH` pour un autre) et le module `playwright` (cherché dans `PLAYWRIGHT_MODULE`, le dossier courant, `/opt/node-tools`, `/opt/node22/lib/node_modules` : Playwright n'est **pas** une dépendance du cœur).
 - Le dépôt des modules (`curiosa-extras`) : cloné automatiquement dans `/dev/shm/visual/extras` par `visual:prepare` (variables `VISUAL_EXTRAS`, `VISUAL_EXTRAS_URL`, `VISUAL_EXTRAS_REF` pour épingler un commit). Le commit utilisé est noté dans l'instantané.
 - Ports **3480 à 3489** (un par profil, un serveur à la fois). Variables : `VISUAL_ROOT` (dossier de travail, `/dev/shm/visual`), `VISUAL_PORT_BASE`.
