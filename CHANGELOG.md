@@ -27,6 +27,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - Chaque instance garde la liste des fonctions de contenu déjà vues (`instance.<id>.__seenFeatures`, sans migration de schéma) ; `adoptModuleFeatures` (appelé par `migrateModuleInstances` et au démarrage) ajoute celles que le manifeste déclare et que l'instance n'a pas vues. Rattrapage unique : sans liste, tout est vu sauf `skin`. La révision de reconnexion MCP inclut ces fonctions.
 - **(English)** Each instance keeps the list of content features it has seen (`instance.<id>.__seenFeatures`, no schema migration); `adoptModuleFeatures` (called by `migrateModuleInstances` and at start-up) adds those the manifest declares and the instance has not seen. One-time catch-up: with no list, everything counts as seen except `skin`. The MCP reconnect revision now includes each instance's features.
+- Une version corrigée de `effect` est imposée pour l'outil Prisma (alerte de sécurité).
+- **(English)** A patched `effect` is pinned for the Prisma CLI (security advisory).
 
 ## 0.45.0 — 2026-11-20
 
