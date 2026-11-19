@@ -15,6 +15,8 @@ export type NewEntry = {
   status?: "draft" | "published";
   cover?: string | null;
   icon?: string | null;
+  /** (0.45.0) Installed site skin id, already checked by the caller (checkPageSkin); null = the site skin. */
+  skin?: string | null;
   url?: string | null;
   code?: string | null;
   expiresAt?: Date | null;
@@ -35,6 +37,7 @@ export async function createEntry(db: Db, input: NewEntry) {
       publishedAt: status === "published" ? new Date() : null,
       cover: input.cover ?? null,
       icon: input.icon ?? null,
+      skin: input.skin ?? null,
       url: input.url ?? null,
       code: input.code ?? null,
       expiresAt: input.expiresAt ?? null,

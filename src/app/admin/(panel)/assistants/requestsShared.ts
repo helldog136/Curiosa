@@ -18,7 +18,7 @@ export function describeRequest(r: MaintenanceRequest, t: Translator, name: (id:
   }
   if (r.action === "entry_publish" || r.action === "entry_unpublish") {
     const items = p.entry?.items ?? [];
-    return t(`aim.req.${r.action}`, { n: items.length, list: items.map((i) => `“${i.title || i.id}”`).join(", "), instance: p.entry?.instance ?? "?" });
+    return t(`aim.req.${r.action}`, { n: items.length, list: items.map((i) => `“${i.title || i.id}”${i.skin ? ` (${t("aim.req.entry_skin", { skin: i.skin })})` : ""}`).join(", "), instance: p.entry?.instance ?? "?" });
   }
   if ((r.action === "navigation_set" || r.action === "home_sections_set") && p.change) {
     const c = p.change.summary;

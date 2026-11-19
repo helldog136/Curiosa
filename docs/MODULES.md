@@ -766,7 +766,7 @@ See [TRANSLATING.md](TRANSLATING.md) to add a language.
 |---|---|
 | `display` | Présentation de la liste publique : `cards`, `list`, `links`, `codes`. |
 | `clickAction` | `detail` (page de l'entrée) ou `external` (lien sortant). |
-| `features` | Champs proposés par l'éditeur : `cover`, `icon`, `summary`, `body`, `url`, `code`, `expiresAt`, `featured`, `tags`. |
+| `features` | Champs proposés par l'éditeur : `cover`, `icon`, `summary`, `body`, `url`, `code`, `expiresAt`, `featured`, `tags`, and (core 0.45.0, `"minCore": "0.45.0"`) `skin`: "Skin for this page", a select in the entry editor's "Options", drawn only when more than one site skin is installed; see [PAGE-SKIN.md](PAGE-SKIN.md). |
 | `fieldSchema` | Champs personnalisés (20 au plus) : `{ key, label, type, topic? }`, `type` ∈ `text`, `url`, `number`, `boolean`, `ref` (référence vers un sujet, voir plus bas). |
 | `allowGoLinks` | Active les liens courts `/go/<instance>/<entrée>`. |
 | `fallbackToDefault` | Retomber sur la langue par défaut quand une entrée n'est pas traduite. |

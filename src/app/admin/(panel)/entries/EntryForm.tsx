@@ -16,6 +16,8 @@ export type EntryFormData = {
   status: string;
   cover: string | null;
   icon: string | null;
+  /** (0.45.0) Stored skin id of this page, or null (the site skin). */
+  skin?: string | null;
   url: string | null;
   code: string | null;
   featured: boolean;
@@ -37,6 +39,8 @@ type Props = {
   refOptions?: Record<string, { value: string; label: string }[]>;
   /** Langue de l'administration (pour le nom du skin dans l'aperçu). */
   adminLocale?: string;
+  /** (0.45.0) The installed site skins the page may ask for; EMPTY (or absent) unless more than one is installed: then the field is not drawn. */
+  pageSkins?: { id: string; name: string }[];
 };
 
 /**
@@ -44,14 +48,17 @@ type Props = {
  * publication. Tout le facultatif (résumé, icône, étiquettes, adresse…) est rangé dans « Options », qui s'ouvre d'office si une valeur y est déjà.
  * Une version par langue : on n'en demande qu'une, les autres s'ajoutent à la demande (jamais imposées).
  */
-export function EntryForm({ t, collection, locales, locale, data, advanced, refOptions = {}, adminLocale = "fr" }: Props) {
+export function EntryForm({ t, collection, locales, locale, data, advanced, refOptions = {}, adminLocale = "fr", pageSkins = [] }: Props) {
   const has = (f: string) => collection.features.includes(f as never);
   const current = data.translations.find((tr) => tr.locale === locale);
   const missing = locales.filter((l) => !data.translations.some((tr) => tr.locale === l));
+  // "Skin for this page": a rare option, so it lives in "Options" (folded), and only when there is something to choose (R7, R4).
+  const hasSkin = has("skin") && pageSkins.length >= 2;
+  const gone = hasSkin && !!data.skin && !pageSkins.some((k) => k.id === data.skin);
   const hasDetails = has("code") || has("url") || collection.fieldSchema.length > 0;
-  const hasOptions = has("summary") || has("icon") || has("expiresAt") || advanced;
+  const hasOptions = has("summary") || has("icon") || has("expiresAt") || hasSkin || advanced;
   const optionsFilled = Boolean(
-    (has("summary") && current?.summary) || (has("icon") && data.icon) || (has("expiresAt") && !has("code") && data.expiresAt) ||
+    (has("summary") && current?.summary) || (has("icon") && data.icon) || (hasSkin && data.skin) || (has("expiresAt") && !has("code") && data.expiresAt) ||
     (advanced && (data.tags || data.featured || data.publishedAt)),
   );
   const base = data.id ? entryHref(data.id) : entryNewHref(collection.key);
@@ -124,7 +131,7 @@ export function EntryForm({ t, collection, locales, locale, data, advanced, refO
         )}
 
         {/* Aperçu avec le skin du site : le titre et le texte en cours d'écriture (l'administration, elle, n'est jamais restylée). */}
-        {has("body") && <EntryPreviewBox t={t} locale={adminLocale} />}
+        {has("body") && <EntryPreviewBox t={t} locale={adminLocale} pageSkinIds={hasSkin ? pageSkins.map((k) => k.id) : []} />}
 
         {/* 4. L'image (la même pour toutes les langues). */}
         {has("cover") && (
@@ -166,6 +173,14 @@ export function EntryForm({ t, collection, locales, locale, data, advanced, refO
                 </div>
               )}
               {has("expiresAt") && !has("code") && <ExpiresField t={t} value={data.expiresAt} />}
+              {hasSkin && (
+                <div>
+                  {/* The marker says the field was on screen: a save without it never touches the stored skin. */}
+                  <input type="hidden" name="__skin" value="1" />
+                  <Select name="skin" label={t("field.pageSkin")} help={gone ? t("entries.pageSkinGone", { id: data.skin ?? "" }) : t("field.pageSkinHelp")} defaultValue={data.skin ?? ""}
+                    options={[{ value: "", label: t("entries.pageSkinSame") }, ...(gone ? [{ value: data.skin ?? "", label: t("entries.pageSkinRemoved", { id: data.skin ?? "" }) }] : []), ...pageSkins.map((k) => ({ value: k.id, label: k.name }))]} />
+                </div>
+              )}
               {advanced && has("tags") && <TextField name="tags" label={t("field.tags")} help={t("field.tagsHelp")} defaultValue={data.tags} />}
               {advanced && has("featured") && <Checkbox name="featured" label={t("field.featured")} defaultChecked={data.featured} />}
               {advanced && <TextField name="publishedAt" type="date" label={t("field.publishedAt")} help={t("field.publishedAtHelp")} defaultValue={data.publishedAt} />}
