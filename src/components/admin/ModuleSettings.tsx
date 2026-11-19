@@ -145,6 +145,8 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
     unreachable: t("choice.error.unreachable"),
   };
 
+  // Les causes déjà dites sur cette page (voir `choiceNode`, cas « none »).
+  const noneShown = new Set<string>();
   /** Un réglage « choix parmi » : sélecteur (2 options ou plus), sinon une ligne d'état ou une bannière actionnable. Jamais traduisible. */
   const choiceNode = (f: SettingField, label: string) => {
     const view = choices[f.key];
@@ -169,11 +171,16 @@ export function ModuleSettings({ t, locale, defaultLocale, locales, fields, allF
             <SuggestInstall instanceId={instanceId} service={view.service} min={view.min} reason={t("choice.suggestReason", { what: L(f.label) })} locale={locale} />
           </>, flag ? "warn" : "info");
         }
-        // « … créez-en d'abord un dans <lien vers l'instance qui gère ces éléments>. »
+        // « Créez-en un dans <lien vers l'instance qui gère ces éléments>. » Dite UNE fois par page et par cause : les autres sélecteurs vides pour la même cause
+        // n'affichent que leur état (« Aucun choix »), jamais la même consigne une seconde fois.
+        const cause = view.owner?.href ?? "";
+        const again = noneShown.has(cause);
+        noneShown.add(cause);
         const [before, after = ""] = t("choice.noneService", { owner: "\u0000" }).split("\u0000");
-        const text = view.owner
-          ? <p>{before}<a href={view.owner.href} className="font-medium underline">{view.owner.name}</a>{after}</p>
-          : <p>{t("choice.noneServiceNoOwner")}</p>;
+        const text = again ? <p className="text-muted">{t("choice.none")}</p>
+          : view.owner
+            ? <p>{before}<a href={view.owner.href} className="font-medium underline">{view.owner.name}</a>{after}</p>
+            : <p>{t("choice.noneServiceNoOwner")}</p>;
         if (!view.canCreate) return box(text, flag ? "warn" : "info");
         return <ChoicePicker instanceId={instanceId} fieldKey={f.key} name={id} label={label} help={help} flag={flag} initialValue="" initialLabel={null} emptyNote={text} canCreate optional={f.optional} strings={pickerStrings} />;
       }

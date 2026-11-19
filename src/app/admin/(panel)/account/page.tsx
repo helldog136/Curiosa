@@ -1,3 +1,4 @@
+import { HelpTip } from "@/components/admin/HelpTip";
 import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
 import { UI_LOCALES } from "@/core/i18n/dictionary";
@@ -54,8 +55,7 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
 
       <section id="security" className="space-y-4 scroll-mt-6" aria-label={t("account.securityTitle")} data-testid="security-section">
         <div>
-          <h2 className="text-xl font-semibold">{t("account.securityTitle")}</h2>
-          <p className="mt-1 text-sm leading-6 text-muted">{t("account.securityHelp")}</p>
+          <h2 className="flex items-center gap-1.5 text-xl font-semibold">{t("account.securityTitle")}<HelpTip help={t("account.securityHelp")} name={t("account.securityTitle")} always /></h2>
         </div>
       <TwoFactorPanel
         enabled={user.totp} remaining={remaining} enforced={enforced} needed={false}

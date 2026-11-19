@@ -194,7 +194,7 @@ test("vue « Par destination » : total, alias dessous, courbe accessible (texte
   const empty = renderToStaticMarkup(React.createElement(DestinationCurve, { series: Array.from({ length: 30 }, (_, i) => ({ day: `2026-06-${String(i + 1).padStart(2, "0")}`, hits: 0 })), labels: { alt: "a", table: "t", day: "d", hits: "h", none: "Aucun clic" }, format: fmt }));
   assert.match(empty, /Aucun clic/); assert.doesNotMatch(empty, /<svg/);
   const none = renderToStaticMarkup(React.createElement(DestinationList, { summary: { groups: [], linksRead: 0, linksTotal: 0, hidden: 0 }, t: makeTranslator("fr"), format: fmt }));
-  assert.match(none, /Aucun lien court pour l(?:'|&#x27;)instant/);
+  assert.match(none, /Aucun lien court : les totaux/);
   const cut = renderToStaticMarkup(React.createElement(DestinationList, { summary: { ...summary, linksRead: 200, linksTotal: 230, hidden: 3 }, t: makeTranslator("en"), format: fmt }));
   assert.match(cut, /Only the 200 most visited links \(out of 230\)/); assert.match(cut, /3 other destinations/);
 });

@@ -238,7 +238,7 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   assert.match(html, /data-testid="bg-layers"/);
   assert.match(html, /data-testid="visitor-switch"[\s\S]*Ce skin n&#x27;a qu&#x27;un seul mode/);
   assert.doesNotMatch(html, /name="palette" value="both"/, "basic n'a qu'un mode");
-  assert.match(html, /La liste des skins est injoignable pour le moment/, "catalogue injoignable : message simple, la page s'affiche");
+  assert.match(html, /La liste des skins est injoignable\./, "catalogue injoignable : message simple, la page s'affiche");
   assert.doesNotMatch(html, /\bappearance\.[a-z]+\.?[A-Za-z.]*|settings\.[a-z]+\.[a-z]+/, "aucune clé de traduction affichée telle quelle");
   assert.match(html, /data-testid="personal-repo"/, "le propriétaire voit l'ajout par adresse (replié)");
   assert.match(html, /<details[^>]*data-testid="personal-repo"/);
@@ -379,7 +379,7 @@ test("actions « Revenir au skin » et « Annuler » : réservées aux administr
   const r = await actions.resetSkinAction(null, f({ what: "reset" }));
   assert.match(r.ok, /valeurs du skin|skin's values/i);
   assert.equal((await db.prisma.setting.findUnique({ where: { key_locale: { key: "theme.accent", locale: "" } } })), null);
-  assert.match((await actions.resetSkinAction(null, f({ what: "reset" }))).ok, /Rien à remettre|Nothing to put back/);
+  assert.match((await actions.resetSkinAction(null, f({ what: "reset" }))).ok, /Aucune retouche à remettre|No adjustment to put back/);
   assert.ok((await actions.undoSkinAction(null, f({ what: "undo" }))).ok);
   assert.equal((await db.prisma.setting.findUnique({ where: { key_locale: { key: "theme.accent", locale: "" } } })) !== null, true, "annulé : la retouche est revenue");
   assert.ok((await actions.undoSkinAction(null, f({ what: "undo" }))).error, "plus rien à annuler : un message");

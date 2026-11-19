@@ -1,3 +1,4 @@
+import { HelpTip } from "@/components/admin/HelpTip";
 import { adminCtx } from "@/core/admin";
 import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -40,9 +41,7 @@ export default async function ContentHealthPage() {
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="health" />
       <PageHeader level={2} title={t("content.title")} intro={t("content.intro")} />
 
-      {verdict === "none" ? (
-        <Callout tone="info" role="status" testid="content-verdict-none">{t("content.verdict.none")}</Callout>
-      ) : verdict === "good" ? (
+      {verdict === "none" ? null : verdict === "good" ? (
         <p><span role="status" data-testid="content-verdict-good" className={ui.chipOk} title={t("content.verdict.goodHelp", { date: when(report?.doneAt ?? report?.at) })}>✔ {t("content.verdict.good")}</span></p>
       ) : (
         <Callout tone="info" role="status" testid="content-verdict-look"><strong>{t("content.verdict.look")}</strong> {t("content.verdict.lookHelp", { date: when(report?.doneAt ?? report?.at) })}</Callout>
@@ -58,10 +57,10 @@ export default async function ContentHealthPage() {
         <div className="flex flex-wrap items-start gap-4">
           {unfinished && <ContentCheckButton labels={labels} resume trackKey="content-check" />}
           <ContentCheckButton labels={labels} primary={!unfinished} trackKey={unfinished ? "content-check-new" : "content-check"} />
+          <HelpTip help={t(settings.checkLinks ? "content.run.help" : "content.run.helpNoLinks")} name={t("content.check.button")} always />
         </div>
         {unfinished && report?.progress && <p className="text-sm text-muted" data-testid="content-unfinished">{t("content.unfinished", { done: report.progress.done, total: report.progress.total })}</p>}
         {busy && !unfinished && <p className="text-sm text-muted">{t("content.runningElsewhere")}</p>}
-        <p className={ui.help}>{t(settings.checkLinks ? "content.run.help" : "content.run.helpNoLinks")}</p>
       </Panel>
 
 
@@ -114,14 +113,18 @@ export default async function ContentHealthPage() {
         </Panel>
       )}
 
+      {notChecked.length > 0 && (
       <Panel title={t("content.notChecked.title")} help={t("content.notChecked.help")} testid="content-not-checked">
         <ul className="list-disc space-y-1.5 pl-5 text-sm leading-6">
           {notChecked.map((n) => <li key={n.key}>{t(`content.nc.${n.key}`, n.vars)}</li>)}
         </ul>
       </Panel>
+      )}
 
+      {history.length > 0 && (
       <Panel title={t("content.history.title")} testid="content-history">
-        {history.length === 0 ? <p className="text-sm text-muted">{t("content.history.none")}</p> : (
+        {(
+
           <ul className="divide-y divide-line text-sm">
             {history.map((h) => (
               <li key={h.at} className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 py-2">
@@ -132,6 +135,7 @@ export default async function ContentHealthPage() {
           </ul>
         )}
       </Panel>
+      )}
 
       <Panel title={t("content.settings.title")} testid="content-settings">
         <ActionForm action={saveContentSettings} submitLabel={t("action.save")} pendingLabel={t("progress.saving")} secondary className="space-y-4">

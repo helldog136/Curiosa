@@ -1,5 +1,6 @@
 "use client";
 
+import { HelpTip } from "./HelpTip";
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { ui } from "./ui";
 import { createPasskey, passkeysSupported } from "./webauthn";
@@ -50,8 +51,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
 
   return (
     <section className={`${ui.card} space-y-4`} data-testid="passkeys-card">
-      <h3 className="text-lg font-semibold">{labels.title}</h3>
-      <p className="text-sm text-muted">{labels.help}</p>
+      <h3 className="flex items-center gap-1.5 text-lg font-semibold">{labels.title}<HelpTip help={labels.help} name={labels.title} always /></h3>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
       {list.length === 0 && <p className="text-sm text-muted">{labels.none}</p>}
       <ul className="space-y-2">

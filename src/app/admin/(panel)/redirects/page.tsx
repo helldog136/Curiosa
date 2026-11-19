@@ -220,11 +220,10 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
       </>}
 
       <section className={`${ui.card} space-y-3`} aria-labelledby="redirects-measure" data-testid="measure-card">
-        <h2 id="redirects-measure" className="text-lg font-semibold">{t("redirects.measure.title")}</h2>
+        <h2 id="redirects-measure" className={canChange ? "sr-only" : "text-lg font-semibold"}>{t("redirects.measure.title")}</h2>
         {canChange ? (
           <ActionForm action={saveMeasureLinks} submitLabel={t("action.save")} secondary className="space-y-3">
-            <p className="max-w-[70ch] text-[15px] leading-6 text-muted">{t("redirects.measure.help")}</p>
-            <Checkbox name="measureLinks" label={t("redirects.measure.label")} defaultChecked={measure} />
+            <Checkbox name="measureLinks" label={t("redirects.measure.label")} help={t("redirects.measure.help")} defaultChecked={measure} />
             {advanced && <p className={ui.help}>{t("redirects.measure.advanced")}</p>}
           </ActionForm>
         ) : (

@@ -27,7 +27,7 @@ const ALLOWED_INFO = new Map([
   ["ovp.skin.ok.removed", "feedback after a skin action"], ["ovp.skin.ok.installed", "feedback after a skin action"], ["ovp.skin.ok.refreshed", "feedback after a skin action"], ["ovp.skin.ok.skin", "feedback after a skin action"],
   ["domain.cmd.applied", "feedback after the address command ran"], ["domain.cmd.pending", "the command is still running"],
   // A state the person has to read to decide something, with no better place for it.
-  ["content.verdict.none", "no check has run yet: says so"], ["content.verdict.look", "the check found things to look at: the list follows"],
+  ["content.verdict.look", "the check found things to look at: the list follows"],
   ["upkeep.status.todo", "upkeep verdict heading the list below"], ["upkeep.status.kept", "upkeep verdict heading the list below"], ["upkeep.status.clean", "upkeep verdict heading the list below"],
   ["domain.current.local", "the site is visited by a local address: says why the check is off"],
   ["updates.dontClose", "tells the person they can leave while the update runs"], ["updates.docker.unplanned", "how the update is done on this installation"], ["updates.docker.lastOk", "result of the last update"],

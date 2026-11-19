@@ -23,7 +23,7 @@ export function rightsOf(level: Level, customRights: Iterable<string>, catalogue
   return out;
 }
 
-/** Phrases : celle du niveau (propriétaire, administrateur, éditeur), puis chaque droit en plus de ce niveau. Aucune = « Rien pour l'instant ». */
+/** Phrases : celle du niveau (propriétaire, administrateur, éditeur), puis chaque droit en plus de ce niveau. Aucune = « Aucun accès ». */
 export function describeAccess(level: Level, rights: ReadonlySet<string>, catalogue: RightInfo[], t: Translator, locale: string, defaultLocale: string): string[] {
   if (level === "owner") return [t("access.owner")];
   const out: string[] = level === "none" ? [] : [t(`access.${level}`)];

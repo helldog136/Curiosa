@@ -63,15 +63,15 @@ export function FullPowersWindow({ labels, name, grant }: { labels: FullPowersLa
             </div>
           }>
           {/* No form element: Enter can never submit. The red button is the only way to send, and it is disabled until the name is typed. */}
-          <div className="space-y-5" data-testid="fullpowers-body">
-            <p role="alert" className="rounded-xl border border-danger/40 bg-danger/5 p-4 text-sm font-medium text-danger" data-testid="fullpowers-warning">{labels.warning}</p>
-            <section aria-labelledby={`${id}-allows`} className="space-y-2" data-testid="fullpowers-allows">
+          <div className="space-y-3 sm:space-y-5" data-testid="fullpowers-body">
+            <p role="alert" className="rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm font-medium leading-5 text-danger sm:p-4 sm:leading-normal" data-testid="fullpowers-warning">{labels.warning}</p>
+            <section aria-labelledby={`${id}-allows`} className="space-y-1 sm:space-y-2" data-testid="fullpowers-allows">
               <h3 id={`${id}-allows`} className="text-sm font-semibold">{labels.allowsTitle}</h3>
-              <ul className="list-disc space-y-1 pl-5 text-sm">{labels.allows.map((l) => <li key={l}>{l}</li>)}</ul>
+              <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-5 sm:space-y-1 sm:text-sm sm:leading-normal">{labels.allows.map((l) => <li key={l}>{l}</li>)}</ul>
             </section>
-            <section aria-labelledby={`${id}-outside`} className="space-y-2" data-testid="fullpowers-outside">
+            <section aria-labelledby={`${id}-outside`} className="space-y-1 sm:space-y-2" data-testid="fullpowers-outside">
               <h3 id={`${id}-outside`} className="text-sm font-semibold">{labels.outsideTitle}</h3>
-              <ul className="list-disc space-y-1 pl-5 text-sm text-muted">{labels.outside.map((l) => <li key={l}>{l}</li>)}</ul>
+              <ul className="list-disc space-y-0.5 pl-5 text-[13px] leading-5 text-muted sm:space-y-1 sm:text-sm sm:leading-normal">{labels.outside.map((l) => <li key={l}>{l}</li>)}</ul>
             </section>
             <div>
               <label htmlFor={`${id}-name`} className={ui.label}>{labels.typeName}</label>

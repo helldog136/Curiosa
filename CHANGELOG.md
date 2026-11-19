@@ -7,6 +7,48 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.38.0 — 2026-11-19
+
+**En bref.** Les listes qu'une extension pagine elle-même (contacts) peuvent enfin avoir la recherche en direct, et une dernière vague de phrases creuses disparaît : plus de « pour l'instant », plus de textes qui décrivent l'évident, des champs d'image qui montrent l'image au lieu de son adresse.
+
+**In short.** Lists that an extension paginates itself (contacts) can finally have the live search, and a last wave of empty sentences is gone: no more "for now", no more texts that describe the obvious, image fields that show the picture instead of its address.
+
+### Nouveautés
+
+- **Recherche en direct pour les très longues listes.** Une extension dont la liste est coupée en pages côté serveur peut demander le champ « Rechercher » : la frappe interroge l'extension (250 ms après la dernière touche), sans bouton ni rechargement, et « Aucun résultat » propose « Effacer la recherche ».
+- **(English) Live search for very long lists.** An extension whose list is paginated on the server can ask for the "Search" field: typing asks the extension (250 ms after the last key), with no button and no reload, and "No result" offers "Clear the search".
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Plus de « pour l'instant » ni de « pour le moment ».** Soixante-quinze textes disent l'état sans ce mot (« Aucun brouillon. ») ou un fait précis. Même ménage pour « Prêt », « Rien à choisir », « Tout est facultatif ».
+- **(English) No more "for now" or "right now".** Seventy-five texts state the state without that word ("No drafts.") or a precise fact. Same cleanup for "Ready", "Nothing to choose", "Everything is optional".
+- **Réglages > Nom et logo : l'image, pas son adresse.** Un logo envoyé s'affiche en vignette avec « Téléverser » et « Retirer l'image » ; les explications passent en bulle « ? ».
+- **(English) Settings > Name and logo: the picture, not its address.** An uploaded logo shows as a thumbnail with "Upload" and "Remove the image"; the explanations move to "?" bubbles.
+- **Réglages > Langues : seulement ce qui manque.** « complète » n'est plus écrit sur chaque ligne, et les phrases d'introduction des onglets sont retirées.
+- **(English) Settings > Languages: only what is missing.** "complete" is no longer written on every line, and the introduction sentences of the tabs are gone.
+- **Mon compte, Entretien, Liens courts : moins de texte.** Les descriptions sous les titres (mot de passe, double vérification, clés d'accès, appareils, mode, thème, comptage des clics) passent en bulle « ? » ; le contrôle du site n'affiche plus de cadres vides ni de phrases qui rassurent.
+- **(English) My account, Upkeep, Short links: less text.** The descriptions under the titles (password, two-step verification, passkeys, devices, mode, theme, click counting) move into "?" bubbles; the site check no longer shows empty frames or reassuring sentences.
+- **Accueil et menu : l'origine n'est plus répétée.** « Page d'une extension » n'est écrit que sur les lignes qui sortent du lot, et la limite du menu n'apparaît que lorsqu'elle est atteinte.
+- **(English) Home and menu: the origin is no longer repeated.** "Page of an extension" is only written on the lines that stand out, and the menu limit only shows when it is reached.
+- **Une même consigne « créez-en un dans… » n'apparaît qu'une fois** quand deux sélecteurs sont vides pour la même raison (Mur des remerciements).
+- **(English) The same "create one in…" instruction shows once** when two selectors are empty for the same reason (Thanks wall).
+- **Sur téléphone (390 px).** Le champ de recherche du catalogue garde son texte entier ; le « ? » ne passe plus seul à la ligne ; la fenêtre « Tous les pouvoirs » montre le champ de confirmation et le bouton sans défiler.
+- **(English) On a phone (390 px).** The catalogue search field keeps its full text; the "?" no longer wraps alone; the "Full powers" window shows the confirmation field and the button without scrolling.
+
+### Après la mise à jour
+
+- Rien à faire.
+- **(English)** Nothing to do.
+
+### Pour les développeurs
+
+- **`table` avec `searchable: "server"`** : `?q=` change 250 ms après la frappe, sans recharger, et le module filtre et pagine ; sans ligne, renvoyer `rows: []`. Voir `docs/MODULES.md`.
+- **`ctx.search`** (sans permission) : `fold(text)`, `query(raw)`, `matches(parts, raw)` : la règle de la recherche en direct (casse et accents ignorés, tous les mots trouvés). `fakeCtx()` le fournit (`fakeCtx({ search: null })` = cœur plus ancien). Module de démonstration : `tests/fixtures/server-search/`.
+- **Kit `admin.ergonomics` : R33e** signale aussi « pour l'instant », « pour le moment », « for now », « for the moment », dans les manifestes, les locales **et** les textes visibles des blocs d'une page (`visibleTexts`). Les dépôts de modules recopient `testsupport/ergonomics.mjs` et retirent ces mots (liste blanche `CONDITIONAL_WHITELIST` pour une vraie exception).
+- **Composants** : `Panel` range un `help` texte dans la bulle « ? » du titre (`helpVisible` pour un avertissement de perte) ; `ImageField` prend `help` et montre la vignette d'un fichier du site en mode simple ; `ExtensionsHeader` colle le « ? » au dernier mot de l'introduction.
+- **Textes** : ajouté `crop.clear` ; `choice.none` sert aussi d'état pour un second sélecteur vide ; retirés `settings.identityIntro`, `settings.logosHelp`, `settings.languagesHelp`, `settings.mailHelp`, `settings.addressHelp`, `i18n.help`, `i18n.noGaps`, `i18n.complete`.
+- **Tests** : `tests/core/server-search.test.mjs`.
+
 ## 0.37.0 — 2026-11-19
 
 **En bref.** Le catalogue d'extensions commence enfin par ce que vous cherchez : le champ de recherche et les fiches. Le mur de pastilles « Ajoute des réglages à » devient un seul menu avec sa recherche, et les textes qui ne servent à rien ont disparu des pages Extensions.

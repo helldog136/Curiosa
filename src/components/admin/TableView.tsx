@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { BadgeTone, Block, TableCell } from "@/core/blocks";
-import { splitActions } from "@/core/adminkit/table";
+import { SERVER_SEARCH_DELAY_MS, serverSearchTarget, splitActions } from "@/core/adminkit/table";
 import { TABLE_PAGE_SIZE, pageSlice, pillOptions, rowPasses, searchText } from "@/core/adminkit/search";
 import { Pills, SearchField } from "./LiveSearch";
 import { BADGE } from "./Badge";
@@ -32,9 +32,29 @@ function shownImage(image: CellImage | undefined): CellImage | undefined {
 /** The admin-only pieces (they call the server actions of an admin panel). Public pages render the table without them; `AdminTable.tsx` supplies them. */
 export type TableParts = Pick<typeof import("./AdminBlocks"), "RowActionButton" | "RowMenuItem" | "RowSwitch">;
 
-export function TableView({ block, instanceId, entry, labels, parts }: { block: TableBlock; instanceId?: string; entry?: EntryScope; labels: TableLabels; parts?: TableParts }) {
+/** Server search (`searchable: "server"`, admin only): the module answers the address `?q=`; the field edits that address, 250 ms after the last keystroke. */
+export type ServerSearch = { param: string; reset: string[]; value: string; current: string; go: (target: string) => void };
+
+export function TableView({ block, instanceId, entry, labels, parts, server }: { block: TableBlock; instanceId?: string; entry?: EntryScope; labels: TableLabels; parts?: TableParts; server?: ServerSearch }) {
   const { RowActionButton, RowMenuItem } = parts ?? ({} as TableParts);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(server?.value ?? "");
+  const [busy, startBusy] = useTransition();
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const sent = useRef(server?.value ?? "");
+  useEffect(() => () => { if (timer.current) clearTimeout(timer.current); }, []);
+  // The address changed by itself (Back, a link): the field follows it.
+  useEffect(() => { if (server && server.value !== sent.current) { sent.current = server.value; setQuery(server.value); } }, [server]);
+  const ask = (text: string) => {
+    if (!server) return;
+    sent.current = text.trim();
+    startBusy(() => server.go(serverSearchTarget(server.current, server.param, text, server.reset)));
+  };
+  const type = (text: string) => {
+    setQuery(text);
+    if (!server) return;
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => ask(text), SERVER_SEARCH_DELAY_MS);
+  };
   const [pills, setPills] = useState<Record<string, string>>({});
   const [pageAt, setPageAt] = useState({ key: "", page: 1 });
   const top = useRef<HTMLDivElement>(null);
@@ -48,7 +68,8 @@ export function TableView({ block, instanceId, entry, labels, parts }: { block: 
     return { index, cells, haystack: searchText(cells.flatMap((c) => [c.text, c.title])), keys };
   }), [block.rows, filters]);
 
-  const shown = rows.filter((r) => rowPasses({ haystack: r.haystack, ...r.keys }, query, pills));
+  // Server search: the module already filtered the rows; the core never filters them again (the module may match on more than what is shown).
+  const shown = rows.filter((r) => rowPasses({ haystack: r.haystack, ...r.keys }, server ? "" : query, pills));
   // Un nouveau filtre ou une nouvelle recherche ramène à la première page.
   const filterKey = `${query}\u0000${JSON.stringify(pills)}`;
   const page = pageAt.key === filterKey ? pageAt.page : 1;
@@ -71,7 +92,7 @@ export function TableView({ block, instanceId, entry, labels, parts }: { block: 
     if (noticeRow) top.current?.querySelector("[data-row-saved]")?.scrollIntoView({ block: "nearest" });
   }, [noticeRow, notice]);
 
-  const clear = () => { setQuery(""); setPills({}); };
+  const clear = () => { if (timer.current) clearTimeout(timer.current); setQuery(""); setPills({}); if (server) ask(""); };
   const active = query.trim() !== "" || Object.values(pills).some((v) => v !== "all");
   const { visible: visibleActions, menu: menuActions } = splitActions(block.rowActions ?? []);
   const hasActions = Boolean(instanceId && (block.rowActions ?? []).length > 0);
@@ -80,17 +101,18 @@ export function TableView({ block, instanceId, entry, labels, parts }: { block: 
   const pictured = new Set(rows.flatMap((r) => r.cells.flatMap((c, i) => (c.image ? [i] : []))));
   const href = (a: { href?: string }, id?: string) => a.href?.replace("{id}", encodeURIComponent(id ?? ""));
 
-  if (rows.length === 0) return block.empty ? <div className={`${ui.card} text-[15px]`}>{block.empty}</div> : null;
+  // With a search in progress the field must stay, even when nothing matches: "No result" and "Clear the search" then show under it.
+  if (rows.length === 0 && !(server && (query.trim() !== "" || server.value !== ""))) return block.empty ? <div className={`${ui.card} text-[15px]`}>{block.empty}</div> : null;
   return (
     <div className="space-y-3" data-admin-table="" ref={top}>
       {(block.searchable || filters.length > 0) && (
         <div className="space-y-3">
-          {block.searchable && <SearchField value={query} onChange={setQuery} onClear={clear} placeholder={block.searchPlaceholder ?? labels.search} clearLabel={labels.clear} />}
+          {block.searchable && <SearchField value={query} onChange={server ? type : setQuery} onClear={clear} busy={busy} placeholder={block.searchPlaceholder ?? labels.search} clearLabel={labels.clear} />}
           {filters.map((f, i) => (
             <Pills key={i} pillKey={`f${i}`} label={block.columns[f.column] ?? ""} allLabel={f.allLabel ?? labels.all} value={pills[`f${i}`] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [`f${i}`]: v }))}
               options={pillOptions(rows.map((r) => r.cells[f.column]?.text ?? "")).map((o) => ({ value: o.value, label: o.value, count: o.count }))} />
           ))}
-          <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite">{active && shown.length > 0 ? labels.count.replace("{shown}", String(shown.length)).replace("{total}", String(rows.length)) : ""}</p>
+          <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite">{!server && active && shown.length > 0 ? labels.count.replace("{shown}", String(shown.length)).replace("{total}", String(rows.length)) : ""}</p>
         </div>
       )}
       {notice && <p role="status" data-testid="table-saved" className={noticeRow ? "sr-only" : "rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-800"}>{noticeRow ? "" : "✓ "}{notice.message}</p>}

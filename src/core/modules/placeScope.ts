@@ -61,6 +61,12 @@ export function scopeBlocks<T>(blocks: T, instanceKey: string): T {
     for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
       out[k] = typeof v === "string" && LINK_KEY_RE.test(k) ? scopeQuery(v, instanceKey) : walk(v, depth + 1);
     }
+    // (core 0.38.0) A table with a server search: its search parameter and the paging parameters it drops belong to the module's namespace too.
+    if (out.type === "table" && out.searchable === "server" && NS_RE.test(instanceKey)) {
+      const own = (n: unknown, fallback: string): string => `${instanceKey}.${typeof n === "string" && PARAM_RE.test(n) ? n : fallback}`;
+      out.searchParam = own(out.searchParam, "q");
+      out.searchReset = (Array.isArray(out.searchReset) ? out.searchReset : ["page"]).filter((r): r is string => typeof r === "string" && PARAM_RE.test(r)).map((r) => own(r, "page"));
+    }
     return out;
   };
   return walk(blocks, 0) as T;
