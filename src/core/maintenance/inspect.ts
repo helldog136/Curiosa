@@ -18,6 +18,7 @@ import type { ModulesReport } from "@/core/modules/bulkUpdate";
 import { currentLock } from "./background";
 import { deps } from "./deps";
 import { within } from "./within";
+import { nodeSupport, type NodeSupport } from "./nodeSupport";
 import { contentSummary } from "./content/service";
 import { publicRepo, redactSecrets, tailLines } from "./redact";
 import { makeTranslator } from "@/core/i18n/dictionary";
@@ -58,7 +59,11 @@ export async function status(actor?: { name: string; tokenId?: string }) {
   return {
     ...(reconnect ? { reconnectNeeded: reconnect.reconnectNeeded, ...("sayToTheUser" in reconnect ? { sayToTheUser: reconnect.sayToTheUser, checkWith: "maintenance_my_access" } : {}) } : {}),
     core: { version: readVersion(appDir()), channel: await getUpdateChannel(), install: info.mode, canUpdateFromAdmin: info.canUpdate, restart: info.restart },
-    runtime: { node: process.version, platform: `${process.platform}-${process.arch}`, uptimeSeconds: Math.round(process.uptime()) },
+    runtime: {
+      node: process.version, platform: `${process.platform}-${process.arch}`, uptimeSeconds: Math.round(process.uptime()),
+      // Computed locally from the running version and a static table; "unknown" for a major the table does not list.
+      support: (({ state, endsOn }) => ({ state, ...(endsOn ? { endsOn } : {}) }))(nodeSupport(process.version, deps.now())),
+    },
     modules: { installed: rows.length },
     update: {
       state: state.status,
@@ -146,10 +151,10 @@ export async function health() {
  * Le coup d'œil du TABLEAU DE BORD : la base répond, le disque, les instances mises à l'écart, la dernière mise à jour. Aucun réseau, aucun module chargé, aucun fichier lu au-delà de la taille du disque ;
  * c'est `health()` sans la liste des erreurs récentes. Ne lève jamais.
  */
-export async function glance(): Promise<{ databaseOk: boolean; disk: "ok" | "low" | "critical" | "unknown"; instancesSetAside: number; updateFailed: boolean; backup: { at: string | null; recent: boolean } }> {
+export async function glance(): Promise<{ databaseOk: boolean; disk: "ok" | "low" | "critical" | "unknown"; instancesSetAside: number; updateFailed: boolean; backup: { at: string | null; recent: boolean }; node: NodeSupport }> {
   const [database, setAside, backup] = await Promise.all([checkDatabase(), instancesInError().catch(() => []), lastBackup().catch(() => ({ at: null, recent: false }))]);
   const disk = diskSpace();
-  return { databaseOk: database.ok, disk: disk ? disk.level : "unknown", instancesSetAside: setAside.length, updateFailed: readUpdateState(dataDir()).status === "failed", backup: { at: backup.at, recent: backup.recent } };
+  return { databaseOk: database.ok, disk: disk ? disk.level : "unknown", instancesSetAside: setAside.length, updateFailed: readUpdateState(dataDir()).status === "failed", backup: { at: backup.at, recent: backup.recent }, node: nodeSupport(process.version, deps.now()) };
 }
 
 /**
@@ -327,6 +332,11 @@ export async function diagnose() {
   if (up?.stale && up.checkedAt) notes.push(`Module updates come from the check of ${up.checkedAt.slice(0, 16).replace("T", " ")} UTC; a new check is running in the background (call maintenance_updates later).`);
   if (up?.stale && !up.checkedAt) unknown.push({ check: "module updates", reason: "no check has finished yet; it is running in the background (call maintenance_updates in a minute)" });
   if (up?.core.note?.startsWith("the release list did not answer")) notes.push(`Core release list: ${up.core.note}.`);
+
+  const nodeLife = nodeSupport(process.version, deps.now());
+  if (nodeLife.state === "end-of-life" || nodeLife.state === "ending-soon") {
+    notes.push(`Node.js ${nodeLife.major} ${nodeLife.state === "end-of-life" ? "is no longer maintained since" : "stops being maintained on"} ${nodeLife.endsOn}${nodeLife.to ? `: the owner should move the server to Node.js ${nodeLife.to} (docs/NODE-MIGRATION.md); you cannot do it, and an in-app core update does not change it` : ""}.`);
+  }
 
   const problems: Problem[] = [];
   const add = (p: Problem) => problems.push(p);

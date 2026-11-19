@@ -1,9 +1,9 @@
 # The base image of the Docker image
 
-The published image (`Dockerfile`) starts from `node:22-bookworm-slim`, **pinned by digest**:
+The published image (`Dockerfile`) starts from `node:24-bookworm-slim`, **pinned by digest**:
 
 ```
-FROM node:22-bookworm-slim@sha256:<digest> AS target-amd64
+FROM node:24-bookworm-slim@sha256:<digest> AS target-amd64
 ```
 
 The tag stays written for people who read the file; the digest decides what is built. The same commit therefore always builds on exactly the same Node.js and Debian, and a tag moved on Docker Hub (by mistake or by an attacker) changes nothing until someone accepts it. The digest is the one of the **multi-architecture index**, so the same line serves amd64 and arm64. Both `FROM` lines carry the same digest (a test checks it).
@@ -19,7 +19,7 @@ A pinned image does not follow Node.js or Debian fixes by itself. They come in t
 ## Moving the digest by hand
 
 ```
-docker buildx imagetools inspect node:22-bookworm-slim
+docker buildx imagetools inspect node:24-bookworm-slim
 ```
 
 Copy the `Digest:` line printed at the top (the index, not one of the per-platform manifests listed under it), check that `linux/amd64` and `linux/arm64` are listed, and replace the digest on **both** `FROM` lines of `Dockerfile`. Write the date in the comment above them. Without Docker, the registry answers too:
@@ -27,9 +27,11 @@ Copy the `Digest:` line printed at the top (the index, not one of the per-platfo
 ```
 TOKEN=$(curl -s "https://auth.docker.io/token?service=registry.docker.io&scope=repository:library/node:pull" | jq -r .token)
 curl -sI -H "Authorization: Bearer $TOKEN" -H "Accept: application/vnd.oci.image.index.v1+json" \
-  https://registry-1.docker.io/v2/library/node/manifests/22-bookworm-slim | grep -i docker-content-digest
+  https://registry-1.docker.io/v2/library/node/manifests/24-bookworm-slim | grep -i docker-content-digest
 ```
+
+Docker Hub limits anonymous requests per address (HTTP 429 when the limit is reached). The Google mirror of the official images answers with the same index digest and no limit: `curl -sI -H "Accept: application/vnd.oci.image.index.v1+json" https://mirror.gcr.io/v2/library/node/manifests/24-bookworm-slim | grep -i docker-content-digest`.
 
 ## Another Node.js major
 
-Moving to another major (for example `node:24-bookworm-slim`) is a separate change: the release archive must carry the SQLite driver of that Node.js (`scripts/release-pack.mjs`), and the installer and the development image (`Dockerfile.source`, not pinned: it is never published) follow the same major.
+The image moved from Node.js 22 to 24 in core 0.43.0 (Node.js 24 is the default of the installer, the image and CI). Moving to another major is always a separate change: the release archive must carry the SQLite driver of that Node.js (`scripts/release-pack.mjs`), and the installer and the development image (`Dockerfile.source`, not pinned: it is never published) follow the same major. Node.js 26 is not possible yet: the pinned `better-sqlite3` publishes no driver for it.

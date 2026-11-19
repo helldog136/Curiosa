@@ -205,8 +205,8 @@ test("workflow: arm64 is NON-BLOCKING for the release while unproven (and blocki
 
 test("Dockerfile: the Prisma CLI is pointed at the schema engine of the archive (it ran as non-root and tried to write/download it: the first real image smoke failed there)", () => {
   // One stage per architecture sets the engine name; the CLI then never looks for (or downloads) anything.
-  assert.match(lines, /FROM node:22-bookworm-slim@sha256:[0-9a-f]{64} AS target-amd64\s+ENV PRISMA_ENGINE_TARGET=debian-openssl-3\.0\.x/);
-  assert.match(lines, /FROM node:22-bookworm-slim@sha256:[0-9a-f]{64} AS target-arm64\s+ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3\.0\.x/);
+  assert.match(lines, /FROM node:24-bookworm-slim@sha256:[0-9a-f]{64} AS target-amd64\s+ENV PRISMA_ENGINE_TARGET=debian-openssl-3\.0\.x/);
+  assert.match(lines, /FROM node:24-bookworm-slim@sha256:[0-9a-f]{64} AS target-arm64\s+ENV PRISMA_ENGINE_TARGET=linux-arm64-openssl-3\.0\.x/);
   assert.match(lines, /FROM target-\$\{TARGETARCH\}/);
   assert.match(lines, /ENV PRISMA_SCHEMA_ENGINE_BINARY=\/app\/node_modules\/@prisma\/engines\/schema-engine-\$\{PRISMA_ENGINE_TARGET\}/);
   // Prisma 7 has no query engine library: the site uses the SQLite driver of the archive (src/core/db.ts), and the old variable is gone.
@@ -237,7 +237,7 @@ test("workflow: images can be rebuilt for an EXISTING release from its published
 test("Dockerfile: the base image is pinned by digest (same digest for both architectures, tag kept for reading), and the way to move it is written down", () => {
   const froms = [...lines.matchAll(/^FROM (\S+)/gm)].map((m) => m[1]).filter((f) => !f.startsWith("target-"));
   assert.ok(froms.length >= 2);
-  for (const f of froms) assert.match(f, /^node:22-bookworm-slim@sha256:[0-9a-f]{64}$/, `${f}: tag AND digest`);
+  for (const f of froms) assert.match(f, /^node:24-bookworm-slim@sha256:[0-9a-f]{64}$/, `${f}: tag AND digest`);
   assert.equal(new Set(froms).size, 1, "one digest for both architectures (a multi-architecture index)");
   // Node.js security releases still come in: Dependabot proposes the new digest on dev every week, and the procedure is documented.
   const bot = read(".github/dependabot.yml");
@@ -245,6 +245,6 @@ test("Dockerfile: the base image is pinned by digest (same digest for both archi
   assert.match(bot, /target-branch: "?dev"?/);
   assert.match(bot, /interval: "?weekly"?/);
   const doc = read("docs/DOCKER-BASE-IMAGE.md");
-  assert.match(doc, /imagetools inspect node:22-bookworm-slim/);
+  assert.match(doc, /imagetools inspect node:24-bookworm-slim/);
   assert.match(docker, /docs\/DOCKER-BASE-IMAGE\.md/);
 });

@@ -30,7 +30,7 @@ commentaires dans `index.mjs` (`curiosa-extras/examples/guestbook/index.mjs`). L
 
 ## 2. Prérequis
 
-- **Node 20 ou plus** et **git**.
+- **Node 24** (22.12 ou plus fonctionne aussi) et **git**.
 - Une copie du framework qui tourne en local (voir [INSTALL.md](INSTALL.md)) pour essayer votre module. Pour le seul développement et les tests
   unitaires, un simple Node suffit.
 - Les conventions du projet : **textes montrés aux humains traduits** (fichiers `locales/`), **identifiants en anglais** (sujets, rubriques,

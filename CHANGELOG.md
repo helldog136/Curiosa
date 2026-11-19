@@ -7,6 +7,31 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.43.0 — 2026-11-19
+
+**En bref.** Node.js 24 devient la version proposée pour les nouveaux sites et pour l'image Docker. Le tableau de bord vous prévient quand la version de Node.js de votre serveur n'est plus (ou bientôt plus) maintenue. Vos sites actuels continuent de fonctionner tels quels.
+
+**In short.** Node.js 24 becomes the version offered for new sites and for the Docker image. The dashboard tells you when the Node.js version of your server is no longer (or soon no longer) maintained. Your current sites keep working as they are.
+
+### Nouveautés
+
+- **Une alerte quand Node.js n'est plus maintenu.** Si le serveur tourne sous une version de Node.js dont la fin de maintenance est passée, ou arrive dans moins de six mois, la pastille de santé du tableau de bord le dit en une ligne, avec les étapes à suivre dans la bulle « ? ». Rien n'apparaît quand tout va bien.
+- **(English) A warning when Node.js is no longer maintained.** If the server runs a Node.js version whose end of maintenance has passed, or comes within six months, the health chip on the dashboard says so in one line, with the steps in the "?" bubble. Nothing appears when all is well.
+- **Les nouveaux sites s'installent avec Node.js 24.** Le script d'installation installe Node.js 24 et accepte aussi Node.js 22 (22.12 ou plus). Node.js 20, qui n'est plus maintenu depuis le 30 avril 2026, n'est plus accepté pour une nouvelle installation.
+- **(English) New sites are installed with Node.js 24.** The install script installs Node.js 24 and also accepts Node.js 22 (22.12 or later). Node.js 20, no longer maintained since April 30, 2026, is not accepted for a new install any more.
+- **L'image Docker est construite sur Node.js 24.**
+- **(English) The Docker image is built on Node.js 24.**
+- **Un guide pour changer la version de Node.js d'un site existant.** Sauvegarde, changement, vérification et retour en arrière, une étape à la fois.
+- **(English) A guide to change the Node.js version of an existing site.** Backup, switch, check and rollback, one step at a time.
+
+### Pour les développeurs
+
+- Le guide est `docs/NODE-MIGRATION.md`.
+- Les sites qui tournent sous Node.js 20 continuent de démarrer et de se mettre à jour : `engines` garde `^20.19.0` et l'archive garde le pilote SQLite de Node.js 20 (ABI 115). Ils seront retirés quand plus aucun site n'est sous Node.js 20. La mise à jour depuis l'admin ne change jamais la version de Node.js du serveur.
+- `maintenance_status` : `runtime.support` (`state` : `ok`, `ending-soon`, `end-of-life` ou `unknown`, et `endsOn`), calculé en local depuis `process.version` et un petit tableau (`src/core/maintenance/nodeSupport.ts`) ; `glance()` gagne `node` ; `maintenance_diagnose` ajoute une remarque quand l'état n'est pas `ok`. Node.js 26 n'est pas encore pris en charge (`better-sqlite3` n'a pas de pilote pour lui).
+- Intégration continue : Node.js 24 partout, fumée de l'archive sous Node.js 24, 22 et 20 ; `checkout@v6`, `setup-node@v6`, `upload-artifact@v6`, `download-artifact@v7`, actions Docker en version Node.js 24 ; `.nvmrc` à 24 ; `@types/node` ^24 (`backup/crypto.ts` n'utilise plus les types `Cipher`/`Decipher`).
+- `scripts/test.mjs` lit `CURIOSA_TEST_REPORTER` ; les tests qui lisent les totaux TAP demandent `--test-reporter=tap` (Node.js 24 écrit le rapport « spec » quand la sortie n'est pas un terminal).
+
 ## 0.41.0 — 2026-11-19
 
 **En bref.** Vos contenus se retrouvent enfin : un bouton « Contenu » sur chaque extension, des liens vers les entrées depuis l'accueil, la recherche qui trouve aussi vos pages, et une liste d'entrées qui filtre pendant la frappe. La carte « Stockage » dit clairement ce que prend votre site.

@@ -12,6 +12,7 @@ import { coreQuickActions, mergeQuick } from "@/core/dashboard/quick";
 import { recentActivity } from "@/core/dashboard/activity";
 import { loadSetup } from "@/core/dashboard/setup";
 import { loadHealth } from "@/core/dashboard/health";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { topLinks, topPagesTitled, visitsOverview, type Comparison } from "@/core/dashboard/visits";
 import { hideSetup, refreshStorage } from "@/app/admin/(panel)/dashboardActions";
 import { canSeeStorage } from "@/core/storage/access";
@@ -77,7 +78,7 @@ export async function SetupBlock({ c }: { c: BlockCtx }) {
 // ── Santé ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function HealthPill({ c }: { c: BlockCtx }) {
-  const h = await loadHealth(c.user, c.t).catch(() => null);
+  const h = await loadHealth(c.user, c.t, c.locale).catch(() => null);
   if (!h) return null;
   const { t } = c;
   // R33: when everything is fine, nothing is shown (no chip, no sentence that says it is fine).
@@ -89,7 +90,7 @@ export async function HealthPill({ c }: { c: BlockCtx }) {
       <ul className={`${ui.card} mt-2 space-y-1`}>
         {h.points.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span>{p.label}</span>
+            <span>{p.label}{p.help && <> <HelpTip help={p.help} name={p.label} always /></>}</span>
             {p.href && <a href={p.href} className={`${ui.btn} min-h-11`}>{t("dash.health.open")}{ARROW}</a>}
           </li>
         ))}

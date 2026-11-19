@@ -27,7 +27,7 @@ async function deriveAsync(password: string, salt: Buffer, iterations: number) {
 }
 
 /** Chiffre ou déchiffre par morceaux de 1 Mo (AES-CBC se traite en continu : même résultat qu'en un seul bloc). */
-function* transform(cipher: crypto.Cipher | crypto.Decipher, data: Buffer): Steps<Buffer> {
+function* transform(cipher: ReturnType<typeof crypto.createCipheriv> | ReturnType<typeof crypto.createDecipheriv>, data: Buffer): Steps<Buffer> {
   const out: Buffer[] = [];
   for (let i = 0; i < data.length; i += CHUNK_BYTES) { out.push(cipher.update(data.subarray(i, i + CHUNK_BYTES))); yield; }
   out.push(cipher.final());
