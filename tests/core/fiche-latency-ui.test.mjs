@@ -49,7 +49,7 @@ test("page du catalogue : le bouton « Voir le détail » réchauffe la fiche et
 test("fiche : le dépôt est lu dans un Suspense (le nom et la description s'affichent avant), avec attente bornée, galerie à part et « Réessayer » en cas d'échec", () => {
   const view = read("src/app/admin/(panel)/extensions/add/details/DetailsView.tsx");
   assert.match(view, /<Suspense fallback=\{<FicheSkeleton/);
-  assert.match(view, /getModulePreview\(target, \{ waitMs: PREVIEW_WAIT_MS \}\)/);
+  assert.match(view, /getModulePreview\(target, \{ waitMs: PREVIEW_WAIT_MS, stored: isOwner \}\)/);
   assert.match(view, /staleOk: true/);
   assert.match(view, /<RemoteGallery/);
   assert.doesNotMatch(view, /preview\??\.images/, "les octets des images n'entrent plus dans la fiche");

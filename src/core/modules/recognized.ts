@@ -1,3 +1,5 @@
+import { isSafeGitRef } from "../gitRef";
+import { GIT_NO_LFS_ARGS, gitChildEnv } from "../gitEnv";
 import { execFile } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
@@ -115,7 +117,7 @@ export function sanitizeEntries(json: unknown): RecognizedItem[] {
     seen.add(i.id);
     items.push({
       id: i.id, name: str(i.name, 120) || i.id, description: str(i.description, 500) ?? "", i18n: sanitizeEntryTexts(i.i18n), repo: repo.repo.url,
-      ref: typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined,
+      ref: isSafeGitRef(i.ref) ? i.ref : undefined,
       subdir: isSubdir(i.subdir) ? i.subdir : undefined,
       version: str(i.version, 40), author: str(i.author, 120), icon: str(i.icon, 8),
       apiVersion: Number.isInteger(i.apiVersion) ? i.apiVersion : undefined,
@@ -140,8 +142,8 @@ export function toHttpsRemote(url: string): string {
 }
 
 export type IndexGit = (args: string[], cwd?: string) => Promise<string>;
-const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null"];
-const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } })).stdout;
+const gitConfig = () => ["-c", "protocol.ext.allow=never", "-c", `protocol.file.allow=${process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never"}`, "-c", "core.hooksPath=/dev/null", ...GIT_NO_LFS_ARGS];
+const defaultGit: IndexGit = async (args, cwd) => (await run("git", [...gitConfig(), ...args], { cwd, timeout: 25_000, maxBuffer: MAX_INDEX_BYTES + 4096, env: gitChildEnv() })).stdout;
 
 /** Adresse du dépôt de modules que le catalogue connaît par défaut (le seul) ; d'autres se configurent (CURIOSA_CATALOGUE_REPO, MODULES_INDEX_URL, « Mes dépôts de modules »). */
 export const DEFAULT_CATALOGUE_REPO = "https://github.com/helldog136/curiosa-extras";
@@ -155,7 +157,7 @@ export function resolveIndexRepo(): string | null {
 
 /** Lit `catalogue/index.json` et `catalogue/suggested.json` (facultatif) dans le dépôt, sans rien écrire dans l'installation : un dépôt temporaire, une récupération superficielle. */
 export async function fetchCatalogueFromRepo(url: string, ref = "HEAD", git: IndexGit = defaultGit, withOverlaySkins = false): Promise<{ index: unknown; suggested: unknown; profiles?: unknown; overlaySkins?: unknown; places?: unknown }> {
-  if (!/^[\w./-]{1,100}$/.test(ref)) throw new Error("bad-ref");
+  if (!isSafeGitRef(ref)) throw new Error("bad-ref");
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "curiosa-index-"));
   try {
     await git(["init", "-q", "--bare", tmp]);

@@ -8,10 +8,25 @@ export const TAG_RC_RE = /^v?\d+\.\d+\.\d+(-rc\.\d+)?$/;
 export type UpdateLevel = "major" | "minor" | "patch";
 export type UpdateChannel = "stable" | "rc";
 
+/**
+ * (0.42.0) A repository that holds several skins or modules can tag each one with its own series: `<id>/v1.2.0` (the way the official skins repository does).
+ * `<id>` is a lowercase name (letters, digits, dashes). The plain `v1.2.0` series keeps working exactly as before.
+ */
+export const PREFIXED_TAG_RE = /^([a-z0-9][a-z0-9-]{0,62})\/(v\d+\.\d+\.\d+)$/;
+/**
+ * A stable release tag: `v1.2.0`, or `<id>/v1.2.0` ONLY when `<id>` is the id of the skin or module that asks. A branch such as `release/v1.2.0` or `hotfix/v2.0.1` is
+ * therefore never taken for a tag series (it keeps being followed as a branch), and another module's tag is never one of ours.
+ */
+export const isReleaseTag = (ref: string | null | undefined, id?: string): ref is string => !!ref && (TAG_RE.test(ref) || (!!id && ref.startsWith(`${id}/`) && PREFIXED_TAG_RE.test(ref)));
+/** The `<id>/` of a prefixed release tag of `id` (with its slash), "" for a plain tag or anything else. */
+export const tagPrefix = (ref: string | null | undefined, id?: string): string => (id && isReleaseTag(ref, id) && !TAG_RE.test(ref!) ? `${id}/` : "");
+const unprefixed = (v: string): string => PREFIXED_TAG_RE.exec(v)?.[2] ?? v;
+
 export function isPrerelease(v: string): boolean { return /-rc\.\d+$/.test(v); }
 
 /** [majeure, mineure, correctif, rc] : une stable vaut Infinity en 4e position (1.2.0-rc.3 < 1.2.0). Version invalide → null. */
 export function parseVersion(v: string, rc = false): [number, number, number, number] | null {
+  v = unprefixed(v);
   if (!(rc ? TAG_RC_RE : TAG_RE).test(v)) return null;
   const m = /^v?(\d+)\.(\d+)\.(\d+)(?:-rc\.(\d+))?$/.exec(v)!;
   return [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? Infinity : Number(m[4])];
@@ -61,12 +76,14 @@ export function releaseNotes(releases: unknown, tag: string): string {
 }
 
 /** Plus haute version stable dans la sortie de `git ls-remote --tags` (modules git : les lignes `^{}` des étiquettes annotées comptent une fois). */
-export function pickLatestTag(lsRemote: string): string | null {
+export function pickLatestTag(lsRemote: string, prefix = ""): string | null {
   let best: string | null = null;
   for (const line of lsRemote.split("\n")) {
     const m = /\trefs\/tags\/([^\s^]+)(\^\{\})?$/.exec(line.trim() ? line : "");
     const tag = m?.[1];
-    if (!tag || !TAG_RE.test(tag)) continue;
+    if (!tag) continue;
+    // `prefix` ("" or "<id>/"): only the series of that name is read, so another skin's tags never count.
+    if (prefix ? !(tag.startsWith(prefix) && PREFIXED_TAG_RE.test(tag)) : !TAG_RE.test(tag)) continue;
     if (!best || compareVersions(tag, best) > 0) best = tag;
   }
   return best;

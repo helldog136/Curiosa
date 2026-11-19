@@ -69,7 +69,7 @@ export async function planModuleSteps(d: BackupData, modules: ModuleInput[], rea
       try {
         let reader = readers.get(m.entry.repo);
         if (!reader) { reader = await openRepo(m.entry.repo); readers.set(m.entry.repo, reader); }
-        const chain = await planChain(reader, { repo: m.entry.repo, subdir: m.entry.subdir ?? null, targetRef: m.entry.ref ?? null, dataVersion });
+        const chain = await planChain(reader, { id: m.id, repo: m.entry.repo, subdir: m.entry.subdir ?? null, targetRef: m.entry.ref ?? null, dataVersion });
         if (chain.tags.length || chain.blocked) {
           chains.set(m.id, chain);
           steps.push({ id: m.id, route: chain.blocked ? "blocked" : "bridge", dataVersion, floor: chain.floor, tags: chain.tags, path: pathOfModule(d, m.id) });

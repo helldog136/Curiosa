@@ -60,17 +60,17 @@ The engine places the value and the label, formats them (thousands separators by
 
 **Readability is checked twice.** At installation, a text layer whose colours are known must have an outline of at least 4 % of the size with a contrast of 4.5:1, or an opaque plate (alpha 0.8 or more) with a contrast of 4.5:1. At drawing time, the engine applies the same rule to whatever reaches it and puts a black or white outline when it fails. A text is never scaled on one axis, skewed or rotated: a bent lead line is art, a bent digit is a bug.
 
-## 4. How a stained glass is expressed (worked example)
+## 4. How a mosaic window is expressed (worked example)
 
-The stained-glass look is **only a more complex drawing structure**, built from the same primitives as a neon tube. Here is how the reference skin `stained-glass` reads, piece by piece:
+A mosaic window is **only a more complex drawing structure**, built from the same primitives as a neon tube. Here is how the sample recipe of the test fixtures (`tests/fixtures/animate/mosaic-sample.json`, a neutral recipe written for the tests) reads, piece by piece:
 
-1. **The window is a tessellation.** `body: { "draw": "mosaic", "shape": "arch", "pattern": "voronoi", "cells": 34, "jitter": 0.8, "seed": 136 }`. The engine scatters 34 seeded sites inside the shape (`rect`, `arch` = a pointed gothic arch, `roundArch`, `capsule`, `ellipse`), cuts the shape into Voronoi cells (each cell = the shape clipped by the bisectors of its neighbours), and **welds** the shared vertices so two neighbouring panes share exactly the same lead line. `pattern: "grid"` or `"bricks"` gives more regular panes; `jitter` sets how far the sites wander.
+1. **The window is a tessellation.** `body: { "draw": "mosaic", "shape": "roundArch", "pattern": "grid", "cells": 28, "jitter": 0.5, "seed": 4107 }`. The engine scatters 28 seeded sites inside the shape (`rect`, `arch` = a pointed gothic arch, `roundArch`, `capsule`, `ellipse`), cuts the shape into Voronoi cells (each cell = the shape clipped by the bisectors of its neighbours), and **welds** the shared vertices so two neighbouring panes share exactly the same lead line. `pattern: "grid"` or `"bricks"` gives more regular panes; `jitter` sets how far the sites wander.
 2. **The lead is hand-cut.** Each unique edge is drawn **once**, as a stroke of variable thickness (`leadWidth`, relative to the body's height) along a line that is **bowed and wiggled** by its own seed (`irregularity` 0 to 4: 0 = ruler-straight, 2 = hand-cut, 4 = very loose). Long lines wander less than short ones, the way a hand does. The outer border is 1.5 times thicker. A thin `leadHighlight` stroke gives the metal its edge.
 3. **The glass is lit from behind.** Each pane takes a colour of `palette` by its seed, shifted by `tint` toward `light` or `shade`. A lit pane is filled with its colour, then a radial gradient from `light` at its upper centre to `shade` at its edge, some seeded `mottle` (soft blotches), `bubbles` (small defects) and, on some panes, a `streaks` reflection. An unlit pane is a dim mix of its colour and `shade` (`unlit` sets how dim).
 4. **Progress lights the window pane by pane.** `order: "x"` lights from left to right (`"y"` bottom to top, `"center"` from the middle out, `"random"`). The front is slightly perturbed, so it is never a straight line. The pane being lit fades in; one more follow lights one more piece of glass.
 5. **The light.** `glow` / `glowColor` give each lit pane a warm halo (a canvas blur in quality "full", a cheap gradient otherwise). `effects.bloom` adds a soft bloom of the lit glass, `effects.vignette` darkens the edges of what is drawn (never the empty background), `effects.grain` adds a still film grain, `effects.edgeFade` softens the left, right and bottom edges for a window that is not full screen. `ambient` adds slow life: a `shimmer` of light that sweeps the glass every few seconds and faint `rays` crossing it.
 6. **The celebration.** `burst: [flash, ring, particles(kind: "shards")]`: a halo (never a rectangle), an irregular shock ring (level 3) and shards of coloured glass that fly out and fall.
-7. **Levels become a rose window.** `levels.body: { "draw": "rose", "rings": 2, "segments": 11 }`: a centre medallion (where the level number is written) and rings of segments of unequal widths, on circles that are slightly irregular; segments light one by one with the progress of the level, and the palette shifts with each new level.
+7. **Levels become a rose window.** `levels.body: { "draw": "rose", "rings": 3, "segments": 9 }`: a centre medallion (where the level number is written) and rings of segments of unequal widths, on circles that are slightly irregular; segments light one by one with the progress of the level, and the palette shifts with each new level.
 8. **The counter is a lead cartouche.** `counter.frame: { "draw": "lead", "backingAlpha": 0.88 }`: a dark glass plate in a hand-cut lead frame, the number written sharp on it, a shard burst at each increment.
 
 Changing `seed` gives another window with the same character; changing `irregularity` changes the hand, not the structure. Same seed, same instant: same image, on every computer.
@@ -449,12 +449,14 @@ The example module `examples/overlay-demo` has an `animated` element: a gauge, a
 | basic | 3440 × 1440 | full | 30.2 | 0.99 / 0.8 | 10.8 fps, 8.59 / 5.2 |
 | basic | 3440 × 1440 | light | 30.2 | 0.97 / 0.8 | 11 fps, 7.56 / 5.1 |
 | basic | 3440 × 1440 | minimal | 30 | 0.91 / 0.7 | 11.3 fps, 7.21 / 4 |
-| stained-glass | 1764 × 717 | full | 30.5 | 1.98 / 2 | 18.8 fps, 13.09 / 90.7 |
-| stained-glass | 1764 × 717 | light | 30.5 | 1.69 / 2.3 | 21.7 fps, 9.02 / 15.8 |
-| stained-glass | 1764 × 717 | minimal | 30.5 | 1.32 / 1.9 | 28.2 fps, 5.96 / 9.2 |
-| stained-glass | 3440 × 1440 | full | 26.3 | 5.57 / 5.3 | 5.2 fps, 151.8 / 420.7 |
-| stained-glass | 3440 × 1440 | light | 26.7 | 3.61 / 3.8 | 6.8 fps, 51.35 / 171.5 |
-| stained-glass | 3440 × 1440 | minimal | 28.8 | 2.32 / 2.1 | 8.8 fps, 26.33 / 80.9 |
+| mosaic-sample | 1764 × 717 | full | 30.5 | 1.98 / 2 | 18.8 fps, 13.09 / 90.7 |
+| mosaic-sample | 1764 × 717 | light | 30.5 | 1.69 / 2.3 | 21.7 fps, 9.02 / 15.8 |
+| mosaic-sample | 1764 × 717 | minimal | 30.5 | 1.32 / 1.9 | 28.2 fps, 5.96 / 9.2 |
+| mosaic-sample | 3440 × 1440 | full | 26.3 | 5.57 / 5.3 | 5.2 fps, 151.8 / 420.7 |
+| mosaic-sample | 3440 × 1440 | light | 26.7 | 3.61 / 3.8 | 6.8 fps, 51.35 / 171.5 |
+| mosaic-sample | 3440 × 1440 | minimal | 28.8 | 2.32 / 2.1 | 8.8 fps, 26.33 / 80.9 |
+
+The `mosaic-sample` rows were measured with the earlier mosaic recipe of the same family (same primitives, a few more panes); the 0.42.0 sample recipe is neutral and was only spot-checked, with the same order of cost.
 | night-neon | 1764 × 717 | full | 30.3 | 1.28 / 2.7 | 29 fps, 4.12 / 11.5 |
 | night-neon | 1764 × 717 | light | 30.5 | 0.91 / 2.6 | 29.8 fps, 3.55 / 4.9 |
 | night-neon | 1764 × 717 | minimal | 30.2 | 0.71 / 0.7 | 28.8 fps, 3.24 / 7 |

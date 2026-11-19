@@ -1,3 +1,4 @@
+import { isSafeGitRef } from "../gitRef";
 import { isSubdir } from "./installer";
 
 /**
@@ -41,7 +42,7 @@ export function rawBase(repoUrl: string, ref?: string): string | null {
   const m = /^\/([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/.exec(u.pathname);
   if (!m) return null;
   const r = ref && ref !== "" ? ref : "HEAD";
-  if (!/^[\w./-]{1,100}$/.test(r) || r.split("/").some((s) => s === ".." || s === "." || s === "")) return null;
+  if (!isSafeGitRef(r) || r.split("/").some((s) => s === ".." || s === "." || s === "")) return null;
   return `https://${RAW_HOST}/${m[1]}/${m[2]}/${r.split("/").map(encodeURIComponent).join("/")}`;
 }
 
