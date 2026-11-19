@@ -32,7 +32,7 @@ export function Switch({ label, checked, onToggle, onText, offText, disabled, fa
   onText?: string;
   offText?: string;
   disabled?: boolean;
-  /** Texte si l'appel échoue sans message (« Impossible pour le moment, réessayez »). */
+  /** Texte si l'appel échoue sans message (« Impossible, réessayez »). */
   failedText?: string;
   className?: string;
   testid?: string;

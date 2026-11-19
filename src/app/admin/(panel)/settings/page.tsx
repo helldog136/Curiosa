@@ -13,6 +13,7 @@ import { numberHint } from "@/core/adminkit/hints";
 import { PER_PAGE_DEFAULT, PER_PAGE_MAX, PER_PAGE_MIN } from "@/core/search/config";
 import { searchableTypes } from "@/core/search";
 import { getSearchSettings } from "@/core/search/settings";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { ImageField } from "@/components/admin/ImageField";
 import { Tabs } from "@/components/admin/Tabs";
 import { ui } from "@/components/admin/ui";
@@ -66,8 +67,8 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
   // Icône de l'onglet et image de partage : dans la grille en mode avancé, sous « Plus d'images » en mode simple (sans eux le site se débrouille).
   const extraLogos = (
     <>
-              <div className="space-y-1"><ImageField svg name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.faviconHelp")}</p></div>
-              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoShareHelp")}</p></div>
+              <div className="space-y-1"><ImageField svg name="favicon" label={t("settings.favicon")} defaultValue={config.favicon} uploadLabel={t("action.upload")} help={t("settings.faviconHelp")} /></div>
+              <div className="space-y-1"><ImageField name="logoShare" label={t("settings.logoShare")} defaultValue={config.logos.share} uploadLabel={t("action.upload")} help={t("settings.logoShareHelp")} /></div>
     </>
   );
 
@@ -95,7 +96,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
       <ActionForm action={saveSettings} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-8" submitTabs="site languages privacy">
         {advanced && <input type="hidden" name="__adv" value="1" />}
         <section data-tab="site" className="space-y-5">
-          <p className={ui.help}>{t("settings.identityIntro")}</p>
           <div className={`${ui.card} space-y-5`}>
             <h3 className="font-semibold">{t("settings.who")}</h3>
             <Select name="entityType" label={t("settings.entity")} help={t("settings.entityHelp")} defaultValue={entity}
@@ -110,13 +110,10 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
             ))}
           </div>
           <div className={`${ui.card} space-y-4`}>
-            <div>
-              <h3 className="font-semibold">{t("settings.logos")}</h3>
-              <p className={ui.help}>{t("settings.logosHelp")}</p>
-            </div>
+            <h3 className="font-semibold">{t("settings.logos")}</h3>
             <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-1"><ImageField svg name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoWideHelp")}</p></div>
-              <div className="space-y-1"><ImageField svg name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} /><p className={ui.help}>{t("settings.logoSquareHelp")}</p></div>
+              <div className="space-y-1"><ImageField svg name="logoWide" label={t("settings.logoWide")} defaultValue={config.logos.wide} uploadLabel={t("action.upload")} help={t("settings.logoWideHelp")} /></div>
+              <div className="space-y-1"><ImageField svg name="logo" label={t("settings.logoSquare")} defaultValue={logo} uploadLabel={t("action.upload")} help={t("settings.logoSquareHelp")} /></div>
               {advanced && extraLogos}
             </div>
             {!advanced && (
@@ -126,9 +123,8 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
             )}
             <details className="rounded-xl border border-line p-3" open={!!(config.logos.wideDark || config.logos.squareDark)}>
               <summary className="cursor-pointer text-sm font-medium">{t("settings.logosDark")}</summary>
-              <p className={`${ui.help} mt-2`}>{t("settings.logosDarkHelp")}</p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
-                <ImageField svg name="logoWideDark" label={t("settings.logoWideDark")} defaultValue={config.logos.wideDark} uploadLabel={t("action.upload")} />
+                <ImageField svg name="logoWideDark" help={t("settings.logosDarkHelp")} label={t("settings.logoWideDark")} defaultValue={config.logos.wideDark} uploadLabel={t("action.upload")} />
                 <ImageField svg name="logoDark" label={t("settings.logoSquareDark")} defaultValue={config.logos.squareDark} uploadLabel={t("action.upload")} />
               </div>
             </details>
@@ -147,7 +143,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
         </section>
 
         <section data-tab="languages" className="space-y-5">
-          <p className={ui.help}>{t("settings.languagesHelp")}</p>
           <div className={`${ui.card} space-y-5`}>
             <Select name="defaultLocale" label={t("settings.defaultLocale")} defaultValue={config.defaultLocale}
               options={Object.entries(KNOWN_LOCALES).map(([c, n]) => ({ value: c, label: n }))} />
@@ -155,8 +150,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
             <details open={advanced || config.locales.length > 1} className={advanced ? "" : "rounded-xl border border-line bg-bg px-4 py-3"}>
               <summary className={`cursor-pointer ${advanced ? "hidden" : "text-[15px] font-medium"}`}>{t("settings.moreLanguages")}</summary>
               <fieldset className={advanced ? "" : "mt-3"}>
-                <legend className={ui.label}>{t("settings.enabledLocales")}</legend>
-                <p className={`${ui.help} mb-2`}>{t("settings.enabledLocalesHelp")}</p>
+                <legend className={`${ui.label} mb-2 flex items-center gap-1`}>{t("settings.enabledLocales")}<HelpTip help={t("settings.enabledLocalesHelp")} name={t("settings.enabledLocales")} always /></legend>
                 <div className="grid gap-1 sm:grid-cols-3">
                   {Object.entries(KNOWN_LOCALES).map(([code, name]) => (
                     <Checkbox key={code} name="enabledLocales" value={code} label={name} defaultChecked={config.locales.includes(code)} />
@@ -176,9 +170,8 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
         </section>
 
         <section data-tab="privacy" className="space-y-5">
-          <p className={ui.help}>{t("settings.privacyHelp")}</p>
           <div className={`${ui.card} space-y-4`}>
-            <h3 className="font-semibold">{t("settings.privacyVisits")}</h3>
+            <h3 className="flex items-center gap-1.5 font-semibold">{t("settings.privacyVisits")}<HelpTip help={t("settings.privacyHelp")} name={t("settings.privacyVisits")} always /></h3>
             <Checkbox name="statsEnabled" label={t("settings.stats")} help={t("settings.statsHelp")} defaultChecked={config.statsEnabled} />
             <Checkbox name="newsToggle" label={t("settings.newsToggle")} help={t("settings.newsToggleHelp")} defaultChecked={config.newsToggle} />
           </div>
@@ -284,7 +277,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
 
       {isOwner && (
         <section data-tab="mail" className="space-y-5">
-          <p className={ui.help}>{t("settings.mailHelp")}</p>
           <p><span className={mail ? ui.chipOk : ui.chipWarn}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</span></p>
           <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-5">
             <div className={`${ui.card} space-y-4`}>
@@ -324,7 +316,6 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
       )}
       {advanced && (
         <section data-tab="address" className="space-y-5" data-testid="settings-address">
-          <p className={ui.help}>{t("settings.addressHelp")}</p>
           <div className={`${ui.card} space-y-4`}>
             <h3 className="font-semibold">{t("domain.current.title")}</h3>
             <p className="break-all text-lg font-semibold" data-testid="settings-address-url">{siteUrl}</p>

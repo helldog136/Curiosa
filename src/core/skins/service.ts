@@ -72,8 +72,8 @@ export type CatalogueListing = {
 };
 
 export const CATALOGUE_UNREACHABLE: Text = {
-  fr: "La liste des skins est injoignable pour le moment. Vos skins installés continuent de fonctionner ; réessayez plus tard.",
-  en: "The list of skins cannot be reached right now. Your installed skins keep working; please try again later.",
+  fr: "La liste des skins est injoignable. Vos skins installés continuent de fonctionner ; réessayez plus tard.",
+  en: "The list of skins cannot be reached. Your installed skins keep working; please try again later.",
 };
 
 export async function listCatalogue(opts: { fresh?: boolean; fetchImpl?: typeof fetch; kind?: "site" | "overlay" } = {}): Promise<CatalogueListing> {

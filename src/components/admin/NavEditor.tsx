@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { ui } from "./ui";
+import { HelpTip } from "./HelpTip";
 import { FieldErrorText, errorOf, useFieldErrorsContext } from "./FieldErrors";
 import { NavPicker } from "./NavPicker";
 import { MENU_MAX_TOTAL, alreadyInMenu, type MenuKind } from "@/core/menu";
@@ -60,6 +61,15 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
   const nameOf = (n: ENode) => n.label[first] || Object.values(n.label)[0] || n.title || n.href || strings[`kind.${n.kind}`] || "";
   const payload = JSON.stringify(tree.map(payloadOf));
   const notInList = notInMenu.filter((i) => !alreadyInMenu(i, tree));
+  // R14: what is the same on (almost) every row is a title, not a label: the kind shown on a row is the one that stands out; the most common kind is not repeated, and the "suggested" chip only shows when it tells some rows from others.
+  const allSuggested = notInList.length > 0 && notInList.every((i) => i.suggested);
+  const commonKind = (() => {
+    const counts = new Map<string, number>();
+    const walk = (list: ENode[]) => { for (const n of list) { counts.set(n.kind, (counts.get(n.kind) ?? 0) + 1); if (n.children) walk(n.children as ENode[]); } };
+    walk(tree as ENode[]);
+    const top = [...counts].sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] >= 3 && top[0] !== "link" && top[0] !== "group" ? top[0] : null;
+  })();
   const inTree = (i: CatalogItem) => alreadyInMenu(i, tree);
 
   /** Après chaque changement : le focus revient sur le bouton qu'on vient d'utiliser (ou son voisin s'il est devenu inutilisable), sinon sur l'élément. */
@@ -201,7 +211,7 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
     const err = errorOf(fieldErrors, path);
     return (
       <div className="min-w-0">
-        <p className="text-xs font-medium uppercase tracking-wide text-muted">{strings[`kind.${node.kind}`]}</p>
+        {node.kind !== commonKind && <p className="text-xs font-medium uppercase tracking-wide text-muted">{strings[`kind.${node.kind}`]}</p>}
         {node.kind !== "link" && node.kind !== "group" && <p className="break-words font-semibold leading-tight">{node.title || strings.missing}</p>}
         {node.sub && <p className="break-all text-sm text-muted">{node.sub}{advanced && node.ref ? ` · ${node.ref}` : ""}</p>}
         <FieldErrorText id={err.id} message={err.message} />
@@ -234,11 +244,10 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
     <div className="space-y-6" ref={root}>
       <input type="hidden" name="items" value={payload} />
       <p role="status" aria-live="polite" className="sr-only">{live}</p>
-      <p className="text-sm text-muted">{fmt(strings.limits ?? "", { total: limits.total, children: limits.children })}</p>
+      {full && <p className="text-sm text-muted">{fmt(strings.limits ?? "", { total: limits.total, children: limits.children })}</p>}
 
       <section aria-labelledby="nav-not-in-menu" className={`${ui.card} space-y-3`}>
-        <h2 id="nav-not-in-menu" data-not-in-menu-title tabIndex={-1} className="text-lg font-semibold outline-none">{strings.notInMenu}</h2>
-        <p className={ui.help}>{strings.notInMenuHelp}</p>
+        <h2 id="nav-not-in-menu" data-not-in-menu-title tabIndex={-1} className="flex items-center gap-1.5 text-lg font-semibold outline-none">{strings.notInMenu}<HelpTip help={strings.notInMenuHelp} name={strings.notInMenu ?? ""} always /></h2>
         {notInList.length === 0 ? <p className="text-sm text-muted">{strings.notInMenuNone}</p> : (
           <ul className="grid gap-2 sm:grid-cols-2">
             {notInList.map((it) => (
@@ -246,7 +255,7 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
                 <span className="min-w-0">
                   <span className="block break-words text-sm font-medium leading-tight">{it.title}</span>
                   <span className="block break-all text-xs text-muted">{it.sub}</span>
-                  {it.suggested && <span className={`${ui.chip} mt-1`}>{strings.suggested}</span>}
+                  {it.suggested && !allSuggested && <span className={`${ui.chip} mt-1`}>{strings.suggested}</span>}
                 </span>
                 <button type="button" className={`${ui.btn} min-h-11 shrink-0`} disabled={full} aria-label={`${strings.addOne} : ${it.title}`} onClick={() => addFromList(it)}>{strings.addOne}</button>
               </li>

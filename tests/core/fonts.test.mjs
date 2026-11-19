@@ -151,7 +151,7 @@ test("actions : l'envoi dit sous le bon champ ce qu'il faut faire (case, fichier
   r = await actions.uploadFontAction(null, form({ license: "on", fontName: "<<>>", font: file(KALAM4) }));
   assert.match(r.errors.fontName, /Ce nom n'est pas utilisable/);
   r = await actions.uploadFontAction(null, form({ license: "on", font: file(KALAM4) }));
-  assert.match(r.ok, /La police « Kalam » est prête/);
+  assert.match(r.ok, /La police « Kalam » est ajoutée/);
   r = await actions.uploadFontAction(null, form({ license: "on", font: file(KALAM4) }));
   assert.match(r.errors.font, /déjà envoyé/);
   const id = (await U.listUploads())[0].id;

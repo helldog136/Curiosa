@@ -11,6 +11,7 @@ import { siteTimezone } from "@/core/siteTime";
 import { followsSite, readMulti, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
 import { overlayKit } from "@/core/overlays/moduleKit";
+import { searchKit } from "./searchKit";
 
 export function instanceSettingKey(instanceId: string, key: string): string {
   return `instance.${instanceId}.${key}`;
@@ -68,6 +69,8 @@ export async function buildContext(mod: LoadedModule, instance: InstanceView, lo
     // (core 0.19.0) The composition engine and its checker, pure functions (compose/kit.ts).
     // (core 0.24.0) ... and the shared helpers of overlay elements (tokens, TV factor): overlays/moduleKit.ts.
     overlay: overlayKit,
+    // (core 0.38.0) The matching rule of the live search, for a module that filters its own paginated list (`table` with `searchable: "server"`).
+    search: searchKit,
     // Réglages hérités (0.2.0) : seulement les clés déclarées dans `legacySettings`, pour cette instance.
     legacy: makeLegacy(mod.manifest, instance.id),
     // Refus par défaut : seul un contexte d'administration d'un humain (voir `forViewer`) répond autre chose que « non ».

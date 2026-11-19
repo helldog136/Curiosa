@@ -93,7 +93,7 @@ test("jamais de secret dans la page : ni empreinte, ni préfixe, ni adresse de c
 
 test("sans assistant : l'état vide dit quoi faire ; le tableau reste celui des personnes", async () => {
   const html = await page(T.owner);
-  assert.match(html, /Aucun assistant IA pour l&#x27;instant|Aucun assistant IA pour l'instant/);
+  assert.match(html, /Aucun assistant IA\. Ajoutez-en un/);
   assert.doesNotMatch(html, /data-testid="member-type"/, "pas de colonne Type tant qu'il n'y a que des personnes");
   assert.match(html, /data-live-role="owner"/, "les filtres par rôle d'avant");
 });

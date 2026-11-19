@@ -20,7 +20,6 @@ const ALLOWED = new Map([
   ["mcp.profile.help", "names the levels \"safe actions\" and \"risky actions\" that the profile leaves off"],
   ["assistants.new.kind.upkeepHelp", "names the levels \"safe actions\" and \"risky actions\" that stay blocked"],
   ["skins.error.nosnapshot", "the answer to \"Undo\" when there is nothing to undo: the exact result of the action"],
-  ["users.roleDialog.same", "tells that the chosen role is the current one, so saving changes nothing: the exact result of the choice"],
   ["aim.req.change.same", "an AI request that would change nothing: says so to the person who approves"],
   ["domain.row.none", "the state chip of a checklist row, the pair of \"To do\": the person scans the rows for the ones to do"],
 ]);
@@ -70,4 +69,18 @@ test("R33: the two languages keep the same keys after the cleanup, and no delete
     assert.ok(!(k in locales.fr) && !(k in locales.en), `${k} was removed`);
     assert.ok(!sources.includes(`"${k}"`) && !sources.includes(`'${k}'`), `${k} is still used in the code`);
   }
+});
+
+test("R33e (0.38.0): « pour l'instant », « pour le moment », « for now », « for the moment » are flagged in a text and in the blocks of a page; the core texts have none", async () => {
+  const { adminPageErgonomicsProblems, visibleTexts } = await import("../../testsupport/ergonomics.mjs");
+  for (const t of ["Aucun brouillon pour l'instant.", "Aucun brouillon pour l’instant.", "Impossible pour le moment", "Empty for now.", "Nothing here for the moment"]) assert.equal(conditionalWording(t).length, 1, t);
+  for (const t of ["Aucun brouillon.", "No drafts.", "Ce n'est pas encore fait"]) assert.deepEqual(conditionalWording(t), [], t);
+  const blocks = [{ type: "heading", text: "Liste" }, { type: "table", columns: ["Nom"], rows: [["a"]], empty: "Aucune commande pour l'instant." }, { type: "adminForm", action: "x", submitLabel: "Enregistrer la commande", fields: [{ name: "n", label: "Nom", help: "Vide for now. Par exemple : hello" }] }];
+  assert.ok(visibleTexts(blocks[1]).includes("Aucune commande pour l'instant."));
+  const found = adminPageErgonomicsProblems(blocks).filter((p) => p.rule === "R33e");
+  assert.equal(found.length, 2, found.map((p) => p.message).join("\n"));
+  assert.deepEqual(adminPageErgonomicsProblems([{ type: "table", columns: ["Nom"], rows: [["a"]], empty: "Aucune commande." }]).filter((p) => p.rule === "R33e"), []);
+  // The texts of the core carry none (the scan of the first test would also catch it; this one names the words).
+  const all = Object.values(locales).flatMap((l) => Object.values(l)).filter((x) => typeof x === "string");
+  assert.deepEqual(all.filter((x) => /pour l['’]instant|pour le moment|for now|for the moment/i.test(x)), []);
 });

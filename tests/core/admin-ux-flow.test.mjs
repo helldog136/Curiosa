@@ -55,7 +55,7 @@ test("accueil : le sélecteur de blocs a un bouton « Annuler » lisible et n'af
 
 test("textes : mêmes clés en français et en anglais, aucune consigne « Vide = » ni renvoi à un fichier dans les pages revues", () => {
   assert.deepEqual(Object.keys(fr).sort(), Object.keys(en).sort());
-  for (const k of ["settings.identityIntro", "settings.who", "settings.contactCard", "redirects.empty.simple", "social.noneHelp", "home.noFeatures", "home.cancel"]) {
+  for (const k of ["settings.who", "settings.contactCard", "redirects.empty.simple", "social.noneHelp", "home.noFeatures", "home.cancel"]) {
     assert.ok(fr[k] && en[k], k);
   }
   for (const k of Object.keys(fr).filter((x) => /^(settings|redirects|social|navigation|home)\./.test(x) && !/^settings\.(bg|layer|glow)/.test(x))) {

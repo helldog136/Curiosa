@@ -458,8 +458,8 @@ test("catalogue injoignable : message simple FR/EN, les skins installés continu
   await cat.down({ wipe: true });       // plus aucune copie
   l = await S.listCatalogue();
   assert.deepEqual([l.ok, l.items.length, l.unreachable, l.source], [true, 0, true, "none"]);
-  assert.match(l.message.fr, /injoignable pour le moment.*skins installés continuent/);
-  assert.match(l.message.en, /cannot be reached right now.*installed skins keep working/);
+  assert.match(l.message.fr, /injoignable\. Vos skins installés continuent/);
+  assert.match(l.message.en, /cannot be reached\. Your installed skins keep working/);
   assert.equal((await S.installFromCatalogue("autre")).error, "skins.error.catalogue");
   assert.equal((await S.update("plain-light")).error, "skins.error.catalogue", "un skin du catalogue ne se met pas à jour dans le vide");
   assert.deepEqual((await S.installed()).map((s) => [s.id, s.status, s.active]), [["plain-light", "ok", true]], "les skins installés continuent");
