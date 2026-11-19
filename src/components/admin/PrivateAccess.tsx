@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState, useCallback, useEffect, useRef } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
-import { saveAccessAction, removeAccessAction } from "@/app/admin/(panel)/access/actions";
+import { saveAccessAction, removeAccessAction } from "./accessActions";
 import type { AccessState } from "@/core/gitAccess";
 import { ConfirmButton } from "./ConfirmButton";
 import { TextField } from "./Field";
@@ -26,7 +26,7 @@ const fill = (text: string | undefined, repo: string) => (text ?? "").replaceAll
 export function CodeField({ labels, error, keep = false, name = "code", value, onChange }: { labels: AccessLabels; error?: string; /** Edit window of a saved code: says that an empty field keeps it. */ keep?: boolean; name?: string; /** Controlled use (the page keeps the code until it is tried); without them the field is a plain form field. */ value?: string; onChange?: (v: string) => void }) {
   return (
     <TextField name={name} type="password" label={labels["access.field.label"] ?? ""} help={labels["access.field.help"]} example={keep ? labels["access.field.keep"] : labels["access.field.example"]}
-      error={error} noManager autoComplete="off" inputProps={{ spellCheck: false, autoCapitalize: "off", ...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {}) }} />
+      error={error} noManager autoComplete="new-password" inputProps={{ spellCheck: false, autoCapitalize: "off", ...(onChange ? { value: value ?? "", onChange: (e) => onChange(e.target.value) } : {}) }} />
   );
 }
 

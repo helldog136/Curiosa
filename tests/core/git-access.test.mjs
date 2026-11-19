@@ -269,9 +269,9 @@ test("only the owner-gated admin actions can save or remove a code, and nothing 
   const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ts|tsx)$/.test(p)) out.push(p.replaceAll("\\", "/")); } return out; };
   const all = walk("src");
   const importersOf = (needle) => all.filter((f) => new RegExp(`from "[^"]*${needle}"`).test(fs.readFileSync(f, "utf8")));
-  assert.deepEqual(importersOf("gitAccessAdmin").sort(), ["src/app/admin/(panel)/access/actions.ts", "src/app/admin/(panel)/appearance/actions.ts"]);
+  assert.deepEqual(importersOf("gitAccessAdmin").sort(), ["src/app/admin/(panel)/appearance/actions.ts", "src/components/admin/accessActions.ts"]);
   // Who imports the access actions (by their full path): admin pages and components only, never the assistant's code or an API route.
-  const users = all.filter((f) => /access\/actions"/.test(fs.readFileSync(f, "utf8")) && f !== "src/app/admin/(panel)/access/actions.ts");
+  const users = all.filter((f) => /[aA]ccess(Actions|\/actions)"/.test(fs.readFileSync(f, "utf8")) && f !== "src/components/admin/accessActions.ts");
   assert.ok(users.length >= 2);
   for (const f of users) assert.ok(f.startsWith("src/components/admin/") || f.startsWith("src/app/admin/"), f);
 });

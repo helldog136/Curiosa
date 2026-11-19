@@ -7,7 +7,7 @@ import { AccessSummary, CodeField, ACCESS_LABEL_KEYS } from "@/components/admin/
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import type { AccessState } from "@/core/gitAccess";
-import { accessViewAction } from "../access/actions";
+import { accessViewAction } from "@/components/admin/accessActions";
 import { useAL } from "./AppearanceLabels";
 import { BigCheckbox } from "./Controls";
 import { InspectPanel } from "./InspectPanel";
