@@ -15,9 +15,9 @@ export default async function ExtensionsUpdatesPage() {
   const data = await loadModulesUpdates(t, locale, config.defaultLocale);
   return (
     <div className="space-y-8">
-      <ExtensionsHeader t={t} advanced={advanced} isOwner intro={t("hub.tab.updates.title")} current="updates" />
-      <ModulesUpdatesSection t={t} data={data} when={data.report.checkedAt ? new Date(data.report.checkedAt).toLocaleString(locale) : "—"} />
-      <p className="text-sm text-muted">{t("hub.coreLink")} <a href={UPDATES_HREF} className="text-accent hover:underline">{t("hub.coreLinkLabel")} ›</a></p>
+      <ExtensionsHeader t={t} advanced={advanced} isOwner current="updates" />
+      <ModulesUpdatesSection t={t} data={data} checkedAt={data.report.checkedAt ?? null} locale={locale} />
+      <p className="text-sm"><a href={UPDATES_HREF} className="text-accent hover:underline">{t("hub.coreLinkLabel")} ›</a></p>
     </div>
   );
 }

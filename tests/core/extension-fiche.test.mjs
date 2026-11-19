@@ -174,14 +174,14 @@ test("fiche sans visuel : aucun bloc vide, aucun titre « À quoi cela ressemble
   assert.match(out, /Ce que ce module ajoute/);
   const none = html(h(ExtensionFiche, props({ gallery: [], adds: [], readme: null })));
   assert.doesNotMatch(none, /module-adds|Ce que ce module ajoute/, "rien d'ajouté à dire : pas de bloc");
-  assert.match(none, /Ce module n&#x27;a pas de README\./);
+  assert.doesNotMatch(none, /README/, "no empty « Presentation » section (R33)");
   assert.match(none, /data-testid="install-bar"/, "la barre d'installation reste");
 });
 
 test("barre d'installation d'une fiche : version et « installation possible » quand tout va bien ; module non vérifié : avertissement + case dans la barre", () => {
   const ok = html(h(ExtensionFiche, props()));
   assert.match(ok, /Installation possible · version 1\.2\.0/);
-  assert.match(ok, /Elle sera installée éteinte/);
+  assert.doesNotMatch(ok, /installée éteinte/, "false since extensions run once installed (R33.6)");
   const noVersion = html(h(ExtensionFiche, props({ version: undefined })));
   assert.match(noVersion, /id="install-status"[^>]*>Installation possible</);
   const extra = html(h(ExtensionFiche, props({ origin: "extra", bar: { kind: "ready", confirm: true } })));
@@ -266,7 +266,7 @@ test("présentation en mode avancé : ouverte d'office, sans phrase de résumé 
 
 test("présentation absente : message inchangé, pas de pli vide ; lecture en échec : rien", () => {
   assert.doesNotMatch(html(h(ExtensionFiche, props({ readme: null }))), /readme-fold/);
-  assert.match(html(h(ExtensionFiche, props({ readme: null }))), /Ce module n&#x27;a pas de README\./);
+  assert.doesNotMatch(html(h(ExtensionFiche, props({ readme: null }))), /README|readme-fold/);
   assert.doesNotMatch(html(h(ExtensionFiche, props({ readme: null, failed: true, bar: { kind: "blocked", reason: "read" } }))), /n&#x27;a pas de README|readme-fold/);
 });
 
@@ -295,6 +295,6 @@ test("présentation : le texte d'un tiers reste en Markdown sans HTML brut ni sc
 
 test("présentation : textes FR et EN, courts, en mots simples", () => {
   const fr = JSON.parse(read("src/locales/fr.json")), enj = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["fiche.readme.open", "fiche.readme.hint"]) { assert.ok(fr[k] && enj[k], k); assert.ok(fr[k].length <= 60 && !/[:!]/.test(fr[k]), k); }
+  for (const k of ["fiche.readme.open"]) { assert.ok(fr[k] && enj[k], k); assert.ok(fr[k].length <= 60 && !/[:!]/.test(fr[k]), k); }
   const keys = Object.keys(fr); assert.ok(keys.indexOf("fiche.readme.open") < keys.indexOf("theme.custom") && keys.at(-1) === "settings.contrast.accent2");
 });

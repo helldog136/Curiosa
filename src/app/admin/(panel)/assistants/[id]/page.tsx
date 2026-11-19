@@ -132,21 +132,19 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
           </p>
         )}
         {revoked && <p className="mt-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm" role="status" data-testid="access-revoked">{t("assistants.detail.revoked")}</p>}
-        <p className="mt-2 max-w-2xl text-[15px] leading-6" data-testid="assistants-can">{can.map((a) => t(`assistants.can.${a}`)).join(" ")}</p>
+        <p className="mt-2 max-w-2xl text-[15px] leading-6" data-testid="assistants-can">{can.map((a) => t(`assistants.can.${a}`)).join(" ")}{"\u00a0"}<HelpTip always help={t(advanced ? "mcp.accessIntro" : "assistants.detail.intro")} name={row.name} /></p>
         {!revoked && <p className="mt-2 text-sm"><a href={assistantHistoryHref(row.name)} className="text-accent underline underline-offset-2" data-testid="assistant-history">{t("team.ai.history")}</a></p>}
-        <p className={ui.pageIntro}>{t(advanced ? "mcp.accessIntro" : "assistants.detail.intro")}</p>
         {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t(advanced ? "mcp.readCeiling" : "assistants.detail.readOnly")}</p>}
       </div>
 
       {!revoked && (
         <section className={`${ui.card} space-y-3`} aria-label={t("mcp.url.title")} data-testid="mcp-url-access">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">{t("mcp.url.title")} <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">{t("mcp.url.title")} <HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /> <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
             <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
               {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
             </form>
           </div>
-          <p className="text-sm leading-6 text-muted">{advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")}</p>
           {urlOn && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t(advanced ? "mcp.guide.secretWarn" : "assistants.guide.warn")}</p>}
         </section>
       )}

@@ -58,7 +58,6 @@ export function SkinCards({ cards, locale, pages, canChoose }: { cards: SkinCard
               <h3 className="flex flex-wrap items-center gap-2 text-base font-semibold">
                 {name}
                 {c.active && <span className={ui.chipOk}>{al("appearance.current")}</span>}
-                {c.source === "basic" && <span className={ui.chip}>{al("appearance.base")}</span>}
               </h3>
               <p className="text-sm text-muted">{c.description[locale]}</p>
               <ModePills modes={c.modes} />

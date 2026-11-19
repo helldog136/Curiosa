@@ -39,7 +39,7 @@ export function CatalogueSearch({ placeholder, noneLabel, clearLabel }: { placeh
         <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">🔍</span>
         <input ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} aria-label={placeholder}
           autoComplete="off" data-testid="catalogue-search"
-          className="w-full rounded-full border border-line bg-bg py-3 pl-11 pr-24 text-base outline-none transition-colors focus:border-accent" />
+          className={`w-full rounded-full border border-line bg-bg py-3 pl-11 text-base ${query ? "pr-24" : "pr-4"} outline-none transition-colors focus:border-accent`} />
         {query && <button type="button" onClick={() => { setQuery(""); input.current?.focus(); }} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-3 py-1 text-sm text-muted hover:text-fg">{clearLabel}</button>}
       </div>
       {none && <p role="status" className="mt-4 text-muted" data-testid="catalogue-search-none">{noneLabel}</p>}

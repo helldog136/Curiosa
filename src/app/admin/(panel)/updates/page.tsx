@@ -13,6 +13,7 @@ import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { BugReportLink } from "@/components/admin/BugReportLink";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
@@ -64,7 +65,7 @@ export default async function UpdatesPage() {
       <div className="min-w-0">
         <h2 className="text-lg font-semibold">🧩 {t("updates.modules.title")}</h2>
         {highlightModules && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
-        <p className="mt-1 text-sm leading-6 text-muted">{moduleRows.length > 0 ? t("updates.modulesLink.behind", { n: moduleRows.length }) : t("updates.modulesLink.ok")}</p>
+        {moduleRows.length > 0 && <p className="mt-1 text-sm leading-6 text-muted">{t("updates.modulesLink.behind", { n: moduleRows.length })}</p>}
       </div>
       <a href={EXTENSIONS_UPDATES_HREF} className={moduleRows.length > 0 ? ui.btnPrimary : ui.btn}>{t("updates.modulesLink.open")}</a>
     </section>
@@ -257,7 +258,7 @@ export default async function UpdatesPage() {
           )}
         </Panel>
       )}
-      <p className="text-sm text-muted">{t("bugReport.help")} <BugReportLink href={bugUrl} className="whitespace-nowrap text-sm underline underline-offset-2 hover:text-accent">🐞 {t("bugReport.link")} ↗</BugReportLink></p>
+      <p className="flex items-center gap-1 text-sm text-muted"><BugReportLink href={bugUrl} className="whitespace-nowrap text-sm underline underline-offset-2 hover:text-accent">🐞 {t("bugReport.link")} ↗</BugReportLink><HelpTip always help={t("bugReport.help")} name={t("bugReport.link")} /></p>
     </div>
   );
 }
