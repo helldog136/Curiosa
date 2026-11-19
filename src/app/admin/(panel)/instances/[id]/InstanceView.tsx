@@ -249,7 +249,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
           ) : (
             <>
               {/* Version simple : un seul nom, dans la langue du site ; les traductions déjà saisies sont conservées telles quelles. */}
-              <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
+              <TextField name={`name_${config.defaultLocale}`} label={t("instances.displayName")} help={t("instances.displayNameHelp")} defaultValue={instance.names[config.defaultLocale] ?? ""} required />
               <input type="hidden" name={`description_${config.defaultLocale}`} value={instance.descriptions[config.defaultLocale] ?? ""} />
               {config.locales.filter((l) => l !== config.defaultLocale).map((l) => (
                 <span key={l} className="hidden">

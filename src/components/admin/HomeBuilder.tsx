@@ -6,11 +6,13 @@ import { emptyBlock, type BlockDef, type BlockKind } from "@/core/homeBlocks";
 import { ui } from "./ui";
 
 type Opt = { key: string; type: string; label: string; default?: unknown; options?: { value: string; label: string }[] };
-export type HomeChoice = { value: string; icon: string; title: string; subtitle: string; defaultSize: string; options: Opt[]; /** Bloc de page du cœur (créé ici, sans module) : son type. */ core?: BlockKind };
+export type HomeChoice = { value: string; icon: string; title: string; subtitle: string; defaultSize: string; options: Opt[]; /** Bloc de page du cœur (créé ici, sans module) : son type. */ core?: BlockKind;
+  /** (core 0.41.0) Content module: where its entries are edited, and for the "one page" section the editor of each page (by entry id), so the block links to what it shows. */
+  content?: { entriesHref: string; editHrefs?: Record<string, string>; entryOption?: string } };
 export type HomeBlock = { uid: string; value: string; size: string; isolated: boolean; options: Record<string, unknown> };
 type Labels = {
   editBlock: string; coreGroup: string; modulesGroup: string; noFeatures: string; cancel: string; layoutHelpTitle: string;
-  empty: string; add: string; pick: string; up: string; down: string; remove: string; size: string; alone: string; aloneHelp: string; adjust: string;
+  empty: string; add: string; pick: string; up: string; down: string; remove: string; size: string; alone: string; aloneHelp: string; adjust: string; editEntries: string; editEntry: string;
   sizes: Record<string, string>; sizeHelp: string;
 };
 
@@ -82,6 +84,15 @@ export function HomeBuilder({ choices, initial, labels, blockLabels, locales }: 
                   </div>
                 </details>
               )}
+              {c.content && (() => {
+                const one = c.content.entryOption ? c.content.editHrefs?.[String(b.options[c.content.entryOption] ?? "")] : undefined;
+                return (
+                  <p className="flex flex-wrap gap-x-5 gap-y-1 text-sm" data-testid="home-block-edit-links">
+                    {one && <a href={one} className="font-medium text-accent hover:underline">{labels.editEntry} →</a>}
+                    <a href={c.content.entriesHref} className="font-medium text-accent hover:underline">{labels.editEntries} →</a>
+                  </p>
+                );
+              })()}
               {!c.core && c.options.length > 0 && (
                 <details className="rounded-xl bg-bg px-4 py-3">
                   <summary className="cursor-pointer text-sm font-medium">{labels.adjust}</summary>

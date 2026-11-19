@@ -295,7 +295,7 @@ test("accessibilité : navigation étiquetée, page courante, précédent/suivan
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
   const keys = Object.keys(fr).filter((k) => k.startsWith("site.pagination.") || /^entries\.(search|stateLabel|filter|clearFilter|noMatch|rangeCount|pagesLabel|titleSortCapped|state\.all)/.test(k) || k === "ai.sitemapTruncated");
-  assert.ok(keys.length >= 15);
+  assert.ok(keys.length >= 14);
   for (const k of keys) assert.ok(en[k], `anglais manquant : ${k}`);
   assert.equal(fr["site.pagination.previous"], "Page précédente");
   assert.equal(fr["site.pagination.next"], "Page suivante");

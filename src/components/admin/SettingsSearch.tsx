@@ -21,8 +21,10 @@ export type SettingsSearchLabels = {
  *    first answer is drawn by the server too (no script needed to read it).
  * Only data is filtered here: no module script runs, no HTML is built from a label (matches are split into text pieces).
  */
-export function SettingsSearch({ variant, labels, endpoint, initial, initialQuery = "", advancedMode }: {
-  variant: "menu" | "page"; labels: SettingsSearchLabels; endpoint: string; initial?: SearchEntry[]; initialQuery?: string; advancedMode: boolean;
+export function SettingsSearch({ variant, labels, endpoint, contentEndpoint, initial, initialContent, initialQuery = "", advancedMode }: {
+  variant: "menu" | "page"; labels: SettingsSearchLabels; endpoint: string;
+  /** (core 0.41.0) Content entries for the typed text (editors and above); absent: settings only. */ contentEndpoint?: string;
+  initial?: SearchEntry[]; /** Content answer drawn by the server for `initialQuery`. */ initialContent?: SearchEntry[]; initialQuery?: string; advancedMode: boolean;
 }) {
   const router = useRouter();
   const [entries, setEntries] = useState<SearchEntry[] | null>(initial ?? null);
@@ -60,7 +62,24 @@ export function SettingsSearch({ variant, labels, endpoint, initial, initialQuer
   }, []);
 
   const parsed = useMemo(() => parseSearch(query, { module: module || undefined, advanced: advanced ? true : undefined, modified: modified ? true : undefined }), [query, module, advanced, modified]);
-  const results = useMemo(() => (entries ? searchEntries(entries, parsed, page ? 1000 : 8) : []), [entries, parsed, page]);
+  const settingsResults = useMemo(() => (entries ? searchEntries(entries, parsed, page ? 1000 : 8) : []), [entries, parsed, page]);
+  // Content entries: asked of the server 250 ms after the last keystroke, titles only, only for the words (a filter such as @advanced is about settings).
+  const [content, setContent] = useState<{ q: string; rows: SearchEntry[] }>({ q: parseSearch(initialQuery).words.join(" "), rows: initialContent ?? [] });
+  const words = parsed.words.join(" ");
+  const wantsContent = !!contentEndpoint && words !== "" && !module && !advanced && !modified && !parsed.filters.module && !parsed.filters.path && parsed.filters.advanced === undefined && !parsed.filters.modified;
+  useEffect(() => {
+    if (!contentEndpoint || !wantsContent || content.q === words) return;
+    const ctl = new AbortController();
+    const timer = setTimeout(async () => {
+      try {
+        const r = await fetch(`${contentEndpoint}?q=${encodeURIComponent(words)}`, { credentials: "same-origin", headers: { accept: "application/json" }, signal: ctl.signal });
+        if (r.ok) setContent({ q: words, rows: ((await r.json()) as { entries: SearchEntry[] }).entries });
+      } catch { /* settings results stay: the content answer is a bonus */ }
+    }, 250);
+    return () => { clearTimeout(timer); ctl.abort(); };
+  }, [contentEndpoint, wantsContent, words, content.q]);
+  const contentRows = wantsContent && content.q === words ? content.rows : [];
+  const results = useMemo(() => [...settingsResults, ...contentRows], [settingsResults, contentRows]);
   const modules = useMemo(() => (entries ? searchModules(entries) : []), [entries]);
   const asking = parsed.words.length > 0 || Object.values(parsed.filters).some((v) => v !== undefined);
 
