@@ -14,7 +14,7 @@ import type { ActionState } from "@/components/admin/ActionForm";
 
 /**
  * Enregistre le menu : une liste ordonnée à deux niveaux (pages du site, pages des extensions, contenus, raccourcis, liens libres, sous-menus). Le navigateur
- * n'est jamais cru sur parole : les références doivent exister, les adresses sont validées, les plafonds (40 au total, 8 par sous-menu) appliqués.
+ * n'est jamais cru sur parole : les références doivent exister, les adresses sont validées, les plafonds (40 au total, sans limite propre à un sous-menu) appliqués.
  * Chaque erreur est renvoyée sous son champ (`items.2.href`, `items.1.items.0.label`) ou sous son élément (`items.3`).
  */
 export async function saveNavigation(_prev: ActionState, formData: FormData): Promise<ActionState> {

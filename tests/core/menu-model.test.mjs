@@ -46,16 +46,14 @@ test("lecture défensive : un réglage trafiqué ne dépasse jamais 40 élément
   assert.equal(M.countNodes(nested), M.MENU_MAX_TOTAL);
 });
 
-test("plafonds documentés : 40 au total, 8 par sous-menu, deux niveaux", () => {
+test("plafonds documentés : 40 au total, aucun plafond propre au sous-menu, deux niveaux", () => {
   assert.equal(M.MENU_MAX_TOTAL, 40);
-  assert.equal(M.MENU_MAX_CHILDREN, 8);
+  assert.equal(M.MENU_MAX_CHILDREN, 40);
   const kids = (n) => Array.from({ length: n }, (_, i) => ({ kind: "link", href: `/c${i}` }));
   assert.deepEqual(M.checkCaps([{ kind: "group", label: { fr: "g" }, children: kids(8) }]), []);
-  const over = M.checkCaps([{ kind: "link", href: "/a" }, { kind: "group", label: { fr: "g" }, children: kids(9) }]);
-  assert.equal(over.length, 1);
-  assert.equal(over[0].code, "children");
-  assert.equal(over[0].path, "items.1");
+  assert.deepEqual(M.checkCaps([{ kind: "group", label: { fr: "g" }, children: kids(12) }]), [], "a submenu of 12 items is accepted");
   assert.equal(M.checkCaps([...kids(30), { kind: "group", children: kids(8) }, { kind: "group", children: kids(8) }])[0].code, "total");
+  assert.equal(M.checkCaps(kids(41))[0].code, "total", "41 in all is still refused");
 });
 
 // ─── Références ───────────────────────────────────────────────────────────────
@@ -162,14 +160,13 @@ test("réorganisation : mettre dans le sous-menu du dessus / en sortir, au clavi
   assert.equal(uids(T.indentNode(tree, "a")), "a b c", "premier élément : refusé, arbre inchangé");
 });
 
-test("réorganisation : jamais trois niveaux, jamais un sous-menu dans un sous-menu, jamais plus de 8 par sous-menu", () => {
+test("réorganisation : jamais trois niveaux, jamais un sous-menu dans un sous-menu, un sous-menu n'est limité que par le total", () => {
   const withKids = [leaf("a"), leaf("b", { children: [leaf("b1")] })];
   assert.deepEqual(T.movesFor(withKids, "b").into, { ok: false, why: "hasChildren" });
   assert.equal(uids(T.indentNode(withKids, "b")), "a b[b1]");
   assert.deepEqual(T.movesFor([leaf("a"), { uid: "g", kind: "group", label: { fr: "g" } }], "g").into, { ok: false, why: "group" });
-  const full = [{ ...leaf("a"), children: Array.from({ length: 8 }, (_, i) => leaf(`k${i}`)) }, leaf("z")];
-  assert.deepEqual(T.movesFor(full, "z").into, { ok: false, why: "full" });
-  assert.equal(uids(T.indentNode(full, "z")), uids(full), "sous-menu plein : refusé");
+  const full = [{ ...leaf("a"), children: Array.from({ length: 12 }, (_, i) => leaf(`k${i}`)) }, leaf("z")];
+  assert.deepEqual(T.movesFor(full, "z").into, { ok: true, target: "a" }, "no cap per submenu");
   assert.deepEqual(T.movesFor(full, "k0").into, { ok: false, why: "child" });
 });
 
@@ -230,12 +227,10 @@ test("envoi : si le parent a disparu, ses sous-éléments remontent d'un niveau 
   assert.deepEqual(r.items, [{ kind: "instance", ref: "i2" }]);
 });
 
-test("envoi : plafonds appliqués côté serveur — 9 éléments dans un sous-menu : erreur SOUS l'élément ; 41 au total : erreur générale", () => {
+test("envoi : plafonds appliqués côté serveur — 12 éléments dans un sous-menu acceptés ; 41 au total : erreur générale", () => {
   const link = (i) => ({ k: "link", href: `/p${i}`, label: { fr: `P${i}` } });
-  const r = validate([link(0), { k: "group", label: { fr: "G" }, items: Array.from({ length: 9 }, (_, i) => link(i + 1)) }]);
-  assert.equal(r.ok, false);
-  assert.deepEqual(Object.keys(r.errors), ["items.1"]);
-  assert.match(r.errors["items.1"], /^navigation\.error\.children/);
+  const r = validate([link(0), { k: "group", label: { fr: "G" }, items: Array.from({ length: 12 }, (_, i) => link(i + 1)) }]);
+  assert.equal(r.ok, true, "a submenu of 12 items is accepted");
   const tooMany = validate(Array.from({ length: 41 }, (_, i) => link(i)));
   assert.equal(tooMany.ok, false);
   assert.match(tooMany.error, /^navigation\.error\.total/);

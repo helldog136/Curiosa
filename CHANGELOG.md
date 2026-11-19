@@ -13,6 +13,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 **In short.** The "Skin for this page" setting now also shows on pages created before 0.45.0, and AI assistants can use it.
 
+- **Plus de limite par sous-menu.** Un sous-menu peut contenir autant d'éléments que vous voulez, dans la limite de 40 pour tout le menu.
+- **(English) No limit per submenu.** A submenu can hold as many items as you like, within the 40 of the whole menu.
+
 ### Corrections
 
 - **« Skin de cette page » manquait sur les sites existants.** Les pages déjà en place n'avaient pas ce réglage. Il s'ajoute maintenant tout seul, au démarrage et à chaque mise à jour d'une extension qui ajoute un nouveau champ ; un champ que vous aviez retiré reste retiré.

@@ -3894,7 +3894,7 @@
   "navigation.blocked.group": "A submenu cannot be put inside another submenu.",
   "navigation.blocked.hasChildren": "This item already has a submenu: it cannot become a submenu itself.",
   "navigation.blocked.full": "The submenu above is full (at most {max} items).",
-  "navigation.limits": "The menu holds {total} items at most, and {children} per submenu (two levels).",
+  "navigation.limits": "The menu holds {total} items at most, submenus included (two levels).",
   "navigation.error.children": "This submenu has {count} items; it takes {max} at most. Remove some or take them out of the submenu.",
   "navigation.error.total": "The menu has {count} items; it takes {max} at most. Remove a few.",
   "menu.system.home": "Home",
