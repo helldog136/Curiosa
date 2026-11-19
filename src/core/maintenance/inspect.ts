@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { DATA_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
-import { classify, isPrerelease } from "@/core/updates/versions";
+import { classify, isPrerelease, isReleaseTag } from "@/core/updates/versions";
 import { listInstances } from "@/core/instances";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { requirementGaps } from "@/core/modules/dependencies";
@@ -190,7 +190,7 @@ export type ModuleLine = {
 const refused = (b: BlockedUpdate | null, row: { version: string }): ModuleLine["lastRefusedUpdate"] =>
   b && b.to !== row.version ? { at: b.at, stayedOn: row.version, refusedVersion: b.to, cause: redactSecrets(b.reason, 200) } : undefined;
 
-const isStableTagRef = (ref: string | null | undefined) => !!ref && /^v?\d+\.\d+\.\d+$/.test(ref);
+const isStableTagRef = isReleaseTag;
 
 /** Languages as the assistant reads them: status ("official" or "community"), coverage of the interface ("complete" or "partial: 82%") and of the installed modules. */
 export type LanguageLine = { code: string; name: string; status: string; enabled: boolean; interface: string; modules: string };

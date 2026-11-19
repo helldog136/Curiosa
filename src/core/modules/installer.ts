@@ -22,9 +22,10 @@ import { ensureDefaultInstance } from "./defaultInstance";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
-import { classify, compareVersions, pickLatestTag, TAG_RE, type UpdateLevel } from "../updates/versions";
+import { classify, compareVersions, isReleaseTag, pickLatestTag, tagPrefix, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { opStep } from "../operations/tracker";
 import { reconcileManaged } from "../managedRedirects";
+import { accessCodeFor, accessEnv, accessTarget, GitAccessError, isAccessRefusal, isGitAccessError, scrub } from "../gitAccess";
 
 const run = promisify(execFile);
 
@@ -132,7 +133,8 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
   return { ok: true, repo: { url: url.href.replace(/\/$/, ""), ref, ...(subdir ? { subdir } : {}) } };
 }
 
-const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "echo" };
+// GIT_ASKPASS "true": a question from git is answered with nothing (it used to be "echo", which answered with the question itself).
+const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "true" };
 
 function gitArgs(args: string[]): string[] {
   const protocolFile = process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never";
@@ -140,13 +142,75 @@ function gitArgs(args: string[]): string[] {
     "-c", "protocol.ext.allow=never",
     "-c", `protocol.file.allow=${protocolFile}`,
     "-c", "core.hooksPath=/dev/null",
+    "-c", "credential.helper=",   // (0.42.0) no helper of the machine ever stores or hands out a credential
     ...args,
   ];
 }
 
+const NETWORK_COMMANDS = new Set(["fetch", "clone", "ls-remote", "pull"]);
+
+/** The git command of `args` (first word that is neither an option nor the value of `-c`). */
+function subcommandOf(args: string[]): string | undefined {
+  for (let i = 0; i < args.length; i++) {
+    const a = args[i]!;
+    if (a === "-c") { i++; continue; }
+    if (a.startsWith("-")) continue;
+    return a;
+  }
+  return undefined;
+}
+
+/** The repository address a network command will contact: an https address among its arguments, or the `origin` of the checkout it runs in. */
+async function remoteOf(args: string[], cwd?: string): Promise<string | undefined> {
+  const direct = args.find((a) => /^https:\/\//i.test(a));
+  if (direct) return direct;
+  if (!cwd) return undefined;
+  try {
+    const { stdout } = await run("git", gitArgs(["config", "--get", "remote.origin.url"]), { cwd, timeout: 10_000, env: GIT_ENV, maxBuffer: 4096 });
+    return stdout.trim() || undefined;
+  } catch { return undefined; }
+}
+
+/**
+ * THE ONLY PLACE git is started with a repository access code (0.42.0, src/core/gitAccess.ts). The code (saved sealed for that exact repository, or `override` for the
+ * check of a code the owner has just pasted) goes into the CHILD environment as a header scoped to that repository address: not in argv (visible in `ps` and in
+ * error texts), not in the address, not in `.git/config` (a module checkout stays on disk). Every failure is cleaned before it leaves: the code and its encoded
+ * form are removed, and a refusal by the host (wrong code, no access, repository not found: GitHub says "not found" for a private one) becomes a `GitAccessError`
+ * that carries no text from git, so all of them read the same.
+ */
+async function runGit(args: string[], cwd: string | undefined, env: Record<string, string> | undefined, timeoutMs: number, override?: { url: string; code: string }): Promise<string> {
+  let code: string | null = null;
+  let authEnv: Record<string, string> = {};
+  const cmd = subcommandOf(args);
+  if (cmd && NETWORK_COMMANDS.has(cmd)) {
+    const url = override?.url ?? await remoteOf(args, cwd);
+    if (url && accessTarget(url)) {
+      code = override?.code ?? await accessCodeFor(url).catch(() => null);
+      if (code) authEnv = accessEnv(url, code, { ...GIT_ENV, ...(env ?? {}) });
+    }
+  }
+  try {
+    const { stdout } = await run("git", gitArgs(args), { cwd, timeout: timeoutMs, env: { ...GIT_ENV, ...(env ?? {}), ...authEnv }, maxBuffer: 1024 * 1024 });
+    return stdout.trim();
+  } catch (error) {
+    const e = error as { stderr?: unknown; message?: string; killed?: boolean; signal?: string };
+    const stderr = typeof e.stderr === "string" ? e.stderr : "";
+    if (isAccessRefusal(stderr)) throw new GitAccessError();
+    const clean = new Error(scrub(e.message ?? "git failed", code)) as Error & { stderr?: string; killed?: boolean; signal?: string };
+    clean.stderr = scrub(stderr, code);
+    clean.killed = e.killed;
+    clean.signal = e.signal;
+    throw clean;
+  }
+}
+
 export async function git(args: string[], cwd?: string, env?: Record<string, string>, timeoutMs = 90_000): Promise<string> {
-  const { stdout } = await run("git", gitArgs(args), { cwd, timeout: timeoutMs, env: env ? { ...GIT_ENV, ...env } : GIT_ENV, maxBuffer: 1024 * 1024 });
-  return stdout.trim();
+  return runGit(args, cwd, env, timeoutMs);
+}
+
+/** `git ls-remote` of one repository with a code that is NOT saved yet (the check of a code the owner has just pasted). Nothing is stored here. */
+export async function gitCheckAccess(url: string, code: string): Promise<void> {
+  await runGit(["ls-remote", "--", url, "HEAD"], undefined, undefined, 30_000, { url, code });
 }
 
 /**
@@ -340,6 +404,7 @@ export async function installModule(input: string, opts: {
     if (deps) await unwind(deps);
     if (error instanceof CoreTooOld) return coreRefusal(error);
     if (error instanceof LoadCheckFailed) { await noteBlocked(candidate?.id ?? "?", "", candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
+    if (isGitAccessError(error)) return { ok: false, error: "modules.error.access" };
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
   } finally {
@@ -347,7 +412,7 @@ export async function installModule(input: string, opts: {
   }
 }
 
-const isStableTag = (ref: string | null | undefined): ref is string => !!ref && TAG_RE.test(ref);
+const isStableTag = isReleaseTag;   // `vX.Y.Z`, or `<id>/vX.Y.Z` for a repository that tags each module on its own (0.42.0)
 export const isCommitRef = (ref: string | null | undefined): boolean => !!ref && /^[0-9a-f]{7,40}$/i.test(ref);
 
 export type ModuleUpdateCheck = {
@@ -567,8 +632,8 @@ export async function remoteTags(repoUrl: string): Promise<string[]> {
 }
 
 /** Plus haute version stable (`vX.Y.Z`) du dépôt d'un module. */
-async function latestRemoteTag(repoUrl: string): Promise<string | null> {
-  return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", repoUrl]));
+async function latestRemoteTag(repoUrl: string, prefix = ""): Promise<string | null> {
+  return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", repoUrl]), prefix);
 }
 
 /**
@@ -600,7 +665,7 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
     if (row.subdir) return { check: await checkSubdirUpdate(row), failed: false };
     if (isCommitRef(row.ref)) return { check: { available: false }, failed: false };
     if (isStableTag(row.ref)) {
-      const latest = await latestRemoteTag(row.repoUrl!);
+      const latest = await latestRemoteTag(row.repoUrl!, tagPrefix(row.ref));
       const level = latest ? classify(row.ref, latest) : null;
       return { check: level ? { available: true, target: latest!, remote: latest!, level } : { available: false, remote: latest ?? undefined }, failed: false };
     }
@@ -654,7 +719,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     let fetchRef: string;
     if (isCommitRef(row.ref)) return { ok: false, error: "modules.error.pinned" };
     if (isStableTag(row.ref)) {
-      const latest = await latestRemoteTag(row.repoUrl);
+      const latest = await latestRemoteTag(row.repoUrl, tagPrefix(row.ref));
       if (!latest || !classify(row.ref, latest)) return { ok: false, error: "modules.error.uptodate" };
       newRef = latest;
       fetchRef = `refs/tags/${latest}`;

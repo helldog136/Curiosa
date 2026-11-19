@@ -7,6 +7,33 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.42.0 — 2026-11-19
+
+**En bref.** Vous pouvez maintenant ajouter un skin (ou une extension personnelle) depuis un dépôt GitHub privé, avec un code d'accès en lecture seule limité à ce seul dépôt. Le code est gardé chiffré et n'apparaît nulle part.
+
+**In short.** You can now add a skin (or a personal extension) from a private GitHub repository, with a read-only access code limited to that one repository. The code is kept encrypted and appears nowhere.
+
+### Nouveautés
+
+- **Ajouter depuis un dépôt privé.** Dans Apparence, collez l'adresse : si le dépôt est privé, un champ pour le code d'accès en lecture seule apparaît, avec les étapes GitHub dans son aide. Le code n'est gardé que s'il marche.
+- **(English) Add from a private repository.** In Appearance, paste the address: if the repository is private, a field for the read-only access code appears, with the GitHub steps in its help. The code is kept only if it works.
+- **Un code par dépôt, jamais ailleurs.** Une fois réglé, une ligne « Dépôt privé configuré », un bouton « Modifier » et « Retirer l'accès », qui dit ce qui s'arrête : les mises à jour ne sont plus vérifiées, ce qui est installé reste.
+- **(English) One code per repository, nowhere else.** Once set: a "Private repository configured" line, an "Edit" button and "Remove access", which says what stops: updates are no longer checked, what is installed stays.
+- **Les extensions personnelles aussi.** Dans Extensions, « Ajouter depuis une adresse » fonctionne de la même façon pour un dépôt privé.
+- **(English) Personal extensions too.** In Extensions, "Add from an address" works the same way for a private repository.
+- **Sauvegarde.** Le code est chiffré dans la sauvegarde. Sur un autre serveur, la page dit « Code d'accès à saisir de nouveau » : collez-le de nouveau.
+- **(English) Backup.** The code is encrypted in the backup. On another server, the page says "Access code to enter again": paste it again.
+- **Un seul message quand l'accès est refusé.** « Adresse ou code d'accès à vérifier. » : code faux, expiré ou dépôt introuvable, c'est le même texte.
+- **(English) One message when access is refused.** "Address or access code to check.": wrong code, expired code or missing repository, the same text.
+- **Un dépôt qui regroupe plusieurs skins.** La recherche de mise à jour comprend les étiquettes « nom-du-skin/v1.2.0 » en plus de « v1.2.0 ».
+- **(English) A repository that holds several skins.** The update check understands "skin-name/v1.2.0" tags as well as "v1.2.0".
+
+### Pour les développeurs
+
+- `gitAccess.ts` (stockage scellé `git.secret.access`, en-tête limité à l'adresse exacte), `gitAccessAdmin.ts` (essai, enregistrement, audit sans le code), `seal.ts`. Le code ne passe que par l'environnement du processus fils dans `git()` : jamais argv, adresse, `.git/config`, journal ni erreur.
+- Tests : `git-access.test.mjs` (fuites), `skins-prefixed-tags.test.mjs`, `private-access-ui.test.mjs`. `pickLatestTag(sortie, préfixe)`, `isReleaseTag`, `tagPrefix` dans `updates/versions.ts`.
+- La recette de test `stained-glass.json` est remplacée par `mosaic-sample.json` ; seuls les condensats `mosaic/*` de `golden-0.32.0.json` changent (`basic` et `neon` identiques).
+
 ## 0.40.1 — 2026-11-19
 
 **En bref.** Les boutons et pastilles dont l'adresse commence par « ? » (enregistrer l'application Twitch, filtres, « Ajouter… ») refonctionnent. Le menu reste en français sans catalogue, et plusieurs textes en double ou trop techniques disparaissent.

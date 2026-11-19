@@ -107,3 +107,7 @@ Les fixtures de test par époque (0.1, 0.2, 0.6, 0.31, 0.38) sont de vraies sauv
 ## Skins (apparence)
 
 Les réglages d'apparence (`theme.*`, `header.layout`) et ceux des skins (`skin.active`, `skin.installed`, `skin.options`) sont des réglages comme les autres : ils sont dans la sauvegarde et restaurés tels quels. Une sauvegarde faite avant les skins n'en contient aucun : le site s'affiche avec le skin de base, à l'identique. Les **fichiers** d'un skin installé ne sont pas dans la sauvegarde : ils sont réinstallés depuis leur dépôt. Tant qu'ils manquent, le skin de base s'applique, rien n'est perdu et `skin.active` est gardé : le skin se réactive dès qu'il est de nouveau installé.
+
+## Private repositories (core 0.42.0)
+
+The access code of a private repository (a skin or a module installed from a private GitHub repository) is a setting named `git.secret.access`. It is kept **sealed** with the site secret (`AUTH_SECRET`, or `data/auth-secret`), so the backup holds only ciphertext, and the readable summary (`site.txt`) shows it masked. The site secret is **not** in the backup: after a restore on another server the ciphertext cannot be opened, the page says "Access code to enter again" next to the repository, and the owner pastes a new code (Appearance or Extensions, "Edit"). Skins and modules of that repository are reinstalled as usual once the code is entered again.

@@ -75,9 +75,9 @@ export async function fetchSkinSource(url: string, ref: string | null | undefine
   }
 }
 
-/** Plus haute étiquette stable (`vX.Y.Z`) du dépôt, ou null. */
-export async function latestStableTag(url: string): Promise<string | null> {
-  return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", url]));
+/** Plus haute étiquette stable du dépôt, ou null : `vX.Y.Z`, ou `<id>/vX.Y.Z` quand `prefix` vaut `<id>/` (dépôt qui regroupe plusieurs skins). */
+export async function latestStableTag(url: string, prefix = ""): Promise<string | null> {
+  return pickLatestTag(await git(["ls-remote", "--tags", "--refs", "--", url]), prefix);
 }
 
 /** Tête (commit) d'une branche, ou de la branche par défaut. */
