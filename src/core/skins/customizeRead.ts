@@ -341,10 +341,10 @@ export function checkCustomizeAgainstSkin(decl: CustomizeDecl, skin: { contract:
   }
   // The variables the sheet reads and the controls it declares must match (warnings: a hint for the author, never a refusal).
   const used = new Set([...skin.css.matchAll(/var\(\s*(--sk-cz-[a-z0-9-]+)/g)].map((m) => m[1]!));
-  for (const g of decl.groups) for (const ctl of g.controls) if (ctl.type !== "choice" && ctl.type !== "toggle" || varNamesOf(ctl).length) {
-    const names = varNamesOf(ctl);
-    if (ctl.type === "choice" || (ctl.type === "toggle" && Object.keys({ ...ctl.on, ...ctl.off }).length > 0)) continue;   // these set common tokens, not their own variable
-    if (!names.some((n) => used.has(n))) push("customize-unused", { id: ctl.id }, "warning");
+  for (const g of decl.groups) for (const ctl of g.controls) {
+    // a choice (and a toggle that only sets common tokens) writes no variable of its own: nothing for the sheet to read
+    if (ctl.type === "choice" || (ctl.type === "toggle" && Object.keys({ ...ctl.on, ...ctl.off }).length > 0)) continue;
+    if (!varNamesOf(ctl).some((n) => used.has(n))) push("customize-unused", { id: ctl.id }, "warning");
   }
   for (const name of used) if (!declared.has(name)) push("customize-undeclared", { name }, "warning");
   return issues;
