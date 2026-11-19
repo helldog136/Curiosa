@@ -6,6 +6,7 @@ import { deleteSetting, setSetting, getSetting } from "@/core/settings";
 import { buildContext } from "./context";
 import { getModule, listModuleRows, type LoadedModule } from "./registry";
 import { openSeedSession } from "./seeding";
+import { adoptModuleFeatures } from "./instanceFeatures";
 import type { InstanceView } from "@/core/instances";
 
 /**
@@ -113,6 +114,8 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
 export async function migrateModuleInstances(moduleId: string, opts: { skipNewer?: boolean } = {}): Promise<MigrationOutcome[]> {
   const mod = await getModule(moduleId);
   if (!mod) return [];
+  // Every path that applies a module version (update, reinstall, rollback replay, restore) comes here: existing instances adopt newly declared content features once.
+  await adoptModuleFeatures(moduleId);
   const rows = await prisma.moduleInstance.findMany({ where: { moduleId }, select: { id: true } });
   const results: MigrationOutcome[] = [];
   for (const { id } of rows) {

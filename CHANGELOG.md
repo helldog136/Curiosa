@@ -7,6 +7,24 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.45.1 — 2026-11-20
+
+**En bref.** Le réglage « Skin de cette page » apparaît aussi sur les pages créées avant la 0.45.0, et les assistants IA peuvent l'utiliser.
+
+**In short.** The "Skin for this page" setting now also shows on pages created before 0.45.0, and AI assistants can use it.
+
+### Corrections
+
+- **« Skin de cette page » manquait sur les sites existants.** Les pages déjà en place n'avaient pas ce réglage. Il s'ajoute maintenant tout seul, au démarrage et à chaque mise à jour d'une extension qui ajoute un nouveau champ ; un champ que vous aviez retiré reste retiré.
+- **(English) "Skin for this page" was missing on existing sites.** Pages already in place did not have the setting. It is now added by itself, at start-up and at each update of an extension that adds a new field; a field you removed stays removed.
+- **Les assistants IA sont prévenus.** Ils doivent se reconnecter pour voir le nouvel argument ; l'état de maintenance le dit.
+- **(English) AI assistants are told.** They need to reconnect to see the new argument; the maintenance status says so.
+
+### Pour les développeurs
+
+- Chaque instance garde la liste des fonctions de contenu déjà vues (`instance.<id>.__seenFeatures`, sans migration de schéma) ; `adoptModuleFeatures` (appelé par `migrateModuleInstances` et au démarrage) ajoute celles que le manifeste déclare et que l'instance n'a pas vues. Rattrapage unique : sans liste, tout est vu sauf `skin`. La révision de reconnexion MCP inclut ces fonctions.
+- **(English)** Each instance keeps the list of content features it has seen (`instance.<id>.__seenFeatures`, no schema migration); `adoptModuleFeatures` (called by `migrateModuleInstances` and at start-up) adds those the manifest declares and the instance has not seen. One-time catch-up: with no list, everything counts as seen except `skin`. The MCP reconnect revision now includes each instance's features.
+
 ## 0.45.0 — 2026-11-20
 
 **En bref.** Une page peut maintenant s'afficher avec un autre skin que celui du site : parfait pour une vitrine qui montre un skin par page.
