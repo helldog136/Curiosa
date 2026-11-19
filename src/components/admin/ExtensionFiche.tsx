@@ -108,16 +108,10 @@ export function ExtensionFiche(p: FicheProps) {
       {p.gallerySlot ?? <PreviewGallery items={p.gallery} labels={p.galleryLabels} />}
       <AddsList items={p.adds} t={t} />
 
-      {p.readme ? <ReadmeFold summary={p.readmeSummary} open={p.advanced} t={t}>{p.readme}</ReadmeFold> : !p.failed && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">{t("catalogue.presentation")}</h2>
-          <p className="text-sm text-muted">{t("catalogue.noReadme")}</p>
-        </section>
-      )}
+      {p.readme && <ReadmeFold summary={p.readmeSummary} open={p.advanced} t={t}>{p.readme}</ReadmeFold>}
 
       {/* Avant d'installer : l'avertissement d'un module non vérifié reste dans la page (la case à cocher est dans la barre du bas). */}
       {bar.kind === "ready" && bar.confirm && <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid={p.origin === "extra" ? "extra-warning" : "custom-warning"}>{p.origin === "extra" ? t("catalogue.extraWarning") : t("catalogue.customWarning")}</p>}
-      {bar.kind === "ready" && !bar.confirm && <p className="text-sm text-muted">{t("catalogue.installNote")}</p>}
 
       {/* 2. Les détails techniques, en dessous et repliés. */}
       <TechnicalDetails summary={p.summary} open={bar.kind === "blocked" && bar.reason === "deps"} t={t}>

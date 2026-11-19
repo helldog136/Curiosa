@@ -10,6 +10,7 @@ import { ui } from "@/components/admin/ui";
 import { parseFamily } from "@/core/modules/extensionFamilies";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstalled } from "./loadInstalled";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { PlacedNotice } from "@/components/admin/PlacedNotice";
 
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ export default async function ExtensionsPage({ searchParams }: { searchParams: P
 
   return (
     <div className="space-y-8">
-      <ExtensionsHeader t={t} advanced={advanced} isOwner={isOwner} current="installed" intro={advanced ? t("extensions.intro") : t("extensions.introSimple")} />
+      <ExtensionsHeader t={t} advanced={advanced} isOwner={isOwner} current="installed" intro={advanced ? t("extensions.intro") : t("extensions.introSimple")} tip={advanced ? t("extensions.introTip") : undefined} />
       <ExtensionsNotices t={t} locale={locale} defaultLocale={config.defaultLocale} isOwner={isOwner} query={query} />
       {typeof query.placed === "string" && <PlacedNotice t={t} locale={locale} moduleId={query.placed} />}
       {total === 0 && (
@@ -41,10 +42,7 @@ export default async function ExtensionsPage({ searchParams }: { searchParams: P
       )}
       {groups.map((g) => (
         <section key={g.type} data-catalogue-section aria-labelledby={`family-title-${g.type}`} className="space-y-3" data-testid={`family-section-${g.type}`}>
-          <div>
-            <h2 id={`family-title-${g.type}`} className="text-sm font-semibold uppercase tracking-wide text-muted">{g.type === "broken" ? t("modules.broken") : t(`family.${g.type}`)}</h2>
-            {g.type !== "broken" && <p className="mt-1 text-sm text-muted">{t(`family.${g.type}.help`)}</p>}
-          </div>
+          <h2 id={`family-title-${g.type}`} className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted">{g.type === "broken" ? t("modules.broken") : t(`family.${g.type}`)}{g.type !== "broken" && <HelpTip always help={t(`family.${g.type}.help`)} name={t(`family.${g.type}`)} />}</h2>
           <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {g.items.map((m) => <ExtensionCard key={m.id} t={t} m={m} advanced={advanced} />)}
           </ul>

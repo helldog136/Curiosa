@@ -7,6 +7,68 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.37.0 — 2026-11-19
+
+**En bref.** Le catalogue d'extensions commence enfin par ce que vous cherchez : le champ de recherche et les fiches. Le mur de pastilles « Ajoute des réglages à » devient un seul menu avec sa recherche, et les textes qui ne servent à rien ont disparu des pages Extensions.
+
+**In short.** The extension catalogue now starts with what you came for: the search box and the cards. The wall of "Adds settings to" pills becomes a single menu with its own search, and the texts that serve no purpose are gone from the Extensions pages.
+
+### Nouveautés
+
+- **Un seul menu pour choisir une page de réglages.** « Ajoute des réglages à » est un bouton qui ouvre la liste des pages (avec le nombre d'extensions), une recherche pour la raccourcir, et la page choisie reste affichée en pastille qu'on retire d'un clic. L'adresse du filtre ne change pas : un lien partagé continue de marcher.
+- **(English) One menu to pick a settings page.** "Adds settings to" is a button that opens the list of pages (with the number of extensions) and a search to shorten it; the chosen page stays shown as a chip you remove in one click. The address of the filter is unchanged: a shared link still works.
+- **Le catalogue montre la recherche et les fiches en premier.** Une phrase d'introduction (le détail est dans la bulle « ? »), puis la recherche et le menu sur une ligne, puis les fiches. Sur un téléphone, les premières fiches sont visibles sans défiler.
+- **(English) The catalogue shows the search and the cards first.** One introduction line (the detail is in the "?" bubble), then the search and the menu on one row, then the cards. On a phone, the first cards are visible without scrolling.
+- **« Mis à jour il y a 3 min » à côté d'« Actualiser ».** L'heure exacte est dans l'info-bulle. Les pages « Mises à jour » disent de même « Vérifié il y a 3 min ».
+- **(English) "Updated 3 min ago" next to "Refresh".** The exact time is in the tooltip. The "Updates" tab says "Checked 3 min ago" in the same way.
+
+### Ce qui change à l'écran après la mise à jour
+
+- **Pages Extensions plus courtes.** Les phrases qui ne servent à rien ont disparu : « liste à jour », l'adresse du dépôt répétée sur chaque fiche, « vérifié » sur chaque fiche (seules les extensions non vérifiées gardent leur étiquette), le titre « Modules » au-dessus d'une seule liste.
+- **(English) Shorter Extensions pages.** Sentences that serve no purpose are gone: "list is up to date", the repository address repeated on every card, "verified" on every card (only unverified extensions keep their label), the "Modules" title above a single list.
+- **Moins de texte autour des listes.** L'explication sous chaque famille de « Installées » passe en bulle « ? », et le titre de l'onglet « Mises à jour » n'est plus répété sous lui.
+- **(English) Less text around the lists.** The explanation under each family of "Installed" moves into a "?" bubble, and the "Updates" tab title is no longer repeated under it.
+- **Fiche d'une extension : deux textes faux ou vides retirés.** « Elle sera installée éteinte » était faux (une extension installée fonctionne), et « Ce module n'a pas de README » ne disait rien d'utile.
+- **(English) Extension sheet: two wrong or empty texts removed.** "It will be installed switched off" was wrong (an installed extension runs), and "This module has no README" said nothing useful.
+- **La page d'un accès d'assistant IA ne fait plus 80 000 pixels de haut.** Chaque groupe d'actions est replié avec son compte (« 6 sur 18 »). Les phrases d'explication passent en bulle « ? ».
+- **(English) An AI assistant access page is no longer 80,000 pixels tall.** Each group of actions is folded with its count ("6 of 18"). The explanatory sentences move into a "?" bubble.
+- **Tableau de bord et Entretien : plus de phrases creuses.** La liste « Quelques étapes… » n'a plus de phrase d'intro ni de « Fait » sur chaque ligne, et « Vos extensions sont à jour » a disparu.
+- **(English) Dashboard and Upkeep: no more empty sentences.** The "A few steps…" list has no intro sentence and no "Done" on every line, and "Your extensions are up to date" is gone.
+- **Assistants IA : les phrases qui rassurent sont retirées.** Par exemple « Il ne contient ni mot de passe ni secret » et « Votre IA ne fait rien de risqué sans vous ». Les avertissements qui évitent une perte restent.
+- **(English) AI assistants: reassuring sentences removed.** For example "It contains no password or secret" and "Your AI does nothing risky without you". Warnings that prevent a loss stay.
+- **Apparence : le skin actuel n'apparaît qu'une fois.** Il n'est plus répété dans la liste « Choisir un skin », et la phrase « relus : vous pouvez les installer en confiance » est retirée.
+- **(English) Appearance: the current skin shows once.** It is no longer repeated in the "Choose a skin" list, and the "reviewed: you can install them with confidence" sentence is removed.
+- **Réglages : l'alerte d'espace disque n'est dite qu'une fois.** Elle n'est plus répétée sous chaque champ de logo ou d'image.
+- **(English) Settings: the low-disk warning is said once.** It is no longer repeated under every logo or image field.
+- **Extensions > Mises à jour : une seule ligne pour les extensions impossibles à vérifier.** « Impossible de vérifier 22 extensions pour le moment » ; les noms sont dans l'info-bulle.
+- **(English) Extensions > Updates: one line for extensions that cannot be checked.** "Cannot check 22 extensions right now"; the names are in the tooltip.
+- **Lien court créé : plus de « C'est fait ! ».** Le message dit seulement quoi faire ensuite.
+- **(English) Short link created: no more "Done!".** The message only says what to do next.
+- **« Repris depuis… » devient « Réglé dans… ».** Le mot interne « repris » n'apparaît plus dans les fenêtres de modification ni dans le journal.
+- **(English) "Taken from…" becomes "Set in…".** The internal word "taken over" no longer appears in edit windows or in the journal.
+- **Page d'un module : l'adresse OBS tient en une ligne repliée.** « Adresse OBS » s'ouvre pour montrer l'adresse et le bouton « Copier » ; plus de grand encadré permanent sur chaque overlay.
+- **(English) Module page: the OBS address fits in one folded line.** "OBS address" opens to show the address and the "Copy" button; no more big permanent box on every overlay.
+- **« Réglages aussi dans… » se replie au-delà de deux pages.** Sur un téléphone, cinq lignes de liens ne passent plus avant les réglages du module.
+- **(English) "Settings also in…" folds above two pages.** On a phone, five lines of links no longer come before the module's own settings.
+- **L'alerte d'espace disque n'est dite qu'une fois**, même avec six champs d'envoi de vidéos dans un même onglet : celui qui est visible la garde.
+- **(English) The low-disk warning is said once**, even with six video upload fields in one tab: the visible one keeps it.
+- **Textes plus simples.** « Mise à jour automatique » devient « Actualisation automatique » (elle ne concerne pas les mises à jour du site) et « Copié ! » devient « Copié ».
+- **(English) Plainer texts.** "Automatic update" becomes "Automatic refresh" (it is not about site updates) and "Copied!" becomes "Copied".
+- **La recherche de réglages (page entière) affiche 50 résultats, puis « Afficher la suite ».**
+- **(English) The settings search (full page) shows 50 results, then "Show more".**
+
+### Après la mise à jour
+
+- Rien à faire.
+- **(English)** Nothing to do.
+
+### Pour les développeurs
+
+- **Kit `admin.ergonomics` : R19 contrôle les murs de pastilles.** `adminPageErgonomicsProblems` signale plus de 10 pastilles dans un même groupe : bloc `links`, champ `segmented`, filtre de `table` (une pastille par valeur de la colonne). Constante `CHIPS_PER_GROUP_MAX`. La copie du kit du dépôt des modules doit être mise à jour.
+- **Composants** : `TopicPicker` (client, `<details>` natif) remplace `TopicFacets` ; `ExtensionsHeader` prend `tip` et un `intro` facultatif ; `core/relativeTime.ts` (`relativeAge`) ; `GrantsEditor` replie chaque section ; `SettingsSearch` (page) pagine par 50.
+- **Textes** : `catalogue.intro.short`, `catalogue.topicSearch`, `catalogue.topicNoMatch`, `catalogue.topicRemove`, `catalogue.updatedAgo`, `updates.modules.checkedAgo`, `extensions.introTip`, `search.more`. Retirés : `catalogue.source.repository`, `catalogue.source.unreachable`, `catalogue.installNote`, `catalogue.noReadme`, `fiche.readme.hint`, `updates.modules.help`, `hub.tab.updates.title`, `hub.coreLink`.
+- **Tests** : `tests/core/catalogue-compact.test.mjs`.
+
 ## 0.36.0 — 2026-11-18
 
 **En bref.** Chaque écran du site ne montre plus que ce qui vous sert. Une application ou une connexion déjà réglée tient en une ligne (« Configuré », « Dégradé » ou « Non configuré ») avec un seul bouton « Modifier ». Les phrases qui rassurent, expliquent l'évidence ou disent « normalement » ont disparu.

@@ -33,7 +33,7 @@ test("bloc santé en français : une phrase simple par service EN DIFFICULTÉ (l
   assert.equal(t.length, 4, "Service A (ok) et Service F (jamais contacté) n'ont aucune ligne");
   assert.match(t[0], /^Service B répond lentement depuis 10:42\. Les données affichées datent de 10:30\.$/);
   assert.match(t[1], /^Service C : trop de demandes, pause jusqu'à 11:30\.$/);
-  assert.match(t[2], /^Service D : quota du jour épuisé, reprise à .*09:00\.$/);
+  assert.match(t[2], /^Service D : quota du jour épuisé, de nouveau disponible à .*09:00\.$/);
   assert.match(t[3], /^Service E ne répond pas depuis 10:15\. Les données affichées datent de 10:00\.$/);
   assert.deepEqual(v.lines.map((l) => l.state), ["slow", "rate", "quota", "down"]);
   assert.match(v.hint, /reprend tout seul/);

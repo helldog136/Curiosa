@@ -32,13 +32,13 @@ export async function AccessTab({ t, locale, advanced, owner }: { t: Translator;
         </Callout>
       )}
 
-      <Panel title={t("team.ai.where.title")} help={t("team.ai.where.help")} testid="assistants-where">
+      <Panel title={t("team.ai.where.title")} testid="assistants-where">
         <a href={TEAM_HREF} className={`${ui.btnPrimary} self-start`} data-testid="assistants-open-team">{t("team.ai.where.open")}</a>
       </Panel>
 
       <Panel title={t("assistants.master.title")} testid="assistants-master">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="flex items-center gap-2 font-medium"><span className={enabled ? ui.chipOk : ui.chipWarn}>{t(enabled ? "assistants.master.onChip" : "assistants.master.offChip")}</span>{t(enabled ? "assistants.master.on" : "assistants.master.off")}</p>
+          <p className="flex items-center gap-2 font-medium"><span className={enabled ? ui.chipOk : ui.chipWarn}>{t(enabled ? "assistants.master.onChip" : "assistants.master.offChip")}</span>{!enabled && t("assistants.master.off")}</p>
           <form action={setMcpEnabled.bind(null, !enabled)}>
             {enabled ? <ConfirmButton message={t("assistants.master.confirm")}>{t("assistants.master.suspend")}</ConfirmButton> : <PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton>}
           </form>

@@ -8,6 +8,7 @@ import { maintenanceSummary } from "@/core/maintenance/summary";
 import { markSeen } from "@/core/maintenance/settings";
 import { accessesWithFullPowers } from "@/core/services/mcp/fullPowers";
 import { accessHref } from "@/core/services/mcp/assistantsLinks";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import { turnOffFullPowersAction } from "./fullPowersActions";
@@ -65,7 +66,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
 
       <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
         <a href={`${CREDIT_URL}/blob/HEAD/docs/MAINTENANCE-IA.md`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-accent" data-testid="ai-guide-link">📄 {t("aim.guide")} ↗</a>
-        <span>{t("aim.guideHelp")}</span>
+        <HelpTip always help={t("aim.guideHelp")} name={t("aim.guide")} />
         <BugReportLink href={bugUrl} className="underline underline-offset-2 hover:text-accent">🐞 {t("bugReport.link")} ↗</BugReportLink>
       </p>
     </div>
