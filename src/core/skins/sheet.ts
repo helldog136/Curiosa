@@ -12,6 +12,7 @@
 import { gradientOf, isHexColor, type Theme } from "../color";
 import { BRAND_MARK_CSS } from "./brand";
 import type { Composed, ComposedMode } from "./compose";
+import { safeVar } from "./customizeResolve";
 
 const UPGRADE_SUPPORT = "@supports (background-image:linear-gradient(in oklch,#000,#fff))";
 
@@ -105,10 +106,24 @@ function optionalTokenRules(id: string, c: Composed): string {
     + (defined("--sk-color-heading") ? `${sel} [data-skin-part="heading"]{color:var(--sk-color-heading)}` : "");
 }
 
+/** (0.44.0) The still pictures of animated customization pictures: under `prefers-reduced-motion` the variable points at the first frame. Only variables the resolver validated. */
+function stillRules(id: string, c: Composed): string {
+  const decls = Object.entries(c.stills ?? {}).filter(([n, v]) => safeVar(n, v)).map(([n, v]) => `${n}:${v}`);
+  return decls.length ? `@media (prefers-reduced-motion:reduce){:root[data-skin="${id}"]{${decls.join(";")}}}` : "";
+}
+
+/** (0.44.0) The token part of the sheet only (no glow, background, skin style or brand rule): what the live preview of the customization page lays over the page it shows. */
+export function renderTokens(c: Composed): string {
+  const [first, second] = c.modes;
+  const id = c.skinId;
+  const tokens = c.modes.length === 2 ? dualSheet(id, first!.mode === "light" ? first! : second!, first!.mode === "light" ? second! : first!, c, {}) : monoSheet(id, first!, c, {});
+  return tokens + stillRules(id, c);
+}
+
 /** La feuille complète : jetons, halo et fond, la feuille de style du skin, puis la règle du cœur qui fixe l'allure du nom Curiosa (brand.ts : elle a toujours le dernier mot). */
 export function renderSheet(c: Composed, decor: Decor = {}): string {
   const id = c.skinId;
   const [first, second] = c.modes;
   const tokens = c.modes.length === 2 ? dualSheet(id, first!.mode === "light" ? first! : second!, first!.mode === "light" ? second! : first!, c, decor) : monoSheet(id, first!, c, decor);
-  return tokens + optionalTokenRules(id, c) + (c.css ?? "") + BRAND_MARK_CSS;
+  return tokens + stillRules(id, c) + optionalTokenRules(id, c) + (c.css ?? "") + BRAND_MARK_CSS;
 }

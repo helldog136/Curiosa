@@ -19,6 +19,7 @@ export const BASIC: SkinDefinition = {
   css: "",
   defaults: { headerLayout: manifest.defaults.headerLayout as HeaderLayout, font: "sans", glow: "none", background: "none" },
   options: [],
+  customize: null,
   deriveFromBackground: true,
   colorScheme: false,
 };

@@ -17,6 +17,7 @@ import { ui } from "@/components/admin/ui";
 import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { can } from "@/core/permissions";
 import { loadAppearanceView } from "@/core/skins/appearanceView";
+import { pictureUsage } from "@/core/skins/customizeStore";
 import { listCatalogue } from "@/core/skins/service";
 import { AppearanceLabelsProvider } from "./AppearanceLabels";
 import { CatalogueCard, type CatalogueCardModel } from "./CatalogueCard";
@@ -29,7 +30,7 @@ import { FontUpload } from "./FontUpload";
 import { fontModel } from "./fontModel";
 import { PreviewButton, type PreviewPage } from "./PreviewDialog";
 import { appearanceLabels } from "./labels";
-import { resetSkinAction, saveAppearance, saveOptionsAction, undoSkinAction } from "./actions";
+import { resetSkinAction, saveAppearance, undoSkinAction } from "./actions";
 import { SETTINGS_HREF } from "@/core/adminLinks";
 
 /** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
@@ -113,7 +114,8 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const single = legacy ? { background: config.background, accent: config.accent, accent2: config.accent2, surface: config.surface, text: config.textColor } : view.single;
   const formKey = JSON.stringify([view.activeId, view.retouches, view.palette, view.raw]);
 
-  const managed: ManagedSkin[] = view.cards.filter((c) => c.source !== "basic").map((c) => ({ id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status }));
+  const pictureCounts = Object.fromEntries(await Promise.all(view.cards.filter((c) => c.source !== "basic").map(async (c) => [c.id, (await pictureUsage(c.id)).files] as const)));
+  const managed: ManagedSkin[] = view.cards.filter((c) => c.source !== "basic").map((c) => ({ id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status, pictures: pictureCounts[c.id] ?? 0 }));
 
   return (
     <AppearanceLabelsProvider labels={labels}>
@@ -156,6 +158,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
               </p>
               <div className="flex flex-wrap items-center gap-2">
                 <a href={view.cards.some((c) => !c.active) ? "#choose-skin" : "#add-title"} className={`${ui.btnPrimary} min-h-11`}>{t("appearance.change")}</a>
+                {view.customizable && <Link href={`${APPEARANCE_HREF}/customize`} className={`${ui.btn} min-h-11`} data-testid="customize-link">{t("appearance.cz.open")}</Link>}
                 <PreviewButton skinId={view.active.id} skinName={view.active.name[locale]} bothModes={view.active.modes.length === 2} pages={pages} canChoose={false} active />
               </div>
             </div>
@@ -283,17 +286,6 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
             </div>
           )}
         </section>
-
-        {view.options.length > 0 && (
-          <section aria-labelledby="opt-title" className={`${ui.card} space-y-4`} data-testid="skin-options">
-            <h2 id="opt-title" className="text-lg font-semibold">{t("appearance.options.title", { name: view.active.name[locale] })}</h2>
-            <ActionForm action={saveOptionsAction} submitLabel={t("action.save")} className="space-y-4">
-              {view.options.map((o) => (
-                <Select key={o.id} name={`option_${o.id}`} label={o.label[locale]} defaultValue={o.chosen} options={o.values.map((v) => ({ value: v.id, label: v.label[locale] }))} />
-              ))}
-            </ActionForm>
-          </section>
-        )}
 
         <section aria-labelledby="visitors-title" className={`${ui.card} space-y-2`} data-testid="visitor-switch">
           <h2 id="visitors-title" className="text-lg font-semibold">{t("appearance.visitors.title")}</h2>

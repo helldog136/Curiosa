@@ -18,7 +18,7 @@ import { getRun } from "./background";
 import { FONT_SET_ARG } from "./fonts";
 import { NAVIGATION_GET_INPUT, NAVIGATION_SET_INPUT, navigationGet } from "./siteNavigation";
 import { HOME_LIST_INPUT, HOME_SET_INPUT, homeSectionsList } from "./siteHome";
-import { SKIN_ARG, SKIN_LIST_INPUT, SKIN_OPTIONS_ARG, skinList, skinStatus } from "./skins";
+import { SKIN_ARG, SKIN_CUSTOMIZE_ARG, SKIN_LIST_INPUT, SKIN_OPTIONS_ARG, skinList, skinStatus } from "./skins";
 
 /**
  * OUTILS MCP DU CŒUR pour la maintenance (préfixe `maintenance_`) : une IA diagnostique et entretient le site. Ce ne sont pas des outils d'un module :
@@ -71,7 +71,7 @@ const INSTALL_ARG: JsonSchemaLite = {
 /** The arguments each request accepts. `skin_*` actions take a skin identifier, except the options (colours and fonts). */
 const LEVEL3_INPUT: Record<Level3Action, unknown> = {
   core_update: NONE, modules_update_all: NONE, module_update: MODULE_ARG, module_uninstall: UNINSTALL_ARG, module_install: INSTALL_ARG,
-  skin_install: SKIN_ARG, skin_activate: SKIN_ARG, skin_remove: SKIN_ARG, skin_set_options: SKIN_OPTIONS_ARG, font_set: FONT_SET_ARG, instance_add: INSTANCE_ADD_ARG,
+  skin_install: SKIN_ARG, skin_activate: SKIN_ARG, skin_remove: SKIN_ARG, skin_set_options: SKIN_OPTIONS_ARG, skin_customize: SKIN_CUSTOMIZE_ARG, font_set: FONT_SET_ARG, instance_add: INSTANCE_ADD_ARG,
   // Published by the content engine (content/mcp.ts) under the name of each instance; listed here so that the table is complete.
   entry_publish: NONE, entry_unpublish: NONE, site_settings_set: NONE,
   navigation_set: NAVIGATION_SET_INPUT, home_sections_set: HOME_SET_INPUT,
@@ -84,7 +84,7 @@ const level3 = (name: Level3Action): Def["run"] => (args, actor) => {
     return callLevel3(name, { [listKey]: (args as Record<string, unknown>)[listKey] }, actor);
   }
   const valid = validateArgs(LEVEL3_INPUT[name] as JsonSchemaLite, args);
-  return callLevel3(name, name === "skin_set_options" ? { options: valid } : valid, actor);
+  return callLevel3(name, name === "skin_set_options" ? { options: valid } : name === "skin_customize" ? { customize: valid } : valid, actor);
 };
 /** What makes a level 3 tool a deletion (red chip, confirmation when granted). Everything else at level 3 is a request, not a deletion. */
 const DESTRUCTIVE_LEVEL3: ReadonlySet<string> = new Set(["module_uninstall", "skin_remove"]);
@@ -198,6 +198,11 @@ const DEFS: Def[] = [
     name: "skin_set_options", level: 3, title: "Change the colours and fonts of the site",
     description: "Sets colours (background, surface, textColor, accent, accent2 as #rrggbb; an empty string puts the skin's own colour back) and/or the fonts of titles and text (same values as maintenance_font_set), within the active skin: only what differs from the skin is kept, and nothing else is touched (no skin change, no content). A skin with a light and a dark mode needs mode. A colour that is hard to read is applied anyway; the site corrects it when displaying, and the answer carries readability tips. Follows the token's approval setting like the other changes: a request the owner approves, or done at once when the owner chose that. The owner can undo in Admin > Appearance. Nothing here can upload a font file.",
     input: SKIN_OPTIONS_ARG, run: level3("skin_set_options"),
+  },
+  {
+    name: "skin_customize", level: 3, title: "Customize the skin of the site",
+    description: "Changes the customization of the skin in use (Admin > Appearance > Customize): colours from the skin's swatches (or a free colour where the skin allows one), choices, switches, sliders, the skin's own pictures, and its looks (several settings at once). Read what is offered in maintenance_skin_status > activeSkin.customize. Only what is named changes. Nothing can be uploaded: a picture is one of the skin's own, by id. Values the skin does not allow are refused; a hard-to-read colour is applied as chosen and reported. By default this only creates a request that the owner approves; then poll maintenance_request_status.",
+    input: SKIN_CUSTOMIZE_ARG, run: level3("skin_customize"),
   },
   { name: "module_update", level: 3, title: "Update a module", description: "Updates one module to its latest STABLE version (never a pre-release). By default this only creates a request that the owner approves; then poll request_status."+' Long action: it answers at once when it is quick; otherwise it answers {status:"started", requestId} and goes on in the background (your connection does not matter): follow it with maintenance_request_status until done or failed.', input: MODULE_ARG, run: level3("module_update") },
   { name: "modules_update_all", level: 3, title: "Update all modules", description: "Updates every module that has a STABLE update, one by one. By default this only creates a request that the owner approves; then poll request_status."+' Long action: it answers at once when it is quick; otherwise it answers {status:"started", requestId} and goes on in the background (your connection does not matter): follow it with maintenance_request_status until done or failed. The progress lists each module as it ends (updated or failed), and the final result lists every module.', input: NONE, run: level3("modules_update_all") },

@@ -132,10 +132,12 @@ export async function staticCheck(dir, options = {}) {
     const known = (size.width === 1280 && size.height === 800) || (size.width === 390 && size.height === 844);
     if (!known) add(kitIssue("kit-preview-size", { file: p.file, size: `${size.width} × ${size.height}`, expected: "1280 × 800 / 390 × 844" }));
   }
+  // (0.44.0) a picture the owner can choose in the customization is used even when the sheet never names its file
+  const customizeFiles = new Set(JSON.stringify(m.customize ?? {}).match(/images\/[a-z0-9][a-z0-9._-]{0,63}\.[a-z]+/g) ?? []);
   const cssNoFace = sourceCss.replace(/@font-face\s*\{[^}]*\}/g, "");
   for (const a of m.assets ?? []) {
     if (a.kind === "font" && a.family && !(cssNoFace.includes(a.family) || tokensText.includes(a.family))) add(kitIssue("kit-font-unused", { file: a.file }));
-    if (a.kind === "image" && !(sourceCss.includes(`skin:${a.file}`) || tokensText.includes(`skin:${a.file}`))) add(kitIssue("kit-image-unused", { file: a.file }));
+    if (a.kind === "image" && !customizeFiles.has(a.file) && !(sourceCss.includes(`skin:${a.file}`) || tokensText.includes(`skin:${a.file}`))) add(kitIssue("kit-image-unused", { file: a.file }));
   }
   const names = fs.readdirSync(folder);
   if (!names.some((n) => /^LICENSE(\.md|\.txt)?$/.test(n))) add(kitIssue("kit-no-own-license"));

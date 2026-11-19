@@ -1377,6 +1377,8 @@ Ce qui reste signalé après ces corrections est de vrais défauts de skins (cib
 
 ---
 
+> Personnalisation par le propriétaire (cœur 0.44.0, `skinContract` 4, `customize`) : voir [SKINS-CUSTOMIZE.md](SKINS-CUSTOMIZE.md) (en anglais).
+
 ## 26. Un nouvel élément est-il habillable ?
 
 **La règle : tout élément public NOUVEAU reste habillable par les skins, et d'abord par nos skins officiels** (dépôt `curiosa-skins` : brutaliste clair, rétro néon, éditorial papier, steampunk victorien, verre doux).

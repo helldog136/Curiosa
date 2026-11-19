@@ -37,6 +37,11 @@ export type ComposeInput = {
   moduleTokens?: readonly ModuleTokenDecl[];
   /** Paires de couleurs des pièces de modules (contrôle de lisibilité, paire 11). */
   modulePairs?: readonly ModulePairDecl[];
+  /**
+   * (core 0.44.0) The owner's customization of this skin, already validated (`resolveValues`): common tokens of the chosen values (they join the options' layer),
+   * the `--sk-cz-*` variables of each mode, and the stills for reduced motion. Absent: the skin as shipped (its own sheet then falls back to its own defaults).
+   */
+  custom?: { tokens: Record<string, string>; vars: Record<Mode, Record<string, string>>; stills: Record<string, string> };
 };
 
 export type ComposedMode = {
@@ -63,6 +68,8 @@ export type Composed = {
   colorScheme: boolean;
   /** Feuille de style du skin (assainie, vide pour basic). */
   css: string;
+  /** (core 0.44.0) Variables swapped for a still picture when the visitor asks for less motion. */
+  stills: Record<string, string>;
   defaults: SkinDefaults;
   /** Un accent secondaire distinct de l'accent est effectif dans au moins un mode. */
   hasAccent2: boolean;
@@ -122,7 +129,7 @@ function planModes(skin: SkinDefinition, ret: Retouches): { modes: Mode[]; retou
 /** Les jetons effectifs d'un mode. */
 function composeMode(args: {
   mode: Mode; skin: SkinDefinition; basic: SkinDefinition; retouch: ColorRetouch; font?: "sans" | "serif" | "mono"; fonts?: ResolvedFonts; issues: SkinIssue[];
-  extra: ReadonlyMap<string, TokenType>; moduleDefaults: Layer; moduleBase: Layer; optionLayer: Layer; modulePairs: readonly ModulePairDecl[];
+  extra: ReadonlyMap<string, TokenType>; moduleDefaults: Layer; moduleBase: Layer; optionLayer: Layer; modulePairs: readonly ModulePairDecl[]; customVars?: Record<string, string>;
 }): ComposedMode {
   const { mode, skin, basic, retouch: R, issues, extra } = args;
   const isBasic = skin.id === basic.id;
@@ -197,6 +204,8 @@ function composeMode(args: {
     finalTokens = { ...finalTokens, "--v-gradient": "linear-gradient(120deg, var(--v-accent), var(--v-accent))", "--c-grad-fg": "var(--v-accent-fg)" };
   } else if (isHexColor(a) && isHexColor(b) && a.toLowerCase() !== b.toLowerCase()) finalTokens = { ...finalTokens, "--c-grad-fg": gradientTextOn(a, b) };
   const theme = themeOf(finalTokens, args.fonts?.body?.key ?? args.font);
+  // (0.44.0) the customization variables of this mode: written last, only ever `--sk-cz-*` names with values the resolver validated
+  if (!isBasic && args.customVars) finalTokens = { ...finalTokens, ...args.customVars };
   return { mode, tokens: finalTokens, theme, suspended, changes, notice, darkBackground: isDarkHex(theme.bg) };
 }
 
@@ -286,6 +295,8 @@ function compose(input: ComposeInput, issues: SkinIssue[], forceBasic = false): 
     const value = opt.values.find((v) => v.id === chosen) ?? opt.values.find((v) => v.id === opt.default);
     if (value) Object.assign(optionTokens, value.tokens);
   }
+  // (0.44.0) chosen values and toggles of the customization set common tokens too: same layer, same checks as an option
+  if (skin !== basic && input.custom) Object.assign(optionTokens, input.custom.tokens);
   const optionLayer = skin === basic ? {} : validated(optionTokens, skin.id, extra, issues);
 
   // jetons de modules du skin (`modules.<id>`) : seulement ceux des modules installés
@@ -296,7 +307,7 @@ function compose(input: ComposeInput, issues: SkinIssue[], forceBasic = false): 
   const plan = planModes(skin, ret);
   const modes = plan.modes.map((mode) =>
     composeMode({
-      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, fonts: ret.fonts, issues, extra, moduleDefaults: moduleLayer, moduleBase: moduleDefaults, optionLayer, modulePairs: input.modulePairs ?? [],
+      mode, skin, basic, retouch: plan.retouch[mode] ?? {}, font: ret.font, fonts: ret.fonts, issues, extra, moduleDefaults: moduleLayer, moduleBase: moduleDefaults, optionLayer, modulePairs: input.modulePairs ?? [], customVars: input.custom?.vars[mode],
     }),
   );
   const hasAcc2 = modes.some((m) => {
@@ -310,6 +321,7 @@ function compose(input: ComposeInput, issues: SkinIssue[], forceBasic = false): 
     switchAvailable: modes.length === 2,
     colorScheme: skin.colorScheme,
     css: skin.css,
+    stills: skin === basic ? {} : (input.custom?.stills ?? {}),
     defaults: skin.defaults,
     hasAccent2: hasAcc2,
     hasChosenSurface: chosenSurface,

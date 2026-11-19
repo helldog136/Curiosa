@@ -41,7 +41,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "redirects_create", "redirects_update",
     "media_upload", "media_set_alt", "site_settings_set",
   ],
-  full: ["overlay_skin_rules_create", "overlay_skin_rules_update", "media_import", "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options"],
+  full: ["overlay_skin_rules_create", "overlay_skin_rules_update", "media_import", "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options", "maintenance_skin_customize"],
 };
 
 /** Core tools that no profile allows, each with the reason. They stay one-by-one choices (the risky ones behind a confirmation). */

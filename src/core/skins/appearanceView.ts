@@ -64,6 +64,8 @@ export type AppearanceView = {
   notices: Text[];
   suspended: Mode[];
   options: { id: string; label: Text; default: string; chosen: string; values: { id: string; label: Text }[] }[];
+  /** (core 0.44.0) The skin in use declares something to customize (`customize`, or its own `options`): the page offers "Customize". */
+  customizable: boolean;
   credits: CreditModel[];
   /** Valeurs de départ du skin pour le halo, le fond, l'en-tête et la police. */
   skinDefaults: { headerLayout: string; font: string; glow: string; background: string };
@@ -197,7 +199,7 @@ export async function loadAppearanceView(): Promise<AppearanceView> {
     retouched: [...RETOUCH_SETTINGS].some((k) => fresh.has(k)),
     modes, palette, switchAvailable: now.switchAvailable,
     notices: now.notices, suspended: now.modes.filter((m) => m.suspended).map((m) => m.mode),
-    options: optionModels, credits,
+    options: optionModels, customizable: activeDef !== BASIC && (activeDef.customize !== null || activeDef.options.length > 0), credits,
     skinDefaults: { headerLayout: d.headerLayout ?? "classic", font: d.font ?? "sans", glow: d.glow ?? "none", background: bgDefault },
     snapshot: snap ? { kind: snap.kind, fromSkin: snap.fromSkin, fromName: snap.fromSkin === BASIC_ID ? BASIC.name : (rowOf(snap.fromSkin)?.name ?? null), at: snap.at } : null,
     mock: { light: swatchOf(now, "light"), dark: swatchOf(now, "dark") },

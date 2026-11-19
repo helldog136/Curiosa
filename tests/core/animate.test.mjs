@@ -242,7 +242,7 @@ test("skin folder, contract 4: an overlay skin ships animation.json; refusals ar
   assert.ok(codes(check(skinFolder("grey", { animation: { animateContract: 1, genres: { gauge: { value: { draw: "text", color: "#777777", outline: "#888888" } } } } }))).includes("animation-text-contrast"));
   const future = check(skinFolder("future", { animation: { animateContract: 9, genres: {} } }));
   assert.equal(future.ok, true); assert.equal(future.animation, null); assert.ok(codes(future).includes("animation-contract-newer"));
-  assert.ok(codes(check(skinFolder("site", { kind: "site" }))).includes("manifest-contract-newer"), "a site skin stays at contract 3");
+  assert.ok(codes(check(skinFolder("site", { kind: "site", manifest: { skinContract: 5 } }))).includes("manifest-contract-newer"), "a site skin above contract 4 is refused");
   assert.equal(M.parseSkinManifest({ skinContract: 5, kind: "overlay" }).ok, false);
 });
 

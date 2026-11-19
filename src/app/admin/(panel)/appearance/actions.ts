@@ -11,6 +11,7 @@ import { loadAppearanceView, definitionOf } from "@/core/skins/appearanceView";
 import { issueText, type SkinIssue } from "@/core/skins/messages";
 import { signPreview, previewUrl } from "@/core/skins/previewToken";
 import * as skins from "@/core/skins/service";
+import { eraseCustom } from "@/core/skins/customizeStore";
 import { repoAddress } from "@/core/skins/source";
 import { BASIC_ID } from "@/core/skins/constants";
 import { addUpload, removeUpload, type UploadErrorCode } from "@/core/fonts/uploads";
@@ -176,6 +177,8 @@ export async function removeSkinAction(_prev: ActionState, fd: FormData): Promis
   const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
   const r = await skins.remove(idOf(fd), { actor: user.email });
   if (!r.ok) return { error: await failureText(r, t, locale) };
+  // (0.44.0) the owner's customization of the skin is kept by default (coming back finds it); the box "also delete my pictures" erases it
+  if (fd.get("erase") === "on") await eraseCustom(idOf(fd), { actor: user.email });
   done();
   return { ok: r.wasActive ? t("appearance.removedActive") : t("appearance.removedOk") };
 }

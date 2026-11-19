@@ -275,6 +275,8 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 
 Chaque nouvelle version de Curiosa peut ajouter des pièces ou des régions (jamais en retirer : ce serait un changement cassant). Pour les **skins officiels**, l'équipe de Curiosa lance `npm run skin:official` avant de publier le cœur et ajoute la règle qui manque (version corrective ou mineure du skin, `requires.core` à jour, étiquette `<id>/vX.Y.Z`). Pour **votre** skin, relancez `skin:check --coverage` après chaque mise à jour du cœur : le conseil liste ce qui est nouveau pour lui. Un cœur plus ancien refuse un skin qui vise une pièce qu'il ne connaît pas : mettez `requires.core` à la première version qui l'apporte. Voir [SKINS.md §26](SKINS.md).
 
+> Laisser la personne propriétaire changer des couleurs, des images ou des coins sans code : voir [SKINS-CUSTOMIZE.md](SKINS-CUSTOMIZE.md) (déclaration `customize`, exemple court ; en anglais).
+
 ## 10. Les pièces des modules
 
 Un module peut déclarer ses propres **pièces stylables** et leurs jetons (clé `skin` de son `module.json`, [SKINS.md §8](SKINS.md)). Un module qui ajoute des pièces suit la même règle que le cœur (« tout élément nouveau reste habillable », [SKINS.md §26](SKINS.md)) : pièces déclarées, jetons avec valeur de repli, exemple `demo` pour le banc d'essai. Pour les voir et les contrôler : `--modules <dossier du dépôt de modules>` sur `skin:check` et `skin:bench`. La planche montre alors chaque pièce (avec l'exemple `demo` du module s'il existe, sinon un gabarit selon son `kind`), et le kit vérifie que vos jetons `modules.<id>` existent bien. Un jeton de module absent est **ignoré sans erreur** : un skin écrit aujourd'hui reste valable avec les modules de demain.

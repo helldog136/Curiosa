@@ -7,6 +7,36 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.44.0 — 2026-11-19
+
+**En bref.** Un skin peut maintenant vous laisser changer ses couleurs, ses images et ses détails : une page « Personnaliser » dans Apparence, avec l'aperçu de votre vrai site qui bouge pendant que vous choisissez.
+
+**In short.** A skin can now let you change its colors, pictures and details: a "Customize" page in Appearance, with a preview of your real site that updates as you choose.
+
+### Nouveautés
+
+- **Un bouton « Personnaliser » sur le skin utilisé.** Il apparaît quand le skin propose des réglages. En haut, des ambiances (plusieurs réglages d'un clic) et deux réglages principaux ; le reste est replié.
+- **(English) A "Customize" button on the skin in use.** It shows when the skin offers settings. At the top, looks (several settings in one click) and two main settings; the rest is folded away.
+- **L'aperçu est votre vrai site.** Chaque changement s'y voit tout de suite, sans recharger, avant d'enregistrer. Sur téléphone, « Voir le résultat » ouvre l'aperçu en bas de l'écran.
+- **(English) The preview is your real site.** Every change shows at once, without reloading, before you save. On a phone, "See the result" opens the preview at the bottom of the screen.
+- **Vos propres images.** Là où le skin le permet, envoyez une image (PNG, JPG, WebP, GIF animé ou dessin SVG) : elle est recadrée à la bonne forme, allégée, et ses informations cachées (lieu de prise de vue, appareil) sont effacées. Une image animée devient fixe pour les visiteurs qui demandent moins de mouvement.
+- **(English) Your own pictures.** Where the skin allows it, upload a picture (PNG, JPG, WebP, animated GIF or SVG drawing): it is cropped to the right shape, made lighter, and its hidden information (place, camera) is erased. An animated picture becomes still for visitors who ask for less motion.
+- **Un avertissement, jamais un blocage.** Si une couleur choisie rend un texte difficile à lire, un message court le dit sous le réglage (« Peu lisible : contraste 2,1 sur 4,5 »). Rien n'est corrigé ni refusé : c'est vous qui décidez.
+- **(English) A warning, never a block.** If a chosen color makes a text hard to read, a short message says so under the setting ("Hard to read: contrast 2.1 instead of 4.5"). Nothing is corrected or refused: you decide.
+- **Vos réglages suivent le skin.** Changer de skin puis revenir retrouve vos choix. Ils sont dans les sauvegardes avec leurs images, et « Tout remettre comme dans le skin » rend l'apparence d'origine.
+- **(English) Your settings follow the skin.** Switching skins and coming back finds your choices again. They are in backups with their pictures, and "Reset everything to the skin" brings the original look back.
+- **Les assistants IA peuvent proposer une personnalisation** (couleurs, choix, ambiances, images propres au skin), que vous approuvez comme le reste. Ils ne peuvent pas envoyer d'image.
+- **(English) AI assistants can suggest a customization** (colors, choices, looks, the skin's own pictures), which you approve like everything else. They cannot upload a picture.
+- **Les « options » des skins** s'affichent désormais dans cette page, sous « Variantes ».
+- **(English) The skins' "options"** now appear on this page, under "Variants".
+
+### Pour les développeurs
+
+- `skinContract` 4 : un skin du site peut déclarer `customize` (données seulement, aucun code), lu par un lecteur tolérant avec des limites fixées par le cœur. Les variables `--sk-cz-<id>` ne viennent que de valeurs validées ; les valeurs par défaut sont toujours écrites. Référence : `docs/SKINS-CUSTOMIZE.md`.
+- **(English)** `skinContract` 4: a site skin may declare `customize` (data only, no code), read by a tolerant reader with limits fixed by the core. The `--sk-cz-<id>` variables come only from validated values; defaults are always written. Reference: `docs/SKINS-CUSTOMIZE.md`.
+- Nouvelle route d'envoi `POST /api/admin/skin-custom/upload` (rôle Administration, même site, 5 Mo, 40 millions de pixels, fichier refabriqué), distincte de `/api/admin/upload`. Nouvel outil `maintenance_skin_customize` (niveau 3).
+- **(English)** New upload route `POST /api/admin/skin-custom/upload` (Administration role, same site, 5 MB, 40 million pixels, file rebuilt), separate from `/api/admin/upload`. New tool `maintenance_skin_customize` (level 3).
+
 ## 0.41.0 — 2026-11-19
 
 **En bref.** Vos contenus se retrouvent enfin : un bouton « Contenu » sur chaque extension, des liens vers les entrées depuis l'accueil, la recherche qui trouve aussi vos pages, et une liste d'entrées qui filtre pendant la frappe. La carte « Stockage » dit clairement ce que prend votre site.

@@ -9,6 +9,8 @@ import { SKIN_ID_RE } from "./allowlist";
 import { HEADER_LAYOUTS, TAG_VOCABULARY, maxSkinContract } from "./constants";
 import { makeIssue, type SkinIssue } from "./messages";
 import { SEMVER_RE } from "./semver";
+import { readCustomize } from "./customizeRead";
+import { CUSTOMIZE_CONTRACT, type CustomizeDecl } from "./customizeSpec";
 
 const localized = (max: number) => z.object({ fr: z.string().trim().min(1).max(max), en: z.string().trim().min(1).max(max) });
 const OPTION_ID_RE = /^[a-z][a-z0-9-]{0,30}$/;
@@ -77,12 +79,14 @@ export const skinManifestSchema = z.object({
     background: z.union([z.string().max(40), z.array(z.record(z.string(), z.unknown())).max(6)]).optional(),
   }).optional(),
   options: z.array(option).max(6).optional(),
+  /** (core 0.44.0, site skins of contract 4) What the owner may customize: data only, read by customizeRead.ts (tolerant reader), never by this schema. */
+  customize: z.unknown().optional(),
   breakpoints: z.array(z.number().int().min(320).max(2560)).max(4).optional(),
   supports: z.object({ reducedMotion: z.boolean().optional() }).optional(),
 });
 
 export type SkinAssetDecl = z.infer<typeof asset>;
-export type SkinManifest = Omit<z.infer<typeof skinManifestSchema>, "author" | "tags" | "assets" | "modes" | "kind"> & { author?: { name: string; url?: string }; tags: string[]; assets: SkinAssetDecl[]; modes: ("light" | "dark")[]; kind: "site" | "overlay" };
+export type SkinManifest = Omit<z.infer<typeof skinManifestSchema>, "author" | "tags" | "assets" | "modes" | "kind" | "customize"> & { /** The cleaned `customize` declaration (null: none, or unusable). */ customize: CustomizeDecl | null; author?: { name: string; url?: string }; tags: string[]; assets: SkinAssetDecl[]; modes: ("light" | "dark")[]; kind: "site" | "overlay" };
 
 const KNOWN_KEYS = new Set(Object.keys(skinManifestSchema.shape));
 
@@ -123,5 +127,19 @@ export function parseSkinManifest(json: unknown): ManifestParse {
   const kind = m.kind ?? "site";
   // `modes` only means something for a site skin; an overlay skin has one look.
   if (kind === "site" && !m.modes) return { ok: false, issues: [makeIssue("manifest-field", { field: "modes" })] };
-  return { ok: true, manifest: { ...m, kind, modes: m.modes ?? ["dark"], author, tags, assets: m.assets ?? [] }, warnings };
+  // customization (site skins only, contract 4): the tolerant reader; an error here is the author's to fix
+  let customize: CustomizeDecl | null = null;
+  if (m.customize !== undefined) {
+    if (kind === "overlay") warnings.push(makeIssue("customize-unknown", { what: "customize" }, "warning"));
+    else if (m.skinContract < CUSTOMIZE_CONTRACT) return { ok: false, issues: [makeIssue("customize-contract", { need: CUSTOMIZE_CONTRACT })] };
+    else {
+      const read = readCustomize(m.customize);
+      if (read.issues.some((i) => i.severity === "error")) return { ok: false, issues: read.issues.filter((i) => i.severity === "error").slice(0, 20) };
+      warnings.push(...read.issues);
+      customize = read.decl;
+    }
+  }
+  const { customize: _declared, ...rest } = m;
+  void _declared;
+  return { ok: true, manifest: { ...rest, customize, kind, modes: m.modes ?? ["dark"], author, tags, assets: m.assets ?? [] }, warnings };
 }
