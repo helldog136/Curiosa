@@ -71,7 +71,7 @@ Un jeton « Maintenance » te relie à un site Curiosa. Ton rôle : surveiller l
 
 ### Ordre conseillé
 
-1. `maintenance_status` : version, canal, mise à jour en cours. Si une mise à jour tourne, **attends** et ne lance rien d'autre.
+1. `maintenance_status` : version, canal, mise à jour en cours. Si une mise à jour tourne, **attends** et ne lance rien d'autre. `runtime.support` dit si la version de Node.js du serveur est encore maintenue (`ok`, `ending-soon`, `end-of-life`, `unknown`, avec `endsOn`) ; hors `ok`, prévenez la personne propriétaire : elle seule change Node.js sur le serveur ([NODE-MIGRATION.md](NODE-MIGRATION.md)), une mise à jour du cœur ne le change pas.
 2. `maintenance_health` : disque, base, dernière sauvegarde, erreurs récentes.
 3. `maintenance_diagnose` : le rapport guidé. Chaque problème donne la cause probable, l'action proposée et **l'outil qui la fait** (`tool`), ou `needsHuman: true` si seule la personne propriétaire peut agir.
 4. `maintenance_updates` : mises à jour du cœur (stable uniquement) et des modules, avec niveau (`patch`, `minor`, `major`), notes courtes et `aiCanUpdate`.

@@ -21,7 +21,7 @@ Start with the core: it is what a person sees first. Within the core, start with
 
 ## Step by step
 
-1. **Fork and clone** the repository (on GitHub: Fork, then clone your fork). On the core you also need Node.js 20 or newer and `npm ci`.
+1. **Fork and clone** the repository (on GitHub: Fork, then clone your fork). On the core you also need Node.js 24 (22.12 or newer also works) and `npm ci`.
 2. **Create the files from a skeleton.** From the folder of the core:
 
    ```

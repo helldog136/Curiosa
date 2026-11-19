@@ -59,7 +59,7 @@ GITHUB_API="${CURIOSA_GITHUB_API:-https://api.github.com}"
 GITHUB_WEB="${CURIOSA_GITHUB_WEB:-https://github.com}"
 PORT_START="${CURIOSA_PORT_START:-3000}"
 MIN_FREE_MB="${CURIOSA_MIN_FREE_MB:-2000}"
-NODE_MAJOR_WANTED=22
+NODE_MAJOR_WANTED=24
 MARKER_NAME=".install-curiosa"
 # Langues proposées (un bloc catalog_XX par langue, en fin de fichier). La première est la langue par défaut.
 LANGS="en fr"
@@ -283,8 +283,9 @@ node_version_ok() { # $1 = « v22.3.0 »
   local v="${1#v}" maj min
   maj="${v%%.*}"; min="${v#*.}"; min="${min%%.*}"
   case "$maj$min" in *[!0-9]*|"") return 1 ;; esac
-  # the database layer (Prisma 7) needs 20.19+, 22.12+ or 24; the archive ships the SQLite driver of Node.js 20, 22 and 24 only
-  [ "$maj" -eq 24 ] || { [ "$maj" -eq 22 ] && [ "$min" -ge 12 ]; } || { [ "$maj" -eq 20 ] && [ "$min" -ge 19 ]; }
+  # new installs: Node.js 24 (default) or 22.12+ (still supported until April 2027). Node.js 20 reached end of life on 2026-04-30, so it is not
+  # accepted here; existing sites on Node.js 20 keep running (the archive still ships the driver for it) and are moved by hand (docs/NODE-MIGRATION.md).
+  [ "$maj" -eq 24 ] || { [ "$maj" -eq 22 ] && [ "$min" -ge 12 ]; }
 }
 resolve_v4() { getent ahostsv4 "$1" 2>/dev/null | awk '{print $1}' | sort -u | tr '\n' ' ' || true; }
 public_ip() {
@@ -1289,10 +1290,10 @@ d.tools_todo.one Outil à installer : {2}
 d.tools_todo.other Outils à installer : {2}
 d.node_home Node.js trouvé dans un dossier personnel ({1}) : le site ne pourrait pas l'utiliser (utilisateur dédié).
 d.node_ok Node.js {1} ({2}).
-d.node_old Node.js {1} est trop ancien ou pas pris en charge (il faut 20.19+, 22.12+ ou 24).
+d.node_old Node.js {1} est trop ancien ou pas pris en charge (il faut 22.12+ ou 24).
 d.node_none Node.js n'est pas installé.
-d.node_manual Node.js 22 (22.12 ou plus) est nécessaire et je ne sais pas l'installer sur {1}.
-d.node_manual.fix installez Node.js 22 (https://nodejs.org/fr/download), puis relancez ce script. Rien n'a été modifié.
+d.node_manual Node.js 24 est nécessaire et je ne sais pas l'installer sur {1}.
+d.node_manual.fix installez Node.js 24 (https://nodejs.org/fr/download), puis relancez ce script. Rien n'a été modifié.
 d.web_found Serveur web déjà installé : {1} ({2})  ->  j'y AJOUTE votre site sans toucher aux autres.
 d.state_active actif
 d.state_stopped arrêté
@@ -1387,8 +1388,8 @@ c.pkgs Installer les outils manquants ({1}) avec apt ?
 c.pkgs_no Sans ces outils je ne peux pas continuer.
 c.pkgs_no.fix installez-les (sudo apt-get install {1}) puis relancez.
 c.node Installer Node.js {1} depuis le dépôt officiel NodeSource ?
-c.node_no Sans Node.js 20.19+, 22.12+ ou 24, le site ne peut pas tourner.
-c.node_no.fix installez Node.js 22 (https://nodejs.org/fr/download) puis relancez.
+c.node_no Sans Node.js 22.12+ ou 24, le site ne peut pas tourner.
+c.node_no.fix installez Node.js 24 (https://nodejs.org/fr/download) puis relancez.
 c.caddy Installer Caddy depuis son dépôt officiel (apt) ?
 c.caddy_no Sans serveur web je ne peux pas mettre le site en HTTPS.
 c.caddy_no.fix relancez avec --skip-proxy pour un site en local seulement, ou installez un serveur web puis relancez.
@@ -1404,11 +1405,11 @@ l.pkgs_ok Outils installés.
 l.gnupg L'installation de gnupg n'a pas abouti.
 l.gnupg.fix lancez sudo apt-get install gnupg puis relancez.
 l.node_key Le téléchargement de la clé du dépôt NodeSource a échoué.
-l.node_key.fix vérifiez l'accès à deb.nodesource.com depuis ce serveur, ou installez Node.js 22 vous-même puis relancez.
+l.node_key.fix vérifiez l'accès à deb.nodesource.com depuis ce serveur, ou installez Node.js 24 vous-même puis relancez.
 l.node L'installation de Node.js n'a pas abouti.
 l.node.fix lancez sudo apt-get install nodejs pour voir l'erreur, corrigez-la puis relancez.
 l.node_old Node.js installé ({1}) est quand même trop ancien.
-l.node_old.fix installez Node.js 22 à la main (https://nodejs.org/fr/download) puis relancez.
+l.node_old.fix installez Node.js 24 à la main (https://nodejs.org/fr/download) puis relancez.
 l.node_ok Node.js {1} installé.
 l.useradd La création de l'utilisateur {1} n'a pas abouti.
 l.useradd.fix regardez le détail ci-dessus ; choisissez un autre nom avec --user si le nom est déjà pris.
@@ -1710,10 +1711,10 @@ d.tools_todo.one Tool to install: {2}
 d.tools_todo.other Tools to install: {2}
 d.node_home Node.js found in a personal folder ({1}): the site could not use it (dedicated user).
 d.node_ok Node.js {1} ({2}).
-d.node_old Node.js {1} is too old or not supported (20.19+, 22.12+ or 24 is required).
+d.node_old Node.js {1} is too old or not supported (22.12+ or 24 is required).
 d.node_none Node.js is not installed.
-d.node_manual Node.js 22 (22.12 or later) is required and I cannot install it on {1}.
-d.node_manual.fix install Node.js 22 (https://nodejs.org/en/download), then run this script again. Nothing was changed.
+d.node_manual Node.js 24 is required and I cannot install it on {1}.
+d.node_manual.fix install Node.js 24 (https://nodejs.org/en/download), then run this script again. Nothing was changed.
 d.web_found Web server already installed: {1} ({2})  ->  I ADD your site to it without touching the others.
 d.state_active running
 d.state_stopped stopped
@@ -1808,8 +1809,8 @@ c.pkgs Install the missing tools ({1}) with apt?
 c.pkgs_no Without these tools I cannot continue.
 c.pkgs_no.fix install them (sudo apt-get install {1}) then run again.
 c.node Install Node.js {1} from the official NodeSource repository?
-c.node_no.fix install Node.js 22 (https://nodejs.org/en/download) then run again.
-c.node_no Without Node.js 20.19+, 22.12+ or 24, the site cannot run.
+c.node_no.fix install Node.js 24 (https://nodejs.org/en/download) then run again.
+c.node_no Without Node.js 22.12+ or 24, the site cannot run.
 c.caddy Install Caddy from its official repository (apt)?
 c.caddy_no Without a web server I cannot put the site on HTTPS.
 c.caddy_no.fix run again with --skip-proxy for a local-only site, or install a web server then run again.
@@ -1825,11 +1826,11 @@ l.pkgs_ok Tools installed.
 l.gnupg Installing gnupg did not succeed.
 l.gnupg.fix run sudo apt-get install gnupg then run again.
 l.node_key Downloading the NodeSource repository key failed.
-l.node_key.fix check access to deb.nodesource.com from this server, or install Node.js 22 yourself then run again.
+l.node_key.fix check access to deb.nodesource.com from this server, or install Node.js 24 yourself then run again.
 l.node Installing Node.js did not succeed.
 l.node.fix run sudo apt-get install nodejs to see the error, fix it then run again.
 l.node_old The installed Node.js ({1}) is still too old.
-l.node_old.fix install Node.js 22 by hand (https://nodejs.org/en/download) then run again.
+l.node_old.fix install Node.js 24 by hand (https://nodejs.org/en/download) then run again.
 l.node_ok Node.js {1} installed.
 l.useradd Creating the user {1} did not succeed.
 l.useradd.fix look at the details above; choose another name with --user if the name is already taken.
