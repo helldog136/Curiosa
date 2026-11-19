@@ -267,7 +267,7 @@ The test opens several readers, publishes events, reads them out of order, at th
 
 ## Animated gauges, levels and counters (core 0.30.0)
 
-An element that shows a value over time (a goal bar, a countdown such as a subathon, a hype train, a session counter) should not draw itself: send a **state** to the core's engine (`ctx.overlay.animateScript()`, then `CuriosaAnimate.mount(...)` and `setState(...)`) and it is drawn in the style of the page's overlay skin, with burst merging, a celebration queue, calm motion and quality levels for free. Copy `ctx.overlay.animateOptions()` into the element's options. Full contract: [OVERLAY-ANIMATIONS.md](OVERLAY-ANIMATIONS.md), section 7; example: the `animated` element of `examples/overlay-demo`.
+An element that shows a value over time (a goal bar, a countdown such as a subathon, a hype train, a session counter) should not draw itself: send a **state** to the core's engine (`ctx.overlay.animateScript()`, then `CuriosaAnimate.mount(...)` and `setState(...)`) and it is drawn in the style of the page's overlay skin, with burst merging, a celebration queue, calm motion and quality levels for free. Copy `ctx.overlay.animateOptions()` into the element's options. Full contract: [OVERLAY-ANIMATIONS.md](OVERLAY-ANIMATIONS.md), section 7; example: the `animated` element of `examples/overlay-demo`. **Scenes (core 0.40.0)**: a skin may draw your element with its own pictures instead of a recipe; you change nothing (the same state, the same page script). Its pictures arrive by `fetch` from the skin's address, so your page's security policy must keep `connect-src 'self'` (an `img-src` is not needed). See OVERLAY-ANIMATIONS.md, section 10.
 
 ## 7. Adoption checklist
 

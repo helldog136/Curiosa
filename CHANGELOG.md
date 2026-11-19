@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.40.0 — 2026-11-19
+
+**En bref.** Un skin d'overlay peut maintenant dessiner une barre avec ses propres images : la lanterne qui avance, les pétales d'un palier. Le cœur ne fournit que la barre abstraite ; les skins existants et les extensions n'ont rien à changer.
+
+**In short.** An overlay skin can now draw a bar with its own pictures: the lantern that moves, the petals of a milestone. The core only provides the abstract bar; existing skins and extensions need no change.
+
+### Nouveautés
+
+- **Des skins d'overlay avec leurs images.** Un skin peut apporter ses images (PNG, WebP, SVG) et dire où elles se posent sur la barre (le rail, la partie remplie, la tête, les paliers) et quand elles bougent. Les images sont contrôlées à l'installation : taille, nombre, licence, aucune animation cachée.
+- **(English) Overlay skins with their own pictures.** A skin can bring its pictures (PNG, WebP, SVG) and say where they sit on the bar (the rail, the filled part, the head, the milestones) and when they move. Pictures are checked at install: size, number, licence, no hidden animation.
+- **Rien ne s'efface si une image manque.** Une image qui ne charge pas est simplement laissée de côté et l'aspect de base de Curiosa la remplace. Les chiffres restent toujours lisibles, dessinés par Curiosa au-dessus des images.
+- **(English) Nothing breaks if a picture is missing.** A picture that does not load is simply left out and Curiosa's basic look takes its place. The numbers always stay readable, drawn by Curiosa above the pictures.
+- **Mouvements calmes et effets légers.** Le mode calme retire les pièces qui volent et les secousses de ces skins, et les niveaux d'effets « léger » et « aucun » les allègent. Rien ne change pour les skins déjà installés.
+- **(English) Calm motion and lighter effects.** Calm mode removes the flying pieces and the shakes of these skins, and the "light" and "none" effect levels lighten them. Nothing changes for installed skins.
+
+### Pour les développeurs
+
+- Scènes : `animateContract` 3, `skinContract` 5, clé `scene` ; grammaire `SCENE` (`animate/spec.ts`), contrôle `animate/scene.ts` (lecteur tolérant), `animate/imageProbe.ts`, moteur `sceneFrame` (liste de dessin pure, opérations `img`), chargement par `fetch` + `createImageBitmap`. Les recettes (contrats 1 et 2) sont inchangées : les 810 images de référence passent.
+- `GET /skins/<id>/<version>/images/<nom>.svg?raster=1` : l'image vectorielle déjà nettoyée, en PNG au double de sa taille. `overlay-no-assets` ne tombe que pour un skin qui déclare une scène, et seulement pour des images.
+- Skin d'essai `tests/fixtures/scene-skins/lantern-vine/` ; `scripts/visual/scene-bench.mjs` (images et mesures dans la politique de sécurité stricte d'une page d'élément). Documentation : `docs/OVERLAY-ANIMATIONS.md`, section 10.
+
 ## 0.39.0 — 2026-11-19
 
 **En bref.** Une sauvegarde très ancienne se restaure maintenant : ce que les anciennes versions convertissaient toutes seules est converti à la restauration, ce qui ne peut pas l'être est mis de côté, et un bilan dit quoi, avec le fichier à ouvrir à la main.
