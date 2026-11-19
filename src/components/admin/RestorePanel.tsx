@@ -10,8 +10,11 @@ import { ui } from "./ui";
 
 type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean; /** Module actif dont un fournisseur manque : services en clair. */ missingLabels?: string[] };
 type SkinPlan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "personal"; repoUrl: string; ref: string | null; needsConfirmation: boolean };
-type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[]; /** Skins de la sauvegarde (absent d'une sauvegarde d'avant les skins). */ skins?: SkinPlan[] };
-type Report = { ok: boolean; error?: string; modules: { id: string; outcome: string; error?: string }[]; skins?: { id: string; outcome: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number>; dependencyLines?: { id: string; name: string; labels: string[] }[]; providedNames?: string[] };
+type Item = { id: string; note: string; params?: Record<string, string | number>; path?: string };
+type Conversion = { backupVersion: string; currentVersion: string; gap: "same" | "older" | "unknown"; core: Item[]; rawg: { key: boolean; fixes: number; todo: number } | null; modules: { id: string; route: "bridge" | "installed" | "blocked"; dataVersion: number; floor: number; tags: string[]; path: string }[] };
+type Result = { converted: Item[]; setAside: Item[]; failed: Item[] };
+type Preview = { token: string; site: { name: string }; createdAt: string; frameworkVersion: string; counts: Record<string, number>; modules: Plan[]; /** Skins de la sauvegarde (absent d'une sauvegarde d'avant les skins). */ skins?: SkinPlan[]; conversion?: Conversion | null };
+type Report = { ok: boolean; error?: string; report?: Result; safetyCopy?: string | null; modules: { id: string; outcome: string; error?: string }[]; skins?: { id: string; outcome: string }[]; migrations?: { key: string; from: number; to: number; status: string; error?: string }[]; counts?: Record<string, number>; dependencyLines?: { id: string; name: string; labels: string[] }[]; providedNames?: string[] };
 type Labels = Record<string, string>;
 
 /** Restauration en deux temps : (1) fichier + mot de passe → aperçu ; (2) confirmation, module personnel par module personnel. */
@@ -25,6 +28,8 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
   const headers = (extra: Record<string, string> = {}) => ({ ...extra, ...(needsToken ? { "x-setup-token": setupToken } : {}) });
   const L = (k: string) => labels[k] ?? k;
   const p = useProgressText();
+  const fill = (key: string, params: Record<string, string | number> = {}) => Object.entries(params).reduce((text, [k, v]) => text.replaceAll(`{${k}}`, String(v)), L(key));
+  const line = (i: Item) => fill(`report.${i.note}`, i.params);
 
   async function check(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -55,9 +60,20 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
     return (
       <div className="space-y-3" role="status">
         <p className={report.ok ? "text-emerald-700" : "text-red-700"}>{report.ok ? `✅ ${L("done")}` : `❌ ${L("error.failed")}`}</p>
-        <ul className="list-disc pl-5 text-sm">
-          {report.modules.map((m) => <li key={m.id}><span className="font-mono">{m.id}</span> — {L(`outcome.${m.outcome}`)}{m.error ? ` (${m.error})` : ""}</li>)}
-        </ul>
+        {(["failed", "setAside", "converted"] as const).map((kind) => (report.report?.[kind] ?? []).length > 0 && (
+          <section key={kind} data-testid={`restore-${kind}`} className={`${ui.card} text-sm`}>
+            <h3 className="font-medium">{fill(`report.${kind}`, { n: report.report![kind].length })}</h3>
+            <ul className="mt-2 space-y-2">
+              {report.report![kind].map((i) => (
+                <li key={`${i.id}-${i.note}`}>
+                  {line(i)}
+                  {i.path && kind !== "converted" && <><br /><span className="text-xs text-muted">{fill("report.where", { path: "" })}<Paths path={i.path} /></span></>}
+                </li>
+              ))}
+            </ul>
+          </section>
+        ))}
+        {report.safetyCopy && <p className="text-xs text-muted" data-testid="restore-snapshot">{fill("report.saved", { path: report.safetyCopy })}</p>}
         {(report.skins ?? []).length > 0 && (
           <ul className="list-disc pl-5 text-sm" data-testid="restore-skins">
             {report.skins!.map((s) => <li key={s.id}>{L("skin")} <span className="font-mono">{s.id}</span> — {L(`skinOutcome.${s.outcome}`)}</li>)}
@@ -70,11 +86,6 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
             <ul className="mt-1 list-disc pl-5">{report.dependencyLines!.map((d) => <li key={d.id}><strong>{d.name}</strong> — {L("deps.missing").replace("{list}", d.labels.join(", "))}</li>)}</ul>
             <p className="mt-2 text-muted">{L("deps.note")}</p>
           </div>
-        )}
-        {(report.migrations ?? []).length > 0 && (
-          <ul className="list-disc pl-5 text-sm">
-            {report.migrations!.map((m) => <li key={m.key}><span className="font-mono">{m.key}</span> — {m.status === "ok" ? `${L("migrated")} (v${m.from} → v${m.to})` : `${L("migrationFailed")}${m.error ? ` : ${m.error}` : ""}`}</li>)}
-          </ul>
         )}
         {report.ok && <a href={loginHref} className={ui.btnPrimary}>{L("login")}</a>}
       </div>
@@ -98,6 +109,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
             <strong>{preview.site.name}</strong> — {new Date(preview.createdAt).toLocaleString()} (v{preview.frameworkVersion})<br />
             {preview.counts.entries} {L("entries")} · {preview.counts.users} {L("users")} · {preview.counts.instances} {L("instances")} · {preview.counts.uploads} {L("uploads")}
           </p>
+          {preview.conversion && <ConversionPlanView plan={preview.conversion} fill={fill} where={L("report.where")} />}
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{L("replaceWarning")}</p>
           <ul className="space-y-2">
             {preview.modules.map((m) => (
@@ -137,4 +149,34 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
       )}
     </div>
   );
+}
+
+/** The conversion plan, short: only what differs from a plain restore (nothing at all for a backup of the same release). */
+function ConversionPlanView({ plan, fill, where }: { plan: Conversion; fill: (key: string, params?: Record<string, number | string>) => string; where: string }) {
+  const rows: { key: string; text: string; path?: string }[] = [
+    ...plan.core.map((i) => ({ key: i.id, text: fill(`plan.${i.note}`, i.params), path: i.note === "switchedOff" ? i.path : undefined })),
+    ...(plan.rawg ? [{ key: "core.rawg", text: fill("plan.rawg", { fixes: plan.rawg.fixes }) }] : []),
+    ...plan.modules.map((m) => ({ key: `module.${m.id}`, text: fill(`plan.module.${m.route}`, { module: m.id, from: m.dataVersion, steps: m.tags.length }), path: m.route === "bridge" ? undefined : m.path })),
+  ];
+  if (plan.gap !== "older" && rows.length === 0) return null;
+  return (
+    <section className={`${ui.card} space-y-2 text-sm`} data-testid="restore-plan">
+      {plan.gap === "older" && <p className="font-medium">{fill("plan.gap", { from: plan.backupVersion, to: plan.currentVersion })}</p>}
+      {rows.length > 0 && (
+        <ul className="space-y-1">
+          {rows.map((r) => (
+            <li key={r.key}>
+              {r.text}
+              {r.path && <><br /><span className="text-xs text-muted">{where.replace("{path}", "")}<Paths path={r.path} /></span></>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+/** Files or folders of the unpacked archive: one `code` each, never cut in the middle of a name unless a single name is wider than the screen. */
+function Paths({ path }: { path: string }) {
+  return <>{path.split(", ").map((p, n) => <span key={p}>{n > 0 && " · "}<code className="font-mono [overflow-wrap:anywhere]">{p}</code></span>)}</>;
 }

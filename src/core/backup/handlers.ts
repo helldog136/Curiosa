@@ -3,7 +3,7 @@ import { MAX_UPLOAD } from "./guard";
 import { buildNames } from "@/core/modules/dependencyView";
 import { getSiteConfig } from "@/core/settings";
 import { opIdOf, trackOperation } from "@/core/operations/run";
-import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, planBackupSkins, planModules } from "./restore";
+import { applyRestore, checkSchema, openBackupAsync, parseBackupAsync, previewRestore } from "./restore";
 
 /**
  * Les deux étapes d'une restauration, communes à l'admin (propriétaire connecté) et à l'assistant de première installation
@@ -30,6 +30,8 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
   if (!opened.ok) return Response.json({ ok: false, error: opened.error }, { status: 400 });
   const { manifest } = opened.backup;
   if ((await checkSchema(manifest)) === "newer-schema") return Response.json({ ok: false, error: "newer-schema" }, { status: 400 });
+  const preview = await previewRestore(opened.backup);
+  const names = await readableNames();
   return Response.json({
     ok: true,
     token: stash(opened.plain),
@@ -37,11 +39,9 @@ export async function previewHandler(request: Request, guard: Guard): Promise<Re
     createdAt: manifest.createdAt,
     frameworkVersion: manifest.frameworkVersion,
     counts: manifest.counts,
-    skins: await planBackupSkins(opened.backup).catch(() => []),
-    modules: await (async () => {
-      const names = await readableNames();
-      return (await planModules(opened.backup.data.modules)).map((p) => (p.missing?.length ? { ...p, missingLabels: p.missing.map((m) => serviceLabel(names, m)) } : p));
-    })(),
+    skins: preview.skins,
+    conversion: preview.conversion,
+    modules: preview.modules.map((p) => (p.missing?.length ? { ...p, missingLabels: p.missing.map((m) => serviceLabel(names, m)) } : p)),
   });
 }
 

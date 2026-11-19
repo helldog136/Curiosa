@@ -147,7 +147,7 @@ test("NO tool and no access can turn it on: the setter is imported only by the o
   const files = walk("src").filter((f) => /\.(ts|tsx|mjs)$/.test(f));
   const holders = (re) => files.filter((f) => re.test(fs.readFileSync(f, "utf8"))).map((f) => f.split(path.sep).join("/")).sort();
   assert.deepEqual(holders(/\bsetFullPowers\b/), ["src/app/admin/(panel)/assistants/fullPowersActions.ts", "src/core/services/mcp/fullPowers.ts", "src/core/services/mcp/tokens.ts"]);
-  assert.deepEqual(holders(/FULL_POWERS_KEY/), ["src/core/backup/export.ts", "src/core/backup/restore.ts", "src/core/services/mcp/fullPowers.ts"]);
+  assert.deepEqual(holders(/FULL_POWERS_KEY/), ["src/core/backup/conversion/stage.ts", "src/core/backup/export.ts", "src/core/services/mcp/fullPowers.ts"]);
   // The one caller that can turn it on checks the owner, in the same file, and asks for the typed name again.
   const action = fs.readFileSync("src/app/admin/(panel)/assistants/fullPowersActions.ts", "utf8");
   assert.match(action, /^"use server";/);
