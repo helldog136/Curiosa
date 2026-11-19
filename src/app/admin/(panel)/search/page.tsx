@@ -2,6 +2,8 @@ import { adminCtx } from "@/core/admin";
 import { PageHeader } from "@/components/admin/Page";
 import { SettingsSearch } from "@/components/admin/SettingsSearch";
 import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
+import { hasRole } from "@/core/auth/access";
+import { searchContentEntries } from "@/core/content/adminSearch";
 import { searchEntriesFor } from "@/core/modules/placeSearchLoad";
 
 export const dynamic = "force-dynamic";
@@ -11,10 +13,13 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
   const { user, t, locale, config, advanced } = await adminCtx("member");
   const { q } = await searchParams;
   const entries = await searchEntriesFor(user, t, locale, config.defaultLocale, advanced);
+  const query = typeof q === "string" ? q.slice(0, 100) : "";
+  const canContent = hasRole(user, "editor");
+  const content = canContent && query ? await searchContentEntries(query, locale, config.defaultLocale) : [];
   return (
     <div className="space-y-6">
       <PageHeader title={t("settingsSearch.title")} intro={t("settingsSearch.intro")} />
-      <SettingsSearch variant="page" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" initial={entries} initialQuery={typeof q === "string" ? q.slice(0, 100) : ""} advancedMode={advanced} />
+      <SettingsSearch variant="page" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" contentEndpoint={canContent ? "/api/admin/content-search" : undefined} initial={entries} initialContent={content} initialQuery={query} advancedMode={advanced} />
     </div>
   );
 }

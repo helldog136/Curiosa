@@ -198,3 +198,26 @@ test("the maintenance health tool reuses the same numbers", async () => {
   const info = { disk: L.describeDisk(3 * GB, 20 * GB), usage: { totalBytes: 5, categories: { files: 5, database: 0, backups: 0, modules: 0, other: 0 }, partial: false }, pending: false, measuredAt: "2026-01-01T00:00:00.000Z", install: "docker" };
   assert.deepEqual(storageForTool(info), { install: "docker", pending: false, measuredAt: "2026-01-01T00:00:00.000Z", usedBySiteBytes: 5, partial: false, categories: { files: 5, database: 0, backups: 0, modules: 0, other: 0 } });
 });
+
+test("present: the bar says site, rest of the server and free, with a visible sliver on a huge disk", () => {
+  const TB = 2 ** 40;
+  const info = { install: "docker", pending: false, measuredAt: 0, usage: { totalBytes: 111 * MB, partial: false, categories: { files: 111 * MB, database: 0, backups: 0, modules: 0, other: 0 } }, disk: { freeBytes: 1 * TB, totalBytes: 1 * TB + 20 * GB, level: "ok" } };
+  for (const locale of ["en", "fr"]) {
+    const v = presentStorage(info, makeTranslator(locale), locale);
+    assert.ok(v.siteShare > 0 && v.siteShare < 0.1, "the exact share stays exact");
+    assert.ok(v.barSite >= 1.5, "the site keeps a visible sliver");
+    assert.ok(v.barSite + v.barOther <= 100);
+    assert.deepEqual(v.legend.map((l) => l.id), ["site", "other", "free"]);
+    assert.equal(v.legend[0].text, formatBytes(111 * MB, locale));
+    assert.equal(v.legend[2].text, formatBytes(1 * TB, locale));
+  }
+  const en = presentStorage(info, makeTranslator("en"), "en");
+  assert.equal(en.legend[0].label, "Your site");
+  const fr = presentStorage(info, makeTranslator("fr"), "fr");
+  assert.equal(fr.legend[1].label, "Reste du serveur");
+  const none = presentStorage({ ...info, disk: null }, makeTranslator("en"), "en");
+  assert.equal(none.legend, null);
+  const noSite = presentStorage({ ...info, usage: null }, makeTranslator("en"), "en");
+  assert.deepEqual(noSite.legend.map((l) => l.id), ["other", "free"]);
+  assert.equal(noSite.barSite, 0);
+});

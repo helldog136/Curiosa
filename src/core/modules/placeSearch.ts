@@ -11,7 +11,7 @@ import { parsePlace, placeId } from "./places";
  */
 export type SearchEntry = {
   id: string;
-  kind: "section" | "setting";
+  kind: "section" | "setting" | "entry";
   /** The setting label, or the section title. */
   title: string;
   /** The section the entry belongs to (the same text as `title` for a section). */

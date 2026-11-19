@@ -122,12 +122,21 @@ export async function StorageBlock({ c }: { c: BlockCtx }) {
       ) : (
         <>
           <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v.usedShare)} aria-label={t("storage.barLabel", { used: String(Math.round(v.usedShare)) })} className="flex h-3 overflow-hidden rounded-full bg-line">
-            <div className="h-full bg-accent" style={{ width: `${v.siteShare}%` }} />
-            <div className="h-full bg-muted/50" style={{ width: `${v.otherShare}%` }} />
+            <div className="h-full bg-accent" style={{ width: `${v.barSite}%` }} />
+            <div className="h-full bg-muted/50" style={{ width: `${v.barOther}%` }} />
           </div>
+          {v.legend && (
+            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-testid="storage-legend">
+              {v.legend.map((l) => (
+                <li key={l.id} className="flex items-center gap-1.5">
+                  <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${l.id === "site" ? "bg-accent" : l.id === "other" ? "bg-muted/50" : "border border-line bg-line"}`} />
+                  <span className="text-muted">{l.label}</span> <span className="font-medium">{l.text}</span>
+                </li>
+              ))}
+            </ul>
+          )}
           <p className="text-sm" data-testid="storage-sentence">
             <span aria-hidden="true">{v.icon} </span><span className="font-medium">{v.stateText}</span>
-            {v.sentence && <span className="text-muted"> · {v.sentence}</span>}
           </p>
           {v.pending && <p className="text-sm text-muted" role="status" data-testid="storage-pending">{t("storage.pending")}</p>}
           {v.warning && <Callout tone={v.level === "critical" ? "danger" : "warn"} role="status" testid="storage-warning">{v.warning}</Callout>}
