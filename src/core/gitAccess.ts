@@ -12,6 +12,7 @@
  */
 import { prisma } from "./db";
 import { seal, unseal } from "./seal";
+import { purgeRepoFromDisk } from "./modules/ficheCache";
 
 export const ACCESS_SETTING = "git.secret.access";
 const PURPOSE = "git-access-seal";
@@ -50,6 +51,30 @@ export function accessTarget(url: string | null | undefined): { host: string; re
   if (u.protocol !== "https:" || u.hostname.toLowerCase() !== ACCESS_HOST || u.port || u.username || u.password || u.search || u.hash) return null;
   const m = /^\/([A-Za-z0-9][\w.-]{0,38})\/([\w.-]{1,100}?)(?:\.git)?\/?$/.exec(u.pathname);
   return m ? { host: ACCESS_HOST, repo: `${m[1]}/${m[2]}`.toLowerCase() } : null;
+}
+
+/**
+ * What was read from a repository while its code was (or was not) saved must not outlive a change of that code: the owner reads a private fiche, removes the access,
+ * and a plain admin must not find the copy. The disk copy is purged here; the memory copies (readme.ts) are purged by listeners. The registry lives on `globalThis`
+ * because the admin pages and the actions can be separate bundles of the same process.
+ */
+type AccessListener = (t: { host: string; repo: string }) => void;
+const LISTENERS_KEY = Symbol.for("curiosa.gitAccess.listeners");
+const listeners = (): Set<AccessListener> => ((globalThis as Record<symbol, unknown>)[LISTENERS_KEY] ??= new Set<AccessListener>()) as Set<AccessListener>;
+export function onAccessChange(fn: AccessListener): void { listeners().add(fn); }
+function purgeCopies(t: { host: string; repo: string }): void {
+  purgeRepoFromDisk(t.host, t.repo);
+  for (const fn of listeners()) { try { fn(t); } catch { /* a cache is never worth a failure */ } }
+}
+
+/** One change at a time: two saves at once would each read the list, and the second write would drop the first one. Kept on `globalThis` like the listeners. */
+const LOCK_KEY = Symbol.for("curiosa.gitAccess.lock");
+async function withEntriesLock<T>(fn: () => Promise<T>): Promise<T> {
+  const g = globalThis as Record<symbol, unknown>;
+  const previous = (g[LOCK_KEY] as Promise<unknown> | undefined) ?? Promise.resolve();
+  const run = previous.then(fn, fn);
+  g[LOCK_KEY] = run.then(() => undefined, () => undefined);
+  return run;
 }
 
 type Entry = { host: string; repo: string; sealed: string; savedAt: string };
@@ -103,19 +128,26 @@ export async function listAccess(): Promise<{ repo: string; savedAt: string; rea
 export async function storeAccess(url: string, code: string): Promise<boolean> {
   const t = accessTarget(url);
   if (!t || checkCodeFormat(code) !== "ok") return false;
-  const rest = (await readEntries()).filter((e) => !(e.host === t.host && e.repo === t.repo));
-  await writeEntries([...rest, { host: t.host, repo: t.repo, sealed: seal(PURPOSE, code.trim(), `${t.host}/${t.repo}`), savedAt: new Date().toISOString() }].sort((a, b) => (a.repo < b.repo ? -1 : 1)));
+  await withEntriesLock(async () => {
+    const rest = (await readEntries()).filter((e) => !(e.host === t.host && e.repo === t.repo));
+    await writeEntries([...rest, { host: t.host, repo: t.repo, sealed: seal(PURPOSE, code.trim(), `${t.host}/${t.repo}`), savedAt: new Date().toISOString() }].sort((a, b) => (a.repo < b.repo ? -1 : 1)));
+  });
+  purgeCopies(t);
   return true;
 }
 
 export async function removeAccess(url: string): Promise<boolean> {
   const t = accessTarget(url);
   if (!t) return false;
-  const all = await readEntries();
-  const rest = all.filter((e) => !(e.host === t.host && e.repo === t.repo));
-  if (rest.length === all.length) return false;
-  await writeEntries(rest);
-  return true;
+  const removed = await withEntriesLock(async () => {
+    const all = await readEntries();
+    const rest = all.filter((e) => !(e.host === t.host && e.repo === t.repo));
+    if (rest.length === all.length) return false;
+    await writeEntries(rest);
+    return true;
+  });
+  if (removed) purgeCopies(t);
+  return removed;
 }
 
 /**

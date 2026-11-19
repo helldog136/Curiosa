@@ -1,3 +1,5 @@
+import { isSafeGitRef } from "../gitRef";
+import { GIT_NO_LFS_ARGS, gitChildEnv } from "../gitEnv";
 import { execFile } from "node:child_process";
 import { AsyncLocalStorage } from "node:async_hooks";
 import fs from "node:fs";
@@ -103,7 +105,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
   const [rawUrl = "", fragment] = input.trim().split("#");
   const [rawRef, subdir] = fragment === undefined ? [undefined, undefined] : fragment.split(":");
   const ref = rawRef === "" ? undefined : rawRef;
-  if (ref !== undefined && !/^(?!-)[\w./-]{1,100}$/.test(ref)) return { ok: false, error: "modules.error.ref" };
+  if (ref !== undefined && !isSafeGitRef(ref)) return { ok: false, error: "modules.error.ref" };
   if (subdir !== undefined && !isSubdir(subdir)) return { ok: false, error: "modules.error.subdir" };
   if (fragment !== undefined && fragment.split(":").length > 2) return { ok: false, error: "modules.error.ref" };
   let url: URL;
@@ -133,8 +135,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
   return { ok: true, repo: { url: url.href.replace(/\/$/, ""), ref, ...(subdir ? { subdir } : {}) } };
 }
 
-// GIT_ASKPASS "true": a question from git is answered with nothing (it used to be "echo", which answered with the question itself).
-const GIT_ENV = { ...process.env, GIT_TERMINAL_PROMPT: "0", GIT_ASKPASS: "true" };
+// The environment of every git child: an allow-list, never a copy of process.env (src/core/gitEnv.ts).
 
 /** `hardened`: a code is attached to this call (0.42.0). Git then follows no redirect (a redirect re-sends the header to the new address) and speaks https only. */
 function gitArgs(args: string[], hardened = false): string[] {
@@ -143,6 +144,7 @@ function gitArgs(args: string[], hardened = false): string[] {
     "-c", "protocol.ext.allow=never",
     "-c", `protocol.file.allow=${protocolFile}`,
     "-c", "core.hooksPath=/dev/null",
+    ...GIT_NO_LFS_ARGS,
     "-c", "credential.helper=",   // (0.42.0) no helper of the machine ever stores or hands out a credential
     ...(hardened ? ["-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", ...(testSeam.loopback ? ["-c", "protocol.http.allow=always"] : [])] : []),
     ...args,
@@ -168,7 +170,7 @@ async function remoteOf(args: string[], cwd?: string): Promise<string | undefine
   if (direct) return direct;
   if (!cwd) return undefined;
   try {
-    const { stdout } = await run("git", gitArgs(["config", "--get", "remote.origin.url"]), { cwd, timeout: 10_000, env: GIT_ENV, maxBuffer: 4096 });
+    const { stdout } = await run("git", gitArgs(["config", "--get", "remote.origin.url"]), { cwd, timeout: 10_000, env: gitChildEnv(), maxBuffer: 4096 });
     return stdout.trim() || undefined;
   } catch { return undefined; }
 }
@@ -187,7 +189,7 @@ async function authFor(args: string[], cwd: string | undefined, env: Record<stri
   }
   if (!url || !accessTarget(url)) return { code: null, env: {} };
   const code = override?.code ?? await accessCodeFor(url).catch(() => null);
-  return code ? { code, env: accessEnv(url, code, { ...GIT_ENV, ...(env ?? {}) }) } : { code: null, env: {} };
+  return code ? { code, env: accessEnv(url, code, gitChildEnv(env)) } : { code: null, env: {} };
 }
 
 /**
@@ -202,7 +204,7 @@ async function runGit(args: string[], cwd: string | undefined, env: Record<strin
   const auth = await authFor(args, cwd, env, override);
   const code = auth.code;
   try {
-    const { stdout } = await run("git", gitArgs(args, !!code), { cwd, timeout: timeoutMs, env: { ...GIT_ENV, ...(env ?? {}), ...auth.env }, maxBuffer: 1024 * 1024 });
+    const { stdout } = await run("git", gitArgs(args, !!code), { cwd, timeout: timeoutMs, env: gitChildEnv({ ...(env ?? {}), ...auth.env }), maxBuffer: 1024 * 1024 });
     return stdout.trim();
   } catch (error) {
     const e = error as { stderr?: unknown; message?: string; killed?: boolean; signal?: string };
@@ -243,7 +245,7 @@ export async function gitBlob(spec: string, cwd: string, maxBytes: number): Prom
 async function runRaw(args: string[], cwd: string, timeout: number, maxBuffer: number): Promise<Buffer> {
   const auth = await authFor(args, cwd, undefined);
   try {
-    return (await run("git", gitArgs(args, !!auth.code), { cwd, timeout, env: { ...GIT_ENV, ...auth.env }, maxBuffer, encoding: "buffer" })).stdout;
+    return (await run("git", gitArgs(args, !!auth.code), { cwd, timeout, env: gitChildEnv(auth.env), maxBuffer, encoding: "buffer" })).stdout;
   } catch (error) {
     const stderr = String((error as { stderr?: unknown })?.stderr ?? "");
     if (isAccessRefusal(stderr)) throw new GitAccessError();
@@ -350,7 +352,7 @@ export async function installModule(input: string, opts: {
       // (récupération superficielle si le serveur l'autorise, sinon tout l'historique), puis on s'y place.
       await git(["init", "-q", checkout]);
       await git(["remote", "add", "origin", url], checkout);
-      await git(["fetch", "-q", "--depth", "1", "origin", ref], checkout).catch(() => git(["fetch", "-q", "origin"], checkout));
+      await git(["fetch", "-q", "--depth", "1", "--", "origin", ref], checkout).catch(() => git(["fetch", "-q", "origin"], checkout));
       await git(["-c", "advice.detachedHead=false", "checkout", "-q", "--detach", ref], checkout);
     } else {
       await git(["clone", "--depth", "1", "--single-branch", ...(ref ? ["--branch", ref] : []), "--", url, checkout]);
@@ -485,7 +487,7 @@ async function fetchSource(url: string, ref: string | null | undefined): Promise
     const checkout = path.join(tmp, "repo");
     await git(["init", "-q", checkout]);
     await git(["remote", "add", "origin", url], checkout);
-    await git(["fetch", "-q", "--depth", "1", "origin", ref || "HEAD"], checkout).catch((e) => {
+    await git(["fetch", "-q", "--depth", "1", "--", "origin", ref || "HEAD"], checkout).catch((e) => {
       if (ref && isCommitRef(ref)) return git(["fetch", "-q", "origin"], checkout);   // certains serveurs refusent de livrer un commit seul
       throw e;
     });
@@ -754,7 +756,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     }
     // 1. Le cœur est-il assez récent pour la version visée ? On le lit AVANT de toucher au dossier du module (ni retour en arrière, ni migration à défaire).
     opStep("download");
-    await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
+    await git(["fetch", "--depth", "1", "--", "origin", fetchRef], dir);
     opStep("verify");
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
     if (incoming?.ok) {
@@ -776,7 +778,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
       if (replay) return replay;
     }
     // 2. Échanger les fichiers (annulation : `git reset` vers la version d'avant).
-    await git(["fetch", "--depth", "1", "origin", fetchRef], dir);
+    await git(["fetch", "--depth", "1", "--", "origin", fetchRef], dir);
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const commit = await git(["rev-parse", "HEAD"], dir);
     const manifest = readGitManifest(id);
@@ -832,7 +834,7 @@ async function replaySkippedReleases(id: string, dir: string, repoUrl: string, p
   onStep: (step: { reached: { commit: string; version: string; ref: string }; provided: string[] }) => void): Promise<InstallResult | null> {
   const between = (await remoteTags(repoUrl, prefix)).filter((t) => compareVersions(t, from) > 0 && compareVersions(t, to) < 0);
   for (const tag of between) {
-    await git(["fetch", "--depth", "1", "origin", `refs/tags/${tag}`], dir);
+    await git(["fetch", "--depth", "1", "--", "origin", `refs/tags/${tag}`], dir);
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const manifest = readGitManifest(id);
     if (!manifest || manifest.id !== id || (manifest.dataVersion ?? 1) <= 1) continue;   // version illisible ou sans données propres : rien à rejouer

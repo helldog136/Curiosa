@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { DATA_DIR } from "@/core/config";
 import { prisma } from "@/core/db";
-import { classify, isPrerelease, isReleaseTag } from "@/core/updates/versions";
+import { classify, isPrerelease, isReleaseTag, PREFIXED_TAG_RE } from "@/core/updates/versions";
 import { listInstances } from "@/core/instances";
 import { dataStatusOf } from "@/core/modules/dataMigrations";
 import { requirementGaps } from "@/core/modules/dependencies";
@@ -239,7 +239,8 @@ export type UpdatesView = {
 export function moduleUpdateRefusal(o: { id: string; ref: string | null | undefined; source: string; target: string; needsCore?: string }): string | undefined {
   if (o.needsCore) return `needs core ${o.needsCore} or newer: update the core first`;
   if (o.source === "git" && !isStableTagRef(o.ref, o.id)) return "this module follows a branch or a fixed commit, not stable release tags: only a human can update it";
-  if (!isStableVersion(o.target) || isPrerelease(o.target)) return "the target is not a stable release (pre-releases and snapshots are never installed by an AI)";
+  // `<id>/vX.Y.Z` (a repository that tags each module with its own series) is a stable release like `vX.Y.Z`; the core's own tags stay plain (isStableVersion).
+  if (!(isStableVersion(o.target) || PREFIXED_TAG_RE.test(o.target)) || isPrerelease(o.target)) return "the target is not a stable release (pre-releases and snapshots are never installed by an AI)";
   return undefined;
 }
 

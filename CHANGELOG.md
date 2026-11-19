@@ -28,9 +28,24 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un dépôt qui regroupe plusieurs skins.** La recherche de mise à jour comprend les étiquettes « nom-du-skin/v1.2.0 » en plus de « v1.2.0 ».
 - **(English) A repository that holds several skins.** The update check understands "skin-name/v1.2.0" tags as well as "v1.2.0".
 
+### Sécurité
+
+- **Retirer l'accès efface aussi les copies.** Ce qui a été lu avec le code (fiche, présentation) ne reste plus lisible ensuite par un autre administrateur.
+- **(English) Removing access also erases the copies.** What was read with the code (details page, readme) can no longer be read by another administrator afterwards.
+- **Rien ne sort du serveur par git.** Les commandes git ne reçoivent plus les secrets du serveur, et les fichiers de grande taille (Git LFS) ne sont jamais téléchargés : aucune requête vers une adresse choisie par le dépôt.
+- **(English) Nothing leaves the server through git.** Git commands no longer receive the server's secrets, and large files (Git LFS) are never downloaded: no request goes to an address chosen by the repository.
+- **Deux enregistrements en même temps** ne s'écrasent plus ; une référence qui commence par un tiret est refusée partout ; les séries « nom/v1.2.0 » sont comprises par les mises à jour de l'assistant et la conversion des sauvegardes.
+- **(English) Two saves at the same time** no longer overwrite each other; a reference that starts with a dash is refused everywhere; "name/v1.2.0" series are understood by the assistant's updates and by backup conversion.
+
+### Suites connues (0.42.1)
+
+- Liste des codes enregistrés pour le propriétaire, portée exacte du jeton GitHub vérifiée à l'enregistrement, et les points N3, N6, N7 et N9 de la seconde revue.
+- **(English) Known follow-ups (0.42.1):** list of saved codes for the owner, check of the exact scope of the GitHub token when saving, and items N3, N6, N7 and N9 of the second review.
+
 ### Pour les développeurs
 
 - `gitAccess.ts` (stockage scellé `git.secret.access`, en-tête limité à l'adresse exacte), `gitAccessAdmin.ts` (essai, enregistrement, audit sans le code), `seal.ts`. Le code ne passe que par l'environnement du processus fils dans `git()` : jamais argv, adresse, `.git/config`, journal ni erreur.
+- `gitEnv.ts` (environnement par liste blanche et options sans LFS de tout processus git), `gitRef.ts` (un seul validateur de référence), `ficheCache.purgeRepoFromDisk` et `onAccessChange` (copies effacées à chaque changement de code). Test : `git-access-review2.test.mjs`.
 - Tests : `git-access.test.mjs` (fuites), `skins-prefixed-tags.test.mjs`, `private-access-ui.test.mjs`. `pickLatestTag(sortie, préfixe)`, `isReleaseTag`, `tagPrefix` dans `updates/versions.ts`.
 - La recette de test `stained-glass.json` est remplacée par `mosaic-sample.json` ; seuls les condensats `mosaic/*` de `golden-0.32.0.json` changent (`basic` et `neon` identiques).
 
