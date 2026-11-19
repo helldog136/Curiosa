@@ -19,6 +19,7 @@ import { MODE_SCRIPT_URL } from "./modeScript";
 import { retouchesFrom, RETOUCH_READ_KEYS } from "./retouch";
 import { loadInstalledSkin } from "./service";
 import { renderSheet } from "./sheet";
+import { loadResolved } from "./customizeStore";
 import type { SkinDefinition } from "./types";
 
 export type SkinLook = {
@@ -89,10 +90,14 @@ export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?:
   }
   const headerLayout: HeaderLayout = isHeaderLayout(layoutRaw) ? layoutRaw : (!isBasic && skin.defaults.headerLayout) || (preview ? "classic" : localized.header.layout);
 
-  const key = createHash("sha1").update(JSON.stringify([skinCacheGeneration(), serial, retouches, options, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout, preview ? "p" : ""])).digest("hex");
+  // (0.44.0) the owner's customization of THIS skin (kept per skin, so a preview of the skin shows it too); a skin that declares none reads nothing
+  const custom = isBasic ? null : await loadResolved(skin);
+  const customKeyPart = custom ? [custom.stored, custom.resolved.missing] : null;
+
+  const key = createHash("sha1").update(JSON.stringify([skinCacheGeneration(), serial, retouches, options, customKeyPart, moduleLayer.version, glowLevel, localized.glow.custom, bg, headerLayout, preview ? "p" : ""])).digest("hex");
   let hit = CACHE.get(key);
   if (!hit) {
-    const composed = composeSkin({ skin, retouches, options, moduleTokens: moduleLayer.tokens, modulePairs: moduleLayer.pairs });
+    const composed = composeSkin({ skin, retouches, options, moduleTokens: moduleLayer.tokens, modulePairs: moduleLayer.pairs, custom: custom ? { tokens: custom.resolved.tokens, vars: custom.resolved.vars, stills: custom.resolved.stills } : undefined });
     const layers = effectiveLayers(bg.preset, bg.custom, bg.image, bg.svg);
     // Les règles `@font-face` des polices choisies (docs/POLICES.md) viennent AVANT la feuille ; sans police choisie, la feuille est strictement celle d'avant.
     const sheet = (retouches.fonts?.faces ?? "") + renderSheet(composed, {

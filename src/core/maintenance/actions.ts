@@ -23,7 +23,7 @@ import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
 import { executeFont, prepareFont } from "./fonts";
 import { executeSiteSettings, prepareSiteSettings } from "./siteSettings";
-import { executeSkin, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinOptions } from "./skins";
+import { executeSkin, executeSkinCustomize, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinCustomize, prepareSkinOptions } from "./skins";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -44,6 +44,7 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
   /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
   /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
   /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown>;
+  /** `skin_customize`: values, look and reset, as given to the tool. */ customize?: Record<string, unknown>;
   /** `navigation_set`: the whole menu; `home_sections_set`: the whole home page, as given to the tool. */ entries?: unknown; sections?: unknown;
   /** `site_settings_set`: the arguments, as given to the tool. */ site?: Record<string, unknown> };
 
@@ -53,7 +54,7 @@ export type Params = { module?: string; instance?: string; /** Skins : l'identif
 const LEVEL2_CLASS: Record<Level2Tool, SlotClass> = { check_updates: "content", backup_run: "content", content_check_run: "content", module_reinstall: "risky", module_restart: "risky" };
 const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
   module_update: "risky", modules_update_all: "risky", core_update: "risky", module_uninstall: "risky", module_install: "risky", skin_install: "risky", skin_activate: "risky", skin_remove: "risky", instance_add: "risky",
-  font_set: "content", skin_set_options: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content", navigation_set: "content", home_sections_set: "content",
+  font_set: "content", skin_set_options: "content", skin_customize: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content", navigation_set: "content", home_sections_set: "content",
 };
 /** Kept for compatibility: the default limit of the "risky" class (see slots.ts for the two classes). */
 export const MAX_ACTIONS_PER_HOUR = DEFAULT_LIMITS.risky;
@@ -261,6 +262,7 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
   }
   if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
   if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
+  if (action === "skin_customize") return prepareSkinCustomize(args.customize ?? {});
   if (action === "navigation_set") return prepareNavigationSet({ entries: args.entries });
   if (action === "home_sections_set") return prepareHomeSectionsSet({ sections: args.sections });
   if (action === "site_settings_set") return prepareSiteSettings(args.site ?? {});
@@ -312,6 +314,7 @@ async function execute(action: Level3Action, plan: Plan, actorLabel: string, ctx
   // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
   if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
   if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
+  if (action === "skin_customize") return executeSkinCustomize(plan, actorLabel);
   if (action === "navigation_set") return executeNavigationSet(plan, actorLabel);
   if (action === "home_sections_set") return executeHomeSectionsSet(plan, actorLabel);
   if (action === "site_settings_set") return executeSiteSettings(plan, actorLabel);

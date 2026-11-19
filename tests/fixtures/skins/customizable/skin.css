@@ -1,0 +1,32 @@
+/* Skin de test de la personnalisation : chaque réglage déclaré est lu par une règle. */
+[data-skin-region="header"] {
+  position: relative;
+  color: #f8efd6;
+  background-color: var(--sk-cz-banner, #16235a);
+  background-image: var(--sk-cz-banner-image, none);
+  background-size: var(--sk-cz-banner-image-size, cover);
+  background-repeat: var(--sk-cz-banner-image-repeat, no-repeat);
+  background-position: var(--sk-cz-banner-image-pos, center);
+  border-bottom: 4px solid var(--sk-cz-trim, #c9962f);
+}
+[data-skin-region="header"]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 100%;
+  height: 30px;
+  pointer-events: none;
+  background: var(--sk-cz-pennants) repeat-x center top / 96px 30px;
+}
+[data-skin-region="main"]::before {
+  content: "";
+  display: block;
+  height: 2.7rem;
+  margin: 0.5rem auto;
+  background: var(--sk-cz-emblem) center / contain no-repeat;
+}
+[data-skin-region="content"] {
+  background-color: var(--sk-cz-parchment, var(--v-surface));
+  border-radius: var(--sk-cz-corner, 0.2rem);
+}

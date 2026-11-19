@@ -1,0 +1,3 @@
+Les images du dossier images/ (pierre, fanions, creneaux, chaine, frise, epees, ecu, heaume, aigle, sceau, torche, chaine-longue) sont des dessins vectoriels
+écrits à la main et par programme pour ce skin, sans élément tiers (aucun blason réel, aucune marque, aucun logo, aucun personnage).
+Elles sont dédiées au domaine public (CC0 1.0 Universal) : https://creativecommons.org/publicdomain/zero/1.0/

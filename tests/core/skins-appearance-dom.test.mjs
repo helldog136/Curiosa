@@ -257,7 +257,9 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.match(html, /data-testid="undo-banner"[^>]*>[\s\S]*Vous venez de changer de skin[\s\S]*Skin de base/);
   assert.match(html, /role="tablist"/);
   assert.match(html, /data-testid="reset-card"[\s\S]*Remet les couleurs, la police, le halo, le fond et l&#x27;en-tête de « Duo de test »/);
-  assert.match(html, /data-testid="skin-options"[\s\S]*Densité/);
+  // (0.44.0) the skin's own options moved to the customization page: the current skin card links to it
+  assert.match(html, /data-testid="customize-link"[^>]*>Personnaliser</);
+  assert.doesNotMatch(html, /data-testid="skin-options"/);
   assert.match(html, /data-testid="visitor-switch"[\s\S]*data-switch="on"[^>]*>Votre public peut choisir Clair, Sombre ou Automatique/);
   assert.match(html, /data-testid="manage-skins"[\s\S]*data-manage="duo"/);
   assert.match(html, /data-catalogue-skin="duo"[\s\S]*Installé/, "le catalogue dit ce qui est installé");

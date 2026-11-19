@@ -3,8 +3,12 @@
  * L'adresse du dépôt officiel de skins n'est PAS ici : elle est écrite une seule fois, dans `core/config.ts` (`DEFAULT_SKINS_REPO`).
  */
 
-/** Version du contrat de skin que CE cœur comprend (`skinContract` du manifeste, §5.2). */
-export const SKIN_CONTRACT = 3;
+/**
+ * Version du contrat de skin que CE cœur comprend (`skinContract` du manifeste, §5.2).
+ * (core 0.44.0) 4: a site skin may declare `customize` (docs/SKINS.md "Customization"). A skin of contract 1 to 3 is read as before; an older core refuses a skin
+ * of contract 4 cleanly ("contract newer") instead of ignoring its customization.
+ */
+export const SKIN_CONTRACT = 4;
 /** Contract an overlay skin must declare (core 0.8.0): older cores refuse it cleanly ("contract newer") instead of misreading it. */
 export const OVERLAY_SKIN_CONTRACT = 2;
 /** (core 0.9.0) Contract of overlay skins that use the closed presets and layout properties (docs/OVERLAY-SKINS.md section 3): older cores refuse it as "contract newer". */
@@ -40,6 +44,8 @@ export const FILE_LIMITS = {
   fontBytes: 150 * 1024,
   fontsTotalBytes: 400 * 1024,
   images: 12,
+  /** (0.44.0) A site skin that declares `customize` offers pictures to choose from: more files, the same weight limits. */
+  imagesCustomizable: 24,
   imageBytes: 200 * 1024,
   svgBytes: 30 * 1024,
   imagesTotalBytes: 1.2 * 1024 * 1024,
@@ -55,4 +61,6 @@ export const FILE_LIMITS = {
 export const SETTING_INSTALLED = "skin.installed";
 export const SETTING_ACTIVE = "skin.active";
 export const SETTING_OPTIONS = "skin.options";
+/** (core 0.44.0) The owner's customization of ONE skin: `skin.custom.<skinId>` (kept when the owner switches skins). */
+export const SETTING_CUSTOM_PREFIX = "skin.custom.";
 export const BASIC_ID = "basic";

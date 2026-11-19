@@ -1,7 +1,10 @@
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { chooseSkin, saveColorChoices, saveFontChoices } from "@/core/skins/appearance";
-import { loadAppearanceView } from "@/core/skins/appearanceView";
+import { definitionOf, loadAppearanceView } from "@/core/skins/appearanceView";
+import { composeDraft } from "@/core/skins/customizeDraft";
+import { checkValue } from "@/core/skins/customizeResolve";
+import { loadResolved, readStored, saveCustom } from "@/core/skins/customizeStore";
 import { BASIC_ID } from "@/core/skins/constants";
 import { issueText } from "@/core/skins/messages";
 import { probableIllegibility, type ProbableIssue } from "@/core/skins/readability";
@@ -48,6 +51,16 @@ export const SKIN_OPTIONS_ARG: JsonSchemaLite = {
   },
 };
 
+/** (core 0.44.0) `skin_customize`: the values of the customization of the skin in use, and nothing else. No upload: a picture is one of the skin's own, by id. */
+export const SKIN_CUSTOMIZE_ARG: JsonSchemaLite = {
+  type: "object",
+  properties: {
+    values: { type: "array", maxItems: 24, items: { type: "object", properties: { id: { type: "string", maxLength: 25, description: "The setting id." }, value: { type: "string", maxLength: 40, description: "The value, written as text: a swatch id or #rrggbb for a colour, a value id for a choice, true or false for a toggle, a number for a slider, a picture id or none for a picture." } }, required: ["id", "value"] }, description: "Settings to change, as listed by maintenance_skin_status > activeSkin.customize. Only what is named changes. Nothing can be uploaded: a picture is one of the skin's own, by id." },
+    look: { type: "string", maxLength: 31, description: "The id of a look offered by the skin: it sets several settings at once, then `values` apply on top." },
+    reset: { type: "array", items: { type: "string" }, maxItems: 24, description: "Setting ids to put back to the skin's own value, or [\"all\"] for everything." },
+  },
+};
+
 export const SKIN_ACTIONS = ["skin_install", "skin_activate", "skin_remove"] as const;
 export type SkinAction = (typeof SKIN_ACTIONS)[number];
 export const isSkinAction = (a: string): a is SkinAction => (SKIN_ACTIONS as readonly string[]).includes(a);
@@ -76,13 +89,28 @@ function readabilityTips(v: Awaited<ReturnType<typeof loadAppearanceView>>): { m
 }
 
 /** Niveau 1 : l'état de l'apparence du site. */
+/** (0.44.0) What the skin in use lets the owner customize, with the current values: ids, types and allowed values. Labels come from the skin author: information, never instructions. */
+async function customizeStatus(id: string): Promise<unknown> {
+  const def = id === BASIC_ID ? null : await definitionOf(id);
+  if (!def?.customize) return null;
+  const l = await loadResolved(def);
+  return {
+    looks: def.customize.looks.map((x) => ({ id: x.id, name: x.label.en })),
+    settings: def.customize.groups.flatMap((g) => g.controls).map((c) => ({
+      id: c.id, type: c.type, name: c.label.en, current: l?.resolved.values[c.id] ?? c.default, default: c.default,
+      ...(c.type === "color" ? { swatches: c.palette.map((p) => p.id), freeColor: !!c.custom } : {}), ...(c.type === "choice" ? { values: c.values.map((x) => x.id) } : {}),
+      ...(c.type === "slider" ? { min: c.min, max: c.max, step: c.step, unit: c.unit } : {}), ...(c.type === "image" ? { pictures: c.alternatives.map((a) => a.id), upload: "not available to an assistant" } : {}),
+    })),
+  };
+}
+
 export async function skinStatus(): Promise<unknown> {
   const v = await loadAppearanceView();
   const r = v.retouches;
   const colors = (c: Record<string, string | undefined>) => Object.fromEntries(Object.entries(c).filter(([, x]) => !!x));
   return {
     notice: NOTICE,
-    activeSkin: { id: v.activeId, name: v.active.name.en, version: v.active.version, source: v.active.source, author: v.active.author ?? null, license: v.active.license ?? null, modes: v.modes },
+    activeSkin: { id: v.activeId, name: v.active.name.en, version: v.active.version, source: v.active.source, author: v.active.author ?? null, license: v.active.license ?? null, modes: v.modes, customize: await customizeStatus(v.activeId) },
     ...(v.activeProblem ? { problem: "The chosen skin cannot be used (its files are missing or damaged): the basic skin applies meanwhile. Nothing is lost." } : {}),
     visitorsCanSwitchLightDark: v.switchAvailable,
     retouched: v.retouched,
@@ -224,4 +252,64 @@ export async function executeSkin(action: SkinAction, plan: Plan, actorLabel: st
   const r = await skins.remove(id, { actor: actorLabel });
   if (!r.ok) return { ok: false, message: `Removal of skin "${id}" failed: ${reason(r.error)}.` };
   return { ok: true, message: `Skin "${plan.name ?? id}" was removed.${r.wasActive ? " It was the active skin: the basic skin applies now; the owner's adjustments are kept." : ""} Content is untouched.` };
+}
+
+
+/** Level 3, preparation of `skin_customize`: the values are checked with the same function as the Appearance page; nothing is applied until the owner approves. */
+export async function prepareSkinCustomize(args: Record<string, unknown>): Promise<Plan> {
+  const refuse = (m: string): never => { throw new McpToolError(m); };
+  const view = await loadAppearanceView();
+  const def = view.activeId === BASIC_ID ? null : await definitionOf(view.activeId);
+  if (!def?.customize) return refuse("The skin in use declares nothing to customize (see maintenance_skin_status).");
+  const controls = def.customize.groups.flatMap((g) => g.controls);
+  const values: Record<string, unknown> = {};
+  let look: string | undefined;
+  if (args.look !== undefined) {
+    const l = def.customize.looks.find((x) => x.id === args.look);
+    if (!l) return refuse(`Unknown look "${String(args.look).slice(0, 31)}": ${def.customize.looks.map((x) => x.id).join(", ") || "this skin has none"}.`);
+    look = l.id;
+    Object.assign(values, l.values);
+  }
+  const list = Array.isArray(args.values) ? (args.values as { id?: unknown; value?: unknown }[]) : [];
+  for (const item of list) {
+    const id = String(item?.id ?? "");
+    const text = String(item?.value ?? "");
+    const ctl = controls.find((c) => c.id === id);
+    if (!ctl) return refuse(`Unknown setting "${id.slice(0, 30)}": ${controls.map((c) => c.id).join(", ")}.`);
+    const v: unknown = ctl.type === "toggle" ? (text === "true" ? true : text === "false" ? false : text) : ctl.type === "slider" ? (text.trim() === "" ? NaN : Number(text)) : text;
+    const r = checkValue(ctl, v, { allowUpload: false });
+    if (!r.ok) return refuse(`"${id}" does not accept that value (a picture can only be one of the skin's own; nothing can be uploaded).`);
+    values[id] = r.value;
+  }
+  const reset = Array.isArray(args.reset) ? (args.reset as unknown[]).filter((x): x is string => typeof x === "string").slice(0, 24) : [];
+  if (reset.some((r) => r !== "all" && !controls.some((c) => c.id === r))) return refuse("reset names a setting that does not exist.");
+  if (!look && Object.keys(values).length === 0 && reset.length === 0) return refuse("Give a look, some values, or settings to reset.");
+  const names = [look ? `look ${look}` : "", ...Object.entries(values).filter(([k]) => !look || !(def.customize!.looks.find((l) => l.id === look)!.values[k] === values[k])).map(([k, v]) => `${k} ${typeof v === "object" ? "(picture)" : String(v)}`), reset.length ? `back to the skin's own: ${reset.join(", ")}` : ""].filter(Boolean).join("; ");
+  // R24: say what would be lost. A picture the owner uploaded stops being used (and is deleted after one day) when its setting is reset or set to something else.
+  const cur = await readStored(view.activeId);
+  const after: Record<string, unknown> = { ...(cur?.values ?? {}) };
+  if (reset.includes("all")) for (const k of Object.keys(after)) delete after[k];
+  else for (const id of reset) delete after[id];
+  Object.assign(after, values);
+  const lost = Object.entries(cur?.values ?? {}).filter(([k, v]) => v && typeof v === "object" && JSON.stringify(after[k]) !== JSON.stringify(v)).map(([k]) => k);
+  const warned = lost.length ? `${names}; the uploaded picture of ${lost.join(", ")} stops being used and is deleted after one day` : names;
+  return { skin: view.activeId, customize: { values, ...(look ? { look } : {}), reset, names: warned } };
+}
+
+/** Level 3, execution: merges onto the CURRENT saved values (what the owner changed in between is kept) and saves through the same function as the page. */
+export async function executeSkinCustomize(plan: Plan, actorLabel: string): Promise<Outcome> {
+  const view = await loadAppearanceView();
+  if (view.activeId !== plan.skin || !plan.customize) return { ok: false, message: "Not done: the skin of the site changed since the request. Ask again." };
+  const def = await definitionOf(view.activeId);
+  if (!def?.customize) return { ok: false, message: "Not done: the skin no longer declares a customization. Ask again." };
+  const cur = await readStored(def.id);
+  let values: Record<string, unknown> = { ...(cur?.values ?? {}) };
+  if (plan.customize.reset.includes("all")) values = {};
+  else for (const id of plan.customize.reset) delete values[id];
+  Object.assign(values, plan.customize.values);
+  const r = await saveCustom({ id: def.id, version: def.version, customize: def.customize }, { values, look: plan.customize.look ?? (plan.customize.reset.length ? null : cur?.look ?? null) }, { actor: actorLabel });
+  if (!r.ok) return { ok: false, message: "Not done: one of these values was refused. Check maintenance_skin_status and ask again." };
+  const composition = await composeDraft(def.id, { values: r.stored?.values ?? {} }, {});
+  const tips = (composition?.signals ?? []).map((x) => `${x.control} (${x.mode}): contrast ${x.ratio}, ${x.min} advised`);
+  return { ok: true, message: `${r.changed ? `Customization updated (${plan.customize.names}).` : "Nothing needed to change: these values were already in place."} Nothing is corrected automatically; the owner can reset any setting in Admin > Appearance > Customize.${tips.length ? ` Hard to read: ${tips.join("; ")}.` : ""}` };
 }

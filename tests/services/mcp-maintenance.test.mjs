@@ -88,13 +88,13 @@ const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { s
 
 // ── Catalogue et défauts ────────────────────────────────────────────────────────────────────────────────────────────────────
 
-test("catalogue: the 40 tools (levels 1, 2 and 3) with the right annotations; none is on by default except the one that tells an AI what it lacks; only deletions are destructive; level 3 are requests", async () => {
+test("catalogue: the 41 tools (levels 1, 2 and 3) with the right annotations; none is on by default except the one that tells an AI what it lacks; only deletions are destructive; level 3 are requests", async () => {
   const tools = await LIST();
   assert.deepEqual(tools.map((t) => t.name), [
     "maintenance_my_access", "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit", "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_plan", "maintenance_catalog_get", "maintenance_skin_status", "maintenance_skin_list", "maintenance_places", "maintenance_content_check",
     "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
     "maintenance_module_settings", "maintenance_place_settings", "maintenance_module_configure", "maintenance_module_configure_advanced",
-    "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove", "maintenance_font_set", "maintenance_skin_set_options", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
+    "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_skin_remove", "maintenance_font_set", "maintenance_skin_set_options", "maintenance_skin_customize", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_core_update", "maintenance_module_uninstall",
     "navigation_get", "navigation_set", "home_sections_list", "home_sections_set",
   ]);
   for (const t of tools) {

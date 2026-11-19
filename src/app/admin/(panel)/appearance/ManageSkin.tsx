@@ -12,7 +12,7 @@ import { useAL } from "./AppearanceLabels";
 import { BigCheckbox } from "./Controls";
 import { checkUpdateAction, removeSkinAction, revertSkinAction, updateSkinAction, type UpdateView } from "./actions";
 
-export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** (0.42.0) Private repository: its address and what is saved for it (never the code). */ repo?: string; access?: AccessState };
+export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** (0.42.0) Private repository: its address and what is saved for it (never the code). */ repo?: string; access?: AccessState; /** Pictures the owner uploaded for this skin (kept when it is removed unless asked). */ pictures?: number };
 
 /** Mises à jour (avec retour arrière), retrait : par skin installé, dans une zone repliée. Retirer ne change JAMAIS le contenu du site. */
 export function ManageSkin({ skin }: { skin: ManagedSkin }) {
@@ -73,6 +73,7 @@ export function ManageSkin({ skin }: { skin: ManagedSkin }) {
           {skin.active && <p className="text-sm text-muted">{al("appearance.remove.active")}</p>}
           <ActionForm action={flash(skin.active ? "removedActive" : "removed", removeSkinAction)} hideSubmit={false} submitLabel={al("appearance.remove.do")} secondary pendingLabel={al("appearance.remove.doing")} className="space-y-2" confirm={al("appearance.remove.confirm", { name: skin.name })}>
             <input type="hidden" name="id" value={skin.id} />
+            {(skin.pictures ?? 0) > 0 && <BigCheckbox name="erase" label={al("appearance.cz.removePictures", { count: skin.pictures ?? 0 })} />}
           </ActionForm>
         </section>
       </div>
