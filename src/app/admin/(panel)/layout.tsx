@@ -131,7 +131,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       <div className="flex flex-1 flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
-          <div className="mt-4 px-1"><SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" advancedMode={advanced} /></div>
+          <div className="mt-4 px-1"><SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" contentEndpoint={hasRole(user, "editor") ? "/api/admin/content-search" : undefined} advancedMode={advanced} /></div>
           <div className="mt-3"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
           {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => {
             const extra = tree.sections[id];
