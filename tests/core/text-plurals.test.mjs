@@ -23,7 +23,7 @@ test("pluriels : « 1 personne » / « 2 personnes », « 1 person » / « 2 peo
   assert.equal(f("catalogue.sources.added", { count: 1 }), "Dépôt ajouté : 1 module trouvé.", "variable « count » aussi");
   assert.equal(f("roles.members", { n: "1" }), "1 personne", "nombre écrit en chaîne");
   assert.equal(f("roles.members", { n: "beaucoup" }), "beaucoup personnes", "pas un nombre : le texte pluriel, jamais d'erreur");
-  assert.equal(f("choice.none"), "Rien à choisir pour l'instant.", "sans variables : inchangé");
+  assert.equal(f("choice.none"), "Aucun choix possible.", "sans variables : inchangé");
   assert.equal(makeTranslator("de")("roles.members", { n: 1 }), "1 person", "langue inconnue : repli sur l'anglais, règle anglaise");
   assert.ok(isSingular("fr", 1) && isSingular("fr", 0) && !isSingular("fr", 2) && isSingular("en", 1) && !isSingular("en", 0));
 });

@@ -66,7 +66,7 @@ export function mergePage(prev: readonly PickerItem[], page: readonly PickerItem
 export const optionDomId = (base: string, index: number): string => `${base}-opt-${index}`;
 
 /**
- * La bannière « Rien à choisir pour l'instant… » d'un choix sans aucune option (mais où l'on peut créer) ne vaut que tant que rien n'existe :
+ * La bannière « Aucun choix possible… » d'un choix sans aucune option (mais où l'on peut créer) ne vaut que tant que rien n'existe :
  * dès qu'un élément a été créé dans ce sélecteur, qu'une valeur est choisie ou que la recherche a trouvé quelque chose, elle disparaît (sans recharger la page).
  */
 export function showEmptyNote(s: { hasNote: boolean; created: boolean; value: string; found: number }): boolean {

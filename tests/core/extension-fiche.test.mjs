@@ -195,7 +195,7 @@ test("barre bloquée : bouton inactif, raison écrite avec son lien ; prérequis
   const deps = html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "deps" }, firstProblem: "Il manque « Contacts », qui n'est pas dans le catalogue." })));
   assert.match(deps, /data-testid="install-blocked"[^>]*/);
   assert.match(deps, / disabled=""/);
-  assert.match(deps, /Installation impossible pour l&#x27;instant\. Il manque « Contacts »[^<]*<a href="#details-techniques"[^>]*>Voir le détail</);
+  assert.match(deps, /Installation impossible\. Il manque « Contacts »[^<]*<a href="#details-techniques"[^>]*>Voir le détail</);
   assert.match(deps, /<details id="details-techniques"[^>]* open=""/, "le lien arrive sur des détails ouverts");
   assert.doesNotMatch(deps, /data-testid="install-button"/);
   const core = html(h(ExtensionFiche, props({ bar: { kind: "blocked", reason: "core" }, needsNewerCore: "0.9.0" })));

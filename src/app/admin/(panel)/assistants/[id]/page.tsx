@@ -140,7 +140,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
       {!revoked && (
         <section className={`${ui.card} space-y-3`} aria-label={t("mcp.url.title")} data-testid="mcp-url-access">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold">{t("mcp.url.title")} <HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /> <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><span className="inline-flex items-center gap-1.5">{t("mcp.url.title")}<HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /></span> <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
             <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
               {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
             </form>

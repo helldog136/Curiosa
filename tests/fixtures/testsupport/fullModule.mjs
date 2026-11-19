@@ -137,7 +137,7 @@ export const files = () => ({
   "module.json": JSON.stringify(manifest(), null, 2),
   "index.mjs": INDEX,
   "locales/en.json": JSON.stringify({ title: "Messages", empty: "No message yet.", name: "Your name", text: "Your message", send: "Send", thanks: "Thank you", site: "Website" }, null, 2),
-  "locales/fr.json": JSON.stringify({ title: "Messages", empty: "Aucun message pour l'instant.", name: "Votre nom", text: "Votre message", send: "Envoyer", thanks: "Merci", site: "Site" }, null, 2),
+  "locales/fr.json": JSON.stringify({ title: "Messages", empty: "Aucun message.", name: "Votre nom", text: "Votre message", send: "Envoyer", thanks: "Merci", site: "Site" }, null, 2),
   "scripts/ui.js": "document.documentElement.dataset.ui = '1';\n",
   "README.md": "# Module complet\n\nRecueille de courts messages de visiteurs et les affiche sur une page. Réglages : le titre de la page, une clé d'accès (facultatif) et l'adresse de votre site (facultatif). Limites : un message de 500 caractères au plus, cinq envois par heure et par visiteur.\n",
 });

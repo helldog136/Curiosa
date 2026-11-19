@@ -1,0 +1,17 @@
+{
+  "apiVersion": 2,
+  "id": "server-search-demo",
+  "name": { "en": "Server search demo", "fr": "Démo de la recherche côté serveur" },
+  "version": "1.0.0",
+  "minCore": "0.38.0",
+  "main": "index.mjs",
+  "description": {
+    "en": "A list the module paginates itself, searched from the address (test fixture).",
+    "fr": "Une liste que le module pagine lui-même, cherchée depuis l'adresse (module de test)."
+  },
+  "author": "Tests",
+  "license": "MIT",
+  "icon": "🧪",
+  "permissions": ["storage", "admin"],
+  "settings": []
+}

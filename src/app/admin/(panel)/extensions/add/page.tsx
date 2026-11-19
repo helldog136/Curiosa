@@ -67,7 +67,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       {/* R2: the task is finding an extension, so the search and the one compact filter come first; the freshness of the list is one small line (exact time in the tooltip). */}
       <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1 basis-64"><CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} /></div>
+        <div className="min-w-0 flex-1 basis-full sm:basis-64"><CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} /></div>
         <TopicPicker options={facets.map((f) => ({ ...f, href: `${EXTENSIONS_ADD_HREF}?topic=${f.id}` }))} current={topic} allHref={EXTENSIONS_ADD_HREF}
           labels={{ label: t("catalogue.addsTo"), search: t("catalogue.topicSearch"), none: t("catalogue.topicNoMatch"), all: t("catalogue.topicAll"), remove: t("catalogue.topicRemove", { name: "{name}" }), list: t("catalogue.addsTo") }} />
       </div>

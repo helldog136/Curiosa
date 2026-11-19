@@ -184,7 +184,16 @@ export type Block =
        *  - des cellules à pastille ou interrupteur, ou une action `inMenu`.
        * Sur un écran étroit (moins de 640 px), chaque ligne devient une carte : jamais de défilement horizontal. Sans aucune de ces clés, le rendu est celui d'avant.
        */
-      searchable?: boolean;
+      searchable?: boolean | "server";
+      /**
+       * (core 0.38.0, with `searchable: "server"`; an older core only filters the rows of the page it receives) SERVER SEARCH for a list the module paginates itself: the core
+       * shows the same "Search" field, and 250 ms after the last keystroke it replaces `?<searchParam>=<text>` in the address of the admin page WITHOUT reloading it (no button).
+       * The module reads `query.q` in `adminPanel` / `placeSections`, filters (`ctx.search.matches(...)`: accents and case ignored) and returns ONLY the matching rows (the core does not
+       * filter them again). With no match, return the table with `rows: []` (the field must stay): the core says "No result" and "Clear the search". `searchParam` (default `"q"`)
+       * and `searchReset` (parameters dropped on each new search, default `["page"]`) are rewritten to the module's namespace on a shared place page, like `?…` links.
+       */
+      searchParam?: string;
+      searchReset?: string[];
       searchPlaceholder?: string;
       filters?: { column: number; allLabel?: string }[];
       truncate?: number[];

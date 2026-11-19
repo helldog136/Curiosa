@@ -37,3 +37,9 @@ export async function loadComposeKit() {
   try { return (await import("@/core/overlays/moduleKit")).overlayKit; } catch { /* the alias hooks are not registered yet */ }
   try { register("./alias-hooks.mjs", here); return (await import("@/core/overlays/moduleKit")).overlayKit; } catch { return null; }
 }
+
+/** (core 0.38.0) `ctx.search`, the matching rule of the live search (pure), for `fakeCtx().search`. Null when it cannot be loaded (an older core). */
+export async function loadSearchKit() {
+  try { return (await import("@/core/modules/searchKit")).searchKit; } catch { /* the alias hooks are not registered yet */ }
+  try { register("./alias-hooks.mjs", here); return (await import("@/core/modules/searchKit")).searchKit; } catch { return null; }
+}

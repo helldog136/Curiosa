@@ -643,6 +643,12 @@ export type ModuleContext = {
    */
   overlay?: import("@/core/overlays/moduleKit").OverlayKit;
   /**
+   * (core 0.38.0, no permission) The matching rule of the live search, for a list the module paginates itself (`table` with `searchable: "server"`): `fold(text)`, `query(raw)` (the
+   * `q` of the address, trimmed and bounded) and `matches(parts, raw)` (accents and case ignored, every word found). See docs/MODULES.md, "Server search". An older core has no
+   * `ctx.search`: test `typeof ctx.search?.matches === "function"` (and ask `minCore: "0.38.0"` when your list depends on it).
+   */
+  search?: import("./searchKit").SearchKit;
+  /**
    * (0.2.0) La personne qui regarde l'administration a-t-elle ce droit du module (identifiant LOCAL : « email.view », préfixé « <module>: » par le cœur) ?
    * Vrai seulement dans un contexte d'administration d'un humain (`adminPanel`, `adminActions`, `entryPanels`) ; toujours faux ailleurs (page publique,
    * route, overlay OBS, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus.

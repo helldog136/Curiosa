@@ -1380,6 +1380,7 @@ Chaque fonction du module reçoit un `ctx` (`ModuleContext`) ; les slots reçoiv
 | `ctx.entry` | (slots `entry.*`) `{ id, title, slug }` de l'entrée affichée |
 | `ctx.api` | tout ce que le cœur met à disposition (ci-dessous) |
 | `ctx.overlay` | (core 0.19.0) compositions of alerts (text placed on a picture; (0.21.0) on a video: `features: ["video"]`, `alertSeconds(c)`, `isVideoSrc(src)`; (0.25.0) for assistants: `preview`, `renderKit`, `explainErrors`, `mcpImage`): `composeScript()` and `composeCss()` (the core's engine for an overlay page), `checkComposition(raw, { src, variables, maxBoxes, formats })` (codes by path, every problem at once), `resolveComposition(c, { phrase, values })` (texts filled, what the page receives), `copyPlacement(c, src)`, `defaultComposition(src)`. Pure functions, nothing read or written. Absent on an older core: test `typeof ctx.overlay?.composeScript === "function"` and keep showing the media alone. See "Compositions". (core 0.25.0) Also `tokens(query, selector?)` (the common-style tokens of an overlay element as one rule), `tvFactor(query)` and `tvTokens(query)` (the TV type scale): see docs/OVERLAY-ELEMENTS.md, section 3. |
+| `ctx.search` | (core 0.38.0, no permission) the matching rule of the live search for a list the module paginates itself: `fold(text)`, `query(raw)` (the `q` of the address, trimmed, 80 characters at most) and `matches(parts, raw)` (accents and case ignored, every word found, empty search = everything). See « Server search ». Absent on an older core. In tests, `fakeCtx()` has it (`fakeCtx({ search: null })` = an older core). |
 | `ctx.legacy` | (cœur 0.2.0) réglages hérités de **cette** instance déclarés dans `legacySettings` : `keys()`, `get(clé)`, `clear(clé)` (voir « Réglages hérités et plancher »). Absent sur un cœur plus ancien. |
 | `ctx.can("droit")` | (cœur 0.2.0) la personne qui regarde l'administration a-t-elle ce droit du module (identifiant **local**, voir « Droits (`rights`) ») ? Vrai seulement dans `adminPanel`, `adminActions` et `entryPanels` ; **toujours faux** ailleurs (page publique, route, overlay, tâche, service, MCP). Absent sur un cœur plus ancien : traitez l'absence comme un refus. |
 
@@ -1466,7 +1467,7 @@ Un module renvoie des **blocs déclaratifs** ; le cœur se charge du rendu, des 
 | `entryContent` | `lang`, `fallback`, `title`, `summary?`, `body` (Markdown), `cover?`, `icon?` — le contenu complet d'UNE entrée publiée, déjà résolu pour la langue de la personne qui visite ; produit par le cœur pour la section d'accueil `entry` (tout module à contenu avec une page l'offre), pas à renvoyer depuis un module |
 | `embed` | `src` (https uniquement), `title`, `ratio?` |
 | `form` | `action` (`<clé d'instance>/<route>`), `fields: [{ name, label, kind?, required? }]` (`kind` : `text`, `email`, `textarea`), `submitLabel`, `successText` |
-| `table` | `columns`, `rows` (tableaux de texte ; cœur 0.6.0 : ou de cellules `TableCell`), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) et, depuis le cœur 0.6.0, `searchable?`, `searchPlaceholder?`, `filters?`, `truncate?`, `pageSize?`, `empty?` : voir « Tableau enrichi » |
+| `table` | `columns`, `rows` (tableaux de texte ; cœur 0.6.0 : ou de cellules `TableCell`), `rowIds?`, `rowActions?` (admin seulement, voir plus bas) et, depuis le cœur 0.6.0, `searchable?` (`true` or `"server"`), `searchParam?`, `searchReset?`, `searchPlaceholder?`, `filters?`, `truncate?`, `pageSize?`, `empty?` : voir « Tableau enrichi » |
 | `adminForm` | `action`, `fields`, `submitLabel`, `title?`, `cancelHref?` — panneau d'admin uniquement ; champs `switch`, `segmented`, `period`, `datetime`, `duration`, `example`, `folded`… depuis le cœur 0.6.0 |
 | `gridEditor` | éditeur de **grille** (panneau d'admin uniquement) : `action`, `width`, `height`, `cells` (un caractère par case, ligne après ligne), `palette` (`[{ value, label, color }]`, une `value` = un caractère), `submitLabel`, `title?`, `minSize?`, `maxSize?`, `cancelHref?`, `labels?` (`width`, `height`, `fillAll`, `border`, `reset`, `hint`, `generateError`), et, en option, `generateAction` + `generateLabel` (bouton « générer ») et `autoLabel` + `autoNotice` + `autoActive?` (mode « automatique »). La personne choisit un pinceau et peint à la souris ou au doigt, redimensionne, et enregistre : l'action reçoit `width`, `height` et `cells` en texte (à valider !). Les options sont décrites sous le tableau. Exemple : le tracé du module *maze-overlay*. |
 | `head` | `tags`: `meta` / `link` / `script` (uniquement dans `layout.head`) |
@@ -1499,7 +1500,7 @@ Un bloc `table` reste le même tant qu'il n'utilise aucune des clés ci-dessous 
 
 | Clé | Rôle |
 |---|---|
-| `searchable: true` | Un champ **« Rechercher »** au-dessus, qui filtre **en direct** pendant la frappe (sans bouton, sans seuil, sans tenir compte de la casse ni des accents, dans tout ce qui est affiché). Rien ne correspond : « Aucun résultat » et « Effacer la recherche ». Présent même quand la liste est courte aujourd'hui (règle R15). `searchPlaceholder?` change son texte. |
+| `searchable: true` | (`searchable: "server"`, cœur 0.38.0 : voir « Server search » plus bas.) Un champ **« Rechercher »** au-dessus, qui filtre **en direct** pendant la frappe (sans bouton, sans seuil, sans tenir compte de la casse ni des accents, dans tout ce qui est affiché). Rien ne correspond : « Aucun résultat » et « Effacer la recherche ». Présent même quand la liste est courte aujourd'hui (règle R15). `searchPlaceholder?` change son texte. |
 | `filters: [{ column, allLabel? }]` | Des **pastilles de filtre** « Tout · … » tirées des valeurs distinctes de la colonne `column` (rang à partir de 0), chacune avec son nombre de lignes. Combinables avec la recherche. |
 | `truncate: [colonnes]` | Les colonnes dont le texte long est coupé avec « … » (le texte complet est dans l'info-bulle) : des lignes de même hauteur (règle R16). |
 | `pageSize` | Lignes par page (50 par défaut, `0` = tout sur une page). |
@@ -1515,6 +1516,25 @@ L'interrupteur appelle l'`adminAction` nommée par `switch.action` avec `values.
     { text: c.on ? "Actif" : "Désactivé", switch: { on: c.on, action: "setEnabled", label: `Commande ${c.name} active`, onText: "Actif", offText: "Désactivé" } }]),
   rowActions: [{ label: "Modifier", href: "?edit={id}" }, { label: "Supprimer", action: "remove", danger: true, confirm: "Supprimer cette commande ?" }] }
 ```
+
+##### Server search (`searchable: "server"`, core 0.38.0)
+
+A list that the module paginates on the server (contacts, entries, any list of thousands) cannot be filtered by the browser: it only holds one page. Declare `searchable: "server"` and the core shows the same "Search" field as `searchable: true`, with the same behaviour for the person (rule R15: present from the start, live, no button), but the typing asks the module:
+
+1. 250 ms after the last keystroke the core replaces `?q=<text>` in the address of the admin page, **without reloading it** (the focus stays in the field; the address is the state, so a reload, "Back" and a shared link work). Other parameters are kept; the paging parameters in `searchReset` (default `["page"]`) are dropped, so a new search starts on page 1. `searchParam` (default `"q"`) renames the parameter. On a shared place page (core 0.34.0) both are rewritten to your namespace (`<instance>.q`), exactly like your `?…` links: you still read `query.q`.
+2. Your `adminPanel` (or `placeSections` `render`) reads `query.q`, filters, paginates and returns the table with **only the matching rows of the page**. The core never filters them a second time (you may match on data you do not show, such as an e-mail address). Use `ctx.search`: `const q = ctx.search.query(query.q); const hits = all.filter((c) => ctx.search.matches([c.name, c.nick, c.email], q));` (accents and case ignored, every word found, same rule as the other lists).
+3. With no match, **still return the table** with `rows: []`: the field stays, and the core says "No result" and offers "Clear the search" (it clears the parameter). With no search and no row, your `empty` sentence shows as before.
+
+```js
+async adminPanel(ctx, { query }) {
+  const q = ctx.search.query(query.q);
+  const hits = (await loadAll(ctx)).filter((c) => ctx.search.matches([c.name, c.nick, c.email], q));
+  const page = Math.max(1, Number(query.page) || 1), rows = hits.slice((page - 1) * 50, page * 50);
+  return [{ type: "table", columns: ["Name", "Nick"], searchable: "server", empty: "No contact yet.", rowIds: rows.map((c) => c.id), rows: rows.map((c) => [c.name, c.nick]) /* + your own page links */ }];
+}
+```
+
+Compatibility: an older core does not know `ctx.search` (guard with `typeof ctx.search?.matches === "function"` and keep your own fold) and only filters the page it receives. Declare `"minCore": "0.38.0"` when the list needs the server search. A table with `searchable: true` or without it is unchanged. Tests: `fakeCtx()` provides `ctx.search`; the demo module `tests/fixtures/server-search/` shows the whole pattern.
 
 ##### Edit dialog (`presentation: "dialog"`, next core release)
 
