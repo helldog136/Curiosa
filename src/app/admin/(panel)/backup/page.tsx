@@ -28,7 +28,7 @@ export default async function BackupPage() {
         )}
       </Panel>
 
-      <Panel title={t("backup.restoreTitle")} help={t("backup.restoreHelp")} helpVisible tone="danger">
+      <Panel title={t("backup.restoreTitle")} help={t("backup.restoreHelp")} tone="danger">
         <RestorePanel labels={labels} />
       </Panel>
     </div>

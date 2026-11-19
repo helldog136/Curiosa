@@ -29,6 +29,8 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
   const L = (k: string) => labels[k] ?? k;
   const p = useProgressText();
   const fill = (key: string, params: Record<string, string | number> = {}) => Object.entries(params).reduce((text, [k, v]) => text.replaceAll(`{${k}}`, String(v)), L(key));
+  /** "1 entrée", "12 entrées": the singular text exists as `<key>.one`. */
+  const count = (key: string, n: number) => (n === 1 ? L(`${key}.one`) : L(key)).replace("{n}", String(n));
   const line = (i: Item) => fill(`report.${i.note}`, i.params);
 
   async function check(event: React.FormEvent<HTMLFormElement>) {
@@ -107,7 +109,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
         <div className="space-y-4">
           <p className="rounded-lg border border-line bg-surface p-3 text-sm">
             <strong>{preview.site.name}</strong> — {new Date(preview.createdAt).toLocaleString()} (v{preview.frameworkVersion})<br />
-            {preview.counts.entries} {L("entries")} · {preview.counts.users} {L("users")} · {preview.counts.instances} {L("instances")} · {preview.counts.uploads} {L("uploads")}
+            {(["entries", "users", "instances", "uploads"] as const).map((k) => count(k, preview.counts[k] ?? 0)).join(" · ")}
           </p>
           {preview.conversion && <ConversionPlanView plan={preview.conversion} fill={fill} where={L("report.where")} />}
           <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{L("replaceWarning")}</p>

@@ -26,6 +26,9 @@ test("safeHref : chemins internes autorisés, tout le reste neutralisé", () => 
   assert.equal(safeHref("/blog"), "/blog");
   assert.equal(safeHref("https://a.b"), "https://a.b");
   for (const bad of ["javascript:x", "//evil.example", "", null, undefined, "data:x"]) assert.equal(safeHref(bad), "#", String(bad));
+  // A query-only address is relative to the current page: safe, and it must reach the HTML as written (it used to become "#" and the button did nothing).
+  for (const ok of ["?edit=app", "?status=open&q=a%20b", "?", "?tab=a#top"]) assert.equal(safeHref(ok), ok, ok);
+  for (const bad of ["?x\\y", "?x\ny", "\u0000?x", " ?x", "javascript:alert(1)", "//host/?x", "\\\\host", "data:text/html,x", "#x"]) assert.equal(safeHref(bad), "#", JSON.stringify(bad));
   assert.ok(isExternalHref("https://x") && isExternalHref("mailto:a@b.c") && !isExternalHref("/x"));
 });
 

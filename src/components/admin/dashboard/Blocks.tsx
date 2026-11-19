@@ -217,7 +217,7 @@ export async function ActivityBlock({ c }: { c: BlockCtx }) {
       <ul className="divide-y divide-line">
         {lines.map((l) => (
           <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
-            <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.target && <span className="text-muted"> · {l.target}</span>}</span>
+            <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.similar > 0 ? <span className="text-muted"> · {t("dash.activity.similar", { count: l.similar })}</span> : l.target && <span className="text-muted"> · {l.target}</span>}</span>
             <span className="text-xs text-muted">{t("dash.activity.by", { who: l.who })} · <time dateTime={l.when.toISOString()}>{when.format(l.when)}</time></span>
           </li>
         ))}

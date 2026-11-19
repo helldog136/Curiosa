@@ -3,7 +3,7 @@ import { auditLabelKey } from "@/core/auditLabels";
 import type { Translator } from "@/core/i18n/dictionary";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
-import { actorKindOf, eventsOf, isActorKind, isLevel, parseData, renderEvent, type ActorKind, type JournalLevel, type LogEventDecl } from "./events";
+import { actorKindOf, eventsOf, isActorKind, isStateCode, isLevel, parseData, renderEvent, type ActorKind, type JournalLevel, type LogEventDecl } from "./events";
 
 /** Une ligne du journal, écrite en langage courant : prête à afficher (jamais de JSON, jamais d'identifiant technique hors mode avancé). */
 export type JournalLine = {
@@ -38,7 +38,7 @@ async function modulesOf(rows: readonly AuditRow[], opts: DescribeOpts): Promise
 export async function describeRows(rows: readonly AuditRow[], opts: DescribeOpts): Promise<JournalLine[]> {
   const { t, locale, defaultLocale } = opts;
   const modules = await modulesOf(rows, opts);
-  const render = { locale, defaultLocale, yes: t("journal.yes"), no: t("journal.no") };
+  const render = { locale, defaultLocale, yes: t("journal.yes"), no: t("journal.no"), code: (v: string) => (isStateCode(v) ? t(`journal.code.${v}`) : undefined) };
   return rows.map((r) => {
     // Une ligne écrite par un ancien cœur (après la migration) garde « system » par défaut : la forme de l'acteur dit alors qui c'était.
     const kind: ActorKind = r.actorKind === "system" || !isActorKind(r.actorKind) ? actorKindOf(r.actor) : r.actorKind;

@@ -216,3 +216,16 @@ test("places: a module with `places` and no `settings` (contacts-like) does not 
   assert.doesNotThrow(() => P.moduleTopics(man));
   assert.doesNotThrow(() => P.fullyPlaced(man, P.moduleSections(man)));
 });
+
+/* ───────────── regression: a query-only address ("?edit=app") reached the page as href="#" and the button did nothing ───────────── */
+test("the primary button of a card keeps a query-only address in the rendered HTML, and still neutralises unsafe ones", async () => {
+  const { ConnectionCard } = await import("@/components/admin/ConnectionCard");
+  const t = makeTranslator("fr");
+  const render = (href) => {
+    const view = connectionView({ type: "connection", state: "notConfigured", title: "Application", primary: { label: "Enregistrer l'application", href } });
+    return html(React.createElement(ConnectionCard, { view, instanceId: "i1", labels: connectionLabels(t), locale: "fr" }));
+  };
+  assert.match(render("?edit=app"), /<a href="\?edit=app"[^>]*>Enregistrer l&#x27;application<\/a>/);
+  assert.match(render("/admin/instances/i1?tab=use"), /href="\/admin\/instances\/i1\?tab=use"/);
+  assert.equal(connectionView({ type: "connection", state: "notConfigured", title: "A", primary: { label: "x", href: "javascript:alert(1)" } }).primary, null);
+});

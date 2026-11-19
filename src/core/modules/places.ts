@@ -522,7 +522,9 @@ export function buildPlaceIndex(contribs: readonly Contribution[], vocab: Vocabu
     const vp = vocab.pages.find((p) => p.id === id);
     const pageDefs = list.flatMap((c) => (c.section.define?.page ? [{ moduleId: c.moduleId, weight: c.section.define.weight ?? 50, title: c.section.define.page.title }] : []));
     const inlinePage = inlineTitle(pageDefs, refused);
-    const title = vp ? L(vp, locale) : inlinePage ? L(inlinePage, locale) : titleCase(pid);
+    // Without a vocabulary entry (catalogue unreachable) a page made by ONE module takes that module's own name in the site language, not its id in capitals ("Faq").
+    const onlyModule = pageDefs.length === 0 && new Set(list.map((c) => c.moduleId)).size === 1 ? list[0]!.moduleName : ""; // a refused inline title never falls back to a name
+    const title = vp ? L(vp, locale) : inlinePage ? L(inlinePage, locale) : onlyModule || titleCase(pid);
     const introDef = vp?.intro ?? list.map((c) => c.section.define?.page?.intro).find((x): x is Texts => !!x) ?? null;
     // Tabs: vocabulary tabs first (in their order), then the others by the smallest section order, then alphabetical.
     const vocabTabs = vp?.tabs ?? [];
