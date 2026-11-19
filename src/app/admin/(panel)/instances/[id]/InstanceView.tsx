@@ -1,3 +1,4 @@
+import { CopyText } from "@/components/site/CopyText";
 import { floatingLabels } from "@/components/admin/floating";
 import { notFound, redirect } from "next/navigation";
 import { can, deniedPath, hasRole } from "@/core/auth/access";
@@ -133,10 +134,17 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   // Les réglages réellement montrés (un « choix parmi » à une seule option est masqué en mode simple, comme dans ModuleSettings).
   const shownSettings = visibleSettings.filter((f) => !(f.type === "choice" && choices[f.key]?.mode === "only" && !advanced));
   const showSources = manage && advanced && (mod.manifest.consumes ?? []).length > 0;
+  // R33.4: the address is only needed to paste it into OBS once: one compact « OBS address » fold (the copy button stays inside), no permanent box.
   const overlayNode = mod.def.overlay ? (
-    <p className="rounded-lg border border-line bg-surface p-3 text-sm">
-      {t("instances.overlayUrl")}: <code className="break-all font-mono">{overlayUrl(siteUrl, instance.key)}</code>
-    </p>
+    <details className="group rounded-lg border border-line bg-surface text-sm" data-testid="overlay-address">
+      <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-3 font-medium [&::-webkit-details-marker]:hidden">
+        <span aria-hidden className="inline-block text-xs text-muted transition-transform group-open:rotate-90">▶</span>{t("instances.overlayUrl")}
+      </summary>
+      <div className="flex items-center gap-3 border-t border-line px-3 py-2">
+        <code className="min-w-0 flex-1 break-all font-mono text-xs">{overlayUrl(siteUrl, instance.key)}</code>
+        <CopyText text={overlayUrl(siteUrl, instance.key)} copyLabel={t("overlays.copy")} copiedLabel={t("overlays.copied")} />
+      </div>
+    </details>
   ) : null;
   const filled = new Set<string>();
   if (overlayNode) filled.add("use");
