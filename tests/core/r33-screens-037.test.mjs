@@ -40,7 +40,7 @@ test("appearance: the current skin is not listed twice, no « reviewed, install 
 
 test("settings: the low-disk line is shown once per page, not under every upload field", () => {
   const src = read("src/components/admin/StorageLine.tsx");
-  assert.match(src, /claimedBy/);
+  assert.match(src, /registry/);
 });
 
 test("extension updates: unchecked extensions are ONE line with the count", () => {
@@ -61,4 +61,27 @@ test("no internal word as a state: « Repris », « Reprise » (FR) and « Taken
   for (const [k, v] of Object.entries(fr)) assert.doesNotMatch(v, internal, k);
   for (const [k, v] of Object.entries(en)) assert.doesNotMatch(v, /taken over|carried over/i, k);
   assert.ok((fr["field.carried"].match(/\{source\}/g) ?? []).length === (en["field.carried"].match(/\{source\}/g) ?? []).length);
+});
+
+test("module page: the OBS address is one compact fold with a copy button, no permanent box, no colon", () => {
+  const src = read("src/app/admin/(panel)/instances/[id]/InstanceView.tsx");
+  assert.match(src, /data-testid="overlay-address"/);
+  assert.doesNotMatch(src, /\{t\("instances\.overlayUrl"\)\}:/);
+  assert.match(src, /<CopyText text=\{overlayUrl\(siteUrl, instance\.key\)\}/);
+  assert.equal(fr["instances.overlayUrl"], "Adresse OBS");
+  assert.equal(en["instances.overlayUrl"], "OBS address");
+});
+
+test("low-disk line: one per page, the first VISIBLE upload field keeps it (a hidden tab does not)", () => {
+  const src = read("src/components/admin/StorageLine.tsx");
+  assert.match(src, /getClientRects\(\)\.length > 0/);
+  assert.match(src, /useSyncExternalStore/);
+});
+
+test("« Settings also in » folds when more than two places; refresh and copy texts are plain", () => {
+  const src = read("src/components/admin/PlacedNotice.tsx");
+  assert.match(src, /links\.length > 2/);
+  assert.equal(fr["refresh.waiting"], "Actualisation automatique");
+  assert.equal(fr["overlays.copied"], "Copié");
+  for (const L of [fr, en]) for (const k of ["refresh.waiting", "refresh.stopped", "overlays.copied"]) assert.doesNotMatch(L[k], /!/, k);
 });

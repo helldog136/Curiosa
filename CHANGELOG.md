@@ -46,6 +46,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Short link created: no more "Done!".** The message only says what to do next.
 - **« Repris depuis… » devient « Réglé dans… ».** Le mot interne « repris » n'apparaît plus dans les fenêtres de modification ni dans le journal.
 - **(English) "Taken from…" becomes "Set in…".** The internal word "taken over" no longer appears in edit windows or in the journal.
+- **Page d'un module : l'adresse OBS tient en une ligne repliée.** « Adresse OBS » s'ouvre pour montrer l'adresse et le bouton « Copier » ; plus de grand encadré permanent sur chaque overlay.
+- **(English) Module page: the OBS address fits in one folded line.** "OBS address" opens to show the address and the "Copy" button; no more big permanent box on every overlay.
+- **« Réglages aussi dans… » se replie au-delà de deux pages.** Sur un téléphone, cinq lignes de liens ne passent plus avant les réglages du module.
+- **(English) "Settings also in…" folds above two pages.** On a phone, five lines of links no longer come before the module's own settings.
+- **L'alerte d'espace disque n'est dite qu'une fois**, même avec six champs d'envoi de vidéos dans un même onglet : celui qui est visible la garde.
+- **(English) The low-disk warning is said once**, even with six video upload fields in one tab: the visible one keeps it.
+- **Textes plus simples.** « Mise à jour automatique » devient « Actualisation automatique » (elle ne concerne pas les mises à jour du site) et « Copié ! » devient « Copié ».
+- **(English) Plainer texts.** "Automatic update" becomes "Automatic refresh" (it is not about site updates) and "Copied!" becomes "Copied".
 - **La recherche de réglages (page entière) affiche 50 résultats, puis « Afficher la suite ».**
 - **(English) The settings search (full page) shows 50 results, then "Show more".**
 
