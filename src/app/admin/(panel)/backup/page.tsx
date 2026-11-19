@@ -3,18 +3,14 @@ import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
 import { MIN_PASSWORD_LENGTH } from "@/core/backup/crypto";
 import { BackupForm } from "@/components/admin/BackupForm";
 import { RestorePanel } from "@/components/admin/RestorePanel";
+import { RESTORE_KEYS } from "@/components/admin/restoreKeys";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 
 export const dynamic = "force-dynamic";
 
 export default async function BackupPage() {
   const { t, advanced, user } = await adminCtx({ right: "core:backup" });
-  const labels = Object.fromEntries(
-    ["deps.missing", "deps.provided", "deps.note", "deps.title", "migrated", "migrationFailed", "file", "password", "check", "apply", "cancel", "done", "login", "entries", "users", "instances", "uploads", "replaceWarning", "confirmReplace", "trustCustom",
-      "status.installed", "status.catalogue", "status.custom", "status.unavailable", "outcome.kept", "outcome.installed", "outcome.skipped", "outcome.failed", "outcome.unavailable", "skin", "status.skinPersonal", "trustCustomSkin", "skinOutcome.kept", "skinOutcome.installed", "skinOutcome.skipped", "skinOutcome.failed",
-      "error.wrong-password", "error.not-a-backup", "error.corrupt", "error.tampered", "error.newer-format", "error.newer-schema", "error.no-owner", "error.switched-off", "error.no-file", "error.too-large", "error.expired", "error.failed", "error.network", "error.forbidden", "error.unauthorized"]
-      .map((k) => [k, t(`backup.${k}`)]),
-  );
+  const labels = Object.fromEntries(RESTORE_KEYS.map((k) => [k, t(`backup.${k}`)]));
   return (
     <div className="space-y-8">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="backup" />

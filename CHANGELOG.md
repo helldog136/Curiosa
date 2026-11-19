@@ -7,6 +7,30 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.39.0 — 2026-11-19
+
+**En bref.** Une sauvegarde très ancienne se restaure maintenant : ce que les anciennes versions convertissaient toutes seules est converti à la restauration, ce qui ne peut pas l'être est mis de côté, et un bilan dit quoi, avec le fichier à ouvrir à la main.
+
+**In short.** A very old backup can now be restored: what the old versions converted by themselves is converted at restore time, what cannot be converted is set aside, and a report says what, with the file to open by hand.
+
+### Nouveautés
+
+- **Anciennes sauvegardes.** Une sauvegarde d'avant la 0.1.20 avec des éléments éteints n'est plus refusée : ils sont mis de côté avec leurs données. L'ancien menu est reconstruit et le code RAWG passe dans « Jaquettes de jeux ».
+- **(English) Old backups.** A backup from before 0.1.20 with switched-off items is no longer refused: they are set aside with their data. The old menu is rebuilt and the RAWG code goes to "Game covers".
+- **Le plan avant de restaurer.** L'aperçu dit de quelle version vient la sauvegarde, ce qui sera converti, et pour chaque extension dont les données sont trop anciennes la suite de versions qu'elles traverseront, ou ce qui sera mis de côté.
+- **(English) The plan before restoring.** The preview says which version the backup comes from, what will be converted, and for each extension whose data is too old the releases it will go through, or what will be set aside.
+- **Un bilan clair.** Après la restauration : « Converti », « Mis de côté », « Non fait », avec pour chaque ligne le chemin exact du fichier lisible de la sauvegarde. Une partie qui échoue n'arrête plus le reste : vous finissez à la main.
+- **(English) A clear report.** After the restore: "Converted", "Set aside", "Not done", with the exact path of the readable file of the backup on each line. A part that fails no longer stops the rest: you finish by hand.
+- **Restauration plus sûre.** Une copie complète du site est gardée avant. Les données sont d'abord écrites et vérifiées dans une copie de travail : en cas de problème, le site n'a pas bougé.
+- **(English) Safer restore.** A complete copy of the site is kept first. The data is first written and checked in a working copy: if something is wrong, the site has not moved.
+- **Suite de versions des extensions.** Des données plus anciennes que ce que la version du catalogue convertit passent par les anciennes versions qui les convertissent encore (« pont »), chacune avec son propre code, puis par la version du catalogue.
+- **(English) Extension release chain.** Data older than what the catalogue version converts goes through the older releases that still convert it (the "bridge"), each with its own code, then through the catalogue version.
+
+### Pour les développeurs
+
+- `src/core/backup/conversion/` : conversions pures du cœur (`convertSwitchedOff`, `freezeMenu`, `freezePlacements`, `rawgCarryOver`), plan, chaîne des extensions, copie de travail et échange. `updateModuleToRef` (installateur) : une étape de la chaîne.
+- Chaque entrée de `migrations-registry.json` et chaque migration Prisma qui déplace des données dit ce que fait une restauration (`backup`, `schemaMigrations`) ; `tests/core/backup-conversion-coverage.test.mjs` échoue sans réponse. Fixtures par époque : `tests/fixtures/backup-eras/` (générées depuis les étiquettes publiées).
+
 ## 0.38.0 — 2026-11-19
 
 **En bref.** Les listes qu'une extension pagine elle-même (contacts) peuvent enfin avoir la recherche en direct, et une dernière vague de phrases creuses disparaît : plus de « pour l'instant », plus de textes qui décrivent l'évident, des champs d'image qui montrent l'image au lieu de son adresse.

@@ -301,7 +301,7 @@ test("sauvegarde et restauration : le menu (nav.menu) est dans la sauvegarde et 
   assert.deepEqual(await RS.resolvePublicMenu("fr", "fr"), resolved, "le visiteur voit le même menu");
 });
 
-test("restauration d'une sauvegarde d'AVANT ce lot (pas de nav.menu) : le visiteur voit le même menu qu'avant, l'état est figé au démarrage suivant", async () => {
+test("restauration d'une sauvegarde d'AVANT ce lot (pas de nav.menu) : le visiteur voit le même menu qu'avant, et la restauration l'a déjà figé (0.39.0)", async () => {
   await oldSite();
   await db.prisma.user.create({ data: { email: "owner@example.org", name: "Owner", role: "owner", passwordHash: "$2a$12$hash", locale: "fr" } });
   await setSetting("setup.completed", true);
@@ -312,7 +312,8 @@ test("restauration d'une sauvegarde d'AVANT ce lot (pas de nav.menu) : le visite
   const opened = Rs.openBackup(b.buffer, "un-mot-de-passe-solide", 1000);
   assert.equal((await Rs.applyRestore(opened.backup, { confirmCustom: [], actor: "owner@example.org" })).ok, true);
   assert.deepEqual(await RS.resolvePublicMenu("fr", "fr"), resolved);
-  assert.equal(await S.ensureMenuMigrated(), true);
+  assert.notEqual(await raw(), null, "the restore froze the menu inside the data (freezeMenu)");
+  assert.equal(await S.ensureMenuMigrated(), false, "nothing left to freeze");
   assert.deepEqual(await RS.resolvePublicMenu("fr", "fr"), resolved);
 });
 

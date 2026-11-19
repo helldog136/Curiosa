@@ -8,15 +8,35 @@
       "introducedIn": "0.2.0",
       "removableAtFloor": null,
       "why": "Permanent contract: a module declares dataVersion and its migrations; the sweep resumes interrupted ones.",
-      "present": { "files": ["src/core/modules/legacySweep.ts"], "symbols": [] }
+      "present": {
+        "files": [
+          "src/core/modules/legacySweep.ts"
+        ],
+        "symbols": []
+      },
+      "backup": {
+        "kind": "permanent",
+        "why": "Module data conversions (dataVersion) are a permanent contract: the restore runs them with the code of the right release of each module (src/core/backup/conversion/moduleChain.ts)."
+      }
     },
     {
       "id": "menu-freeze",
       "what": "Old menu (instances shown in the menu + nav.custom) frozen into nav.menu when an instance is created or the navigation page opens; legacy fallback while nav.menu is absent (restored old backup, brand-new site).",
       "introducedIn": "0.2.6",
       "removableAtFloor": null,
-      "why": "Kept at the 0.6.18 floor raise on purpose. The start-up call is long gone and every site that updates went through it, but the fallback is also the reader of BACKUP FILES made before the stored menu (nav.menu, 0.2.6): a backup file never expires (docs/MIGRATIONS.md rule 5, no minimum version on restore), and restoring one relies on loadMenu / menuResolve rebuilding the menu from showInNav + nav.custom. Removable only after a backup-format decision (refuse such backups with a clear message, or freeze the menu inside the restore), as was done for legacy-off in 0.32.0.",
-      "present": { "files": [], "symbols": ["ensureMenuMigrated", "legacyMenuFromDb"] }
+      "why": "Kept on purpose: a brand-new site has no stored menu, and the fallback (loadMenu / legacyMenuFromDb) builds it. A BACKUP made before the stored menu (nav.menu, 0.2.6) no longer relies on it: the restore freezes the menu inside the data (freezeMenu, src/core/backup/conversion/coreConversions.ts).",
+      "present": {
+        "files": [],
+        "symbols": [
+          "ensureMenuMigrated",
+          "legacyMenuFromDb"
+        ]
+      },
+      "backup": {
+        "kind": "converted",
+        "file": "src/core/backup/conversion/coreConversions.ts",
+        "symbol": "freezeMenu"
+      }
     }
   ],
   "removed": [
@@ -25,29 +45,79 @@
       "what": "One-time freeze of overlay placements of existing instances (0.2.6).",
       "introducedIn": "0.2.6",
       "removedWithFloor": "0.6.10",
-      "absentSymbols": ["freezeOverlayPlacements", "core.placementFrozen"]
+      "absentSymbols": [
+        "freezeOverlayPlacements"
+      ],
+      "backup": {
+        "kind": "converted",
+        "file": "src/core/backup/conversion/coreConversions.ts",
+        "symbol": "freezePlacements"
+      }
     },
     {
       "id": "startup-menu-freeze",
       "what": "Start-up call that froze the menu into nav.menu (the freeze itself stays, see menu-freeze).",
       "introducedIn": "0.2.6",
       "removedWithFloor": "0.6.10",
-      "absentSymbols": ["ensureMenuMigrated"],
-      "absentIn": ["src/instrumentation.ts"]
+      "absentSymbols": [
+        "ensureMenuMigrated"
+      ],
+      "absentIn": [
+        "src/instrumentation.ts"
+      ],
+      "backup": {
+        "kind": "converted",
+        "file": "src/core/backup/conversion/coreConversions.ts",
+        "symbol": "freezeMenu"
+      }
     },
     {
       "id": "legacy-off",
       "what": "Restoring a backup made before 0.1.20: modules/instances that were switched off became uninstalled, data kept. Removed in 0.32.0 with the columns Module.enabled and ModuleInstance.enabled: rows still switched off are set aside by the SQL migration 20261118090000_drop_enabled_columns (data kept, reason \"legacy\"), and such a backup file is refused (error switched-off).",
       "introducedIn": "0.1.20",
       "removedWithFloor": "0.6.18",
-      "absentSymbols": ["retireLegacyOff", "legacyOffPlan"]
+      "absentSymbols": [
+        "retireLegacyOff",
+        "legacyOffPlan"
+      ],
+      "backup": {
+        "kind": "converted",
+        "file": "src/core/backup/conversion/coreConversions.ts",
+        "symbol": "convertSwitchedOff"
+      }
     },
     {
       "id": "rawg-handover",
       "what": "Handed the old core RAWG key, cover fixes and to-check list to the Game covers module (installed it once): start-up hook, hook after install, update and restore, wait on the first call of an old module. The stored rawg.* settings are left untouched (never read nor deleted any more).",
       "introducedIn": "0.3.0",
       "removedWithFloor": "0.6.18",
-      "absentSymbols": ["ensureRawgHandover", "handoverPending", "noteRawgModulesChanged", "trackRawgJob"]
+      "absentSymbols": [
+        "ensureRawgHandover",
+        "handoverPending",
+        "noteRawgModulesChanged",
+        "trackRawgJob"
+      ],
+      "backup": {
+        "kind": "converted",
+        "file": "src/core/backup/conversion/coreConversions.ts",
+        "symbol": "rawgCarryOver"
+      }
     }
-  ]
+  ],
+  "schemaMigrations": {
+    "$comment": "Every Prisma migration that moves or rewrites data (UPDATE, INSERT, DELETE, DROP, RENAME) says what a backup made BEFORE it does at restore (tests/core/backup-conversion-coverage.test.mjs). Added columns need nothing: they take their default. kind: automatic (why) | converted (file, symbol) | upgrade (a `schemaUpgrades` entry with this name in src/core/backup/schema.ts).",
+    "20261015120000_retired_instances": {
+      "kind": "automatic",
+      "why": "Rebuilds the Module table to add a column; modules are restored from the list in backup.json, never from table rows."
+    },
+    "20261101090000_central_journal": {
+      "kind": "automatic",
+      "why": "Rewrites the audit log, which is not part of a backup."
+    },
+    "20261118090000_drop_enabled_columns": {
+      "kind": "converted",
+      "file": "src/core/backup/conversion/coreConversions.ts",
+      "symbol": "convertSwitchedOff"
+    }
+  }
 }

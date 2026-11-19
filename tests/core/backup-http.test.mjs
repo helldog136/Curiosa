@@ -57,7 +57,11 @@ test("assistant : la restauration est proposée dès le premier écran, avec les
   const wizard = fs.readFileSync("src/app/admin/(auth)/setup/SetupWizard.tsx", "utf8");
   assert.ok(wizard.includes("/api/setup/restore") && wizard.includes("setup.restore.link") && wizard.includes("RestorePanel"));
   const strings = fs.readFileSync("src/app/admin/(auth)/setup/strings.ts", "utf8");
-  for (const k of ["setup.restore.link", "setup.restore.title", "backup.file", "backup.error.wrong-password", "backup.error.invalid-token", "backup.status.custom"]) assert.ok(strings.includes(`"${k}"`), k);
+  // The texts of the restore panel come from one shared list (src/components/admin/restoreKeys.ts), also used by the backup page.
+  assert.ok(strings.includes("RESTORE_KEYS"));
+  const shared = fs.readFileSync("src/components/admin/restoreKeys.ts", "utf8");
+  for (const k of ["file", "error.wrong-password", "error.invalid-token", "status.custom", "plan.gap", "report.failed"]) assert.ok(shared.includes(`"${k}"`), k);
+  for (const k of ["setup.restore.link", "setup.restore.title"]) assert.ok(strings.includes(`"${k}"`), k);
 });
 
 test("routes de sauvegarde : le mot de passe ne voyage jamais dans l'adresse et la réponse n'est pas mise en cache", () => {
