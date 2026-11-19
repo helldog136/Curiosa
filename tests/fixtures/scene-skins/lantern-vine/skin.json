@@ -1,0 +1,92 @@
+{
+  "skinContract": 5,
+  "kind": "overlay",
+  "id": "lantern-vine",
+  "name": {
+    "fr": "Vigne aux lanternes",
+    "en": "Lantern vine"
+  },
+  "description": {
+    "fr": "Une barre de vigne qui pousse, avec une lanterne en tête (skin d'essai du cœur).",
+    "en": "A vine bar that grows, with a lantern at its head (core test skin)."
+  },
+  "version": "1.0.0",
+  "minCore": "0.40.0",
+  "license": "CC0-1.0",
+  "author": "Curiosa tests",
+  "tags": [
+    "dark",
+    "fantasy",
+    "cozy"
+  ],
+  "tokens": "tokens.json",
+  "scene": "scene.json",
+  "previews": [
+    {
+      "file": "previews/overview.webp",
+      "width": 640,
+      "alt": {
+        "fr": "Une barre de vigne avec une lanterne en tête",
+        "en": "A vine bar with a lantern at its head"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "file": "images/track.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/fill.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/head.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/sparks.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/leaf.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/shine.png",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    },
+    {
+      "file": "images/tick.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/CC0.txt",
+      "author": "Curiosa tests",
+      "source": "Original art drawn for this test skin"
+    }
+  ]
+}

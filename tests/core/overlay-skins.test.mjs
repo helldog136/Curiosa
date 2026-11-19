@@ -266,6 +266,29 @@ test("pages : état léger avec le skin (clé toujours, feuille seulement si ell
   assert.match(forced, /"skin":\{"key":"epic@/, "the admin preview can try a skin");
 });
 
+test("scene skin (0.40.0): once installed, its pictures are listed and served, the payload carries the scene and where its pictures are, and a page hands it to the elements", async () => {
+  const { demoKey } = await setup();
+  const v = check("tests/fixtures/scene-skins/lantern-vine");
+  assert.equal(v.ok, true, JSON.stringify(v.issues));
+  const target = Reg.skinDir("lantern-vine", "1.0.0");
+  fs.mkdirSync(target, { recursive: true });
+  for (const f of v.installFiles) { fs.mkdirSync(path.dirname(path.join(target, f.path)), { recursive: true }); fs.writeFileSync(path.join(target, f.path), f.content); }
+  await Reg.writeRows([...(await Reg.readRows()), { id: "lantern-vine", version: "1.0.0", repo: "https://github.com/example/skins", ref: null, subdir: null, source: "catalogue", kind: "overlay", commit: "c", tree: null, fingerprint: v.fingerprint, installedAt: new Date().toISOString() }]);
+  const p = await Load.skinPayload("lantern-vine");
+  assert.equal(p.anim.animateContract, 3); assert.equal(p.anim.base, "/skins/lantern-vine/1.0.0/"); assert.equal(p.anim.scene.assets.head.file, "images/head.png"); assert.ok(p.anim.scene.kits.gauge.layers.length);
+  assert.ok((await Load.listOverlaySkins()).some((s) => s.id === "lantern-vine" && s.status === "ok"));
+  const served = (await import("@/core/skins/serve")).resolveSkinAsset("lantern-vine", "1.0.0", "images", "head.png");
+  assert.equal(served.type, "image/png");
+  // altering a picture after the install makes the skin "modified": nothing of it is drawn
+  const made = await S.createPage({ name: "Main", width: 1920, height: 1080, look: L.parseLook({ skin: "lantern-vine" }), elements: [{ uid: "aaaaaa", instance: demoKey, element: "clock", x: 10, y: 10, w: 600, h: 200, visible: true, options: {} }] });
+  const res = await Serve.pageResponse(made.page, new Request("http://localhost/overlays/page/x", { headers: { host: "localhost" } }), { stateUrl: "/s" }), html = await res.text();
+  assert.match(html, /"anim":\{"animateContract":3,"scene":/); assert.match(html, /__ovAnim/);
+  assert.match(res.headers.get("content-security-policy"), /img-src 'none'/, "the overlay page itself still allows no image: the element pages fetch their pictures");
+  fs.appendFileSync(path.join(target, "images/head.png"), "x");
+  const { clearSkinCaches } = await import("@/core/skins/service"); clearSkinCaches();
+  assert.equal(await Load.skinPayload("lantern-vine"), null, "a picture changed after the install: the skin no longer works, the common style applies");
+});
+
 test("aperçu d'un skin : scène fixe sans donnée réelle, le skin y est appliqué", async () => {
   await setup(); await installSkin("epic");
   const p = await Load.skinPayload("epic");
@@ -421,7 +444,7 @@ test("contrat 3 : un skin qui utilise le vocabulaire du contrat 3 doit l'annonce
   assert.equal(r2.ok, false); assert.ok(r2.issues.some((i) => i.code === "overlay-contract-v3"));
   const r3 = check(skinFolder("epic", { css, manifest: { skinContract: 3, minCore: "0.8.0" } }));
   assert.equal(r3.ok, true, JSON.stringify(r3.issues.map((i) => i.code)));
-  // (0.30.0) contract 4 is the animation contract of overlay skins: the next one is "newer"
-  const future = check(skinFolder("epic", { manifest: { skinContract: 5 } }));
+  // (0.40.0) contract 5 is the scene contract of overlay skins: the next one is "newer"
+  const future = check(skinFolder("epic", { manifest: { skinContract: 6 } }));
   assert.ok(future.issues.some((i) => i.code === "manifest-contract-newer"));
 });

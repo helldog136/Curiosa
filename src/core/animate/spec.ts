@@ -25,7 +25,7 @@
  */
 export const ANIMATE_CONTRACT = 2;
 /** Version of the engine text (bumped when its behaviour changes in a way a module could notice). */
-export const ANIMATE_VERSION = 2;
+export const ANIMATE_VERSION = 3;
 
 /**
  * THE MOTION TOKENS (core 0.33.0): a closed vocabulary of NAMES. A skin writes names only (`"motion": { "value": "gentle" }`, a layer's `"spring": "bouncy"`),
@@ -206,6 +206,48 @@ export const FORMATS = ["count", "time", "money", "percent"] as const;
 /** Size caps of a recipe file. */
 export const RECIPE_LIMITS = { bytes: 24 * 1024, layersPerRole: 3 } as const;
 
+
+/**
+ * THE SCENE CONTRACT (core 0.40.0, `animateContract` 3): the second way for an overlay skin to draw an animated bar. A recipe (contract 1 and 2, above) picks
+ * procedural PRIMITIVES from the core; a SCENE ships its own pictures (PNG, WebP, sanitised SVG: `images/`) and says only where they go on the ABSTRACT BAR
+ * and when they move. The core stays a shell: it computes the bar (`view()`: progress, phase, bursts, milestones), exposes ANCHORS and EVENTS, and offers
+ * generic mechanisms (a picture placed at an anchor, a wipe reveal, a keyframe or spring timeline, a seeded emitter). What a "lantern" or a "petal" looks like
+ * is in the skin's pictures, never in the core. Values are drawn last by the core, with its own readability rule, whatever the pictures are.
+ *
+ * Everything bounded lives in this one table (sent to the browser and used by the installer: second lock). Contract 3 reads TOLERANTLY from its first day: a word
+ * this core does not know (an anchor, a reveal mode, an event, a property, a kit) is skipped with a warning, never an error; a known word with a value out of its
+ * bounds is an error. A layer whose picture cannot load is skipped, and the basic look of the core shows in its place (a role without any layer left).
+ */
+export const SCENE_CONTRACT = 3;
+export const SCENE = {
+  contract: SCENE_CONTRACT,
+  /** The bar kinds a scene may draw. `levels` and `counter` are reserved: a scene's kit for them is skipped (the basic look applies). */
+  kits: ["gauge"],
+  /** Where a layer is placed: the bar body, the filled part, the head of the fill, one place per milestone. */
+  anchors: ["track", "fill", "head", "tick"],
+  /** What the basic look draws in place of a role that has no loaded layer. `deco` has no fallback (decoration only). */
+  roles: ["track", "fill", "head", "deco"],
+  /** What the core detected on the bar: a step (also an extension or a drop), a milestone, the goal reached. */
+  events: ["step", "milestone", "complete"],
+  /** Where an emitter starts: at the head of the fill, at the centre of the bar. */
+  emitAt: ["head", "center"],
+  /** The only properties a timeline may move (x and y in track heights, scale as a factor, rot in degrees, alpha 0..1, frame of a sprite sheet). */
+  props: ["x", "y", "scale", "rot", "alpha", "frame"],
+  reveals: ["wipe"],
+  fits: ["stretch", "tile", "contain"],
+  blends: ["normal", "add"],
+  /** The lowest effects level that draws a layer: `minimal` (always), `light`, `full`. */
+  tiers: ["minimal", "light", "full"],
+  eases: ["linear", "out", "inOut"],
+  /** [min, max, default] of every number a scene may write. */
+  bounds: {
+    thickness: [0.15, 1, 0.5], sizeH: [0.05, 6, 1], sizeW: [0.05, 60, 0], offset: [-3, 3, 0], pivot: [0, 1, 0.5], alpha: [0, 1, 1], alphaUnlit: [0, 1, 0.5], rot: [-180, 180, 0],
+    every: [0.2, 8, 1], fps: [1, 8, 4], calmFrame: [0, 63, 0], keyU: [0, 1, 0], keyX: [-6, 6, 0], keyScale: [0, 4, 1], keyRot: [-720, 720, 0], keyAlpha: [0, 1, 1], keyFrame: [0, 63, 0],
+    count: [1, 40, 12], delay: [0, 0.6, 0.2], life: [0.1, 1, 0.6], speed: [0, 3, 1], angle: [-360, 720, 0], gravity: [-2, 2, 0.5], spin: [-4, 4, 0], size: [0.05, 3, 0.5], seed: [0, 999999, 1],
+  },
+  limits: { bytes: 48 * 1024, layers: 16, timelines: 12, keys: 12, emitters: 4, particles: 40, live: 120, sprites: 200, assets: 12, side: 2048, pixels: 4_000_000, totalPixels: 16_000_000, frames: 64, grid: 8 },
+} as const;
+
 /** The whole table, as sent to the browser with the engine. */
-export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS };
+export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS, scene: SCENE };
 export type AnimateSpec = typeof ANIMATE_SPEC;

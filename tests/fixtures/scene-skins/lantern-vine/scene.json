@@ -1,0 +1,365 @@
+{
+  "animateContract": 3,
+  "assets": {
+    "track": {
+      "file": "images/track.png"
+    },
+    "fill": {
+      "file": "images/fill.png"
+    },
+    "head": {
+      "file": "images/head.png"
+    },
+    "sparks": {
+      "file": "images/sparks.png",
+      "grid": [
+        4,
+        2
+      ]
+    },
+    "leaf": {
+      "file": "images/leaf.png"
+    },
+    "shine": {
+      "file": "images/shine.png",
+      "grid": [
+        4,
+        1
+      ]
+    },
+    "post": {
+      "file": "images/tick.svg"
+    }
+  },
+  "kits": {
+    "gauge": {
+      "thickness": 0.5,
+      "text": {
+        "value": {
+          "font": "rounded",
+          "weight": 800,
+          "color": "#fff6e0",
+          "outline": "#1b130f",
+          "outlineWidth": 0.1
+        },
+        "label": {
+          "font": "rounded",
+          "weight": 600,
+          "color": "#fff6e0",
+          "outline": "#1b130f",
+          "outlineWidth": 0.1,
+          "size": 0.8
+        }
+      },
+      "layers": [
+        {
+          "id": "rail",
+          "role": "track",
+          "src": "track",
+          "at": "track"
+        },
+        {
+          "id": "vine",
+          "role": "fill",
+          "src": "fill",
+          "at": "track",
+          "reveal": {
+            "mode": "wipe"
+          }
+        },
+        {
+          "id": "sheen",
+          "src": "shine",
+          "at": "fill",
+          "blend": "add",
+          "alpha": 0.5,
+          "tier": "full",
+          "loop": {
+            "fps": 4
+          },
+          "calmFrame": 1
+        },
+        {
+          "id": "leaves",
+          "src": "leaf",
+          "at": "fill",
+          "along": {
+            "every": 2.4
+          },
+          "size": {
+            "h": 0.5
+          },
+          "offset": [
+            0,
+            -0.62
+          ],
+          "tier": "light"
+        },
+        {
+          "id": "posts",
+          "src": "post",
+          "at": "tick",
+          "size": {
+            "h": 0.8
+          },
+          "pivot": [
+            0.5,
+            0
+          ],
+          "offset": [
+            0,
+            0.5
+          ],
+          "alphaUnlit": 0.6
+        },
+        {
+          "id": "lantern",
+          "role": "head",
+          "src": "head",
+          "at": "head",
+          "size": {
+            "h": 1.7
+          },
+          "on": {
+            "step": "pop",
+            "milestone": "swing",
+            "complete": "swing"
+          }
+        }
+      ],
+      "on": {
+        "step": [
+          {
+            "emit": "glints",
+            "at": "head"
+          }
+        ],
+        "milestone": [
+          {
+            "emit": "petals",
+            "at": "head"
+          }
+        ],
+        "complete": [
+          {
+            "emit": "shower",
+            "at": "center"
+          }
+        ]
+      }
+    }
+  },
+  "timelines": {
+    "pop": {
+      "spring": "bouncy",
+      "tracks": {
+        "scale": [
+          [
+            0,
+            1
+          ],
+          [
+            0.35,
+            1.3
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    },
+    "swing": {
+      "ease": "inOut",
+      "tracks": {
+        "rot": [
+          [
+            0,
+            0
+          ],
+          [
+            0.2,
+            14
+          ],
+          [
+            0.45,
+            -12
+          ],
+          [
+            0.7,
+            6
+          ],
+          [
+            1,
+            0
+          ]
+        ],
+        "scale": [
+          [
+            0,
+            1
+          ],
+          [
+            0.25,
+            1.45
+          ],
+          [
+            1,
+            1
+          ]
+        ]
+      }
+    }
+  },
+  "emitters": {
+    "glints": {
+      "src": "sparks",
+      "count": 6,
+      "delay": 0.15,
+      "life": [
+        0.4,
+        0.8
+      ],
+      "speed": [
+        0.3,
+        0.8
+      ],
+      "angle": [
+        180,
+        360
+      ],
+      "gravity": 0.2,
+      "size": 0.28,
+      "scale": [
+        [
+          0,
+          0.6
+        ],
+        [
+          0.3,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "alpha": [
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "blend": "add",
+      "seed": 3
+    },
+    "petals": {
+      "src": "sparks",
+      "count": 24,
+      "delay": 0.25,
+      "life": [
+        0.5,
+        1
+      ],
+      "speed": [
+        0.5,
+        1.4
+      ],
+      "angle": [
+        200,
+        340
+      ],
+      "gravity": 0.6,
+      "spin": [
+        -1.5,
+        1.5
+      ],
+      "size": 0.38,
+      "scale": [
+        [
+          0,
+          0.4
+        ],
+        [
+          0.2,
+          1
+        ],
+        [
+          1,
+          0.6
+        ]
+      ],
+      "alpha": [
+        [
+          0,
+          1
+        ],
+        [
+          0.7,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "seed": 7
+    },
+    "shower": {
+      "src": "sparks",
+      "count": 40,
+      "delay": 0.4,
+      "life": [
+        0.5,
+        1
+      ],
+      "speed": [
+        0.4,
+        1.6
+      ],
+      "angle": [
+        0,
+        360
+      ],
+      "gravity": 0.8,
+      "spin": [
+        -2,
+        2
+      ],
+      "size": 0.42,
+      "scale": [
+        [
+          0,
+          0.4
+        ],
+        [
+          0.2,
+          1
+        ],
+        [
+          1,
+          0.5
+        ]
+      ],
+      "alpha": [
+        [
+          0,
+          1
+        ],
+        [
+          0.7,
+          1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "seed": 11
+    }
+  }
+}

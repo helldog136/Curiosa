@@ -11,6 +11,7 @@ import path from "node:path";
 import { SKINS_DIR } from "../config";
 import { SKIN_ID_RE } from "./allowlist";
 import { SEMVER_RE } from "./semver";
+import { rasterizeVector } from "../imageDerive";
 
 const TYPES: Readonly<Record<string, string>> = {
   woff2: "font/woff2",
@@ -55,3 +56,23 @@ export function assetHeaders(asset: SkinAsset): Record<string, string> {
     ...(asset.type === "image/svg+xml" ? { "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; sandbox" } : {}),
   };
 }
+
+/**
+ * (core 0.40.0) A scene's vector picture, drawn once as a PNG at twice its natural size (`GET …/images/<name>.svg?raster=1`): the overlay element pages of modules
+ * may not load images the usual way, so the engine fetches this bitmap like any other. The file on disk is the sanitised SVG of the install; nothing outside it is
+ * read, the output is capped (2048 px a side) and the few results are kept in memory (the URL changes with the version, so a result never goes stale).
+ */
+const RASTER_MEMO = new Map<string, Buffer>();
+export async function rasterizeSvg(file: string): Promise<Buffer | null> {
+  try {
+    const key = `${file}:${fs.statSync(file).mtimeMs}`;
+    const hit = RASTER_MEMO.get(key);
+    if (hit) return hit;
+    const png = await rasterizeVector(fs.readFileSync(file));
+    if (!png) return null;
+    RASTER_MEMO.set(key, png);
+    if (RASTER_MEMO.size > 24) RASTER_MEMO.delete(RASTER_MEMO.keys().next().value!);
+    return png;
+  } catch { return null; }
+}
+export const rasterHeaders = (size: number): Record<string, string> => ({ "content-type": "image/png", "content-length": String(size), "cache-control": "public, max-age=31536000, immutable", "x-content-type-options": "nosniff" });
