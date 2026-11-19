@@ -66,6 +66,8 @@ export const skinManifestSchema = z.object({
   stylesheet: z.string().min(1).max(100).optional(),
   /** (core 0.30.0, overlay skins of contract 4) The animation recipe file (docs/OVERLAY-ANIMATIONS.md): data only, checked by animate/recipe.ts. */
   animation: z.string().min(1).max(100).optional(),
+  /** (core 0.40.0, overlay skins of contract 5) The scene file (docs/OVERLAY-ANIMATIONS.md "Scenes"): the skin's own pictures placed on the abstract bar, checked by animate/scene.ts. */
+  scene: z.string().min(1).max(100).optional(),
   previews: z.array(preview).max(40).optional(),
   assets: z.array(asset).max(200).optional(),
   defaults: z.object({

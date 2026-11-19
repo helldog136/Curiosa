@@ -173,3 +173,13 @@ export async function deriveImage(name: string, crop: Crop, share = false): Prom
   }));
   return made === "busy" ? { ok: false, reason: "busy" } : made;
 }
+
+/**
+ * (core 0.40.0) A sanitised SVG as a PNG at twice its natural size (2048 px a side at most, 4 million pixels at most), or null. Used to serve the vector pictures of a
+ * skin's scene (core/skins/serve.ts): the file is the SVG the install already sanitised; nothing else is read.
+ */
+export async function rasterizeVector(svg: Buffer): Promise<Buffer | null> {
+  const sharp = await loadEngine();
+  if (!sharp) return null;
+  try { return await sharp(svg, { density: 144, limitInputPixels: 4_000_000 }).resize({ width: 2048, height: 2048, fit: "inside", withoutEnlargement: true }).png().toBuffer(); } catch { return null; }
+}

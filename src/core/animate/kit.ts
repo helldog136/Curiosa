@@ -18,6 +18,7 @@
 import { animateEngine } from "./engine";
 import { ANIMATE_CONTRACT, ANIMATE_SPEC, ANIMATE_VERSION, GENRES, MOTION, motionCss } from "./spec";
 import { checkAnimation } from "./recipe";
+import { checkScene } from "./scene";
 import { checkAnimateState } from "./state";
 
 const jsonForScript = (v: unknown): string => JSON.stringify(v).replace(/</g, "\\u003c").replace(/[\u2028\u2029]/g, "");
@@ -74,7 +75,7 @@ export function animateKitPage(o: AnimateKitOptions): string {
 <body><div id="stage"><canvas id="cv" width="${w}" height="${h}" style="position:absolute;inset:0;width:${w}px;height:${h}px"></canvas></div>
 <script>${animateScript()}
 (function(){var D=${data},A=window.CuriosaAnimate,cv=document.getElementById("cv");
-if(D.at!==null){var f=A.frame(D.state,D.recipe,D.at,{w:${w},h:${h}},{quality:D.quality,calm:D.calm,tokens:D.tokens,font:D.font,lang:D.lang});A.draw(cv.getContext("2d"),f,{doc:document,layers:[],keys:[],dpr:1});window.__frame=f;document.documentElement.setAttribute("data-ready","1");return}
+if(D.at!==null){Promise.resolve(A.isScene(D.recipe)?A.whenLoaded(D.recipe):0).then(function(){var f=A.frame(D.state,D.recipe,D.at,{w:${w},h:${h}},{quality:D.quality,calm:D.calm,tokens:D.tokens,font:D.font,lang:D.lang,assets:A.isScene(D.recipe)?A.sceneReady(D.recipe):undefined});A.draw(cv.getContext("2d"),f,{doc:document,layers:[],keys:[],dpr:1});window.__frame=f;document.documentElement.setAttribute("data-ready","1")});return}
 var opts={state:D.state,skin:D.recipe,quality:D.quality,calm:D.calm,lang:D.lang};if(D.startAt!==null)opts.serverNow=D.startAt;
 window.__anim=A.mount(cv,opts);document.documentElement.setAttribute("data-ready","1")})();
 </script></body></html>
@@ -93,5 +94,7 @@ export const animateKit = Object.freeze({
   animateKitPage: (o: AnimateKitOptions) => animateKitPage(o),
   checkAnimateState: (raw: unknown) => checkAnimateState(raw),
   checkAnimation: (raw: unknown) => checkAnimation(raw),
+  /** (0.40.0) The checker of a skin's `scene.json`: `assets` maps each picture's file path to `{ w, h, svg }`. */
+  checkScene: (raw: unknown, assets: Map<string, { w: number; h: number; svg: boolean }>) => checkScene(raw, assets),
 });
 export type AnimateKit = typeof animateKit;

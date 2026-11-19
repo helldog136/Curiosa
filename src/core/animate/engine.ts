@@ -764,6 +764,7 @@ export function animateEngine(win: any, SPEC: any): void {
     var s = normState(stateRaw), w = Math.max(40, num(size && size.w, 40, 8192, 640)), h = Math.max(20, num(size && size.h, 20, 8192, 200));
     var qn = QUALITY[opts.quality] ? opts.quality : "full", Q = QUALITY[qn], calm = !!opts.calm;
     var tokens = { fg: HEX.test((opts.tokens || {}).fg || "") ? opts.tokens.fg : "#ffffff", accent: HEX.test((opts.tokens || {}).accent || "") ? opts.tokens.accent : "#e8a23b", surface: HEX.test((opts.tokens || {}).surface || "") ? opts.tokens.surface : "#14171c" };
+    if (isScene(recipe)) return sceneFrame(s, recipe, t, size, opts, stateRaw, w, h, qn, calm, tokens);
     var ok = usable(recipe), rc = ok ? recipe : null, cx: any = { tokens: tokens, colors: rc && rc.colors && typeof rc.colors === "object" ? rc.colors : {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: null as any, contract: rc ? rc.animateContract : SPEC.contract, mo: null as any };
     var g = s.genre, roles = GENRES[g], lay: any = {};
     for (var i = 0; i < roles.length; i++) lay[roles[i]] = layersOf(rc, BASIC, g, roles[i], cx);
@@ -808,6 +809,188 @@ export function animateEngine(win: any, SPEC: any): void {
     return { ops: out.ops, keys: [base, base + "|" + (out.key1 || "") + "|" + v.level, base], inc1: out.inc1 ? [base + "|" + out.inc1[0], out.inc1[1]] : null, layerAlpha: out.layerAlpha, animating: out.animating, view: v, size: { w: w, h: h }, skin: ok, quality: qn, calm: calm };
   }
 
+  // ───────────────────────── scenes (animateContract 3, core 0.40.0) ─────────────────────────
+  /**
+   * A SCENE is a skin's own pictures placed on the abstract bar (docs/OVERLAY-ANIMATIONS.md "Scenes"). The core computes the bar (`view`), the anchors (track, fill,
+   * head, ticks) and the events (step, milestone, complete); the skin's `scene` says which picture goes where and which timeline or emitter an event plays. Pure like
+   * the rest: `frame()` returns `img` ops (picture id, sheet frame, rectangle, rotation, alpha), the pictures themselves are decoded by the loader below.
+   */
+  var SC = SPEC.scene, SL = SC.limits, TIER_RANK: any = { minimal: 0, light: 1, full: 2 };
+  function isScene(r: any): boolean { return !!r && typeof r === "object" && r.animateContract === SC.contract && !!r.scene && typeof r.scene === "object" && typeof r.base === "string"; }
+  function sceneUrl(rc: any, a: any): string { return rc.base + a.file + (a.svg ? "?raster=1" : ""); }
+  function sceneHash(rc: any): number { if (!rc.__h) Object.defineProperty(rc, "__h", { value: hash(JSON.stringify(rc.scene) + rc.base), enumerable: false }); return rc.__h; }
+  function keysAt(ks: number[][], u: number): number {
+    if (u <= ks[0]![0]!) return ks[0]![1]!;
+    for (var i = 0; i < ks.length - 1; i++) if (u < ks[i + 1]![0]!) return ks[i]![1]! + (ks[i + 1]![1]! - ks[i]![1]!) * ((u - ks[i]![0]!) / (ks[i + 1]![0]! - ks[i]![0]!));
+    return ks[ks.length - 1]![1]!;
+  }
+  /** A timeline track at `u` (0..1 of the event's window, which the core owns): keyframes eased by the timeline's ease, or by a spring (its step response over the segment). */
+  function trackAt(tl: any, prop: string, u: number, durMs: number, calm: boolean): number | null {
+    var ks = tl.tracks[prop]; if (!ks) return null;
+    if (u <= ks[0][0]) return ks[0][1];
+    for (var i = 0; i < ks.length - 1; i++) {
+      if (u >= ks[i + 1][0]) continue;
+      var seg = ks[i + 1][0] - ks[i][0], k = (u - ks[i][0]) / seg, e: number;
+      var sp = tl.spring ? spring(tl.spring, calm) : null;
+      if (sp) e = springS(sp, (k * seg * durMs) / 1000); else e = tl.ease === "linear" ? k : tl.ease === "inOut" ? inOut(k) : out3(k);
+      return ks[i][1] + (ks[i + 1][1] - ks[i][1]) * e;
+    }
+    return ks[ks.length - 1][1];
+  }
+  function evClass(kind: string): string { return kind === "milestone" ? "milestone" : kind === "complete" ? "complete" : "step"; }
+  /** What the active events do to one layer: offsets (x, y in track heights), rotation, a scale factor, an alpha and a sheet frame. Calm keeps alpha and frame only. */
+  function layerFx(layer: any, scene: any, v: any, calm: boolean, tier: number): any {
+    var fx: any = { x: 0, y: 0, rot: 0, sc: 1, al: 0, fr: -1 };
+    if (!layer.on || tier < 1) return fx;
+    for (var i = 0; i < v.highlights.length; i++) {
+      var h = v.highlights[i], tl = scene.timelines[layer.on[evClass(h.kind)]];
+      if (!tl) continue;
+      var I = 0.45 + 0.55 * h.intensity, a = trackAt(tl, "alpha", h.u, h.dur, calm), f = trackAt(tl, "frame", h.u, h.dur, calm);
+      if (a !== null) fx.al = Math.max(fx.al, a * I);
+      if (f !== null) fx.fr = Math.round(f);
+      if (calm) continue;
+      var x = trackAt(tl, "x", h.u, h.dur, calm), y = trackAt(tl, "y", h.u, h.dur, calm), r = trackAt(tl, "rot", h.u, h.dur, calm), s = trackAt(tl, "scale", h.u, h.dur, calm);
+      if (x !== null) fx.x += x * I; if (y !== null) fx.y += y * I; if (r !== null) fx.rot += r * I; if (s !== null) fx.sc += (s - 1) * I;
+    }
+    fx.sc = Math.max(0, fx.sc);
+    return fx;
+  }
+  function imgOp(L: number, id: string, a: any, fr: number, x: number, y: number, w: number, h: number, px: number, py: number, rot: number, alpha: number, blend: string): any {
+    var op: any = { k: "img", L: L, id: id, fr: fr, g: [a.cols, a.rows], x: r2(x), y: r2(y), w: r2(w), h: r2(h), px: px, py: py, a: r2(alpha) };
+    if (rot) op.r = r2((rot * Math.PI) / 180);
+    if (blend === "lighter") op.b = "lighter";
+    return op;
+  }
+  /** One emitter fired by one event: a seeded, analytic shower (no state carried from frame to frame, no Math.random), capped. */
+  function emitOps(out: any, ops: any[], name: string, em: any, rc: any, h: any, origin: number[], th: number, qn: string, I: number): void {
+    var a = rc.scene.assets[em.src], url = sceneUrl(rc, a), R = rng(hash(h.id + ":" + name) + em.seed), n = Math.floor(em.count * (qn === "full" ? 1 : 0.5)), frames = a.cols * a.rows, fa = (a.w / a.cols) / (a.h / a.rows);
+    for (var i = 0; i < n; i++) {
+      var delay = R() * em.delay, life = em.life[0] + R() * (em.life[1] - em.life[0]), ang = ((em.angle[0] + R() * (em.angle[1] - em.angle[0])) * Math.PI) / 180, sp = em.speed[0] + R() * (em.speed[1] - em.speed[0]);
+      var spin = em.spin[0] + R() * (em.spin[1] - em.spin[0]), fr = em.frame === "random" ? Math.floor(R() * frames) : Math.min(frames - 1, em.frame), p = (h.u - delay) / life;
+      if (p <= 0 || p >= 1 || out.live >= SL.live) continue;
+      var e = out3(p), dist = sp * th * 3 * e, x = origin[0]! + Math.cos(ang) * dist, y = origin[1]! + Math.sin(ang) * dist + em.gravity * th * 3 * p * p;
+      var hp = keysAt(em.scale, p) * em.size * th, al = keysAt(em.alpha, p) * I;
+      if (hp <= 0.5 || al <= 0.003) continue;
+      out.live++;
+      ops.push(imgOp(3, url, a, fr, x, y, hp * fa, hp, 0.5, 0.5, spin * 360 * p, al, em.blend === "add" && qn === "full" ? "lighter" : "normal"));
+    }
+  }
+  function sceneFrame(s: any, rc: any, t: number, size: any, opts: any, stateRaw: any, w: number, h: number, qn: string, calm: boolean, tokens: any): any {
+    var scene = rc.scene, kit = scene.kits && scene.kits[s.genre];
+    // a bar kind the scene does not draw (levels, counter in this contract): the basic look
+    if (!kit) return frame(stateRaw, null, t, size, opts);
+    var tier = TIER_RANK[qn], Q = QUALITY[qn], cx: any = { tokens: tokens, colors: {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: null, contract: SPEC.contract, mo: null };
+    var v = view(s, t, null); cx.v = v;
+    var out = List(); out.animating = false; out.layerAlpha = [1, 1, 1]; out.live = 0;
+    var tx = kit.text || {}, valueStyle = tx.value ? paramsOf("text", tx.value, cx) : textStyle(layersOf(null, BASIC, "gauge", "value", cx));
+    var labelStyle = tx.label ? paramsOf("text", tx.label, cx) : textStyle(layersOf(null, BASIC, "gauge", "label", cx));
+    var L = layout("gauge", w, h, "bar", valueStyle, !!v.label, v.timerLeft !== null, num(opts.minText, 8, 200, 18));
+    var th = L.body.h * kit.thickness, track = { x: L.body.x, y: L.body.y + (L.body.h - th) / 2, w: L.body.w, h: th }, prog = v.progress, fx0 = track.x + track.w * prog, head = [fx0, track.y + th / 2];
+    var fill = { x: track.x, y: track.y, w: Math.max(0, fx0 - track.x), h: th }, ready = opts.assets;
+    var items: any[] = [], roles: any = {}, sprites = 0;
+    for (var li = 0; li < kit.layers.length; li++) {
+      var ly = kit.layers[li], a = scene.assets[ly.src], url = sceneUrl(rc, a);
+      if (!a || (ready !== undefined && ready[url] !== true) || TIER_RANK[ly.tier] > tier) continue;
+      var fa = (a.w / a.cols) / (a.h / a.rows), frames = a.cols * a.rows, fxl = layerFx(ly, scene, v, calm, tier), blend = ly.blend === "add" && qn === "full" ? "lighter" : "normal";
+      var baseFrame = Math.min(frames - 1, ly.calmFrame || 0), looping = !!ly.loop && !calm && tier >= 1;
+      if (looping) baseFrame = Math.floor((t / 1000) * Math.min(ly.loop.fps, tier === 1 ? 4 : 8)) % frames;
+      var frame_ = fxl.fr >= 0 ? Math.min(frames - 1, fxl.fr) : baseFrame, alpha = Math.max(ly.alpha, fxl.al);
+      var ops: any[] = [], pv = ly.pivot || [0.5, 0.5], off = ly.offset || [0, 0], sz = ly.size || {}, sc = fxl.sc, rot = (ly.rot || 0) + fxl.rot;
+      var live = !!ly.on || !!ly.reveal || !!ly.loop || ly.at !== "track";
+      if (looping) out.animating = true;
+      if (ly.at === "track" || (ly.at === "fill" && !ly.along)) {
+        var R0 = ly.at === "track" ? track : fill, rx = R0.x + (off[0]! + fxl.x) * th, ry = R0.y + (off[1]! + fxl.y) * th, rw = R0.w, rh = R0.h;
+        if (rw < 0.5) continue;
+        var clip: number[] | null = null;
+        if (ly.reveal && ly.reveal.mode === "wipe") { if (prog < 0.002) continue; clip = [rx, ry, rx + rw * prog, ry, rx + rw * prog, ry + rh, rx, ry + rh]; }
+        else if (ly.fit === "tile" || ly.fit === "contain") clip = [rx, ry, rx + rw, ry, rx + rw, ry + rh, rx, ry + rh];
+        if (clip) ops.push({ k: "clip", p: clip.map(r2) });
+        if (ly.fit === "tile") { var o1 = imgOp(0, url, a, frame_, rx, ry, rw, rh, 0, 0, 0, alpha, blend); o1.tw = r2(rh * fa); ops.push(o1); }
+        else if (ly.fit === "contain") { var cw = Math.min(rw, rh * fa), ch = cw / fa; ops.push(imgOp(0, url, a, frame_, rx + (rw - cw) / 2, ry + (rh - ch) / 2, cw, ch, 0, 0, 0, alpha, blend)); }
+        else ops.push(imgOp(0, url, a, frame_, rx, ry, rw, rh, 0, 0, 0, alpha, blend));
+        if (clip) ops.push({ k: "unclip" });
+        sprites++;
+      } else {
+        // points: the head, one per milestone, or a row along the filled part
+        var pts: any[] = [];
+        if (ly.at === "head") pts.push({ x: head[0]!, y: head[1]!, lit: true });
+        else if (ly.at === "tick") { var span = v.target - v.min; if (span > 0) for (var m = 0; m < v.milestones.length; m++) { var mu = (v.milestones[m] - v.min) / span; if (mu > 0 && mu < 1) pts.push({ x: track.x + track.w * mu, y: head[1]!, lit: v.display >= v.milestones[m] }); } }
+        else { var step = ly.along.every * th; for (var xx = track.x + step / 2; xx <= fx0 && pts.length < SL.sprites; xx += step) pts.push({ x: xx, y: head[1]!, lit: true }); }
+        for (var pi = 0; pi < pts.length && sprites < SL.sprites; pi++) {
+          var hp = (sz.h === undefined ? 1 : sz.h) * th * sc, wp = sz.w !== undefined ? sz.w * th * sc : hp * fa;
+          var px0 = pts[pi].x + (off[0]! + fxl.x) * th;
+          if (ly.at === "head") px0 = clamp(px0, pv[0]! * wp, Math.max(pv[0]! * wp, w - (1 - pv[0]!) * wp));   // the head never leaves the element, even at 100 %
+          ops.push(imgOp(0, url, a, frame_, px0, pts[pi].y + (off[1]! + fxl.y) * th, wp, hp, pv[0]!, pv[1]!, rot, pts[pi].lit || ly.at !== "tick" ? alpha : alpha * (ly.alphaUnlit === undefined ? 0.5 : ly.alphaUnlit), blend));
+          sprites++;
+        }
+        if (!pts.length) continue;
+      }
+      items.push({ role: ly.role, ops: ops, staticOk: !live });
+      roles[ly.role] = true;
+    }
+    // a role without any loaded layer: the basic look of the core in its place (a flat track, a flat fill)
+    var bp = paramsOf("bar", BASIC.genres.gauge.body, cx); bp.thickness = 1;
+    var tmp = List(); drawBar(tmp, v, track, bp, cx);
+    var bTrack = tmp.ops.filter(function (o: any) { return o.L === 0; }), bFill = tmp.ops.filter(function (o: any) { return o.L !== 0; });
+    var lastTrack = -1; for (var ii = 0; ii < items.length; ii++) if (items[ii].role === "track") lastTrack = ii;
+    if (!roles.fill) items.splice(lastTrack + 1, 0, { role: "fill", ops: bFill, staticOk: false });
+    if (!roles.track) items.unshift({ role: "track", ops: bTrack, staticOk: true });
+    var prefix = true;
+    for (var ji = 0; ji < items.length; ji++) {
+      if (!items[ji].staticOk) prefix = false;
+      for (var oi = 0; oi < items[ji].ops.length; oi++) { var op = items[ji].ops[oi]; op.L = prefix ? 0 : 3; out.ops.push(op); }
+    }
+    // reactions: the emitters of the kit's events (none in calm mode or at the minimal level)
+    var shape = roundRect(track.x, track.y, track.w, track.h, track.h / 2), body = { shape: shape, head: head, box: track }, emitted: any[] = [];
+    var origins: any = { head: head, center: [track.x + track.w / 2, track.y + track.h / 2] };
+    for (var k = 0; k < v.highlights.length; k++) {
+      var hl = v.highlights[k], acts = kit.on && kit.on[evClass(hl.kind)];
+      if (acts && !calm && tier >= 1) for (var ai = 0; ai < acts.length; ai++) { var emn = acts[ai].emit, em = scene.emitters[emn]; if (em && (ready === undefined || ready[sceneUrl(rc, scene.assets[em.src])] === true)) emitOps(out, emitted, emn, em, rc, hl, origins[acts[ai].at], th, qn, 0.45 + 0.55 * hl.intensity); }
+      out.animating = true;
+    }
+    for (var ei = 0; ei < emitted.length; ei++) out.ops.push(emitted[ei]);
+    drawTimer(out, layersOf(null, BASIC, "gauge", "timer", cx), v, L, valueStyle, Q, cx);
+    // the "+N" of a step is a text: after every picture, like the others
+    cx.valuePos = L.value; cx.valueStyle = valueStyle;
+    for (var k2 = 0; k2 < v.highlights.length; k2++) drawReaction(out, [], v.highlights[k2], body, L, Q, calm, cx);
+    var valueTxt = v.format === "count" && v.target > 0 ? fmt(v.display, "count", cx.lang, "") + " / " + fmt(v.target, "count", cx.lang, "") : fmt(v.display, v.format, cx.lang, v.currency);
+    // the texts are the core's, last, with its readability rule (outline or plate), whatever the pictures are
+    drawText(out, v.label, L.label, L.labelSize, labelStyle, Q, 1, 0, cx);
+    drawText(out, valueTxt, L.value, L.valueSize, valueStyle, Q, 1, 0, cx);
+    if (v.moving || v.timeLive || v.hold) out.animating = true;
+    var rd = ""; if (ready !== undefined) for (var u in ready) if (ready[u] === true) rd += u + ",";
+    var base = [w, h, qn, calm ? 1 : 0, sceneHash(rc), cx.font, tokens.fg, tokens.accent, hash(rd)].join("|");
+    return { ops: out.ops, keys: [base, base + "|" + v.level, base], inc1: null, layerAlpha: out.layerAlpha, animating: out.animating, view: v, size: { w: w, h: h }, skin: true, scene: true, quality: qn, calm: calm };
+  }
+  // ───────────────────────── the pictures of scenes: loaded once, decoded to bitmaps, never blocking ─────────────────────────
+  /**
+   * `fetch` then `createImageBitmap` (NOT an <img>): the element pages of modules may forbid images in their security policy but allow `connect-src 'self'`, and a
+   * bitmap decoded from a fetched blob is not an image load. A picture that does not arrive in 5 s, is too large, does not decode or would push the decoded total
+   * over the cap is `failed` for the session: its layer is skipped and the basic look shows. Without `fetch` or `createImageBitmap` (an old host): all fail.
+   */
+  var BMP: any = {}, BMP_PX = 0;
+  function pokeAll(): void { for (var i = 0; i < HANDLES.length; i++) HANDLES[i].poke(); }
+  function loadAsset(url: string): void {
+    if (BMP[url]) return;
+    var rec: any = BMP[url] = { state: "loading", bmp: null }, done = false, timer: any = 0;
+    function fail(): void { if (done) return; done = true; if (timer) win.clearTimeout(timer); rec.state = "failed"; pokeAll(); }
+    if (typeof win.fetch !== "function" || typeof win.createImageBitmap !== "function") { fail(); return; }
+    timer = win.setTimeout(fail, 5000);
+    win.fetch(url, { credentials: "omit" }).then(function (r: any) { if (!r.ok) throw 0; return r.blob(); }).then(function (b: any) { if (b.size > 400 * 1024) throw 0; return win.createImageBitmap(b); }).then(function (bm: any) {
+      var px = bm.width * bm.height;
+      if (done || px > SL.pixels || BMP_PX + px > SL.totalPixels) { if (bm.close) bm.close(); fail(); return; }
+      done = true; win.clearTimeout(timer); BMP_PX += px; rec.bmp = bm; rec.px = px; rec.state = "ready"; pokeAll();
+    }).then(null, fail);
+  }
+  function loadScene(rc: any): void { if (!isScene(rc)) return; for (var k in rc.scene.assets) loadAsset(sceneUrl(rc, rc.scene.assets[k])); }
+  /** `{ url: true }` of the pictures that are decoded now: what `frame()` takes as `opts.assets`. */
+  function sceneReady(rc: any): any { var o: any = {}; if (isScene(rc)) for (var k in rc.scene.assets) { var u = sceneUrl(rc, rc.scene.assets[k]); if (BMP[u] && BMP[u].state === "ready") o[u] = true; } return o; }
+  /** A promise that settles when every picture of the scene is ready or failed (the kit page waits for it before drawing a still frame). */
+  function whenLoaded(rc: any): any {
+    loadScene(rc);
+    return new Promise(function (resolve: any) { (function check() { var wait = false; if (isScene(rc)) for (var k in rc.scene.assets) { var r = BMP[sceneUrl(rc, rc.scene.assets[k])]; if (r && r.state === "loading") wait = true; } if (wait) win.setTimeout(check, 20); else resolve(); })(); });
+  }
+
   // ───────────────────────── Canvas 2D output ─────────────────────────
   function paint(c: any, p: any): any {
     if (typeof p === "string") return p;
@@ -849,6 +1032,15 @@ export function animateEngine(win: any, SPEC: any): void {
         if (o.ow > 0) { c.strokeStyle = o.o; c.lineWidth = o.ow * 2 * (sz / o.sz); c.strokeText(o.t, o.x, o.y); }
         if (o.gl) { c.shadowBlur = o.gl; c.shadowColor = o.gc; }
         c.fillStyle = o.f; c.fillText(o.t, o.x, o.y);
+      } else if (o.k === "img") {
+        var rec = BMP[o.id];
+        if (rec && rec.state === "ready") {
+          var bm = rec.bmp, fw = bm.width / o.g[0], fh = bm.height / o.g[1], sx = (o.fr % o.g[0]) * fw, sy = Math.floor(o.fr / o.g[0]) * fh;
+          c.imageSmoothingEnabled = true; c.imageSmoothingQuality = "high";
+          c.translate(o.x, o.y); if (o.r) c.rotate(o.r);
+          if (o.tw) { for (var tx = 0; tx < o.w; tx += o.tw) c.drawImage(bm, sx, sy, fw, fh, tx, 0, o.tw, o.h); }
+          else c.drawImage(bm, sx, sy, fw, fh, -o.px * o.w, -o.py * o.h, o.w, o.h);
+        }
       } else if (o.k === "vignette") {
         c.globalCompositeOperation = "source-atop"; var r = Math.sqrt(W * W + H * H) / 2, gv = c.createRadialGradient(W / 2, H / 2, r * 0.45, W / 2, H / 2, r);
         gv.addColorStop(0, rgba(o.c, 0)); gv.addColorStop(1, rgba(o.c, 1)); c.fillStyle = gv; c.fillRect(0, 0, W, H);
@@ -955,7 +1147,8 @@ export function animateEngine(win: any, SPEC: any): void {
       if (!lastAnimating && !H.dirty) return;   // nothing moves: no frame at all (0 % at rest)
       H.last = now;
       if (!H.tokens) H.tokens = tokensOf(doc);
-      var t0 = now, f = frame(H.state, H.skin, Date.now() + H.skew, size(), { quality: H.quality, calm: H.calm, tokens: H.tokens, font: H.tokens.font, lang: H.lang, minText: H.minText });
+      var sk = H.skin, scn = isScene(sk); if (scn) loadScene(sk);
+      var t0 = now, f = frame(H.state, sk, Date.now() + H.skew, size(), { quality: H.quality, calm: H.calm, tokens: H.tokens, font: H.tokens.font, lang: H.lang, minText: H.minText, assets: scn ? sceneReady(sk) : undefined });
       draw(c, f, cache);
       var dt = (typeof performance !== "undefined" ? performance.now() : Date.now()) - t0;
       // "auto" quality: a computer that cannot keep up (frames costing more than 14 ms on average) steps down once to light, then to minimal; never back up
@@ -969,6 +1162,7 @@ export function animateEngine(win: any, SPEC: any): void {
       setClock: function (serverNow: number) { if (typeof serverNow === "number") { H.skew = serverNow - Date.now(); H.dirty = true; } },
       setOptions: function (x: any) { if (x && (QUALITY[x.quality] || x.quality === "auto")) { H.auto = x.quality === "auto"; H.quality = H.auto ? "full" : x.quality; } if (x && typeof x.calm === "boolean") H.calm = x.calm || reduce; if (x && typeof x.fps === "number") H.fps = num(x.fps, 1, 60, 30); H.tokens = null; H.dirty = true; },
       refreshTokens: function () { H.tokens = null; H.dirty = true; },
+      poke: function () { H.dirty = true; },
       stats: function () { var ts = H.stats.times.slice().sort(function (a: number, b: number) { return a - b; }); return { quality: H.quality, auto: H.auto, downgrades: H.stats.downgrades || 0, frames: H.stats.frames, avg: H.stats.frames ? H.stats.total / H.stats.frames : 0, p95: ts.length ? ts[Math.floor(ts.length * 0.95)] : 0, max: H.stats.max, layerRedraws: cache.redraws, animating: lastAnimating }; },
       frameNow: function () { return H.lastFrame || null; },
       destroy: function () { H.alive = false; var i = HANDLES.indexOf(api); if (i >= 0) HANDLES.splice(i, 1); },
@@ -983,7 +1177,7 @@ export function animateEngine(win: any, SPEC: any): void {
   win.CuriosaAnimate = {
     version: SPEC.version, contract: SPEC.contract, spec: SPEC,
     view: view, frame: frame, draw: draw, mount: mount, basicRecipe: basicRecipe, usable: usable, optionsFromQuery: optionsFromQuery,
-    format: fmt, contrast: contrast,
+    format: fmt, contrast: contrast, isScene: isScene, loadScene: loadScene, sceneReady: sceneReady, whenLoaded: whenLoaded,
     /** The motion tokens, for tests and tools: `spring(name, tau seconds, calm)` is the step response (it overshoots only for the springy names, never in calm). */
     motion: { spring: function (name: string, tau: number, calm?: boolean) { var o = spring(name, !!calm); return o ? springS(o, tau) : NaN; }, number: function (name: string, tau: number, calm?: boolean) { var o = spring(name, !!calm); return o ? springNum(o, tau) : NaN; }, settle: function (name: string, calm?: boolean) { var o = spring(name, !!calm); return o ? o.settle : NaN; }, duration: function (name: string, calm?: boolean) { return durMs(name, !!calm); }, names: { springs: Object.keys(MOTION.springs), durations: Object.keys(MOTION.durations), tempos: Object.keys(MOTION.tempos) } },
     /** Called by the core's overlay page when the page's skin (or an element's own skin) changes: every mounted element follows. */

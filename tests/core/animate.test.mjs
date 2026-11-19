@@ -281,7 +281,10 @@ test("ctx.overlay: the animation kit sits next to the composition kit; the optio
   assert.deepEqual(q, { quality: "light", calm: true, lang: "fr", minText: 36 });
   assert.equal(A.optionsFromQuery("opt-animQuality=auto").quality, "auto");
   assert.ok(K.animateScript().includes(JSON.stringify(S.ANIMATE_SPEC.timing)), "the table travels with the engine");
-  assert.doesNotMatch(K.animateScript(), /require\(|import\(|fetch\(|XMLHttpRequest|localStorage|document\.cookie/, "the engine reads nothing and sends nothing");
+  assert.doesNotMatch(K.animateScript(), /require\(|import\(|XMLHttpRequest|localStorage|document\.cookie/, "the engine reads nothing and sends nothing");
+  // (0.40.0) the ONE read: a scene's own pictures, from the skin's address, without credentials (see "Scenes" in docs/OVERLAY-ANIMATIONS.md)
+  assert.equal((K.animateScript().match(/fetch\(/g) || []).length, 1, "one fetch call");
+  assert.match(K.animateScript(), /win\.fetch\(url, \{ credentials: "omit" \}\)/);
 });
 
 // ── real Chromium ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────

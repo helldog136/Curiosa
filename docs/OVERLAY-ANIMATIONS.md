@@ -1,4 +1,6 @@
-# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 2)
+# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 2; scenes, contract 5)
+
+> Core 0.40.0 adds a second way to skin these bars: a **scene** (section 10) that places the skin's own pictures on the abstract bar. The recipes of sections 1 to 9 keep working exactly as they are.
 
 > Core 0.30.0. A module says **what happens** (a value goes up, a level is reached, time is added); an overlay skin says **what it looks like** (stained glass, neon tubes, a plain bar). The core's engine draws one with the other, live, in the overlay element. Adding a skin restyles every animated element; adding an animated element works with every skin. Nothing here runs code from a skin.
 
@@ -470,3 +472,87 @@ Reading: at the real size of the brief (an element of 1764 × 717 on a 3440 × 1
 - Installation refuses a recipe out of grammar (`animation-invalid`, with its path), an unreadable one, an unreadable text (`animation-text-contrast`), a missing file, a skin that uses `animation` without contract 4 (`overlay-contract-v4`) or a site skin with an animation (`animation-overlay-only`). A recipe whose minimum contract is newer only warns (`animation-contract-newer`) and installs the skin without its animation; a motion name that does not exist is refused (`animation-motion-name`).
 - The engine clamps and defaults every value again with the same table (`src/core/animate/spec.ts`, sent with the engine), so a recipe that slipped through can never draw outside its bounds.
 - The engine reads nothing from the network, the page or the storage; it only draws on its canvas.
+
+## 10. Scenes: the skin's own pictures on the abstract bar (animateContract 3, skinContract 5, core 0.40.0)
+
+A recipe picks procedural primitives that live **in the core**. A scene goes the other way: the core only computes the abstract bar and offers a few generic mechanisms, and the **skin ships the pictures** and says where they go and when they move. What a lantern, a petal or a vine looks like is in the skin's files, never in the core. A skin without a scene is drawn as before; an element a scene does not draw is drawn by the basic look.
+
+What the core gives a scene (all computed by `view()` from the module's unchanged state, so **no module change is needed**: `stream-goals` was checked, it sends the same state and milestone events):
+
+| | Words |
+|---|---|
+| **Anchors** (where a picture goes) | `track` (the bar body), `fill` (the filled part), `head` (the end of the fill), `tick` (one place per milestone) |
+| **Events** (what the core detected) | `step` (a step, an extension or a drop), `milestone`, `complete` |
+| **Mechanisms** | a picture at an anchor; a **wipe** reveal (the picture is shown up to the progress); **sprites along the fill**; a **sprite sheet** (`grid`) with a looping `frame`; a **timeline** on `x y scale rot alpha frame` (keyframes with an ease, or a spring); a seeded **emitter** (at most 40 sprites) |
+| **Never the skin's** | the clock and the event windows (a timeline runs over the window the core gives it: 0.9 s for a step, 2.6 s for a celebration, merged and queued by the core), the texts, the effects levels, calm mode |
+
+### A minimal scene
+
+`skin.json`: `"skinContract": 5`, `"minCore": "0.40.0"`, `"scene": "scene.json"`, and every picture listed in `assets` with `"kind": "image"` and its licence (as for a site skin). `scene.json`:
+
+```json
+{
+  "animateContract": 3,
+  "assets": {
+    "rail": { "file": "images/rail.png" },
+    "bar":  { "file": "images/bar.png" },
+    "head": { "file": "images/head.png" },
+    "spark": { "file": "images/sparks.png", "grid": [4, 2] }
+  },
+  "kits": {
+    "gauge": {
+      "thickness": 0.5,
+      "layers": [
+        { "role": "track", "src": "rail", "at": "track" },
+        { "role": "fill", "src": "bar", "at": "track", "reveal": { "mode": "wipe" } },
+        { "role": "head", "src": "head", "at": "head", "size": { "h": 1.6 }, "on": { "step": "pop" } }
+      ],
+      "on": { "milestone": [{ "emit": "burst", "at": "head" }] }
+    }
+  },
+  "timelines": { "pop": { "spring": "bouncy", "tracks": { "scale": [[0, 1], [0.35, 1.3], [1, 1]] } } },
+  "emitters": { "burst": { "src": "spark", "count": 20, "angle": [200, 340], "gravity": 0.6, "size": 0.4 } }
+}
+```
+
+Lengths are in **track heights** (`size.h: 1.6` is 1.6 times the height of the bar). A complete, drawn example is the test skin `tests/fixtures/scene-skins/lantern-vine/` (a vine that grows, a lantern at its head, lamps at the milestones, petals).
+
+### Reference
+
+- **Layer** (`kits.gauge.layers[]`, at most 16, drawn in the order written): `src` (a picture of `assets`), `at` (an anchor), `role` (`track`, `fill`, `head` or `deco`, default `deco`: see "Fallbacks"), `fit` (`stretch`, `tile`, `contain`; default `stretch` on `track` and `fill`, `contain` on `head` and `tick`), `size` (`h`, `w`: for `head`, `tick` and `along`), `offset` and `pivot` (two numbers), `rot` (degrees), `alpha`, `alphaUnlit` (a `tick` not reached yet), `blend` (`normal`, `add`), `tier` (the lowest effects level that draws it: `minimal` by default, `light`, `full`), `reveal` (`{ "mode": "wipe" }`, on `track` only), `along` (`{ "every": 2.4 }`, on `fill` only: a row of sprites that grows with the fill), `loop` (`{ "fps": 4 }`, 1 to 8: plays the frames of a sheet), `calmFrame` (the frame a loop rests on), `on` (`{ "step": "<timeline>", "milestone": …, "complete": … }`).
+- **Pictures** (`assets`, at most 12): `file` (in `images/`), `grid` (`[columns, rows]` of a sheet, at most 64 frames). The head never leaves the element: at 100 % it stays inside.
+- **Timeline** (`timelines`, at most 12): `tracks` of 2 to 12 keys `[u, value]` (`u` from 0 to 1 over the event's window, rising) for `x`, `y` (track heights), `scale` (a factor), `rot` (degrees), `alpha` (0 to 1), `frame`; `ease` (`linear`, `out`, `inOut`) or `spring` (a name of the motion table: `snappy`, `smooth`, `gentle`, `bouncy`; the step response runs over each segment). Several events add their `x`, `y`, `rot` and `scale - 1`; `alpha` takes the largest. An event's intensity scales it.
+- **Emitter** (`emitters`, at most 4): `src`, `count` (1 to 40), `delay` (fraction of the window), `life`, `speed` and `angle` (`[min, max]`; 0 degrees to the right, 270 up), `gravity`, `spin` (turns), `size`, `scale` and `alpha` (keys over the life of a piece), `blend`, `frame` (`random` or a number), `seed`. Everything is **analytic and seeded**: the same event shows the same pieces at the same instant on every computer (no random number, no state carried from frame to frame). At most 120 pieces live and 200 sprites are drawn per frame.
+- **Texts**: `kits.gauge.text.value` and `.label` take the words of the `text` primitive (`font`, `weight`, `color`, `outline`, `outlineWidth`, `plate`…). The **core draws them last**, never under a picture, with its readability rule (a contrasted outline or an opaque plate): the installer refuses a style that cannot be read (`scene-text-contrast`) and the engine raises the outline of one that slipped through.
+- **Events fire emitters** in `kits.gauge.on` (`{ "emit": "<emitter>", "at": "head" | "center" }`).
+
+### Pictures: formats and limits
+
+PNG, WebP (lossless or lossy) and **sanitised SVG** only. Not allowed: GIF, APNG, animated WebP, AVIF, JPEG, video, fonts. Animation is a **sheet of still frames** with a declared `grid`. The existing ceilings of site skins apply and are not raised: 200 KB a raster picture, 30 KB an SVG, 12 pictures, 1.2 MB of pictures, 2 MB the skin; the scene file at most 48 KB. The **decoded** size is what costs memory, so it is read from the file's header at install (never by decoding): at most 2048 px a side and 4 million pixels a picture, 16 million in all. A vector picture is drawn once by the core as a PNG at twice its natural size (`GET /skins/<id>/<version>/images/<name>.svg?raster=1`, 2048 px at most); it needs a `viewBox`. Pictures are served by the existing skin route (same address as site skins, immutable cache, `nosniff`) and covered by the skin's fingerprint like every other file.
+
+### Loading, fallbacks, and what a failure looks like
+
+- The engine loads the pictures with `fetch` then `createImageBitmap`, **not** with an `<img>`: an element page may forbid images in its security policy (`stream-goals` does: `default-src 'none'; connect-src 'self'`) and a bitmap decoded from a fetched blob is not an image load. Five seconds, 400 KB and the decoded caps are enforced again in the browser. Without `fetch` or `createImageBitmap`, every picture fails.
+- A layer whose picture is loading, failed, missing or unknown is **skipped**. A role (`track`, `fill`) with no layer left is drawn by the **basic look** of the core in its place (a flat track, a flat fill from the page's colours); the texts and the countdown line are always there. A kit the scene does not draw (`levels` and `counter` in this contract) uses the basic recipe. A failure is remembered for the session; nothing blanks and nothing shows an error.
+- **Tolerant reader**: an anchor, a reveal mode, an event, a property, a kit or a key this core does not know is skipped with a warning (`scene-ignored`), never an error. A known word with a value out of its bounds, an undeclared picture or a timeline that does not exist is refused with its path (`scene-invalid`). A scene written for a later contract (`animateContract` above 3, `animateMinContract` not above 3) is read as far as this core knows it and only warns (`scene-contract-ahead`); a minimum above 3 installs the skin without its scene (`scene-contract-newer`).
+- A skin with `scene` must declare `skinContract: 5` (`overlay-contract-v5`); an older core refuses it cleanly ("contract newer"). The images gate (`overlay-no-assets`) stays for every skin without a scene, and fonts stay refused. If a skin has both `animation` and `scene`, this core uses the scene.
+
+### Calm mode, effects levels, cost
+
+- **Calm** (reduced motion, or the element option) is a **mechanical transform** that does not depend on the skin being careful: no emitters, timelines keep only `alpha` and `frame`, loops rest on `calmFrame`, springs are critical; the reveal and the value glide stay.
+- **Levels**: `full` draws everything; `light` drops layers marked `full`, halves emitters, refuses additive blending and plays loops at 4 frames a second at most; `minimal` draws the layers that need no level only (no loop, no timeline motion, no emitter). `auto` and its measured step-down are unchanged.
+- At rest nothing is drawn (0 %); a looping layer keeps the element drawing. Measured by `scripts/visual/scene-bench.mjs bench` on the test skin (software rendering, 30 fps, a busy scene with a highlight every 400 ms): about **0.9 ms a frame** at 1280 x 360 and 1764 x 717 (full), 0.6 to 0.8 ms in light and minimal.
+- **Not built, on purpose**: no flash governor, no luminance audit of pictures, no pause when the page is hidden (OBS's `visibilityState` could not be checked, and a source stuck on "hidden" would blank the overlay).
+
+### Checking your scene
+
+`npm run skin:check -- <folder>` runs the same checks as the install. `node --import ./tests/helpers/register.mjs scripts/visual/scene-bench.mjs shots <dir> <folder>` draws the bar of your skin at key instants (light and dark backgrounds, every effects level, calm) through a local server that reproduces the strict policy of a module element page, so a picture that cannot arrive that way shows up at once.
+
+### Captures of the test skin
+
+`docs/captures/scene-lantern-vine-*.png` (1280 px wide, rest, steps, milestone, goal reached; dark and light backgrounds; effects levels `light` and `minimal`; calm) and `docs/captures/scene-lantern-vine-full.webm` / `-calm.webm` (6 s at 15 frames a second), produced by `scene-bench.mjs shots` and `clip`.
+
+### Open points
+
+- **OBS**: `createImageBitmap` and `fetch` exist in the Chromium used for the tests (153); the CEF of the OBS you run is **not verified**. If either is missing, the skin shows its basic look.
+- **One catalogue entry per skin id**: the catalogue picks no version by core version (`requires.core` and `skinContract` mark the entry incompatible on an older core, `minCore` refuses the install). A skin that must keep working on older cores needs another id, or a `ref` the owner chooses.

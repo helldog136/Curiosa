@@ -21,9 +21,11 @@ import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
 import { sanitizeOverlayCss } from "../overlays/skinCss";
 import { checkSkinTokens } from "../overlays/skinSheet";
-import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4 } from "./constants";
+import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4, OVERLAY_SKIN_CONTRACT_V5 } from "./constants";
+import { checkScene, type SceneAssetInfo } from "../animate/scene";
+import { probeImage } from "../animate/imageProbe";
 import { checkAnimation } from "../animate/recipe";
-import { RECIPE_LIMITS } from "../animate/spec";
+import { RECIPE_LIMITS, SCENE } from "../animate/spec";
 import { coreSatisfies } from "./semver";
 
 export type ValidateOptions = {
@@ -50,7 +52,7 @@ export type ValidateOptions = {
   advice?: boolean;
 };
 
-export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme" | "animation";
+export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme" | "animation" | "scene";
 export type ValidatedFile = { path: string; bytes: number; sha256: string; kind: FileKind };
 
 export type SkinTokens = {
@@ -80,6 +82,8 @@ export type SkinValidation = {
    * than this core's (the animation is then off, the basic rendering applies, and the rest of the skin works as usual).
    */
   animation?: Record<string, unknown> | null;
+  /** (core 0.40.0) The overlay skin's checked scene (animate/scene.ts): null when the skin has none, or when it is written for a newer contract (the basic rendering applies). */
+  scene?: Record<string, unknown> | null;
 };
 
 const ROOT_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
@@ -171,6 +175,7 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if ((m.previews ?? []).length > FILE_LIMITS.previews) add("previews-too-many", { max: FILE_LIMITS.previews });
   if (m.kind === "overlay" && m.skinContract < OVERLAY_SKIN_CONTRACT) add("overlay-contract");
   if (m.kind !== "overlay" && m.animation) add("animation-overlay-only");
+  if (m.kind !== "overlay" && m.scene) add("scene-overlay-only");
   if (hasErrors(issues)) return fail();   // le reste dépend d'un manifeste sain
   if (m.kind === "overlay") return runOverlay(m, found, byRel, issues, fail);
 
@@ -404,7 +409,7 @@ function typedCheck(name: string, value: string, skinId: string, issues: SkinIss
 function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, issues: SkinIssue[], fail: () => SkinValidation): SkinValidation {
   const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
   const kinds = new Map<string, FileKind>([["skin.json", "manifest"]]);
-  if (m.assets.length) add("overlay-no-assets");
+  if (m.assets.length && !m.scene) add("overlay-no-assets");
   const declare = (rel: string, kind: FileKind, re: RegExp, missing: string): boolean => {
     if (!re.test(rel)) { add("asset-bad-path", { file: rel }); return false; }
     if (!byRel.has(rel)) { add(missing, { file: rel }); return false; }
@@ -416,6 +421,20 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   const previews = (m.previews ?? []).filter((p) => declare(p.file, "preview", PREVIEW_PATH_RE, "asset-missing"));
   const hasAnimation = m.animation ? declare(m.animation, "animation", TOKENS_FILE_RE, "animation-missing") : false;
   if (m.animation && m.skinContract < OVERLAY_SKIN_CONTRACT_V4) add("overlay-contract-v4");
+  // (core 0.40.0) a scene brings its own pictures: images only (no font), PNG / WebP / SVG, each licensed like a site skin's
+  const sceneImages: SkinManifest["assets"] = [];
+  const hasScene = m.scene ? declare(m.scene, "scene", TOKENS_FILE_RE, "scene-missing") : false;
+  if (m.scene && m.skinContract < OVERLAY_SKIN_CONTRACT_V5) add("overlay-contract-v5");
+  if (m.scene) {
+    const seen = new Set<string>();
+    for (const a of m.assets) {
+      if (a.kind !== "image") { add("overlay-no-assets"); continue; }
+      if (seen.has(a.file)) { add("asset-duplicate", { file: a.file }); continue; }
+      seen.add(a.file);
+      if (!/\.(png|webp|svg)$/.test(a.file)) { add("scene-image-type", { file: a.file }); continue; }
+      if (declare(a.file, "image", IMAGE_PATH_RE, "asset-missing")) sceneImages.push(a);
+    }
+  }
   for (const f of found) {
     if (kinds.has(f.rel)) continue;
     if (README_RE.test(f.rel) || OWN_LICENSE_RE.test(f.rel) || LICENSE_FILE_RE.test(f.rel)) kinds.set(f.rel, README_RE.test(f.rel) ? "readme" : "license");
@@ -467,6 +486,51 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
       }
     }
   }
+  // (core 0.40.0) the pictures of the scene (size ceilings of site skins, decoded size from the headers) and the scene itself
+  const sceneAssets = new Map<string, SceneAssetInfo>();
+  let scene: Record<string, unknown> | null = null;
+  if (m.scene) {
+    if (sceneImages.length > FILE_LIMITS.images) add("images-too-many", { max: FILE_LIMITS.images });
+    const imagesTotal = sceneImages.reduce((n, a) => n + sizeOf(a.file), 0);
+    if (imagesTotal > FILE_LIMITS.imagesTotalBytes) add("images-total-too-large", { size: kb(imagesTotal), max: kb(FILE_LIMITS.imagesTotalBytes) });
+    for (const a of sceneImages) {
+      const svg = a.file.endsWith(".svg"), cap = svg ? FILE_LIMITS.svgBytes : FILE_LIMITS.imageBytes;
+      if (!a.license || !a.licenseFile || !a.author || !a.source) add("asset-license-missing", { file: a.file });
+      else {
+        if (!SPDX_ALLOWED.includes(a.license)) add("asset-license-not-allowed", { file: a.file });
+        if (!LICENSE_FILE_RE.test(a.licenseFile) || !byRel.has(a.licenseFile)) add("asset-license-file", { file: a.file });
+      }
+      if (sizeOf(a.file) > cap) { add("file-too-large", { file: a.file, size: kb(sizeOf(a.file)), max: kb(cap) }); continue; }
+      const bytes = read(a.file);
+      if (svg) {
+        const clean = sanitizeSvg(bytes.toString("utf8"), undefined, "cover", "center", { maxBytes: FILE_LIMITS.svgBytes, maxElements: 1500 });
+        if (!clean.ok) { add("asset-svg-refused", { file: a.file }); continue; }
+        content.set(a.file, Buffer.from(clean.svg, "utf8"));
+      } else if (!hasSignature(a.file, bytes)) { add("asset-signature", { file: a.file }); continue; }
+      const probe = probeImage(a.file, content.get(a.file)!);
+      if (!probe) add("scene-image-unreadable", { file: a.file });
+      else if (probe.animated) add("scene-image-animated", { file: a.file });
+      else if (probe.w > SCENE.limits.side || probe.h > SCENE.limits.side || probe.w * probe.h > SCENE.limits.pixels) add("scene-image-pixels", { file: a.file, size: Math.max(probe.w, probe.h), max: SCENE.limits.side });
+      else sceneAssets.set(a.file, { w: probe.w, h: probe.h, svg });
+    }
+    if (hasScene) {
+      if (sizeOf(m.scene) > SCENE.limits.bytes) add("file-too-large", { file: m.scene, size: kb(sizeOf(m.scene)), max: kb(SCENE.limits.bytes) });
+      else {
+        let raw: unknown;
+        try { raw = JSON.parse(read(m.scene).toString("utf8").replace(/^\uFEFF/, "")); } catch { add("scene-unreadable"); }
+        if (raw !== undefined) {
+          const r = checkScene(raw, sceneAssets);
+          for (const i of r.issues.slice(0, 12)) {
+            if (i.code === "contract-newer") add("scene-contract-newer");
+            else if (i.code === "contract-ahead") add("scene-contract-ahead");
+            else if (i.severity === "warning") add("scene-ignored", { detail: i.path });
+            else add(i.code === "text-contrast" ? "scene-text-contrast" : "scene-invalid", { detail: `${i.code} ${i.path}` });
+          }
+          scene = r.ok ? r.scene : null;
+        }
+      }
+    }
+  }
   let css = "";
   if (hasSheet && sizeOf(m.stylesheet!) <= 40 * 1024) {
     const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id);
@@ -486,5 +550,5 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   }
   const ok = !hasErrors(issues);
   if (!ok) return { ...fail(), issues: unique(issues) };
-  return { ok, issues: unique(issues), manifest: m, css, tokens: { light: {}, dark: {}, common: tokens, modules: {} }, readability: [], files, installFiles, fingerprint: fingerprintOf(files), totalBytes, animation };
+  return { ok, issues: unique(issues), manifest: m, css, tokens: { light: {}, dark: {}, common: tokens, modules: {} }, readability: [], files, installFiles, fingerprint: fingerprintOf(files), totalBytes, animation, scene };
 }
