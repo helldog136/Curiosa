@@ -410,3 +410,18 @@ test("animation par variable : le nom doit être le nom final de la feuille, jam
   assert.equal(run(m('[data-skin-part="card"]{--sk-a:spin 1s;animation:var(--sk-a)}')).ok, false, "animation de Tailwind");
   assert.equal(run(m('[data-skin-part="card"]{--sk-n:ping;animation-name:var(--sk-n)}')).ok, false);
 });
+
+test("(0.44.0) customization variables: only painting properties may read them, so a fallback cannot hide a region or shrink a text", () => {
+  // read by painting properties: fine
+  okOut('[data-skin-region="header"]{background-color:var(--sk-cz-banner,#16235a);border-bottom:4px solid var(--sk-cz-trim,#c9962f);border-radius:var(--sk-cz-corner,.2rem)}');
+  // never by display, sizes, fonts, opacity, positions
+  for (const decl of ["display:var(--sk-cz-x,block)", "font-size:var(--sk-cz-corner,1rem)", "opacity:var(--sk-cz-x,1)", "width:var(--sk-cz-x,10rem)", "line-height:var(--sk-cz-x,1.5)"]) {
+    const r = run(`[data-skin-region="footer"]{${decl}}`);
+    assert.ok(codes(r).includes("var-name-not-allowed"), decl);
+  }
+  // nor laundered through another custom property
+  const laundered = run('[data-skin-region="footer"]{--sk-x:var(--sk-cz-x,block);display:var(--sk-x)}');
+  assert.ok(codes(laundered).includes("var-name-not-allowed"), "a custom property cannot carry the value");
+  // other variables are untouched
+  okOut('[data-skin-region="footer"]{display:var(--v-surface-display,block)}'.replace("display:var(--v-surface-display,block)", "color:var(--v-text)"));
+});

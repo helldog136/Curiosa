@@ -31,11 +31,11 @@ const CACHE_MAX_BYTES = 300 * 1024 * 1024;
 
 export type DeriveResult = { ok: true; file: string; mime: string } | { ok: false; reason: "missing" | "format" | "toolarge" | "busy" | "engine" | "failed" };
 
-type Sharp = (typeof import("sharp"))["default"];
+export type Sharp = (typeof import("sharp"))["default"];
 type Pipeline = import("sharp").Sharp;
 let engine: Promise<Sharp | null> | null = null;
 /** `sharp` est chargé à la première demande seulement : s'il manque ou ne démarre pas, le site continue avec l'image d'origine. */
-function loadEngine(): Promise<Sharp | null> {
+export function loadEngine(): Promise<Sharp | null> {
   engine ??= import("sharp").then((m) => {
     const sharp: Sharp = m.default ?? (m as unknown as Sharp);
     sharp.cache({ memory: 64, files: 0, items: 16 });
@@ -47,7 +47,7 @@ function loadEngine(): Promise<Sharp | null> {
 
 let running = 0;
 const waiting: (() => void)[] = [];
-async function slot<T>(job: () => Promise<T>): Promise<T | "busy"> {
+export async function slot<T>(job: () => Promise<T>): Promise<T | "busy"> {
   if (running >= MAX_PARALLEL) {
     if (waiting.length >= MAX_WAITING) return "busy";
     await new Promise<void>((resolve) => waiting.push(resolve));

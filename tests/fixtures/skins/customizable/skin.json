@@ -1,0 +1,614 @@
+{
+  "skinContract": 4,
+  "id": "customizable",
+  "name": {
+    "fr": "Personnalisable (test)",
+    "en": "Customizable (test)"
+  },
+  "description": {
+    "fr": "Skin de test qui déclare une personnalisation : sert aux tests de personnalisation.",
+    "en": "Test skin that declares a customization: used by the customization tests."
+  },
+  "version": "1.0.0",
+  "minCore": "0.4.0",
+  "author": {
+    "name": "Équipe Curiosa"
+  },
+  "license": "MIT",
+  "tags": [
+    "light",
+    "dark",
+    "serif"
+  ],
+  "modes": [
+    "light",
+    "dark"
+  ],
+  "tokens": "tokens.json",
+  "stylesheet": "skin.css",
+  "previews": [
+    {
+      "file": "previews/home.webp",
+      "mode": "light",
+      "width": 1280,
+      "alt": {
+        "fr": "Page d'accueil",
+        "en": "Home page"
+      }
+    }
+  ],
+  "assets": [
+    {
+      "file": "images/aigle.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/banniere-pierre.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/banniere-tapisserie.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/ecu.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/epees.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/fanions-cramoisi.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/fanions-foret.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/fanions-or.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/fanions.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    },
+    {
+      "file": "images/heaume.svg",
+      "kind": "image",
+      "license": "CC0-1.0",
+      "licenseFile": "LICENSES/images-CC0.txt",
+      "author": "Équipe Curiosa",
+      "source": "https://example.org/test"
+    }
+  ],
+  "defaults": {
+    "headerLayout": "classic",
+    "font": "sans",
+    "glow": "none",
+    "background": "none"
+  },
+  "options": [
+    {
+      "id": "density",
+      "label": {
+        "fr": "Densité",
+        "en": "Density"
+      },
+      "default": "normal",
+      "values": [
+        {
+          "id": "normal",
+          "label": {
+            "fr": "Normale",
+            "en": "Normal"
+          },
+          "tokens": {}
+        },
+        {
+          "id": "airy",
+          "label": {
+            "fr": "Aérée",
+            "en": "Airy"
+          },
+          "tokens": {
+            "--sk-page-width": "54rem"
+          }
+        }
+      ]
+    }
+  ],
+  "customize": {
+    "version": 1,
+    "looks": [
+      {
+        "id": "royal",
+        "label": {
+          "fr": "Bleu royal",
+          "en": "Royal blue"
+        },
+        "values": {
+          "banner": "royal",
+          "pennants": "royal",
+          "trim": "gold"
+        }
+      },
+      {
+        "id": "crimson",
+        "label": {
+          "fr": "Cramoisi",
+          "en": "Crimson"
+        },
+        "values": {
+          "banner": "crimson",
+          "pennants": "crimson",
+          "trim": "gold"
+        }
+      },
+      {
+        "id": "forest",
+        "label": {
+          "fr": "Forêt",
+          "en": "Forest"
+        },
+        "values": {
+          "banner": "forest",
+          "pennants": "forest",
+          "trim": "bronze"
+        }
+      },
+      {
+        "id": "night",
+        "label": {
+          "fr": "Veille de nuit",
+          "en": "Night watch"
+        },
+        "values": {
+          "banner": "night",
+          "pennants": "gold",
+          "trim": "silver"
+        }
+      }
+    ],
+    "groups": [
+      {
+        "id": "main",
+        "label": {
+          "fr": "L'essentiel",
+          "en": "The essentials"
+        },
+        "folded": false,
+        "controls": [
+          {
+            "id": "banner",
+            "type": "color",
+            "featured": true,
+            "label": {
+              "fr": "Couleur de la bannière",
+              "en": "Banner colour"
+            },
+            "hint": {
+              "fr": "Le bandeau en haut des pages",
+              "en": "The strip at the top of pages"
+            },
+            "palette": [
+              {
+                "id": "royal",
+                "label": {
+                  "fr": "Bleu royal",
+                  "en": "Royal blue"
+                },
+                "light": "#16235a",
+                "dark": "#16235a"
+              },
+              {
+                "id": "crimson",
+                "label": {
+                  "fr": "Cramoisi",
+                  "en": "Crimson"
+                },
+                "light": "#5e1414",
+                "dark": "#4a1010"
+              },
+              {
+                "id": "forest",
+                "label": {
+                  "fr": "Forêt",
+                  "en": "Forest"
+                },
+                "light": "#14402a",
+                "dark": "#0f3220"
+              },
+              {
+                "id": "night",
+                "label": {
+                  "fr": "Nuit",
+                  "en": "Night"
+                },
+                "light": "#1c1830",
+                "dark": "#100e1c"
+              }
+            ],
+            "default": "royal",
+            "custom": {
+              "l": [
+                0.14,
+                0.34
+              ],
+              "c": [
+                0,
+                0.14
+              ]
+            },
+            "contrast": [
+              {
+                "text": "#f8efd6",
+                "min": 4.5
+              }
+            ]
+          },
+          {
+            "id": "pennants",
+            "type": "image",
+            "featured": true,
+            "label": {
+              "fr": "Fanions",
+              "en": "Pennants"
+            },
+            "hint": {
+              "fr": "Les fanions sous la bannière",
+              "en": "The pennants under the banner"
+            },
+            "fit": "tile",
+            "default": "royal",
+            "alternatives": [
+              {
+                "id": "royal",
+                "file": "images/fanions.svg",
+                "label": {
+                  "fr": "Bleu et or",
+                  "en": "Blue and gold"
+                }
+              },
+              {
+                "id": "crimson",
+                "file": "images/fanions-cramoisi.svg",
+                "label": {
+                  "fr": "Cramoisi",
+                  "en": "Crimson"
+                }
+              },
+              {
+                "id": "forest",
+                "file": "images/fanions-foret.svg",
+                "label": {
+                  "fr": "Forêt",
+                  "en": "Forest"
+                }
+              },
+              {
+                "id": "gold",
+                "file": "images/fanions-or.svg",
+                "label": {
+                  "fr": "Or et noir",
+                  "en": "Gold and black"
+                }
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "id": "images",
+        "label": {
+          "fr": "Images",
+          "en": "Pictures"
+        },
+        "folded": true,
+        "controls": [
+          {
+            "id": "banner-image",
+            "type": "image",
+            "label": {
+              "fr": "Image de la bannière",
+              "en": "Banner picture"
+            },
+            "fit": "cover",
+            "default": "none",
+            "alternatives": [
+              {
+                "id": "stone",
+                "file": "images/banniere-pierre.svg",
+                "label": {
+                  "fr": "Pierre",
+                  "en": "Stone"
+                }
+              },
+              {
+                "id": "tapestry",
+                "file": "images/banniere-tapisserie.svg",
+                "label": {
+                  "fr": "Tapisserie",
+                  "en": "Tapestry"
+                }
+              }
+            ],
+            "upload": {
+              "formats": [
+                "png",
+                "jpg",
+                "webp",
+                "gif"
+              ],
+              "maxKb": 300,
+              "ratio": [
+                16,
+                3
+              ],
+              "ratioTolerance": 0.03,
+              "minPx": [
+                640,
+                120
+              ],
+              "maxPx": [
+                1920,
+                360
+              ],
+              "focal": true
+            },
+            "textOver": {
+              "color": "#f8efd6",
+              "min": 4.5
+            }
+          },
+          {
+            "id": "emblem",
+            "type": "image",
+            "label": {
+              "fr": "Écu",
+              "en": "Shield"
+            },
+            "fit": "contain",
+            "default": "shield",
+            "alternatives": [
+              {
+                "id": "shield",
+                "file": "images/ecu.svg",
+                "label": {
+                  "fr": "Écu",
+                  "en": "Shield"
+                }
+              },
+              {
+                "id": "helm",
+                "file": "images/heaume.svg",
+                "label": {
+                  "fr": "Heaume",
+                  "en": "Helm"
+                }
+              },
+              {
+                "id": "eagle",
+                "file": "images/aigle.svg",
+                "label": {
+                  "fr": "Aigle",
+                  "en": "Eagle"
+                }
+              },
+              {
+                "id": "swords",
+                "file": "images/epees.svg",
+                "label": {
+                  "fr": "Épées",
+                  "en": "Swords"
+                }
+              }
+            ],
+            "upload": {
+              "formats": [
+                "png",
+                "webp",
+                "gif",
+                "svg"
+              ],
+              "maxKb": 100,
+              "ratio": [
+                36,
+                46
+              ],
+              "ratioTolerance": 0.05,
+              "minPx": [
+                72,
+                92
+              ],
+              "maxPx": [
+                288,
+                368
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "id": "parchment",
+        "label": {
+          "fr": "Parchemin",
+          "en": "Parchment"
+        },
+        "folded": true,
+        "controls": [
+          {
+            "id": "parchment",
+            "type": "color",
+            "label": {
+              "fr": "Ton du parchemin",
+              "en": "Parchment tone"
+            },
+            "palette": [
+              {
+                "id": "cream",
+                "label": {
+                  "fr": "Crème",
+                  "en": "Cream"
+                },
+                "light": "#f8f0dc",
+                "dark": "#251e19"
+              },
+              {
+                "id": "ivory",
+                "label": {
+                  "fr": "Ivoire",
+                  "en": "Ivory"
+                },
+                "light": "#fbf6e8",
+                "dark": "#2a221c"
+              },
+              {
+                "id": "aged",
+                "label": {
+                  "fr": "Vieilli",
+                  "en": "Aged"
+                },
+                "light": "#ecdfbf",
+                "dark": "#201a15"
+              }
+            ],
+            "default": "cream",
+            "contrast": [
+              {
+                "text": "--v-fg",
+                "min": 4.5
+              },
+              {
+                "text": "--v-muted",
+                "min": 4.5
+              }
+            ]
+          },
+          {
+            "id": "corner",
+            "type": "slider",
+            "label": {
+              "fr": "Rayon des coins",
+              "en": "Corner radius"
+            },
+            "min": 0,
+            "max": 1.5,
+            "step": 0.05,
+            "unit": "rem",
+            "default": 0.2
+          }
+        ]
+      },
+      {
+        "id": "advanced",
+        "label": {
+          "fr": "Avancé",
+          "en": "Advanced"
+        },
+        "folded": true,
+        "controls": [
+          {
+            "id": "trim",
+            "type": "color",
+            "label": {
+              "fr": "Couleur des filets",
+              "en": "Trim colour"
+            },
+            "palette": [
+              {
+                "id": "gold",
+                "label": {
+                  "fr": "Or",
+                  "en": "Gold"
+                },
+                "light": "#c9962f",
+                "dark": "#c9962f"
+              },
+              {
+                "id": "silver",
+                "label": {
+                  "fr": "Argent",
+                  "en": "Silver"
+                },
+                "light": "#9aa3ad",
+                "dark": "#9aa3ad"
+              },
+              {
+                "id": "bronze",
+                "label": {
+                  "fr": "Bronze",
+                  "en": "Bronze"
+                },
+                "light": "#a0622d",
+                "dark": "#b06f38"
+              }
+            ],
+            "default": "gold",
+            "custom": {
+              "l": [
+                0.5,
+                0.85
+              ],
+              "c": [
+                0,
+                0.16
+              ]
+            },
+            "contrast": [
+              {
+                "against": [
+                  "--v-bg"
+                ],
+                "min": 1.5
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "breakpoints": [
+    640
+  ],
+  "supports": {
+    "reducedMotion": true
+  }
+}

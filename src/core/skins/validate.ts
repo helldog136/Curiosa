@@ -27,6 +27,7 @@ import { probeImage } from "../animate/imageProbe";
 import { checkAnimation } from "../animate/recipe";
 import { RECIPE_LIMITS, SCENE } from "../animate/spec";
 import { coreSatisfies } from "./semver";
+import { checkCustomizeAgainstSkin } from "./customizeRead";
 
 export type ValidateOptions = {
   /** Version du cœur qui juge (`minCore`). */
@@ -217,7 +218,8 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   const fonts = assets.filter((a) => a.kind === "font");
   const images = assets.filter((a) => a.kind === "image");
   if (fonts.length > FILE_LIMITS.fonts) add("fonts-too-many", { max: FILE_LIMITS.fonts });
-  if (images.length > FILE_LIMITS.images) add("images-too-many", { max: FILE_LIMITS.images });
+  const imageCap = m.customize ? FILE_LIMITS.imagesCustomizable : FILE_LIMITS.images;
+  if (images.length > imageCap) add("images-too-many", { max: imageCap });
   const sizeOf = (rel: string) => byRel.get(rel)?.size ?? 0;
   const fontsTotal = fonts.reduce((n, a) => n + sizeOf(a.file), 0);
   const imagesTotal = images.reduce((n, a) => n + sizeOf(a.file), 0);
@@ -269,6 +271,9 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
     css = sheet.css;
     if (sheet.stats.keyframes > 0 && m.supports?.reducedMotion !== true) add("manifest-reduced-motion");
   }
+
+  // ---- 7b. Personnalisation (core 0.44.0) : les images citées sont des ressources déclarées, la feuille et les réglages s'accordent.
+  if (m.customize) issues.push(...checkCustomizeAgainstSkin(m.customize, { contract: m.skinContract, imageFiles: new Set(images.map((a) => a.file)), css }));
 
   // ---- 8. Lisibilité, mode par mode.
   const readability: ReadabilityIssue[] = [];

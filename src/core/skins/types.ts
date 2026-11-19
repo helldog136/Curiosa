@@ -8,6 +8,7 @@ import type { Mode } from "./readability";
 import type { TokenType } from "./tokens";
 
 import type { ResolvedFonts } from "../fonts/css";
+import type { CustomizeDecl } from "./customizeSpec";
 
 export type { Mode } from "./readability";
 
@@ -44,6 +45,8 @@ export type SkinDefinition = {
   css: string;
   defaults: SkinDefaults;
   options: SkinOption[];
+  /** (core 0.44.0) What the owner may customize in this skin (cleaned declaration), or null. */
+  customize: CustomizeDecl | null;
   /**
    * Vrai pour basic : la personne qui retouche fond, accent, texte ou cartes obtient EXACTEMENT ce qu'elle obtenait avant les skins
    * (palette recalculée à partir de ses choix, jamais de valeur « fixée » par le skin). Les autres skins fixent leurs valeurs (§4.3).

@@ -134,6 +134,13 @@ export function lexErrorCode(error: string): string {
   }
 }
 
+/**
+ * (0.44.0) The customization variables (`--sk-cz-*`) carry values the sheet cannot see (the owner's choices): they may only be read by properties that paint
+ * (colours, backgrounds, borders, outlines). Never by `display`, sizes, fonts, opacity, positions or another custom property (which could launder the value).
+ * Otherwise a fallback such as `display: var(--sk-cz-x, block)` would be checked with `block` while the page receives `none`.
+ */
+const CZ_VAR_PROPERTY_RE = /^(color|fill|stroke|accent-color|caret-color|-webkit-text-fill-color|text-decoration-color|column-rule-color|background(-[a-z]+)*|border(-[a-z]+)*|outline(-[a-z]+)*)$/;
+
 /** Valeur candidate d'une variable (littérale), pour suivre les contournements `display: var(--x)`. */
 function candidates(name: string, defs: ReadonlyMap<string, readonly string[]>, ctx: DeclContext, depth = 0): Tok[][] {
   const out: Tok[][] = [];
@@ -702,6 +709,7 @@ export function checkDeclaration(propRaw: string, valueRaw: string, important: b
         const after = tokens.slice(i + 1).filter((x) => x.k !== "ws")[1];
         if (!name || !VAR_NAME_RE.test(name)) fail("var-name-not-allowed", { name: (name ?? "").slice(0, 40) });
         else if (!after || (after.k !== "comma" && after.k !== "close")) fail("value-syntax");
+        else if (name.startsWith("--sk-cz-") && (isCustom || !CZ_VAR_PROPERTY_RE.test(prop))) fail("var-name-not-allowed", { name: name.slice(0, 40) });
         else refs.push(name);
       } else if (t.v === "env") {
         const name = varName(tokens, i);

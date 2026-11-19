@@ -37,6 +37,7 @@ export function toSkinDefinition(s: InstalledSkinData): SkinDefinition {
     css: s.css,
     defaults: defaultsOf(m.defaults),
     options,
+    customize: m.customize ?? null,
     deriveFromBackground: false,
     colorScheme: true,
   };

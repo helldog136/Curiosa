@@ -19,7 +19,7 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set", "navigation_set", "home_sections_set"] as const;
+export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "skin_customize", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set", "navigation_set", "home_sections_set"] as const;
 export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
 
 export type Plan = {
@@ -47,6 +47,8 @@ export type Plan = {
   bundle?: Plan[];
   /** `skin_set_options`: the colours to set (field -> hex, "" = back to the skin's own) for one mode, with a readable summary for the owner. */
   options?: { mode?: "light" | "dark"; colors: Record<string, string>; names: string };
+  /** `skin_customize`: the values to set (checked), the look, the settings to reset, and a readable summary for the owner. */
+  customize?: { values: Record<string, unknown>; look?: string; reset: string[]; names: string };
   /** `instance_add`: the module is `module`; the nickname that tells the new instance apart from the existing ones. */
   newInstance?: { nickname: string };
   /**
