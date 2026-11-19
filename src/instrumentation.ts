@@ -34,6 +34,14 @@ export async function register() {
   } catch (error) {
     console.error("[modules] first-instance pass failed:", (error as Error)?.message);
   }
+  // Content features newly declared by an installed module (0.45.1: "skin") reach its existing instances, once (src/core/modules/instanceFeatures.ts). Never throws.
+  try {
+    const { adoptAllInstanceFeatures } = await import("@/core/modules/instanceFeatures");
+    const n = await adoptAllInstanceFeatures();
+    if (n) console.log(`[modules] new content features adopted at startup by ${n} instance(s)`);
+  } catch (error) {
+    console.error("[modules] feature adoption failed:", (error as Error)?.message);
+  }
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();

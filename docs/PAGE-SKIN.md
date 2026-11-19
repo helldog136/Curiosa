@@ -18,7 +18,7 @@ Add `"skin"` to `content.features` of the manifest and set `"minCore": "0.45.0"`
 "content": { "features": ["cover", "summary", "body", "skin"] }
 ```
 
-The owner can also switch it on or off per extension in the extension's settings (the list of "features"). Nothing else is needed: no field, no script, no adminForm. The `pages` module (1.3.0) does exactly this.
+The owner can also switch it on or off per extension in the extension's settings (the list of "features"). Nothing else is needed: no field, no script, no adminForm. The `pages` module (1.3.0) does exactly this. Instances that already exist adopt the feature when the module is updated (core 0.45.1, `src/core/modules/instanceFeatures.ts`): only features newly declared are added, and a feature the owner switched off stays off.
 
 ## 3. How it works (design decisions)
 

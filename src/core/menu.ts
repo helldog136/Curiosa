@@ -5,9 +5,9 @@
 export const MENU_SETTING = "nav.menu";
 export const MENU_VERSION = 1;
 
-/** Plafonds (documentés dans docs/PLATFORM.md) : 40 éléments au total (sous-menus compris), 8 par sous-menu, deux niveaux, 80 caractères par libellé. */
+/** Plafonds (documentés dans docs/PLATFORM.md) : 40 éléments au total (sous-menus compris), pas de limite propre à un sous-menu, deux niveaux, 80 caractères par libellé. */
 export const MENU_MAX_TOTAL = 40;
-export const MENU_MAX_CHILDREN = 8;
+export const MENU_MAX_CHILDREN = MENU_MAX_TOTAL;
 export const MENU_LABEL_MAX = 80;
 
 /**

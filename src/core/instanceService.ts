@@ -107,6 +107,8 @@ async function createInstanceRow(db: Db, input: NewInstance) {
     },
   });
   if (input.menu === "suggested" && created.basePath && suggestsMenu(manifest)) await setInstanceInMenu(created.id, true, db);
+  // A new instance has seen every feature its manifest declares (see modules/instanceFeatures.ts).
+  await db.setting.upsert({ where: { key_locale: { key: `instance.${created.id}.__seenFeatures`, locale: "" } }, create: { key: `instance.${created.id}.__seenFeatures`, locale: "", value: JSON.stringify(content?.features ?? []) }, update: { value: JSON.stringify(content?.features ?? []) } });
   // Une instance neuve naît à la version courante des données de son module : aucune migration à lui appliquer.
   if ((manifest.dataVersion ?? 1) > 1) {
     await db.setting.upsert({ where: { key_locale: { key: `instance.${created.id}.__dataVersion`, locale: "" } }, create: { key: `instance.${created.id}.__dataVersion`, locale: "", value: JSON.stringify(manifest.dataVersion) }, update: { value: JSON.stringify(manifest.dataVersion) } });

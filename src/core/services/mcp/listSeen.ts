@@ -16,16 +16,16 @@ export type ListSeen = { rev: string; names: string[]; at: string };
 const KEY = (tokenId: string) => `mcp.listSeen.${tokenId}`;
 const MAX_NAMES = 1000;
 
-/** The revision: the ceiling, the explicit grants and which feature instances exist (not their versions: an update that adds no tool is not a change for the assistant). */
-export function accessRevision(token: { scope: Scope; grants: Grants; fullPowers?: boolean }, instances: { key: string; moduleId: string }[]): string {
+/** The revision: the ceiling, the explicit grants and which feature instances exist and which features each has (not their versions: an update that adds no tool is not a change for the assistant). */
+export function accessRevision(token: { scope: Scope; grants: Grants; fullPowers?: boolean }, instances: { key: string; moduleId: string; features?: string }[]): string {
   const grants = Object.entries(token.grants).sort(([a], [b]) => (a < b ? -1 : 1));
-  const inst = instances.map((i) => `${i.key}:${i.moduleId}`).sort();
+  const inst = instances.map((i) => `${i.key}:${i.moduleId}:${i.features ?? ""}`).sort();
   return crypto.createHash("sha256").update(JSON.stringify(token.fullPowers ? [token.scope, grants, inst, "full"] : [token.scope, grants, inst])).digest("hex").slice(0, 16);
 }
 
 /** The revision of this access now: one cheap query (feature instances), the rights are already in `token`. */
 export async function revisionNow(token: { scope: Scope; grants: Grants; fullPowers?: boolean }): Promise<string> {
-  return accessRevision(token, await prisma.moduleInstance.findMany({ select: { key: true, moduleId: true } }));
+  return accessRevision(token, await prisma.moduleInstance.findMany({ select: { key: true, moduleId: true, features: true } }));
 }
 
 export async function readListSeen(tokenId: string): Promise<ListSeen | null> {

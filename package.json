@@ -1,6 +1,6 @@
 {
   "name": "curiosa",
-  "version": "0.45.0",
+  "version": "0.45.1",
   "private": true,
   "license": "SEE LICENSE IN LICENSE",
   "author": "Helldog136 (https://helldog136.be)",
@@ -78,6 +78,7 @@
     "better-sqlite3@12.9.0": true
   },
   "overrides": {
+    "effect": "3.22.5",
     "next-auth": {
       "nodemailer": "$nodemailer",
       "@simplewebauthn/server": "$@simplewebauthn/server"
