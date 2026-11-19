@@ -12,6 +12,7 @@ import { ImageField } from "@/components/admin/ImageField";
 import { ShowWhen } from "@/components/admin/ShowWhen";
 import { previewFaces } from "@/core/fonts/css";
 import { choiceValue, parseChoice, UPLOAD_LIMITS } from "@/core/fonts/types";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { ui } from "@/components/admin/ui";
 import { CUSTOM_PALETTE, THEME_PRESETS } from "@/core/palettes";
 import { can } from "@/core/permissions";
@@ -154,22 +155,20 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
                 {` · ${view.active.modes.length === 2 ? t("appearance.modes.both") : t(`appearance.modes.${view.active.modes[0] ?? "dark"}Only`)}`}
               </p>
               <div className="flex flex-wrap items-center gap-2">
-                <a href="#choose-skin" className={`${ui.btnPrimary} min-h-11`}>{t("appearance.change")}</a>
+                <a href={view.cards.some((c) => !c.active) ? "#choose-skin" : "#add-title"} className={`${ui.btnPrimary} min-h-11`}>{t("appearance.change")}</a>
                 <PreviewButton skinId={view.active.id} skinName={view.active.name[locale]} bothModes={view.active.modes.length === 2} pages={pages} canChoose={false} active />
               </div>
             </div>
           </div>
         </section>
 
-        <section id="choose-skin" aria-labelledby="choose-title" className="space-y-3 scroll-mt-4">
-          <h2 id="choose-title" className="text-lg font-semibold">{t("appearance.choose.title")}</h2>
-          <p className={ui.help}>{t("appearance.choose.help")}</p>
-          <SkinCards cards={view.cards} locale={locale} pages={pages} canChoose />
-        </section>
+        {view.cards.some((c) => !c.active) && <section id="choose-skin" aria-labelledby="choose-title" className="space-y-3 scroll-mt-4">
+          <h2 id="choose-title" className="flex items-center gap-1 text-lg font-semibold">{t("appearance.choose.title")} <HelpTip always help={t("appearance.choose.help")} name={t("appearance.choose.title")} /></h2>
+          <SkinCards cards={view.cards.filter((c) => !c.active)} locale={locale} pages={pages} canChoose />
+        </section>}
 
         <section aria-labelledby="add-title" className="space-y-3">
-          <h2 id="add-title" className="text-lg font-semibold">{t("appearance.add.title")}</h2>
-          <p className={ui.help}>{t("appearance.add.help")}</p>
+          <h2 id="add-title" className="flex items-center gap-1 text-lg font-semibold">{t("appearance.add.title")} <HelpTip always help={t("appearance.add.help")} name={t("appearance.add.title")} /></h2>
           <Suspense fallback={<p role="status" className={ui.help}>{t("appearance.catalogue.loading")}</p>}>
             <Catalogue locale={locale} canInstall={isOwner} />
           </Suspense>
@@ -299,7 +298,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
         <section aria-labelledby="visitors-title" className={`${ui.card} space-y-2`} data-testid="visitor-switch">
           <h2 id="visitors-title" className="text-lg font-semibold">{t("appearance.visitors.title")}</h2>
           <p className="text-sm" data-switch={view.switchAvailable ? "on" : "off"}>{view.switchAvailable ? t("appearance.visitors.on") : view.modes.length === 2 ? t("appearance.visitors.offOneMode") : t("appearance.visitors.offSkin")}</p>
-          <p className={ui.help}>{t("appearance.visitors.help")}</p>
+          {view.switchAvailable && <p className={ui.help}>{t("appearance.visitors.help")}</p>}
           {view.switchAvailable && (
             <div aria-hidden="true" className="inline-flex overflow-hidden rounded-xl border border-line text-xs">
               {(["auto", "light", "dark"] as const).map((m) => <span key={m} className={`px-3 py-2 ${m === "auto" ? "bg-accent text-accent-fg" : "bg-surface"}`}>{t(`appearance.mode.${m}`)}</span>)}

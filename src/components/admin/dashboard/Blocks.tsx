@@ -53,7 +53,6 @@ export async function SetupBlock({ c }: { c: BlockCtx }) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h2 id="dash-setup" className="text-lg font-semibold">{t("dash.setup.title")}</h2>
-          <p className="mt-1 text-sm text-muted">{t("dash.setup.intro")}</p>
         </div>
         <form action={hideSetup}><button type="submit" className={`${ui.btn} min-h-11`}>{t("dash.setup.hide")}</button></form>
       </div>
@@ -67,7 +66,7 @@ export async function SetupBlock({ c }: { c: BlockCtx }) {
         {state.steps.map((s) => (
           <li key={s.id} className="flex items-center justify-between gap-3 py-2">
             <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true">{s.done ? "✅" : "⬜"}</span><span className={s.done ? "text-muted line-through" : "font-medium"}>{t(`dash.setup.${s.id}`)}</span></span>
-            {s.done ? <span className="text-xs text-muted">{t("dash.setup.done")}</span> : <a href={s.href} className={`${ui.btn} min-h-11`}>{t("dash.setup.go")}{ARROW}</a>}
+            {!s.done && <a href={s.href} className={`${ui.btn} min-h-11`}>{t("dash.setup.go")}{ARROW}</a>}
           </li>
         ))}
       </ul>

@@ -232,7 +232,7 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   const html = await page("fr");
   assert.match(html, /<h1[^>]*>Apparence<\/h1>/);
   assert.match(html, /data-testid="current-skin"[\s\S]*Skin de base/);
-  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 1);
+  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 0, "le skin actuel n'est pas répété dans la liste (R33.7)");
   assert.doesNotMatch(html, /data-testid="undo-banner"|data-testid="adjusted-notice"|data-testid="active-problem"|data-testid="reset-card"/);
   for (const f of ["background", "accent", "accent2", "surface", "text", "glow", "bgPreset", "headerLayout"]) assert.match(html, new RegExp(`name="${f}"`), f);
   assert.match(html, /data-testid="bg-layers"/);

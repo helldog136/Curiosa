@@ -32,6 +32,20 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Extension sheet: two wrong or empty texts removed.** "It will be installed switched off" was wrong (an installed extension runs), and "This module has no README" said nothing useful.
 - **La page d'un accès d'assistant IA ne fait plus 80 000 pixels de haut.** Chaque groupe d'actions est replié avec son compte (« 6 sur 18 »). Les phrases d'explication passent en bulle « ? ».
 - **(English) An AI assistant access page is no longer 80,000 pixels tall.** Each group of actions is folded with its count ("6 of 18"). The explanatory sentences move into a "?" bubble.
+- **Tableau de bord et Entretien : plus de phrases creuses.** La liste « Quelques étapes… » n'a plus de phrase d'intro ni de « Fait » sur chaque ligne, et « Vos extensions sont à jour » a disparu.
+- **(English) Dashboard and Upkeep: no more empty sentences.** The "A few steps…" list has no intro sentence and no "Done" on every line, and "Your extensions are up to date" is gone.
+- **Assistants IA : les phrases qui rassurent sont retirées.** Par exemple « Il ne contient ni mot de passe ni secret » et « Votre IA ne fait rien de risqué sans vous ». Les avertissements qui évitent une perte restent.
+- **(English) AI assistants: reassuring sentences removed.** For example "It contains no password or secret" and "Your AI does nothing risky without you". Warnings that prevent a loss stay.
+- **Apparence : le skin actuel n'apparaît qu'une fois.** Il n'est plus répété dans la liste « Choisir un skin », et la phrase « relus : vous pouvez les installer en confiance » est retirée.
+- **(English) Appearance: the current skin shows once.** It is no longer repeated in the "Choose a skin" list, and the "reviewed: you can install them with confidence" sentence is removed.
+- **Réglages : l'alerte d'espace disque n'est dite qu'une fois.** Elle n'est plus répétée sous chaque champ de logo ou d'image.
+- **(English) Settings: the low-disk warning is said once.** It is no longer repeated under every logo or image field.
+- **Extensions > Mises à jour : une seule ligne pour les extensions impossibles à vérifier.** « Impossible de vérifier 22 extensions pour le moment » ; les noms sont dans l'info-bulle.
+- **(English) Extensions > Updates: one line for extensions that cannot be checked.** "Cannot check 22 extensions right now"; the names are in the tooltip.
+- **Lien court créé : plus de « C'est fait ! ».** Le message dit seulement quoi faire ensuite.
+- **(English) Short link created: no more "Done!".** The message only says what to do next.
+- **« Repris depuis… » devient « Réglé dans… ».** Le mot interne « repris » n'apparaît plus dans les fenêtres de modification ni dans le journal.
+- **(English) "Taken from…" becomes "Set in…".** The internal word "taken over" no longer appears in edit windows or in the journal.
 - **La recherche de réglages (page entière) affiche 50 résultats, puis « Afficher la suite ».**
 - **(English) The settings search (full page) shows 50 results, then "Show more".**
 

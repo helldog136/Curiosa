@@ -37,9 +37,10 @@ export function ModulesUpdatesSection({ t, data, checkedAt, locale, highlight = 
         updatedLine: t("updates.modules.updatedLine"), failedLine: t("updates.modules.failedLine"), stoppedLine: t("updates.modules.stoppedLine"), skippedLine: t("updates.modules.skippedLine"), incompatLine: t("updates.modules.incompatLine"), needsCore: t("modules.core.needs"), missingLine: t("updates.modules.missingLine"), providedLine: t("updates.modules.providedLine"),
       }} />
       {report.unchecked.length > 0 && (
-        <ul className="space-y-0.5 text-xs text-muted" data-testid="modules-unchecked">
-          {report.unchecked.map((id) => <li key={id}>{t("updates.modules.unchecked", { name: nameOf(id) })}</li>)}
-        </ul>
+        // One line, whatever the number: the names are in the tooltip (R33.7: 22 identical lines say the same thing 22 times).
+        <p className="text-xs text-muted" data-testid="modules-unchecked" title={report.unchecked.map(nameOf).join(", ")}>
+          {report.unchecked.length === 1 ? t("updates.modules.unchecked", { name: nameOf(report.unchecked[0]!) }) : t("updates.modules.uncheckedMany", { n: report.unchecked.length })}
+        </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
         <p className="text-sm text-muted" title={checkedAt ? new Date(checkedAt).toLocaleString(locale) : undefined} data-testid="modules-checked">{t("updates.modules.checkedAgo", { when: relativeAge(checkedAt, locale) })}</p>

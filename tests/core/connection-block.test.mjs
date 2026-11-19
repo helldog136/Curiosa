@@ -153,7 +153,7 @@ test("valueHint: a secret never looks empty and says to leave it empty; a text s
   assert.deepEqual(valueHintView({ kind: "secret", valueHint: "kept" }, texts), { placeholder: "••••••••", line: "Laisser vide pour garder l'actuel" });
   assert.deepEqual(valueHintView({ kind: "text", valueHint: "kept", valueTail: "mnop34" }, texts), { placeholder: "…op34", line: "Laisser vide pour garder l'actuel" });
   assert.equal(valueHintView({ kind: "secret", valueHint: "kept", valueTail: "abcd" }, texts).placeholder, "••••••••", "never a piece of a secret");
-  assert.equal(valueHintView({ kind: "text", valueHint: "carried", valueSource: "le connecteur Twitch" }, texts).line, "Repris depuis le connecteur Twitch · Laisser vide pour garder l'actuel");
+  assert.equal(valueHintView({ kind: "text", valueHint: "carried", valueSource: "le connecteur Twitch" }, texts).line, "Réglé dans le connecteur Twitch · Laisser vide pour garder l'actuel");
   assert.equal(valueHintView({ kind: "text" }, texts), null);
   assert.equal(valueHintView({ kind: "text", valueHint: "kept" }, undefined), null);
 });
@@ -172,7 +172,7 @@ test("the form dialog fields: kind secret is a hidden password field (never the 
   assert.match(out, /placeholder="…a1b2"/);
   assert.equal([...out.matchAll(/placeholder="••••••••"/g)].length, 1);
   assert.equal([...out.matchAll(/Laisser vide pour garder l&#x27;actuel/g)].length, 2);
-  assert.match(out, /Repris depuis Twitch/);
+  assert.match(out, /Réglé dans Twitch/);
   const inputs = [...out.matchAll(/<input[^>]*>/g)].map((m) => m[0]);
   const idInput = inputs.find((i) => /name="clientId"/.test(i)), secretInput = inputs.find((i) => /name="secret"/.test(i));
   assert.ok(!/required/.test(idInput) && !/required/.test(secretInput), "an empty field keeps the current value: not required");
