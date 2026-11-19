@@ -10,6 +10,7 @@
  *
  * Aucun minuteur : la liste se relit à la demande, avec un cache qui expire.
  */
+import { isSafeGitRef } from "../gitRef";
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR, DEFAULT_SKINS_REPO } from "../config";
@@ -77,7 +78,7 @@ export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: 
     if (!i || typeof i !== "object" || typeof i.id !== "string" || typeof i.repo !== "string" || !SKIN_ID_RE.test(i.id) || i.id === "basic" || seen.has(i.id)) continue;
     const r = parseSkinRepoUrl(toHttpsRemote(i.repo));
     if (!r.ok || r.repo.url.startsWith("file:")) continue;
-    const ref = typeof i.ref === "string" && /^[\w./-]{1,100}$/.test(i.ref) ? i.ref : undefined;
+    const ref = isSafeGitRef(i.ref) ? i.ref : undefined;
     const subdir = typeof i.subdir === "string" && parseSkinRepoUrl(`${r.repo.url}#:${i.subdir}`).ok ? i.subdir : undefined;
     const core = typeof i.requires?.core === "string" && /^\d+\.\d+\.\d+$/.test(i.requires.core) ? i.requires.core : undefined;
     const contract = Number.isInteger(i.skinContract) ? (i.skinContract as number) : undefined;

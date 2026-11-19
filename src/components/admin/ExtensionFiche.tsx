@@ -32,6 +32,8 @@ export type FicheProps = {
   noModule: boolean;
   /** Le dépôt n'a pas pu être lu. */
   failed: boolean;
+  /** (0.42.0) The repository refused the reading: the page puts the access code field here (private repository) instead of the retry line. */
+  accessSlot?: React.ReactNode;
   /** La lecture a pris trop de temps (au lieu d'échouer) : le message le dit, « Réessayer » relit la fiche. */
   timedOut?: boolean;
   /** GitHub limite les lectures pour le moment : le message dit d'attendre un peu. */
@@ -98,7 +100,8 @@ export function ExtensionFiche(p: FicheProps) {
       {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
       {p.noModule && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
       {p.keptCount > 0 && <p><span role="status" data-testid="kept-note" className={ui.chip} title={t("kept.detailsNote", { name: p.name, count: p.keptCount })}>🗂 {t("kept.chip")}</span></p>}
-      {p.failed && (
+      {p.failed && p.accessSlot}
+      {p.failed && !p.accessSlot && (
         <div role="alert" data-testid="fiche-failed" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">
           <p className="min-w-0 flex-1 basis-64">{t(p.timedOut ? "catalogue.previewSlow" : p.rateLimited ? "catalogue.previewRateLimit" : "catalogue.previewFailed")}</p>
           <RetryButton label={t("fiche.retry")} pendingLabel={t("fiche.retrying")} />

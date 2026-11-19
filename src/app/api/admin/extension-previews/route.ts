@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { currentUser, hasRole } from "@/core/permissions";
+import { can } from "@/core/auth/access";
 import { servePreview } from "@/core/modules/previewServe";
 
 export const dynamic = "force-dynamic";
@@ -11,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request) {
   const user = await currentUser();
   if (!user || !hasRole(user, "admin")) return new NextResponse(null, { status: 404 });
-  const reply = await servePreview(new URL(request.url).searchParams);
+  const reply = await servePreview(new URL(request.url).searchParams, undefined, can(user, "core:modules.install"));
   if (reply.status !== 200) return new NextResponse(null, { status: reply.status });
   return new NextResponse(new Uint8Array(reply.bytes), {
     headers: {

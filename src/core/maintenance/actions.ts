@@ -281,7 +281,7 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
     const { check, failed } = await deps.checkModule(id);
     if (failed) refuse(`The update of "${id}" could not be checked (network or repository unreachable). Try again later.`);
     if (!check.available || !check.target) refuse(`Module "${id}" is already up to date.`);
-    const why = moduleUpdateRefusal({ ref: row.ref, source: row.source, target: check.target!, needsCore: check.needsCore });
+    const why = moduleUpdateRefusal({ id: row.id, ref: row.ref, source: row.source, target: check.target!, needsCore: check.needsCore });
     if (why) refuse(`Module "${id}" cannot be updated by an AI: ${why}.`);
     return { module: id, from: row.version, to: check.target!.replace(/^v/, ""), level: check.level };
   }
@@ -299,7 +299,7 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
   const modules: NonNullable<Plan["modules"]> = [];
   for (const o of report.outdated) {
     const row = rows.get(o.id);
-    if (!row || moduleUpdateRefusal({ ref: row.ref, source: row.source, target: o.target, needsCore: o.needsCore })) continue;
+    if (!row || moduleUpdateRefusal({ id: o.id, ref: row.ref, source: row.source, target: o.target, needsCore: o.needsCore })) continue;
     modules.push({ id: o.id, from: o.current, to: o.target.replace(/^v/, "") });
   }
   if (!modules.length) refuse("No module can be updated by an AI right now (everything is up to date, or the remaining updates need a human or a newer core).");

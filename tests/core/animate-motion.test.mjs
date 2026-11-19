@@ -19,7 +19,7 @@ const { getCoreVersion } = await import("@/core/modules/compat");
 
 const engine = () => { const win = {}; new Function("window", K.animateScript())(win); return win.CuriosaAnimate; };
 const A = engine();
-const glass = JSON.parse(fs.readFileSync("tests/fixtures/animate/stained-glass.json", "utf8"));
+const mosaic = JSON.parse(fs.readFileSync("tests/fixtures/animate/mosaic-sample.json", "utf8"));
 const neon = JSON.parse(fs.readFileSync("tests/fixtures/animate/night-neon.json", "utf8"));
 const T0 = 1_800_000_000_000;
 const SIZE = { w: 1764, h: 717 };
@@ -37,7 +37,7 @@ const withMotion = (rc, motion, c = 2) => ({ ...rc, animateContract: c, motion }
 test("regression: without `motion`, 810 frames (3 recipes x 5 states x 9 instants x 3 qualities x calm) are identical to the 0.32.0 engine's", () => {
   const golden = JSON.parse(fs.readFileSync("tests/fixtures/animate/golden-0.32.0.json", "utf8"));
   let n = 0;
-  for (const [rn, rc] of Object.entries({ basic: null, glass, neon })) for (const [sn, st] of Object.entries(STATES)) for (const d of [-5000, 0, 120, 450, 900, 1500, 2100, 3300, 6000]) for (const quality of ["full", "light", "minimal"]) for (const calm of [false, true]) {
+  for (const [rn, rc] of Object.entries({ basic: null, mosaic, neon })) for (const [sn, st] of Object.entries(STATES)) for (const d of [-5000, 0, 120, 450, 900, 1500, 2100, 3300, 6000]) for (const quality of ["full", "light", "minimal"]) for (const calm of [false, true]) {
     const f = A.frame(st, rc, T0 + d, SIZE, { quality, calm });
     const digest = crypto.createHash("sha256").update(JSON.stringify({ ops: f.ops, keys: f.keys, inc1: f.inc1, layerAlpha: f.layerAlpha, animating: f.animating, view: f.view })).digest("hex").slice(0, 24);
     const key = `${rn}/${sn}/${d}/${quality}/${calm ? "calm" : "live"}`;
@@ -48,10 +48,10 @@ test("regression: without `motion`, 810 frames (3 recipes x 5 states x 9 instant
 
 test("regression: a contract-2 recipe that only names `tempo: steady` and no spring on a layer still differs from nothing only by what it says", () => {
   // the same recipe, with a `motion` that restates today's tempo (steady) but springs by default, DOES change the glide: it is opt-in, not a rewrite
-  const a = A.frame(STATES.gauge, glass, T0 + 300, SIZE, {}), b = A.frame(STATES.gauge, withMotion(glass, { tempo: "steady" }), T0 + 300, SIZE, {});
+  const a = A.frame(STATES.gauge, mosaic, T0 + 300, SIZE, {}), b = A.frame(STATES.gauge, withMotion(mosaic, { tempo: "steady" }), T0 + 300, SIZE, {});
   assert.notDeepEqual(a.view.display, b.view.display);
   // a contract-2 recipe with an EMPTY motion object takes the documented defaults, so it moves too; a contract-1 recipe never reads `motion`
-  const one = A.frame(STATES.gauge, { ...glass, motion: { value: "bouncy" } }, T0 + 300, SIZE, {});
+  const one = A.frame(STATES.gauge, { ...mosaic, motion: { value: "bouncy" } }, T0 + 300, SIZE, {});
   assert.equal(JSON.stringify(one.ops), JSON.stringify(a.ops), "contract 1 ignores `motion`");
 });
 
@@ -165,7 +165,7 @@ test("per-layer words: a layer's `spring` or `duration` changes only that layer'
 test("frames with motion are pure in time, in any order, from two engines; every recipe x state x instant draws without error", () => {
   const B = engine();
   const motions = [{ value: "snappy" }, "bouncy", { value: "gentle", body: "smooth", reaction: "snappy", celebration: "bouncy", fade: "considered", tempo: "stately" }, { tempo: "brisk" }];
-  for (const rc of [glass, neon]) for (const m of motions) for (const [sn, st] of Object.entries(STATES)) {
+  for (const rc of [mosaic, neon]) for (const m of motions) for (const [sn, st] of Object.entries(STATES)) {
     const rec = withMotion(rc, m), instants = [-5000, 0, 120, 450, 900, 1500, 2100, 3300, 6000].map((d) => T0 + d);
     const fwd = instants.map((t) => JSON.stringify(A.frame(st, rec, t, SIZE, {}))), bwd = instants.slice().reverse().map((t) => JSON.stringify(B.frame(st, rec, t, SIZE, { quality: "full" }))).reverse();
     assert.deepEqual(fwd, bwd, sn);
@@ -247,12 +247,12 @@ const check = (dir) => V.validateSkinFolder(dir, { coreVersion: getCoreVersion()
 const codes = (r) => r.issues.map((i) => i.code);
 
 test("skin folder: a skin with motion installs and keeps its motion; a typo is refused with its path; a skin written for a later core installs with warnings, or without animation", () => {
-  const good = check(skinFolder("moving", withMotion(glass, { value: "gentle", celebration: "bouncy", tempo: "steady" })));
+  const good = check(skinFolder("moving", withMotion(mosaic, { value: "gentle", celebration: "bouncy", tempo: "steady" })));
   assert.equal(good.ok, true, JSON.stringify(good.issues)); assert.equal(good.animation.animateContract, 2); assert.equal(good.animation.motion.celebration, "bouncy");
-  const typo = check(skinFolder("typo", withMotion(glass, { value: "wobbly" })));
+  const typo = check(skinFolder("typo", withMotion(mosaic, { value: "wobbly" })));
   assert.equal(typo.ok, false); const i = typo.issues.find((x) => x.code === "animation-motion-name"); assert.ok(i && JSON.stringify(i).includes("motion.value"), JSON.stringify(typo.issues));
-  assert.ok(codes(check(skinFolder("shape", withMotion(glass, 42)))).includes("animation-motion-shape"));
-  const ahead = check(skinFolder("ahead", { animateContract: 3, animateMinContract: 2, genres: { gauge: { backdrop: { draw: "mesh" }, body: glass.genres.gauge.body } } }));
+  assert.ok(codes(check(skinFolder("shape", withMotion(mosaic, 42)))).includes("animation-motion-shape"));
+  const ahead = check(skinFolder("ahead", { animateContract: 3, animateMinContract: 2, genres: { gauge: { backdrop: { draw: "mesh" }, body: mosaic.genres.gauge.body } } }));
   assert.equal(ahead.ok, true, JSON.stringify(ahead.issues)); assert.ok(ahead.animation); assert.ok(codes(ahead).includes("animation-contract-ahead") && codes(ahead).includes("animation-ignored"));
   const later = check(skinFolder("later", { animateContract: 4, genres: {} }));
   assert.equal(later.ok, true); assert.equal(later.animation, null); assert.ok(codes(later).includes("animation-contract-newer"));
@@ -290,9 +290,9 @@ test("CSS twins: --ov-dur-* and --ov-ease-* carry the same names and values in a
 
 test("an overlay skin may READ the motion words (animation-duration, animation-timing-function) but never define them or invent others", () => {
   const css = (id, decl) => `[data-ov-part="panel"]{animation-name:ov-fade;${decl}}`;
-  const ok = check(skinFolder("css-ok", glass, css("css-ok", "animation-duration:var(--ov-dur-considered);animation-timing-function:var(--ov-ease-gentle)")));
+  const ok = check(skinFolder("css-ok", mosaic, css("css-ok", "animation-duration:var(--ov-dur-considered);animation-timing-function:var(--ov-ease-gentle)")));
   assert.equal(ok.ok, true, JSON.stringify(ok.issues));
-  for (const decl of ["animation-duration:var(--ov-dur-slow)", "animation-timing-function:var(--ov-fg)", "animation-timing-function:var(--ov-dur-fast)", "--ov-dur-fast:5s"]) assert.equal(check(skinFolder("css-bad", glass, css("css-bad", decl))).ok, false, decl);
+  for (const decl of ["animation-duration:var(--ov-dur-slow)", "animation-timing-function:var(--ov-fg)", "animation-timing-function:var(--ov-dur-fast)", "--ov-dur-fast:5s"]) assert.equal(check(skinFolder("css-bad", mosaic, css("css-bad", decl))).ok, false, decl);
 });
 
 test("docs: every spring, duration, tempo, motion role and new code of the contract is documented", () => {

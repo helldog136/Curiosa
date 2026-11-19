@@ -135,3 +135,15 @@ export function trim(current: FicheKey): void {
 export function clearFicheDiskCache(): void {
   try { fs.rmSync(root(), { recursive: true, force: true }); } catch { /* sans importance */ }
 }
+
+/**
+ * Forgets every copy of ONE repository (all its modules and versions): used when its access code is saved or removed (core 0.42.0), so that what was read with the
+ * code is never served to someone who does not hold it. `host` and `repo` are the lowercase parts of `accessTarget()`. A repository whose name begins like another one
+ * (`a/b` and `a/b_c`) may lose its copy too: a copy is only a cache and is read again.
+ */
+export function purgeRepoFromDisk(host: string, repo: string): void {
+  try {
+    const prefix = slug(`${host}/${repo}|`).toLowerCase();
+    for (const m of fs.readdirSync(root())) if (m.toLowerCase().startsWith(prefix)) fs.rmSync(path.join(root(), m), { recursive: true, force: true });
+  } catch { /* no copy */ }
+}
