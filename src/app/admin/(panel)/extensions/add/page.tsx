@@ -7,7 +7,8 @@ import { getInstalledModules, listModuleRows } from "@/core/modules/registry";
 import { entryTopics, facetList, filterByTopic } from "@/core/modules/catalogueFacets";
 import { currentVocabulary } from "@/core/modules/placesLoad";
 import { parseTopic, topicTitle } from "@/core/modules/places";
-import { TopicFacets } from "@/components/admin/TopicFacets";
+import { TopicPicker } from "@/components/admin/TopicPicker";
+import { relativeAge } from "@/core/relativeTime";
 import { listRetired } from "@/core/modules/retired";
 import { groupByModule } from "@/core/modules/retiredPlan";
 import { eraseRetiredAction } from "../../modules/actions";
@@ -25,6 +26,7 @@ import { buildNames, viewPlan, type PlanView } from "@/core/modules/dependencyVi
 import { DependencyPlanBox } from "@/components/admin/DependencyPlanBox";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { PendingButton } from "@/components/admin/PendingButton";
 
 export const dynamic = "force-dynamic";
@@ -61,26 +63,26 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="space-y-8">
-      <ExtensionsHeader t={t} advanced={advanced} isOwner={isOwner} current="add" intro={advanced ? t("catalogue.intro") : t("catalogue.intro.simple")} />
-      {advanced && (
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted">
-          <span>
-            {source.source === "repository" && t("catalogue.source.repository", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
-            {source.source === "cache" && t("catalogue.source.cache", { date: new Date(source.fetchedAt ?? 0).toLocaleString(locale) })}
-            {source.source === "none" && t("catalogue.source.unreachable")}
-          </span>
+      <ExtensionsHeader t={t} advanced={advanced} isOwner={isOwner} current="add" intro={t("catalogue.intro.short")} tip={advanced ? t("catalogue.intro") : t("catalogue.intro.simple")} />
+      {/* R2: the task is finding an extension, so the search and the one compact filter come first; the freshness of the list is one small line (exact time in the tooltip). */}
+      <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1 basis-64"><CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} /></div>
+        <TopicPicker options={facets.map((f) => ({ ...f, href: `${EXTENSIONS_ADD_HREF}?topic=${f.id}` }))} current={topic} allHref={EXTENSIONS_ADD_HREF}
+          labels={{ label: t("catalogue.addsTo"), search: t("catalogue.topicSearch"), none: t("catalogue.topicNoMatch"), all: t("catalogue.topicAll"), remove: t("catalogue.topicRemove", { name: "{name}" }), list: t("catalogue.addsTo") }} />
+      </div>
+      {advanced && source.source !== "none" && (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" data-testid="catalogue-freshness">
+          <span title={new Date(source.fetchedAt ?? 0).toLocaleString(locale)}>{t(source.source === "cache" ? "catalogue.source.cache" : "catalogue.updatedAgo", { when: relativeAge(source.fetchedAt, locale) })}</span>
           {isOwner && <form action={refreshCatalogueAction}><PendingButton variant="link" pendingLabel={t("progress.checking")} className="underline">{t("catalogue.refresh")}</PendingButton></form>}
         </div>
       )}
+      </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
-
-      <TopicFacets t={t} facets={facets} current={topic} />
-
-      <CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} />
 
       {groups.map((g) => g.list.length > 0 && (
         <section key={g.id} data-catalogue-section className="space-y-4">
-          <h2 className="text-xl font-semibold">{g.title}</h2>
+          <h2 className="sr-only">{g.title}</h2>
           <ul className="grid gap-4 sm:grid-cols-2">
             {g.list.map((e) => (
               <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id} ${(topicsByEntry.get(e.id) ?? []).map((x) => topicTitle(x, vocab, locale)).join(" ")}`)} className={`${ui.card} flex flex-col gap-4`}>
@@ -89,7 +91,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                   <div className="min-w-0">
                     <p className="text-lg font-semibold leading-tight">{L(e.name)}{advanced && e.version && <span className="ml-2 text-xs font-normal text-muted">v{e.version}</span>}</p>
                     <p className="mt-1 line-clamp-4 text-sm leading-5 text-muted">{L(e.description)}</p>
-                    {advanced && e.repo && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
+                    {advanced && e.repo && e.origin === "extra" && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
                   </div>
                 </div>
                 {(topicsByEntry.get(e.id) ?? []).length > 0 && (
@@ -101,7 +103,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                 {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex flex-wrap items-center gap-2">{e.origin === "extra" ? <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span> : <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
+                  <span className="flex flex-wrap items-center gap-2">{e.origin === "extra" && <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
                   {installed.has(e.id) ? (
                     <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
                   ) : !e.compatible ? (
@@ -120,8 +122,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       {keptGroups.length > 0 && (
         <section className="space-y-3" data-testid="kept-groups">
           <div>
-            <h2 className="text-lg font-semibold">{t("kept.addTitle")}</h2>
-            <p className="mt-1 text-sm text-muted">{t("kept.addHelp")}</p>
+            <h2 className="flex items-center gap-1 text-lg font-semibold">{t("kept.addTitle")} <HelpTip always help={t("kept.addHelp")} name={t("kept.addTitle")} /></h2>
           </div>
           <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
             {keptGroups.map((g) => {
@@ -155,8 +156,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
 
       {isOwner && advanced && (
         <section className={`${ui.card} space-y-4`}>
-          <h2 className="text-lg font-semibold">{t("catalogue.sources")}</h2>
-          <p className="text-sm text-muted">{t("catalogue.sources.intro")}</p>
+          <h2 className="flex items-center gap-1 text-lg font-semibold">{t("catalogue.sources")} <HelpTip always help={t("catalogue.sources.intro")} name={t("catalogue.sources")} /></h2>
           {found.map(({ s, modules }) => (
             <div key={`${s.url}#${s.ref ?? ""}`} className="space-y-3 rounded-xl border border-line p-4">
               <div className="flex flex-wrap items-center justify-between gap-3">

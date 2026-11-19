@@ -55,7 +55,6 @@ export function ReadmeFold({ summary, open, t, children }: { summary?: string; o
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center gap-x-3 gap-y-1 rounded-2xl px-5 py-3 marker:hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
           <span aria-hidden className="text-muted transition-transform group-open:rotate-90">▸</span>
           <span className="font-semibold">{t("fiche.readme.open")}</span>
-          <span className="min-w-0 basis-full text-sm text-muted sm:basis-auto">{t("fiche.readme.hint")}</span>
         </summary>
         <div className="border-t border-line px-5 py-5 sm:px-8">{children}</div>
       </details>

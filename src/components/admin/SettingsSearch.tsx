@@ -5,9 +5,12 @@ import { useRouter } from "next/navigation";
 import { searchHref } from "@/core/adminLinks";
 import { parseSearch, searchEntries, searchModules, splitMatches, type SearchEntry } from "@/core/modules/placeSearch";
 
+/** R15: a long list is paged at 50; « Show more » adds the next 50. */
+const PAGE_SIZE = 50;
+
 export type SettingsSearchLabels = {
   placeholder: string; label: string; none: string; clear: string; count: string; moduleAll: string; moduleLabel: string; advanced: string; modified: string;
-  all: string; filters: string; seeAll: string; setting: string; section: string; empty: string; loading: string; failed: string;
+  all: string; filters: string; seeAll: string; setting: string; section: string; empty: string; loading: string; failed: string; more: string;
 };
 
 /**
@@ -30,6 +33,7 @@ export function SettingsSearch({ variant, labels, endpoint, initial, initialQuer
   const [modified, setModified] = useState(false);
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(-1);
+  const [more, setMore] = useState<{ key: string; n: number }>({ key: "", n: PAGE_SIZE });
   const input = useRef<HTMLInputElement>(null);
   const listId = useId();
   const page = variant === "page";
@@ -56,10 +60,13 @@ export function SettingsSearch({ variant, labels, endpoint, initial, initialQuer
   }, []);
 
   const parsed = useMemo(() => parseSearch(query, { module: module || undefined, advanced: advanced ? true : undefined, modified: modified ? true : undefined }), [query, module, advanced, modified]);
-  const results = useMemo(() => (entries ? searchEntries(entries, parsed, page ? 200 : 8) : []), [entries, parsed, page]);
+  const results = useMemo(() => (entries ? searchEntries(entries, parsed, page ? 1000 : 8) : []), [entries, parsed, page]);
   const modules = useMemo(() => (entries ? searchModules(entries) : []), [entries]);
   const asking = parsed.words.length > 0 || Object.values(parsed.filters).some((v) => v !== undefined);
 
+  // The extra pages belong to one search: a new query or filter starts again at 50.
+  const searchKey = JSON.stringify(parsed);
+  const limit = more.key === searchKey ? more.n : PAGE_SIZE;
   useEffect(() => {
     if (!page) return;
     const q = query.trim();
@@ -154,7 +161,8 @@ export function SettingsSearch({ variant, labels, endpoint, initial, initialQuer
         ) : (
           <>
             <p className="text-sm text-muted" role="status" data-testid="settings-count">{labels.count.replace("{n}", String(results.length))}</p>
-            <ul className="space-y-2" aria-label={labels.label}>{results.map(row)}</ul>
+            <ul className="space-y-2" aria-label={labels.label}>{results.slice(0, limit).map(row)}</ul>
+            {results.length > limit && <button type="button" onClick={() => setMore({ key: searchKey, n: limit + PAGE_SIZE })} data-testid="settings-more" className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-4 text-sm font-medium hover:border-accent hover:text-accent">{labels.more.replace("{n}", String(results.length - limit))}</button>}
           </>
         )}
     </div>

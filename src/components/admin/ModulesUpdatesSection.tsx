@@ -4,6 +4,7 @@ import { ActionForm } from "./ActionForm";
 import { Callout } from "./Page";
 import { ModulesUpdates, type ModuleUpdateRow } from "./ModulesUpdates";
 import { ui } from "./ui";
+import { relativeAge } from "@/core/relativeTime";
 import { recheckModules } from "@/app/admin/(panel)/updates/actions";
 
 /** Modules en retard (vérifiés au plus toutes les quelques minutes ; jamais d'erreur ici : un échec devient un simple message par module). */
@@ -17,14 +18,14 @@ export async function loadModulesUpdates(t: Translator, locale: string, defaultL
 export type ModulesUpdatesData = Awaited<ReturnType<typeof loadModulesUpdates>>;
 
 /** « Vos modules » : la liste des modules en retard, « Tout mettre à jour » et « Revérifier ». Onglet « Mises à jour » du hub Modules. */
-export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t: Translator; data: ModulesUpdatesData; when: string; highlight?: boolean }) {
+export function ModulesUpdatesSection({ t, data, checkedAt, locale, highlight = false }: { t: Translator; data: ModulesUpdatesData; checkedAt: number | null; locale: string; highlight?: boolean }) {
   const { report, rows, nameOf } = data;
   return (
     <section className={`${ui.card} space-y-4 ${highlight ? "border-accent bg-accent/5" : ""}`} data-testid="modules-updates">
-      <div>
-        <h2 className="text-lg font-semibold">🧩 {t("updates.modules.title")}</h2>
+      <div className={highlight || rows.length > 0 ? undefined : "sr-only"}>
+        <h2 className={highlight ? "text-lg font-semibold" : "sr-only"}>🧩 {t("updates.modules.title")}</h2>
         {highlight && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
-        <p className="mt-1 text-sm leading-6 text-muted">{rows.length > 0 ? t("updates.modules.behind", { n: rows.length }) : t("updates.modules.help")}</p>
+        {rows.length > 0 && <p className="mt-1 text-sm leading-6 text-muted">{t("updates.modules.behind", { n: rows.length })}</p>}
       </div>
       {rows.some((r) => r.major) && <Callout tone="warn">{t("updates.modules.majorWarning")}</Callout>}
       {rows.length === 0 && report.checked > 0 && report.unchecked.length < report.checked && <p className="text-sm font-medium" data-testid="modules-uptodate">✅ {t("updates.modules.upToDate")}</p>}
@@ -41,7 +42,7 @@ export function ModulesUpdatesSection({ t, data, when, highlight = false }: { t:
         </ul>
       )}
       <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line pt-4">
-        <p className="text-sm text-muted">{t("updates.checkedAt")} {when}</p>
+        <p className="text-sm text-muted" title={checkedAt ? new Date(checkedAt).toLocaleString(locale) : undefined} data-testid="modules-checked">{t("updates.modules.checkedAgo", { when: relativeAge(checkedAt, locale) })}</p>
         <ActionForm action={recheckModules} submitLabel={t("updates.modules.recheck")} pendingLabel={t("progress.checking")} secondary className="space-y-2">{null}</ActionForm>
       </div>
     </section>

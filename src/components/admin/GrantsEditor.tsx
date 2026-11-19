@@ -143,17 +143,20 @@ export function GrantsEditor({ sections, labels, save, riskyApproval }: {
             // R14: a label that is the same on every row says nothing; the kind only shows when the rows differ.
             const mixed = new Set(s.tools.map((x) => x.kind)).size > 1;
             return (
-              <section key={s.id} className={`${ui.card} space-y-3`} aria-labelledby={`${id}-${s.id}`} data-testid={`grants-section-${s.id}`}>
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h3 id={`${id}-${s.id}`} className="text-lg font-semibold">{s.title}</h3>
-                    {s.help && <p className="mt-1 text-sm leading-6 text-muted">{s.help}</p>}
-                  </div>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-sm font-medium tabular-nums" aria-live="polite" aria-atomic="true" data-testid={`grants-count-${s.id}`}>{fill(labels.count, { n: on, total })}</span>
-                    <button type="button" className={btn} disabled={!canEdit} onClick={() => selectAll(s)} aria-label={fill(labels.selectAllIn, { section: s.title })} data-action="select-all">{labels.selectAll}</button>
-                    <button type="button" className={btn} disabled={!canEdit} onClick={() => clearAll(s)} aria-label={fill(labels.clearAllIn, { section: s.title })} data-action="clear-all">{labels.clearAll}</button>
-                  </div>
+              <details key={s.id} className={`${ui.card} group`} aria-labelledby={`${id}-${s.id}`} data-testid={`grants-section-${s.id}`}>
+                {/* One fold per section (R4, R27): 300 switches in one open page is a wall of 80,000 px on a phone. The count stays in the summary, so nothing is hidden about the state. */}
+                <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-center justify-between gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden">
+                  <span className="flex min-w-0 items-center gap-2">
+                    <span aria-hidden className="inline-block text-sm text-muted transition-transform group-open:rotate-90">▶</span>
+                    <h3 id={`${id}-${s.id}`} className="min-w-0 text-lg font-semibold">{s.title}</h3>
+                  </span>
+                  <span className="text-sm font-medium tabular-nums" aria-live="polite" aria-atomic="true" data-testid={`grants-count-${s.id}`}>{fill(labels.count, { n: on, total })}</span>
+                </summary>
+                <div className="mt-3 space-y-3">
+                {s.help && <p className="text-sm leading-6 text-muted">{s.help}</p>}
+                <div className="flex flex-wrap items-center gap-2">
+                  <button type="button" className={btn} disabled={!canEdit} onClick={() => selectAll(s)} aria-label={fill(labels.selectAllIn, { section: s.title })} data-action="select-all">{labels.selectAll}</button>
+                  <button type="button" className={btn} disabled={!canEdit} onClick={() => clearAll(s)} aria-label={fill(labels.clearAllIn, { section: s.title })} data-action="clear-all">{labels.clearAll}</button>
                 </div>
                 {s.header}
                 {blockedHere > 0 && <p className="text-sm text-muted" data-testid={`grants-blocked-${s.id}`}>{fill(labels.sectionBlocked, { n: blockedHere })}</p>}
@@ -181,7 +184,8 @@ export function GrantsEditor({ sections, labels, save, riskyApproval }: {
                     </li>
                   ))}
                 </ul>
-              </section>
+                </div>
+              </details>
             );
           })}
         </div>
