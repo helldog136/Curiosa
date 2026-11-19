@@ -239,7 +239,7 @@ test("le kit s'importe depuis un dossier hors du cœur par son chemin absolu, sa
     test("rapport", async () => assert.equal((await checkModule(${JSON.stringify(dir)}, { siblings: [] })).summary.ok, true));
   `);
   for (const loader of [[], ["--import", pathToFileURL(path.resolve("tests/helpers/register.mjs")).href]]) {
-    const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ...loader, "--test", path.join(outside, "other-repo.test.mjs")], { cwd: outside, encoding: "utf8", env: cleanEnv });
+    const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", ...loader, "--test", "--test-reporter=tap", path.join(outside, "other-repo.test.mjs")], { cwd: outside, encoding: "utf8", env: cleanEnv });
     assert.equal(r.status, 0, r.stdout + r.stderr);
     assert.match(r.stdout, /# fail 0/);
     assert.match(r.stdout, /manifest\.valid \(obligatoire\)/);
@@ -332,7 +332,7 @@ test("docs/TESTSUPPORT.md est à jour avec les exigences (regénérez : node tes
 test("le modèle d'auteur (testsupport/template) réussit toutes les exigences obligatoires et son test passe", async () => {
   const rep = await checkModule("testsupport/template", { siblings: [] });
   assert.equal(rep.summary.ok, true, JSON.stringify(rep.results.filter((r) => r.status === "fail")));
-  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--test", "testsupport/template/my-module.test.mjs"], { encoding: "utf8", env: cleanEnv });
+  const r = spawnSync(process.execPath, ["--disable-warning=MODULE_TYPELESS_PACKAGE_JSON", "--test", "--test-reporter=tap", "testsupport/template/my-module.test.mjs"], { encoding: "utf8", env: cleanEnv });
   assert.equal(r.status, 0, r.stdout + r.stderr);
 });
 

@@ -269,7 +269,7 @@ test("santé : une pastille, « tout va bien » ou des points, chacun avec son �
 
 test("santé : lue sur un site neuf sans erreur", async () => {
   const h = await H.loadHealth(owner, t);
-  assert.ok(h.points.every((p) => ["backup", "disk"].includes(p.id)) || h.ok, "sur un site neuf, au plus la sauvegarde jamais faite");
+  assert.ok(h.points.every((p) => ["backup", "disk", "node"].includes(p.id)) || h.ok, "sur un site neuf, au plus la sauvegarde jamais faite (et la fin de maintenance de Node.js : elle dépend de la version qui lance le test et de la date)");
   assert.equal((await H.loadHealth(editor, t)).ok, true);
 });
 

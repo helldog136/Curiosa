@@ -13,7 +13,7 @@ Ce guide s'adresse à **une personne ou une entreprise qui n'a jamais travaillé
 
 ## 1. Ce qu'il vous faut (5 minutes)
 
-- **Node 20 ou plus** (22 conseillé) et **git**.
+- **Node 24** (22.12 ou plus fonctionne aussi) et **git**.
 - Un dépôt **public** sur GitHub, GitLab, Codeberg ou Bitbucket (les hôtes que les sites acceptent par défaut, voir [hôtes autorisés](#hôtes-autorisés)).
 - Le **cœur de Curiosa cloné à côté** de votre dépôt : il ne sert qu'à **tester** (le kit de test en fait partie). Vous n'avez pas à faire tourner le site.
 
@@ -134,17 +134,17 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Trouver la dernière version publiée de Curiosa
         id: core
         run: |
           ref=$(git ls-remote --tags --refs https://github.com/helldog136/Curiosa 'refs/tags/v*' | sed 's#.*refs/tags/##' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
           test -n "$ref" || { echo "Aucune version publiée de Curiosa trouvée"; exit 1; }
           echo "ref=$ref" >> "$GITHUB_OUTPUT"
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { repository: helldog136/Curiosa, ref: "${{ steps.core.outputs.ref }}", path: curiosa-core }
-      - uses: actions/setup-node@v4
-        with: { node-version: 22 }
+      - uses: actions/setup-node@v6
+        with: { node-version: 24 }
       - run: npm ci --omit=dev --ignore-scripts && npx prisma generate
         working-directory: curiosa-core
       - run: node curiosa-core/testsupport/check.mjs .

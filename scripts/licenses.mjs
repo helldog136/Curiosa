@@ -14,7 +14,7 @@ export function productionPackages() {
   for (const [key, v] of Object.entries(lock.packages)) {
     if (!key || v.dev || v.devOptional) continue;
     const name = key.replace(/^.*node_modules\//, "");
-    out.push({ key, name, version: v.version, license: v.license ?? "UNKNOWN" });
+    out.push({ key, name, version: v.version, license: v.license ?? "UNKNOWN", fallback: v.optional === true && !v.os && !v.cpu });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name) || a.version.localeCompare(b.version));
 }
@@ -57,6 +57,9 @@ export function render() {
   // Textes de licence : regroupés quand ils sont identiques (hors ligne de copyright, qui diffère d'un paquet à l'autre).
   const texts = new Map();
   for (const p of pkgs) {
+    // Les paquets optionnels sans plateforme (le repli WebAssembly de sharp et ce qu'il tire) ne sont installés que par npm 10, pas par npm 11 :
+    // leur texte n'entre pas ici, pour que le fichier soit le même quelle que soit la version de npm.
+    if (p.fallback) continue;
     const t = licenseText(p.key);
     if (!t) continue;
     const id = createHash("sha256").update(t).digest("hex");

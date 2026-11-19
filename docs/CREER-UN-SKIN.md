@@ -14,7 +14,7 @@ Ce guide s'adresse à **une personne (ou une IA qui travaille pour elle) qui veu
 
 ## 1. Ce qu'il vous faut (5 minutes)
 
-- **Node 22** et **git**.
+- **Node 24** et **git**.
 - Un dépôt **public** sur GitHub, GitLab, Codeberg ou Bitbucket.
 - Le **cœur de Curiosa cloné à côté** : il ne sert qu'à **tester** (le kit en fait partie). Vous ne lancez pas de site.
 - Pour le contrôle **dans un navigateur** (fortement conseillé) : Chromium et le module `playwright` (`npm install --global playwright && npx playwright install chromium`).
