@@ -18,11 +18,21 @@ export async function pageSkinChoices(): Promise<PageSkinChoice[]> {
   const ids = new Set(await installedSiteSkinIds());
   if (ids.size < 2) return [];
   const active = await readActiveSetting();
-  return (await installed()).filter((s) => s.kind === "site" && s.status === "ok" && ids.has(s.id)).map((s) => ({ id: s.id, name: s.name, active: s.id === active }));
+  const ok = (await installed()).filter((s) => s.kind === "site" && s.status === "ok" && ids.has(s.id)).map((s) => ({ id: s.id, name: s.name, active: s.id === active }));
+  // a damaged skin is not offered, and below two working skins nothing is
+  return ok.length >= 2 ? ok : [];
 }
 
 /** Entry editor: the choices with their names in the admin language, or [] when the instance has no "skin" feature or fewer than two skins are installed. */
 export async function pageSkinOptions(features: readonly string[], locale: string): Promise<{ id: string; name: string }[]> {
   if (!features.includes("skin")) return [];
   return (await pageSkinChoices()).map((k) => ({ id: k.id, name: (locale === "fr" ? k.name.fr : k.name.en) || k.id }));
+}
+
+/**
+ * The ids a WRITE accepts (admin form, assistant tools): exactly the skins the admin form offers (installed, files in place AND status ok), or [] below two.
+ * Rendering stays tolerant (`installedSiteSkinIds`): a skin that breaks later falls back to the site skin when the page is drawn.
+ */
+export async function offeredSiteSkinIds(): Promise<string[]> {
+  return (await pageSkinChoices()).map((k) => k.id);
 }

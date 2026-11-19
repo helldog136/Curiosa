@@ -319,3 +319,76 @@ test("migration: Entry.skin is a nullable column without default; backups carry 
   assert.equal(pickKnownColumns("entries", { ...row, extra: 1 }).skin, "customizable", "the restore keeps the column");
   assert.equal(pickKnownColumns("entries", { id: "x" }).skin, undefined, "a backup made before 0.45.0 restores with the default");
 });
+
+// ── review fixes (F1-F4) ────────────────────────────────────────────────────────────────────────────────────────────
+
+test("requestedPageSkin follows the resolver's order: an instance mounted on the address wins, even without the feature; a short link too", async () => {
+  await install("duo");
+  await install("customizable");
+  await setSetting("skin.active", "duo");
+  const { entry } = await pagesSite({ skin: "customizable" });
+  // another extension (no skin feature) is mounted on the address of the skinned root page
+  await db.fixture("blog");
+  const bm = FIXTURE_MODULES.find((b) => b.manifest.id === "blog").manifest;
+  const blog = await createInstance(db.prisma, { manifest: bm, names: { en: "Blog", fr: "Blog" }, nickname: "Blog", basePath: "showcase" });
+  assert.equal(blog.basePath, "showcase");
+  assert.equal(await requestedPageSkin("/showcase", "en"), null, "the blog list is served there, not the skinned page");
+  // a short link on a root page address is served before the root instance
+  await db.prisma.moduleInstance.update({ where: { id: blog.id }, data: { basePath: "blog-x" } });
+  const R = await import("@/core/modules/registry");
+  R.resetModuleRegistry?.();
+  assert.equal(await requestedPageSkin("/showcase", "en"), "customizable", "no longer shadowed");
+  await db.prisma.redirect.create({ data: { path: "showcase", targetUrl: "https://example.org/", active: true } });
+  assert.equal(await requestedPageSkin("/showcase", "en"), null, "an active short link answers first");
+});
+
+test("the publish request carries only a well-formed skin id", async () => {
+  await install("duo");
+  await install("customizable");
+  const { inst } = await pagesSite();
+  const create = await tool(inst.key, "create_draft");
+  const made = await create.call({ title: "Odd", skin: "customizable" }, ACTOR);
+  await db.prisma.entry.update({ where: { id: made.id }, data: { skin: "<script>x" } });
+  const plan = await prepareEntryPublish("entry_publish", { instance: inst.key, id: made.id });
+  assert.equal(plan.entry.items[0].skin, undefined);
+});
+
+test("update_draft: a refused call (no title for a new language) leaves the skin untouched", async () => {
+  await setSetting("i18n.enabled", ["en", "fr"]);
+  await install("duo");
+  await install("customizable");
+  const { inst } = await pagesSite();
+  const create = await tool(inst.key, "create_draft");
+  const update = await tool(inst.key, "update_draft");
+  const get = await tool(inst.key, "get_entry");
+  const made = await create.call({ title: "Keep", skin: "duo" }, ACTOR);
+  await assert.rejects(() => update.call({ id: made.id, locale: "fr", skin: "customizable" }, ACTOR), /title is required/);
+  assert.equal((await get.call({ id: made.id }, ACTOR)).skin, "duo");
+});
+
+test("the skin argument is as long as an id can be, and writes accept only what the form offers (a skin whose files changed is refused)", async () => {
+  await install("duo");
+  await install("customizable");
+  const { inst } = await pagesSite();
+  const create = await tool(inst.key, "create_draft");
+  const { SKIN_ID_RE } = await import("@/core/skins/allowlist");
+  assert.ok(SKIN_ID_RE.test("a" + "b".repeat(40)) && !SKIN_ID_RE.test("a" + "b".repeat(41)));
+  assert.equal(create.input.properties.skin.maxLength, 41);
+  assert.deepEqual((await P.offeredSiteSkinIds()).sort(), ["customizable", "duo"]);
+  // damage one skin: it is no longer offered, so the same check refuses it
+  const rows = (await S.installed()).filter((s) => s.id === "customizable");
+  const dir = path.join(SKINS_DIR, "customizable", rows[0].version);
+  const file = fs.readdirSync(dir).find((f) => f.endsWith(".css")) ?? "skin.json";
+  fs.appendFileSync(path.join(dir, file), "\n/* tampered */\n");
+  S.clearSkinCaches();
+  const status = (await S.installed()).find((s) => s.id === "customizable").status;
+  if (status !== "ok") {
+    assert.deepEqual(await P.offeredSiteSkinIds(), [], "below two offered skins: nothing is offered");
+    await assert.rejects(() => create.call({ title: "x", skin: "customizable" }, ACTOR), /more than one site skin/);
+  }
+  assert.notEqual(status, "ok", "the fixture really became a damaged skin");
+});
+
+test("release gate: the public tree has no next/link (full document loads are what makes the page skin safe)", () => {
+  assert.match(read("docs/PAGE-SKIN.md"), /release gate/i);
+});

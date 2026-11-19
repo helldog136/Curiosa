@@ -103,7 +103,7 @@ export const contentToolProvider: McpToolProvider = {
       });
 
       const hasSkin = instance.features.includes("skin");
-      const draftProps = { ...(hasSkin ? { skin: { type: "string" as const, maxLength: 40, description: SKIN_ARG_DESCRIPTION } } : {}), title: str(300), summary: str(2000), body: str(50000), url: str(2000), code: str(200), tags: { type: "array" as const, items: { type: "string" as const } }, locale: { type: "string" as const, enum: locales } };
+      const draftProps = { ...(hasSkin ? { skin: { type: "string" as const, maxLength: 41, description: SKIN_ARG_DESCRIPTION } } : {}), title: str(300), summary: str(2000), body: str(50000), url: str(2000), code: str(200), tags: { type: "array" as const, items: { type: "string" as const } }, locale: { type: "string" as const, enum: locales } };
       const createSchema: JsonSchemaLite = { type: "object", required: ["title"], properties: draftProps };
       add("create_draft", {
         description: `[${label}] Create a DRAFT entry. It is never published automatically: a human reviews and publishes it in the admin.`,
@@ -143,7 +143,7 @@ export const contentToolProvider: McpToolProvider = {
           if (a.url && !isSafeExternalUrl(a.url as string)) throw new McpToolError("url must be http(s) or mailto");
           const locale = (a.locale as string) ?? entry.sourceLocale;
           const skin = await mcpPageSkin(a.skin, entry.skin);
-          await prisma.entry.update({ where: { id: entry.id }, data: { ...(skin !== undefined ? { skin } : {}), url: (a.url as string) ?? entry.url, code: (a.code as string) ?? entry.code, ...(a.tags ? { tags: JSON.stringify((a.tags as string[]).map((t) => t.trim().toLowerCase()).filter(Boolean)) } : {}) } });
+          await prisma.entry.update({ where: { id: entry.id }, data: { url: (a.url as string) ?? entry.url, code: (a.code as string) ?? entry.code, ...(a.tags ? { tags: JSON.stringify((a.tags as string[]).map((t) => t.trim().toLowerCase()).filter(Boolean)) } : {}) } });
           const existing = entry.translations.find((x) => x.locale === locale);
           if (!existing && !a.title) throw new McpToolError("a title is required to add a new language version");
           const title = (a.title as string) ?? existing!.title;
@@ -152,6 +152,8 @@ export const contentToolProvider: McpToolProvider = {
             create: { entryId: entry.id, instanceId: instance.id, locale, slug: await uniqueSlug(prisma, instance.id, locale, slugify(title), entry.id), title, summary: (a.summary as string) ?? "", body: (a.body as string) ?? "" },
             update: { title, ...(a.summary !== undefined ? { summary: a.summary as string } : {}), ...(a.body !== undefined ? { body: a.body as string } : {}) },
           });
+          // the skin is written last: a call refused above (missing title, unknown language) must not have changed it
+          if (skin !== undefined) await prisma.entry.update({ where: { id: entry.id }, data: { skin } });
           await prisma.auditLog.create({ data: { actor: `mcp:${actor.name}`, action: "entry.update", target: `${instance.key}/${entry.id}${skin ? ` skin:${skin}` : ""}` } });
           return { id: entry.id, status: "draft", locale, ...(skin !== undefined ? { skin } : {}) };
         },

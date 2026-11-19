@@ -9,7 +9,9 @@
  */
 import { cache } from "react";
 import { RESERVED_PATHS } from "../config";
-import { getActiveInstances } from "../modules/registry";
+import { prisma } from "../db";
+import { getActiveInstances, type ActiveInstance } from "../modules/registry";
+import { mountedAtRoot, mountedOnBase } from "../modules/mountOrder";
 import { hasPublicPage } from "../modules/publicPage";
 import { readActiveSetting } from "../skins/registry";
 import { installedSiteSkinIds } from "../skins/pageSkin";
@@ -20,12 +22,19 @@ export const requestedPageSkin = cache(async (path: string, locale: string): Pro
   const segs = path.split("/").filter(Boolean).map((s) => { try { return decodeURIComponent(s).toLowerCase(); } catch { return ""; } });
   if (segs.length === 0 || segs.length > 2 || segs.includes("")) return null;
   if (RESERVED_PATHS.has(segs[0]!)) return null;
-  const skinned = (await getActiveInstances()).filter((a) => hasPublicPage(a) && !a.mod.def.page && a.mod.manifest.content && a.instance.features.includes("skin"));
-  if (skinned.length === 0) return null;
-  // same order as the page resolver: an instance mounted on the first segment, else the one mounted at the root
-  const byBase = skinned.find((a) => a.instance.basePath && a.instance.basePath === segs[0]);
-  const target = byBase && segs.length === 2 ? { a: byBase, slug: segs[1]! } : !byBase && segs.length === 1 ? { a: skinned.find((a) => a.instance.basePath === ""), slug: segs[0]! } : null;
-  if (!target?.a) return null;
+  // same resolver order as the catch-all page (core/modules/mountOrder.ts): look among ALL mounted instances, then check the one found has the feature
+  const mounted = (await getActiveInstances()).filter(hasPublicPage);
+  const byBase = mountedOnBase(mounted, segs[0]!);
+  let target: { a: ActiveInstance; slug: string } | null = null;
+  if (byBase) {
+    if (segs.length === 2) target = { a: byBase, slug: segs[1]! };
+  } else if (segs.length === 1) {
+    // an active short link on this address is served before the root instance
+    if (await prisma.redirect.findFirst({ where: { path: segs[0]!, active: true }, select: { id: true } })) return null;
+    const root = mountedAtRoot(mounted);
+    if (root) target = { a: root, slug: segs[0]! };
+  }
+  if (!target || target.a.mod.def.page || !target.a.mod.manifest.content || !target.a.instance.features.includes("skin")) return null;
   const found = await findEntryBySlug(target.a.instance, locale, target.slug);
   if (found.kind !== "found" || !found.entry.skin) return null;
   return effectivePageSkin(found.entry.skin, await installedSiteSkinIds(), await readActiveSetting());

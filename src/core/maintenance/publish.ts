@@ -6,6 +6,7 @@ import { getSiteConfig } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
 import type { Outcome } from "./actions";
 import { redactSecrets } from "./redact";
+import { SKIN_ID_RE } from "../skins/allowlist";
 import type { Plan } from "./requests";
 
 /**
@@ -81,7 +82,7 @@ export async function prepareEntryPublish(action: "entry_publish" | "entry_unpub
       if (missing.length) { problems.push(`${id}: the ${missing.join(", ")} version is missing and this site shows each language only when it is written; add it with update_draft (locale) first, nothing was published`); continue; }
     }
     const shown = e.translations.find((t) => t.locale === config.defaultLocale) ?? e.translations[0];
-    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations, e.skin), ...(e.skin ? { skin: e.skin } : {}) });
+    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations, e.skin), ...(e.skin && SKIN_ID_RE.test(e.skin) ? { skin: e.skin } : {}) });
   }
   if (problems.length) throw new McpToolError(`Not ${publish ? "published" : "unpublished"}: ${problems.join("; ")}.`);
   return { entry: { instance: instance.key, ...(locale ? { locale } : {}), items } };

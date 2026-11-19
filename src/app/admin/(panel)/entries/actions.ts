@@ -11,7 +11,7 @@ import { prisma } from "@/core/db";
 import { uniqueSlug } from "@/core/content/entries";
 import { audit, can } from "@/core/permissions";
 import { checkPageSkin } from "@/core/skins/pageSkinCheck";
-import { installedSiteSkinIds } from "@/core/skins/pageSkin";
+import { offeredSiteSkinIds } from "@/core/skins/pageSkin";
 import { slugify } from "@/core/slug";
 import { isSafeExternalUrl, normalizeLinkInput } from "@/core/url";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -58,7 +58,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   let skin: string | null | undefined;
   if (formData.get("__skin") === "1" && collection.features.includes("skin")) {
     const stored = id ? (await prisma.entry.findUnique({ where: { id }, select: { skin: true } }))?.skin ?? null : null;
-    const checked = checkPageSkin(String(formData.get("skin") ?? ""), await installedSiteSkinIds(), stored);
+    const checked = checkPageSkin(String(formData.get("skin") ?? ""), await offeredSiteSkinIds(), stored);
     if (!checked.ok) return { errors: { skin: t("error.pageSkin") } };
     skin = checked.skin;
   }
