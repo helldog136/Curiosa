@@ -3894,7 +3894,7 @@
   "navigation.blocked.group": "Un sous-menu ne se range pas dans un autre sous-menu.",
   "navigation.blocked.hasChildren": "Cet élément contient déjà un sous-menu : il ne peut pas devenir lui-même un sous-menu.",
   "navigation.blocked.full": "Le sous-menu du dessus est plein ({max} éléments au plus).",
-  "navigation.limits": "Le menu accepte {total} éléments au plus, et {children} par sous-menu (deux niveaux).",
+  "navigation.limits": "Le menu accepte {total} éléments au plus, sous-menus compris (deux niveaux).",
   "navigation.error.children": "Ce sous-menu contient {count} éléments ; il en accepte {max} au plus. Retirez-en ou sortez-en du sous-menu.",
   "navigation.error.total": "Le menu contient {count} éléments ; il en accepte {max} au plus. Retirez-en quelques-uns.",
   "menu.system.home": "Accueil",

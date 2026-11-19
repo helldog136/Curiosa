@@ -109,7 +109,7 @@ test("navigation_get: languages, limits, what can be added, and entries in the e
   await call(token, "navigation_set", { entries: SHOWCASE() });
   const got = (await call(token, "navigation_get")).value;
   assert.deepEqual(got.languages, ["en", "fr"]);
-  assert.deepEqual([got.limits.entries, got.limits.perSubmenu], [40, 8]);
+  assert.deepEqual([got.limits.entries, got.limits.perSubmenu], [40, 40]);
   assert.deepEqual(got.canAdd.sitePages.map((p) => p.page), ["home", "privacy"]);
   assert.ok(got.canAdd.modulePages.some((p) => p.instance === blog.key && p.address === "/blog"));
   assert.equal(got.entries.length, 6);
@@ -219,7 +219,7 @@ test("add, reorder and remove: all are \"send the new list\"; the summary says w
   assert.deepEqual((await resolvePublicMenu("en", "en")).map((i) => i.label), ["Contact", "Home", "What is Curiosa", "Blog", "Press kit", "Privacy"]);
 });
 
-test("submenus: one level, 8 entries, a label in every language, at least one child", async () => {
+test("submenus: one level, no per-submenu cap, a label in every language, at least one child", async () => {
   const { token } = await direct();
   const ok = await call(token, "navigation_set", { entries: [{ page: "home" }, { label: both("Learn", "Découvrir"), children: [{ instance: "pages", entry: aboutPage }, { instance: "pages", entry: installPage }] }] });
   assert.equal(ok.value.status, "done", JSON.stringify(ok));
@@ -228,8 +228,11 @@ test("submenus: one level, 8 entries, a label in every language, at least one ch
   assert.match((await call(token, "navigation_set", { entries: [{ label: both("A", "A"), children: [{ label: both("B", "B"), children: [{ page: "home" }] }] }] })).error, /another submenu/);
   assert.match((await call(token, "navigation_set", { entries: [{ label: both("A", "A"), children: [] }] })).error, /give a target/);
   assert.match((await call(token, "navigation_set", { entries: [{ children: [{ page: "home" }] }] })).error, /label is needed/);
-  const nine = Array.from({ length: 9 }, (_, i) => ({ externalUrl: `https://example.org/${i}`, label: both(`L${i}`, `L${i}`) }));
-  assert.match((await call(token, "navigation_set", { entries: [{ label: both("Many", "Beaucoup"), children: nine }] })).error, /8 entries at most/);
+  const twelve = Array.from({ length: 12 }, (_, i) => ({ externalUrl: `https://example.org/${i}`, label: both(`L${i}`, `L${i}`) }));
+  const many = await call(token, "navigation_set", { entries: [{ label: both("Many", "Beaucoup"), children: twelve }] });
+  assert.equal(many.value.status, "done", JSON.stringify(many));
+  const forty = Array.from({ length: 40 }, (_, i) => ({ externalUrl: `https://example.org/${i}`, label: both(`L${i}`, `L${i}`) }));
+  assert.match((await call(token, "navigation_set", { entries: [{ label: both("Many", "Beaucoup"), children: forty }] })).error, /40 entries at most/);
 });
 
 test("refused with plain words and an example, and NOTHING is saved: unknown or unpublished targets, languages, addresses, duplicates, caps", async () => {

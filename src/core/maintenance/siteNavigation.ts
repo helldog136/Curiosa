@@ -24,7 +24,7 @@ import { clearUndoPoint, fingerprintOf, loadUndoPoint, saveUndoPoint } from "./u
  *
  * `navigation_set` takes the WHOLE menu (the shape `navigation_get` returns, so an AI reads, edits and sends it back): adding, removing and reordering are
  * all "send the new list". One writer means one right to tick and one thing to approve, and the owner reads a before / after summary.
- * Same rules as the admin's menu form (`menuInput.ts`): 40 entries in all, 8 per submenu, two levels, labels of 80 characters at most, an entry may
+ * Same rules as the admin's menu form (`menuInput.ts`): 40 entries in all, no separate cap per submenu, two levels, labels of 80 characters at most, an entry may
  * appear only once. On top of it, for an AI: every target must EXIST (a page of the site, a module page, a published entry, a short link, an https address),
  * every label is written in EVERY language of the site, and a refusal lists every problem with an example.
  * Never: raw HTML, scripts, javascript: addresses, an address with a password, a secret. The menu itself is the only thing written (`nav.menu`).

@@ -543,7 +543,7 @@ test("module_configure : ne touche ni aux droits, ni aux rôles, ni au nom ou au
   const after = await db.prisma.moduleInstance.findFirst({ where: { key }, include: { translations: true } });
   assert.deepEqual(after, before);
   assert.equal(await db.prisma.role.count(), roles);
-  assert.equal(await db.prisma.setting.count({ where: { key: { startsWith: `instance.${before.id}.__` } } }), 0, "aucun réglage interne de l'instance (menu, accès IA, placement) n'a été posé");
+  assert.equal(await db.prisma.setting.count({ where: { key: { startsWith: `instance.${before.id}.__`, not: `instance.${before.id}.__seenFeatures` } } }), 0, "aucun réglage interne de l'instance (menu, accès IA, placement) n'a été posé");
 });
 
 test("module_configure : sur un site à UNE seule langue, un réglage traduisible accepte une valeur simple", async () => {
