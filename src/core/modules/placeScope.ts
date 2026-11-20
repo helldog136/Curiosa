@@ -49,7 +49,166 @@ export function scopeQuery(href: string, instanceKey: string): string {
 const LINK_KEY_RE = /href$/i;
 
 /**
- * The blocks of a module, with every query-only link (`?…`) moved to the module's namespace. Walks plain JSON (objects and arrays) without changing the input;
+ * True when ONE module contributes to the tab (core 0.45.2: counted per tab, not per page). Only then are the old unprefixed parameters (bookmarks) read by that module:
+ * on a tab where two modules show side by side an unprefixed parameter belongs to nobody.
+ */
+export const soleOnTab = (tab: { sections: readonly { moduleId: string }[] }): boolean => new Set(tab.sections.map((s) => s.moduleId)).size === 1;
+
+/* ───────────── links written inside html and markdown blocks (core 0.45.2) ───────────── */
+
+/** Separators of a query written in markup: `&amp;` first, so that `a=1&amp;b=2` is two pairs and not a pair named `amp;b`. */
+const SEP_RE = /(&amp;|&)/;
+
+/** `a=1&amp;b=2` (no `?`, no fragment) -> `<ns>.a=1&amp;<ns>.b=2`. A pair that is not a plain name (`<ns>.a`, `{id}`, `x;y`) is kept as it is: scoping twice is scoping once. */
+function scopePairs(query: string, ns: string): string {
+  return query.split(SEP_RE).map((part, i) => (i % 2 === 1 || !part ? part : PARAM_RE.test(part.split("=")[0]!) ? `${ns}.${part}` : part)).join("");
+}
+
+/** The value of an `href` written in markup: `?a=1#top` -> `?<ns>.a=1#top`. A bare `?`, a path, an absolute address are returned untouched. */
+function scopeMarkupHref(value: string, ns: string): string {
+  if (!value.startsWith("?") || value.length === 1) return value;
+  const hash = value.indexOf("#");
+  const query = hash === -1 ? value.slice(1) : value.slice(1, hash);
+  return `?${scopePairs(query, ns)}${hash === -1 ? "" : value.slice(hash)}`;
+}
+
+/** Tags whose content is not markup: it is skipped, never rewritten. */
+const RAW_TEXT_TAGS = new Set(["script", "style", "textarea", "title"]);
+/** Form controls whose `name` is a field of the surrounding form. */
+const CONTROL_TAGS = new Set(["input", "select", "textarea", "button"]);
+
+type Attr = { name: string; value: string; start: number; end: number; quote: string };
+
+/** Reads the attributes of ONE tag (`<a href="?x=1" class=b>`), one pass, no backtracking. Only quoted values can be rewritten. */
+function readAttrs(tag: string): Attr[] {
+  const out: Attr[] = [];
+  let i = 0;
+  const n = tag.length;
+  while (i < n) {
+    while (i < n && /[\s/]/.test(tag[i]!)) i++;
+    const nameStart = i;
+    while (i < n && !/[\s=/>]/.test(tag[i]!)) i++;
+    const name = tag.slice(nameStart, i).toLowerCase();
+    if (!name) break;
+    while (i < n && /\s/.test(tag[i]!)) i++;
+    if (tag[i] !== "=") continue;
+    i++;
+    while (i < n && /\s/.test(tag[i]!)) i++;
+    const q = tag[i];
+    if (q === '"' || q === "'") {
+      const close = tag.indexOf(q, i + 1);
+      if (close === -1) break;
+      out.push({ name, value: tag.slice(i + 1, close), start: i + 1, end: close, quote: q });
+      i = close + 1;
+    } else {
+      const s = i;
+      while (i < n && !/\s/.test(tag[i]!)) i++;
+      out.push({ name, value: tag.slice(s, i), start: s, end: i, quote: "" });
+    }
+  }
+  return out;
+}
+
+/** Index of the `>` that ends the tag whose name ends at `from`, quotes respected; -1 when the tag never closes (the rest of the string is left alone). */
+function tagEnd(html: string, from: number): number {
+  let q = "";
+  for (let i = from; i < html.length; i++) {
+    const c = html[i]!;
+    if (q) { if (c === q) q = ""; } else if (c === '"' || c === "'") q = c; else if (c === ">") return i;
+  }
+  return -1;
+}
+
+/**
+ * `href="?a=1"` of every tag of an html string, and the field names of its `<form method="get">` forms (no `action`, or an empty one), moved to the module's namespace.
+ * Only markup is touched: comments, `<script>`/`<style>` content and plain text that merely contains `href="?x=1"` are left as they are. A form with another method or an
+ * `action` leaves the page, so it is left alone, and so is a tag that never closes. Linear in the size of the string.
+ */
+export function scopeHtml(html: string, instanceKey: string): string {
+  if (!NS_RE.test(instanceKey) || !html.includes("<") || html.length > 500_000) return html;
+  const lower = html.replace(/[A-Z]/g, (c) => c.toLowerCase()); // ASCII only: same length, so the indexes match
+  let out = "";
+  let last = 0;
+  let pos = 0;
+  let formScoped = false;
+  for (;;) {
+    const lt = html.indexOf("<", pos);
+    if (lt === -1) break;
+    if (html.startsWith("<!--", lt)) {
+      const e = html.indexOf("-->", lt + 4);
+      if (e === -1) break;
+      pos = e + 3;
+      continue;
+    }
+    const m = /^<(\/?)([A-Za-z][A-Za-z0-9-]*)/.exec(html.slice(lt, lt + 40));
+    if (!m) { pos = lt + 1; continue; }
+    const closing = m[1] === "/";
+    const tagName = m[2]!.toLowerCase();
+    const tagStart = lt + m[0].length;
+    const end = tagEnd(html, tagStart);
+    if (end === -1) break;
+    if (closing) {
+      if (tagName === "form") formScoped = false;
+      pos = end + 1;
+      continue;
+    }
+    const tag = html.slice(tagStart, end);
+    const attrs = readAttrs(tag);
+    if (tagName === "form") {
+      const method = attrs.find((a) => a.name === "method")?.value.trim().toLowerCase() ?? "get";
+      const action = attrs.find((a) => a.name === "action")?.value.trim() ?? "";
+      formScoped = method === "get" && (action === "" || action === "?");
+    }
+    const edits: { a: Attr; value: string }[] = [];
+    for (const a of attrs) {
+      if (a.name === "href" && a.quote) { const v = scopeMarkupHref(a.value, instanceKey); if (v !== a.value) edits.push({ a, value: v }); }
+      else if (a.name === "name" && formScoped && CONTROL_TAGS.has(tagName) && PARAM_RE.test(a.value)) edits.push({ a, value: `${instanceKey}.${a.value}` });
+    }
+    if (edits.length) {
+      let t = "";
+      let at = 0;
+      for (const e of edits) { t += tag.slice(at, e.a.start) + e.value; at = e.a.end; }
+      out += html.slice(last, tagStart) + t + tag.slice(at);
+      last = end;
+    }
+    pos = end + 1;
+    if (RAW_TEXT_TAGS.has(tagName)) {
+      const close = lower.indexOf(`</${tagName}`, pos);
+      if (close === -1) break;
+      pos = close;
+    }
+  }
+  return out + html.slice(last);
+}
+
+/**
+ * `[label](?a=1)` of a markdown text: the destination of a link that starts with `?` moves to the module's namespace. Code (fenced blocks and inline spans) is left alone.
+ * Reference-style definitions (`[x]: ?a=1`) are not rewritten: write the link inline.
+ */
+export function scopeMarkdown(text: string, instanceKey: string): string {
+  if (!NS_RE.test(instanceKey) || !text.includes("](?") || text.length > 500_000) return text;
+  let fenced = false;
+  return text.split("\n").map((line) => {
+    if (/^\s{0,3}(```|~~~)/.test(line)) { fenced = !fenced; return line; }
+    if (fenced || !line.includes("](?")) return line;
+    return line.split("`").map((seg, i) => {
+      if (i % 2 === 1 || !seg.includes("](?")) return seg;
+      let res = "";
+      let at = 0;
+      for (let f = seg.indexOf("](?", at); f !== -1; f = seg.indexOf("](?", at)) {
+        const start = f + 2;
+        let e = start;
+        while (e < seg.length && seg[e] !== ")" && !/\s/.test(seg[e]!)) e++;
+        res += seg.slice(at, start) + scopeMarkupHref(seg.slice(start, e), instanceKey);
+        at = e;
+      }
+      return res + seg.slice(at);
+    }).join("`");
+  }).join("\n");
+}
+
+/**
+ * The blocks of a module, with every query-only link (`?…`; since 0.45.2 also those written in html and markdown blocks, and the fields of GET forms) moved to the module's namespace. Walks plain JSON (objects and arrays) without changing the input;
  * depth and size are bounded (a block tree is small; a pathological one is returned as it is).
  */
 export function scopeBlocks<T>(blocks: T, instanceKey: string): T {
@@ -58,8 +217,14 @@ export function scopeBlocks<T>(blocks: T, instanceKey: string): T {
     if (--budget < 0 || depth > 12 || node === null || typeof node !== "object") return node;
     if (Array.isArray(node)) return node.map((x) => walk(x, depth + 1));
     const out: Record<string, unknown> = {};
+    const type = (node as Record<string, unknown>).type;
     for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
-      out[k] = typeof v === "string" && LINK_KEY_RE.test(k) ? scopeQuery(v, instanceKey) : walk(v, depth + 1);
+      // (core 0.45.2) The markup a module writes itself: the `html` of an html block, the `text` of a markdown block.
+      out[k] = typeof v !== "string" ? walk(v, depth + 1)
+        : LINK_KEY_RE.test(k) ? scopeQuery(v, instanceKey)
+        : k === "html" && type === "html" ? scopeHtml(v, instanceKey)
+        : k === "text" && type === "markdown" ? scopeMarkdown(v, instanceKey)
+        : v;
     }
     // (core 0.38.0) A table with a server search: its search parameter and the paging parameters it drops belong to the module's namespace too.
     if (out.type === "table" && out.searchable === "server" && NS_RE.test(instanceKey)) {

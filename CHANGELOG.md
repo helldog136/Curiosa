@@ -7,6 +7,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.45.2 — 2026-11-20
+
+**En bref.** Sur une page d'administration partagée par plusieurs extensions, les boutons, liens et champs de recherche que les extensions dessinent eux-mêmes fonctionnent maintenant tous. Aucune extension n'a besoin d'être mise à jour.
+
+**In short.** On an admin page shared by several extensions, the buttons, links and search fields that extensions draw themselves now all work. No extension needs an update.
+
+### Corrections
+
+- **Boutons morts sur les pages partagées.** Un bouton comme « Ajouter une personne » ou un champ de recherche dessiné par une extension ne faisait rien quand la page réunissait plusieurs extensions. Le cœur les rattache maintenant à la bonne extension ; ce qui était déjà réglé par l'extension reste tel quel.
+- **(English) Dead buttons on shared pages.** A button such as "Add a person" or a search field drawn by an extension did nothing when the page brought several extensions together. The core now ties them to the right extension; what the extension already handled itself stays as it is.
+- **Anciens favoris plus fiables.** Sur un onglet où une seule extension s'affiche, ses anciens liens enregistrés fonctionnent même si un autre onglet de la page en réunit plusieurs.
+- **(English) Old bookmarks more reliable.** On a tab where only one extension shows, its old saved links work even if another tab of the page brings several together.
+
+### Pour les développeurs
+
+- `scopeBlocks` met aussi dans l'espace de l'extension les `href="?…"` (guillemets simples ou doubles, `&amp;` ou `&`, fragments) d'un bloc `html`, les noms des champs d'un `<form method="get">` sans `action`, et les liens `](?…)` d'un bloc `markdown`. Un paramètre déjà préfixé, un lien absolu, un script, un commentaire ou du code ne sont pas touchés ; passer deux fois donne le même résultat.
+- **(English)** `scopeBlocks` now also namespaces `href="?…"` (single or double quotes, `&amp;` or `&`, fragments) in `html` blocks, the field names of a `<form method="get">` without `action`, and `](?…)` links in `markdown` blocks. An already prefixed parameter, an absolute link, a script, a comment or code is left alone; scoping twice gives the same result.
+- Le paramètre non préfixé est lu par l'extension seule d'un onglet (`soleOnTab`), et non plus seulement d'une page entière. Les formulaires qui envoient ailleurs (`method="post"` ou `action`) ne sont pas modifiés.
+- **(English)** The unprefixed parameter is read by the sole extension of a tab (`soleOnTab`), no longer only of a whole page. Forms that send elsewhere (`method="post"` or an `action`) are not modified.
+
 ## 0.45.1 — 2026-11-20
 
 **En bref.** Le réglage « Skin de cette page » apparaît aussi sur les pages créées avant la 0.45.0, et les assistants IA peuvent l'utiliser.

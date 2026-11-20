@@ -3,7 +3,7 @@ import { adminCtx } from "@/core/admin";
 import { instanceHref } from "@/core/adminLinks";
 import { findPage, pageId, parsePlace, placeHref, placeId, resolveAlias, type IndexedPage } from "@/core/modules/places";
 import { coreSectionHref } from "@/core/modules/coreSections";
-import { sectionQuery } from "@/core/modules/placeScope";
+import { sectionQuery, soleOnTab } from "@/core/modules/placeScope";
 import { currentVocabulary, placeIndexFor } from "@/core/modules/placesLoad";
 import { getActiveInstances } from "@/core/modules/registry";
 import { LinkTabs } from "@/components/admin/LinkTabs";
@@ -45,7 +45,7 @@ export default async function PlacePage({ params, searchParams }: { params: Prom
   const loaded = (await Promise.all(current.sections.map(async (s) => {
     const active = actives.find((a) => a.instance.id === s.instanceId);
     // (0.34.0) Each module reads its own namespaced parameters only (docs/PLACES.md, « Parameters »).
-    return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, found.modules.length === 1) }) : null;
+    return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, soleOnTab(current)) }) : null;
   }))).filter((x): x is NonNullable<typeof x> => x !== null);
   const showOrigin = (p: IndexedPage, siblings: boolean) => p.modules.length > 1 || siblings || p.inline;
   const tabHref = (id: string, i: number) => (i === 0 ? placeHref(place.group, place.page) : placeHref(place.group, place.page, id));

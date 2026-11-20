@@ -3,7 +3,7 @@ import { adminCtx } from "@/core/admin";
 import { findPage } from "@/core/modules/places";
 import { placeIndexFor } from "@/core/modules/placesLoad";
 import { getActiveInstances } from "@/core/modules/registry";
-import { sectionQuery } from "@/core/modules/placeScope";
+import { sectionQuery, soleOnTab } from "@/core/modules/placeScope";
 import { PlaceSectionCard, loadPlaceSection } from "./PlaceSection";
 
 /**
@@ -27,7 +27,7 @@ async function Hosted({ page, tabs, base, query = {}, wrap }: {
     if (tabs && !tabs.includes(tab.id)) continue;
     const loaded = (await Promise.all(tab.sections.map(async (s) => {
       const active = actives.find((a) => a.instance.id === s.instanceId);
-      return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, found.modules.length === 1) }) : null;
+      return active ? loadPlaceSection(s, active, user, { locale, advanced, query: sectionQuery(query, s.instanceKey, soleOnTab(tab)) }) : null;
     }))).filter((x): x is NonNullable<typeof x> => x !== null);
     if (loaded.length === 0) continue;
     const inner = (
