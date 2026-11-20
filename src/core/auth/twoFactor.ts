@@ -2,6 +2,7 @@ import crypto from "node:crypto";
 import { prisma } from "../db";
 import { getAuthSecret } from "../secret";
 import { generateSecret, otpauthUri, stepOf, verifyTotp } from "./totp";
+import { pausePersonalAccesses } from "./sessions";
 
 /**
  * DOUBLE VÉRIFICATION. Après le mot de passe, on demande un code à 6 chiffres (application d'authentification) ou, si le téléphone est perdu,
@@ -64,6 +65,7 @@ export async function disableTwoFactor(userId: string): Promise<void> {
     prisma.recoveryCode.deleteMany({ where: { userId } }),
     prisma.user.update({ where: { id: userId }, data: { totpSecret: null, totpPending: null, totpEnabledAt: null, totpLastStep: null, sessionVersion: { increment: 1 } } }),
   ]);
+  await pausePersonalAccesses(userId);
 }
 
 export type SecondFactor = { ok: true; kind: "totp" | "recovery" } | { ok: false };

@@ -8,7 +8,7 @@ import type { Grants, Scope } from "@/core/services/mcp/access";
  * (the baseline `tools/list` records, listSeen.ts). `sayToTheUser` is one short sentence the assistant can repeat to the owner as it is, in the site language.
  * `currentNames`: the names of the tools the access has now (my_access has them; status stays cheap and only compares the revision, so it can over-report).
  */
-export async function reconnectView(tokenId: string | undefined, token: { scope: Scope; grants: Grants; fullPowers?: boolean }, t: Translator, currentNames?: string[]) {
+export async function reconnectView(tokenId: string | undefined, token: { scope: Scope; grants: Grants; fullPowers?: boolean; personal?: { fingerprint: string } }, t: Translator, currentNames?: string[]) {
   const seen = tokenId ? await readListSeen(tokenId).catch(() => null) : null;
   const change = compareListSeen(seen, await revisionNow(token).catch(() => ""), currentNames);
   if (!change.changed) {

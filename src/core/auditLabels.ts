@@ -13,7 +13,7 @@ export const AUDIT_ACTIONS = [
   "instance.create", "instance.setup", "instance.delete", "instance.retire", "instance.restore", "instance.legacy.off", "retired.erase", "instance.update", "instance.settings", "instance.sources", "service.routing",
   "backup.create", "backup.restore",
   "update.start", "update.auto.on", "update.auto.off", "update.channel.rc", "update.channel.stable",
-  "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none", "mcp.grants.apply", "mcp.fullpowers.on", "mcp.fullpowers.off", "mcp.fullpowers.action", "mcp.fullpowers.cleared",
+  "mcp.enable", "mcp.disable", "mcp.token.create", "mcp.token.revoke", "mcp.personal.create", "mcp.personal.revoke", "mcp.personal.pause", "mcp.personal.resume", "mcp.personal.rights", "mcp.personal.inert", "mcp.personal.policy", "mcp.token.url.on", "mcp.token.url.off", "mcp.grant.on", "mcp.grant.off", "mcp.grants.defaults", "mcp.grants.none", "mcp.grants.apply", "mcp.fullpowers.on", "mcp.fullpowers.off", "mcp.fullpowers.action", "mcp.fullpowers.cleared",
   "mcp.maintenance.request", "mcp.maintenance.approve", "mcp.maintenance.deny", "mcp.maintenance.mode", "mcp.maintenance.notify",
   "mcp.maintenance.module_install", "mcp.maintenance.module_configure", "mcp.maintenance.module_configure_advanced",
   "skin.install", "skin.update", "skin.remove", "skin.refused", "skin.activate", "skin.reset", "skin.undo", "skin.options", "skin.custom", "appearance.update", "appearance.font.add", "appearance.font.remove",

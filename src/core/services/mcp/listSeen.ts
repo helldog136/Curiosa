@@ -17,14 +17,16 @@ const KEY = (tokenId: string) => `mcp.listSeen.${tokenId}`;
 const MAX_NAMES = 1000;
 
 /** The revision: the ceiling, the explicit grants and which feature instances exist and which features each has (not their versions: an update that adds no tool is not a change for the assistant). */
-export function accessRevision(token: { scope: Scope; grants: Grants; fullPowers?: boolean }, instances: { key: string; moduleId: string; features?: string }[]): string {
+export function accessRevision(token: { scope: Scope; grants: Grants; fullPowers?: boolean; personal?: { fingerprint: string } }, instances: { key: string; moduleId: string; features?: string }[]): string {
   const grants = Object.entries(token.grants).sort(([a], [b]) => (a < b ? -1 : 1));
   const inst = instances.map((i) => `${i.key}:${i.moduleId}:${i.features ?? ""}`).sort();
-  return crypto.createHash("sha256").update(JSON.stringify(token.fullPowers ? [token.scope, grants, inst, "full"] : [token.scope, grants, inst])).digest("hex").slice(0, 16);
+  // A personal AI (0.46.0): what its owner can do now is part of the revision, so that a demotion or a policy change makes `reconnectNeeded` true. An independent access hashes exactly as before.
+  const base = token.fullPowers ? [token.scope, grants, inst, "full"] : [token.scope, grants, inst];
+  return crypto.createHash("sha256").update(JSON.stringify(token.personal ? [...base, "owner", token.personal.fingerprint] : base)).digest("hex").slice(0, 16);
 }
 
 /** The revision of this access now: one cheap query (feature instances), the rights are already in `token`. */
-export async function revisionNow(token: { scope: Scope; grants: Grants; fullPowers?: boolean }): Promise<string> {
+export async function revisionNow(token: { scope: Scope; grants: Grants; fullPowers?: boolean; personal?: { fingerprint: string } }): Promise<string> {
   return accessRevision(token, await prisma.moduleInstance.findMany({ select: { key: true, moduleId: true, features: true } }));
 }
 

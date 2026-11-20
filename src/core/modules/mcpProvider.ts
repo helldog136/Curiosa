@@ -4,6 +4,8 @@ import { getActiveInstances } from "@/core/modules/registry";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { validateArgs } from "@/core/services/mcp/validate";
 import { getSiteConfig } from "@/core/settings";
+import { declaredRequirement } from "@/core/services/mcp/ownerCeiling";
+import { actionRight } from "@/core/auth/rights";
 import { chain } from "@/core/i18n/audit.mjs";
 
 /**
@@ -61,6 +63,8 @@ export const moduleActionProvider: McpToolProvider = {
           instanceId: instance.id,
           call: async (args, actor) => handler(asAssistant(await buildContext(mod, instance, config.defaultLocale), actor.name, decl.uploads === true ? { tokenId: actor.tokenId } : undefined), validateArgs(decl.input, args), actor),
           moduleId: mod.manifest.id,
+          // (0.46.0) `mcp[].right`: what a personal AI needs from its owner. Absent: the tool is hidden from personal AIs (ownerCeiling.ts).
+          ...(decl.right !== undefined ? { requires: declaredRequirement(mod.manifest.id, decl.right, actionRight) } : {}),
         });
       }
     }

@@ -23,7 +23,7 @@ import { revokeTokenAction } from "../assistants/actions";
  */
 export async function assistantMembers({ t, locale, canHistory }: { t: Translator; locale: string; canHistory: boolean }) {
   const now = new Date();
-  const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
+  const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ where: { ownerId: null }, orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
   const { active, inactive } = splitAccesses(rows, now);
   // Dernière activité : la plus récente entre l'usage de l'accès et une ligne du Journal central signée de son nom (une seule requête groupée, aucun minuteur).
   const journal = active.length === 0 ? [] : await prisma.auditLog.groupBy({ by: ["actor"], where: { actor: { in: active.map((k) => `mcp:${k.name}`) } }, _max: { createdAt: true } });

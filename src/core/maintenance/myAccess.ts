@@ -1,5 +1,6 @@
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { canUse, withinCeiling } from "@/core/services/mcp/access";
+import { ownerCeilingAllows } from "@/core/services/mcp/ownerCeiling";
 import { getTokenGrants } from "@/core/services/mcp/tokens";
 import type { McpTool } from "@/core/services/mcp/types";
 import { getSiteConfig } from "@/core/settings";
@@ -44,9 +45,11 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   };
 
   const granted: { tool: string; kind: string; summary: string }[] = [];
-  const notGranted: { tool: string; kind: string; why: "access_is_read_only" | "box_not_ticked"; rightToTick: string }[] = [];
+  const notGranted: { tool: string; kind: string; why: "access_is_read_only" | "box_not_ticked" | "above_owner_rights"; rightToTick: string }[] = [];
   for (const tool of tools) {
     if (canUse(tool, token)) granted.push({ tool: tool.name, kind: kindOf(tool), summary: plain(tool) });
+    // A personal AI (0.46.0): a tool above its owner's rights is not a box to tick; it needs an administrator, and no tick would help.
+    else if (token.personal && !ownerCeilingAllows(tool, token.personal)) notGranted.push({ tool: tool.name, kind: kindOf(tool), why: "above_owner_rights", rightToTick: t("aim.my.aboveOwner") });
     else notGranted.push({ tool: tool.name, kind: kindOf(tool), why: withinCeiling(tool, token.scope) ? "box_not_ticked" : "access_is_read_only", rightToTick: plain(tool) });
   }
   // Module tools whose text is not in the site language (the module has no translation): shown in English, and said so, so that nobody blames the site.
@@ -89,7 +92,8 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     notGranted: notGranted.slice(0, 300),
     // (0.35.0) Present only when the owner gave this access full powers: every tool of the catalogue is granted, now and later, except what is kept out (accesses, secrets).
     ...(token.fullPowers ? { fullPowers: { on: true, meaning: t("aim.my.fullPowers"), keptOut: t("aim.my.fullPowers.out") } } : {}),
-    howToGetMore: notGranted.length ? t("aim.my.howToGetMore") : t("aim.my.nothingMissing"),
+    ...(token.personal ? { personalAssistant: { meaning: t("aim.my.personal"), ownerRightsFingerprint: token.personal.fingerprint } } : {}),
+    howToGetMore: notGranted.length ? t(token.personal ? "aim.my.howToGetMore.personal" : "aim.my.howToGetMore") : t("aim.my.nothingMissing"),
     ...(inEnglish.length ? { textsNotInYourLanguage: { count: inEnglish.length, tools: inEnglish.slice(0, 10), note: t("aim.my.lang.gap", { n: inEnglish.length, lang: wanted }) } } : {}),
     reconnect: t("aim.my.reconnect"),
     discover: t("aim.my.discover"),

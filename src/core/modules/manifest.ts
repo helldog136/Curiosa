@@ -8,7 +8,7 @@ import { PLATFORM_PATTERN } from "./platform";
 import { parseMenuPath } from "./menuPath";
 import { socialSpecSchema } from "../socialSpec";
 import { shortLinkIssues, shortLinkSchema } from "./shortLink";
-import { HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
+import { actionRight, HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
 import { dashboardIssues, dashboardSchema } from "../dashboard/spec";
 import { EVENT_KEY_MAX, EVENT_KEY_RE, FIELD_KEY_RE, JOURNAL_LIMITS, LEVELS, logEventIssues } from "../journal/events";
 import { SERVICE_RE } from "./serviceVersions";
@@ -261,7 +261,7 @@ export const manifestSchema = z.object({
     title: localized,
     help: localized.optional(),
   })).max(5).optional(),
-  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), uploads: z.boolean().optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !a.uploads || (!a.readOnly && a.default !== true), "an action that receives uploads (uploads: true) writes: it cannot be read-only nor enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
+  mcp: z.array(z.object({ name: z.string().regex(/^[a-z][a-z0-9_]{1,39}$/), description: z.string().max(1000), readOnly: z.boolean().optional(), default: z.boolean().optional(), destructive: z.boolean().optional(), uploads: z.boolean().optional(), right: z.string().max(80).optional(), input: jsonSchemaLite.optional() }).refine((a) => !a.destructive || a.default !== true, "a destructive action cannot be enabled by default").refine((a) => !a.uploads || (!a.readOnly && a.default !== true), "an action that receives uploads (uploads: true) writes: it cannot be read-only nor enabled by default").refine((a) => !(a.readOnly && a.destructive), "a read-only action cannot be destructive")).max(60).optional(),
   /**
    * (core after 0.6.6) Per-language overlay for the few texts that older cores read as a plain English string: `{ "fr": { "mcp.<tool>": "..." } }` translates the
    * description of an MCP tool. Every other text is already `{ "en": "...", "fr": "..." }`. Additive: an older core ignores the key (the English string is used).
@@ -450,6 +450,13 @@ export const manifestSchema = z.object({
   for (const message of dashboardIssues(m.dashboard, (m.rights ?? []).map((r) => r.id))) ctx.addIssue({ code: "custom", path: ["dashboard"], message });
   for (const message of logEventIssues(m.logEvents)) ctx.addIssue({ code: "custom", path: ["logEvents"], message });
   if (new Set((m.rights ?? []).map((r) => r.id)).size < (m.rights ?? []).length) ctx.addIssue({ code: "custom", path: ["rights"], message: "duplicate right id" });
+  // (core 0.46.0) `mcp[].right`: the right a personal AI's owner must hold. A LOCAL id (or `<this module>:<id>`) of this module: its own `rights`, or the implicit `open` / `history`. Never another module's.
+  const declaredRights = new Set([OPEN, HISTORY, ...(m.rights ?? []).map((r) => r.id)]);
+  for (const [i, tool] of (m.mcp ?? []).entries()) {
+    if (tool.right === undefined) continue;
+    const full = actionRight(m.id, tool.right);
+    if (!full || !declaredRights.has(full.slice(m.id.length + 1))) ctx.addIssue({ code: "custom", path: ["mcp", i, "right"], message: `"${tool.right}" must be a right of this module: one declared in "rights", or "open" / "history" (never a right of another module)` });
+  }
   for (const [i, seed] of (m.seeds ?? []).entries()) {
     if (seed.module === m.id) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "a module cannot seed itself" });
     if (!m.requires?.length && !m.consumes.length) ctx.addIssue({ code: "custom", path: ["seeds", i, "module"], message: "seeds needs a matching `requires` or `consumes` (the target must offer a service this module requires, or provide a topic this module consumes)" });

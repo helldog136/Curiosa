@@ -452,3 +452,7 @@ Cause: a module that lives in a folder of a repository with many modules was che
 - The ceiling: only an access that can write can hold it. A read-only access is never raised (the switch is not offered for it, and a flag written by hand is ignored).
 - A module that the owner withdrew from MCP (`instanceOptedOut`) stays withdrawn.
 - Backups: the flag is never written in a backup, and a restore turns it off for every access (the settings are replaced and the key is ignored if a file carries it).
+
+## Addendum: personal AI assistants (core 0.46.0, English)
+
+An access can **belong to a team member** (`ApiToken.ownerId`). Such a personal assistant can see and call a tool only if its owner may do what the tool does **right now** (ceiling checked on every request, `services/mcp/ownerCeiling.ts`), on top of the usual scope and grants. It never has full powers or a secret address, it is paused when its owner signs out everywhere or changes the password, and it is revoked when the owner is deleted. Its requests are decided by its owner or by a holder of `core:mcp.tokens`, with the owner's rights checked again at approval. `maintenance_my_access` reports `above_owner_rights` and `personalAssistant`. The feature is off by default (`mcp.personalPolicy`) and independent accesses behave exactly as before. Details: [PERSONAL-AI.md](PERSONAL-AI.md).
