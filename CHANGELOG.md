@@ -7,6 +7,26 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Deux corrections sur les demandes d'actions des assistants IA : une demande en attente ne peut plus disparaître de la liste, et votre accord ne publie que ce que vous avez vu. Rien d'autre ne change.
+
+**In short.** Two fixes on the requests of AI assistants: a waiting request can no longer vanish from the list, and your approval publishes only what you saw. Nothing else changes.
+
+### Corrections
+
+- **Une demande en attente ne disparaît plus.** Quand un assistant avait fait beaucoup de demandes déjà traitées, une demande encore en attente pouvait être effacée de la liste sans prévenir. Elle reste maintenant jusqu'à ce que vous répondiez ou qu'elle expire.
+- **(English) A waiting request no longer vanishes.** After many requests had been answered, one that was still waiting could be dropped from the list without a word. It now stays until you answer or it expires.
+- **Votre accord ne publie que ce que vous avez vu.** Si un assistant changeait le lien, le code ou les étiquettes d'un brouillon après sa demande de publication, votre accord publiait la version modifiée. Maintenant l'assistant doit refaire sa demande, y compris pour celles en attente pendant la mise à jour.
+- **(English) Your approval publishes only what you saw.** If an assistant changed the link, code or tags of a draft after asking to publish it, your approval published the changed version. Now the assistant has to ask again, including for requests waiting during the update.
+
+### Pour les développeurs
+
+- `maintenance/requests.ts` : `save` ne coupe plus que les demandes terminées (50 par catégorie) ; une demande « en attente » ou « en cours » est toujours gardée. `maintenance/publish.ts` : l'empreinte d'un brouillon couvre aussi `url`, `code`, `tags`, `cover`, `icon`, `fields` (en plus des textes et du skin).
+- **(English)** `maintenance/requests.ts`: `save` only cuts finished requests (50 per class); a pending or running one is always kept. `maintenance/publish.ts`: the fingerprint of a draft also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (besides the texts and the skin).
+- Revue formelle : modèles et tests dans `docs/formal/` et `tests/**/formal-*.test.mjs` (plafond des assistants personnels, file d'approbation, verrou de maintenance en TLA+). Les constats non corrigés y sont décrits avec leur trace.
+- **(English)** Formal review: models and tests in `docs/formal/` and `tests/**/formal-*.test.mjs` (personal assistant ceiling, approval queue, maintenance lock in TLA+). Findings that are not fixed are described there with their trace.
+
 ## 0.46.0 — 2026-11-21
 
 **En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).
