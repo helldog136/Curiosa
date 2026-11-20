@@ -20,7 +20,7 @@
     { "file": "previews/home-light.webp", "mode": "light", "width": 1280, "alt": { "fr": "Page d'accueil, mode clair", "en": "Home page, light mode" } },
     { "file": "previews/home-dark.webp", "mode": "dark", "width": 1280, "alt": { "fr": "Page d'accueil, mode sombre", "en": "Home page, dark mode" } }
   ],
-  "assets": [],                            // TOUTE police ou image embarquée est listée ici ; sa licence, son auteur et sa source sont facultatifs (voir le guide). Aucune ici : polices du système.
+  "assets": [],                            // TOUTE police ou image embarquée est listée ici ; ses informations de licence sont facultatives (voir le guide). Aucune ici : polices du système.
   "defaults": {                            // les valeurs de départ de ce que la personne peut retoucher.
     "headerLayout": "classic",             // classic | twoRows | centered | minimal
     "font": "sans",                        // sans | serif | mono | skin (« skin » = la police du skin)
