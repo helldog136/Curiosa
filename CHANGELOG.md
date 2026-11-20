@@ -22,7 +22,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Une longue opération n'est plus doublée.** Une mise à jour très lente pouvait être oubliée au bout de 30 minutes, et une seconde opération démarrait en même temps. Tant qu'elle avance, elle garde sa place.
 - **(English) A long operation is no longer doubled.** A very slow update could be forgotten after 30 minutes, and a second operation started alongside it. As long as it makes progress, it keeps its place.
 
+### Nouveautés
+
+- **Ajoutez un skin depuis un fichier.** Dans Apparence, déposez le .zip de votre skin : vous le voyez sur votre site avant de l'ajouter, et le fichier n'est pas gardé. Pour le modifier, augmentez sa version et déposez le nouveau.
+- **(English) Add a skin from a file.** In Appearance, drop the .zip of your skin: you see it on your site before adding it, and the file is not kept. To change it, raise its version and drop the new one.
+
 ### Pour les développeurs
+
+- `core/skins/zip.ts` : lecteur de zip sans bibliothèque (liens, chemins, doublons, zip64, bombes refusés) ; `uploadService.ts` : `stageUpload` puis `addStaged`, copie validée sans ligne de registre 30 minutes au plus ; l'archive n'est jamais écrite. `bodySizeLimit` des actions : 5 Mo.
+- **(English)** `core/skins/zip.ts`: library-free zip reader (links, paths, duplicates, zip64, bombs refused); `uploadService.ts`: `stageUpload` then `addStaged`, validated copy with no registry row for 30 minutes at most; the archive is never written. Action `bodySizeLimit`: 5 MB.
 
 - `maintenance/requests.ts` : `save` ne coupe plus que les demandes terminées (50 par catégorie) ; une demande « en attente » ou « en cours » est toujours gardée. `maintenance/publish.ts` : l'empreinte d'un brouillon couvre aussi `url`, `code`, `tags`, `cover`, `icon`, `fields` (en plus des textes et du skin).
 - **(English)** `maintenance/requests.ts`: `save` only cuts finished requests (50 per class); a pending or running one is always kept. `maintenance/publish.ts`: the fingerprint of a draft also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (besides the texts and the skin).

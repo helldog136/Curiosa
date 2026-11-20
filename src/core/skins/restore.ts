@@ -19,12 +19,12 @@ import { SKIN_ID_RE } from "./allowlist";
 import { SEMVER_RE } from "./semver";
 
 /** Un skin dans `backup.json`. */
-export type BackupSkin = { id: string; version: string; repoUrl: string; ref: string | null; subdir: string | null; commit: string; source: SkinSource; name: string };
+export type BackupSkin = { id: string; version: string; repoUrl: string; ref: string | null; subdir: string | null; commit: string; source: SkinSource; name: string; /** (0.46.1) Added from a file: no address, and the file was not kept (the skin files are not in the backup either). */ uploaded?: boolean };
 
 export type SkinPlan = {
   id: string; name: string; version: string;
   /** installed : déjà là, intact · catalogue : sera réinstallé depuis son dépôt · personal : dépôt personnel, CONFIRMATION requise. */
-  status: "installed" | "catalogue" | "personal";
+  status: "installed" | "catalogue" | "personal" | "upload";
   repoUrl: string; ref: string | null; subdir: string | null; needsConfirmation: boolean;
 };
 export type SkinOutcome = { id: string; outcome: "kept" | "installed" | "skipped" | "failed"; error?: string; needsCore?: string };
@@ -34,7 +34,7 @@ export async function backupSkins(): Promise<BackupSkin[]> {
   const rows = await readRows();
   if (!rows.length) return [];
   const names = new Map((await installed()).map((s) => [s.id, s.name.en]));
-  return rows.map((r) => ({ id: r.id, version: r.version, repoUrl: r.repo, ref: r.ref, subdir: r.subdir, commit: r.commit, source: r.source, name: names.get(r.id) ?? r.id }));
+  return rows.map((r) => ({ id: r.id, version: r.version, repoUrl: r.repo, ref: r.ref, subdir: r.subdir, commit: r.commit, source: r.source, name: names.get(r.id) ?? r.id, ...(r.upload ? { uploaded: true } : {}) }));
 }
 
 /** Les skins d'une sauvegarde lue : `backup.json`, sinon le réglage `skin.installed` des réglages sauvegardés. Jamais d'exception ; rien n'est cru sur parole. */
@@ -46,10 +46,10 @@ export function skinsOfBackup(manifestSkins: unknown, settings: readonly Record<
       const x = (r ?? {}) as Record<string, unknown>;
       const id = typeof x.id === "string" ? x.id : "";
       const repo = typeof x.repoUrl === "string" ? x.repoUrl : typeof x.repo === "string" ? x.repo : "";
-      if (!SKIN_ID_RE.test(id) || id === "basic" || typeof x.version !== "string" || !SEMVER_RE.test(x.version) || !repo || out.some((s) => s.id === id)) continue;
+      if (!SKIN_ID_RE.test(id) || id === "basic" || typeof x.version !== "string" || !SEMVER_RE.test(x.version) || (!repo && x.uploaded !== true) || out.some((s) => s.id === id)) continue;
       out.push({
         id, version: x.version, repoUrl: repo.slice(0, 300), ref: typeof x.ref === "string" ? x.ref.slice(0, 100) : null, subdir: typeof x.subdir === "string" ? x.subdir.slice(0, 200) : null,
-        commit: typeof x.commit === "string" ? x.commit.slice(0, 64) : "", source: x.source === "personal" ? "personal" : "catalogue", name: typeof x.name === "string" ? x.name.slice(0, 60) : id,
+        commit: typeof x.commit === "string" ? x.commit.slice(0, 64) : "", source: x.source === "personal" ? "personal" : "catalogue", name: typeof x.name === "string" ? x.name.slice(0, 60) : id, ...(x.uploaded === true ? { uploaded: true } : {}),
       });
     }
     return out;
@@ -66,6 +66,7 @@ export async function planSkins(skins: readonly BackupSkin[]): Promise<SkinPlan[
     const base = { id: s.id, name: s.name, version: s.version, repoUrl: s.repoUrl, ref: s.ref, subdir: s.subdir };
     const row = here.get(s.id);
     if (row && row.version === s.version && filesPresent(row.id, row.version)) return { ...base, status: "installed", needsConfirmation: false };
+    if (s.uploaded) return { ...base, status: "upload", needsConfirmation: false };
     return s.source === "personal" ? { ...base, status: "personal", needsConfirmation: true } : { ...base, status: "catalogue", needsConfirmation: false };
   });
 }
@@ -94,6 +95,7 @@ export async function restoreSkins(opts: { before: readonly SkinRow[]; confirmCu
     const confirmed = new Set(opts.confirmCustom);
     for (const row of restored) {
       if (intact(row)) { outcomes.push({ id: row.id, outcome: "kept" }); continue; }
+      if (row.upload) { outcomes.push({ id: row.id, outcome: "failed", error: "skins.error.uploaded" }); continue; }   // no file was kept: the owner adds it again
       if (row.source === "personal" && !confirmed.has(`skin:${row.id}`)) { outcomes.push({ id: row.id, outcome: "skipped" }); continue; }
       const r = await reinstall(row.id, { actor: opts.actor });
       outcomes.push(r.ok ? { id: row.id, outcome: "installed" } : { id: row.id, outcome: "failed", error: r.error, ...(r.needsCore ? { needsCore: r.needsCore } : {}) });
