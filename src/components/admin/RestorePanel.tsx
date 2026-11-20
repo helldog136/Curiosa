@@ -9,7 +9,7 @@ import { useProgressText } from "./ProgressLabels";
 import { ui } from "./ui";
 
 type Plan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "custom" | "unavailable"; repoUrl: string | null; ref: string | null; needsConfirmation: boolean; /** Module actif dont un fournisseur manque : services en clair. */ missingLabels?: string[] };
-type SkinPlan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "personal"; repoUrl: string; ref: string | null; needsConfirmation: boolean };
+type SkinPlan = { id: string; name: string; version: string; status: "installed" | "catalogue" | "personal" | "upload"; repoUrl: string; ref: string | null; needsConfirmation: boolean };
 type Item = { id: string; note: string; params?: Record<string, string | number>; path?: string };
 type Conversion = { backupVersion: string; currentVersion: string; gap: "same" | "older" | "unknown"; core: Item[]; rawg: { key: boolean; fixes: number; todo: number } | null; modules: { id: string; route: "bridge" | "installed" | "blocked"; dataVersion: number; floor: number; tags: string[]; path: string }[] };
 type Result = { converted: Item[]; setAside: Item[]; failed: Item[] };
@@ -131,7 +131,7 @@ export function RestorePanel({ labels, previewUrl = "/api/admin/backup/restore",
             <ul className="space-y-2" data-testid="restore-plan-skins">
               {preview.skins!.map((s) => (
                 <li key={s.id} className={`${ui.card} text-sm`}>
-                  <p className="font-medium">{L("skin")} {s.name} <span className="text-xs text-muted">v{s.version}</span> — {L(s.status === "personal" ? "status.skinPersonal" : `status.${s.status}`)}</p>
+                  <p className="font-medium">{L("skin")} {s.name} <span className="text-xs text-muted">v{s.version}</span> — {L(s.status === "personal" ? "status.skinPersonal" : s.status === "upload" ? "status.skinUpload" : `status.${s.status}`)}</p>
                   {s.status === "personal" && (
                     <label className="mt-2 flex items-start gap-2">
                       <input type="checkbox" checked={accepted.has(`skin:${s.id}`)} onChange={(e) => setAccepted((a) => { const n = new Set(a); if (e.target.checked) n.add(`skin:${s.id}`); else n.delete(`skin:${s.id}`); return n; })} className="mt-1 h-4 w-4" />

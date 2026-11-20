@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
 import { redactSecrets } from "./redact";
-import { boundResult, closeInterrupted, type RunProgress, type RunResult } from "./background";
+import { boundResult, closeInterrupted, INTERRUPTED_MESSAGE, type RunProgress, type RunResult } from "./background";
 
 /**
  * FILE DES DEMANDES d'actions à risque (niveau 3). Avec la « validation humaine » (le défaut), l'appel d'une IA ne fait QUE créer une demande ici ;
@@ -13,7 +13,7 @@ import { boundResult, closeInterrupted, type RunProgress, type RunResult } from 
  *  - le « plan » (version de départ et d'arrivée…) est figé à la création : à l'exécution, les conditions sont revérifiées et la demande n'est exécutée
  *    que si elle vise toujours la même chose ;
  *  - seuls des identifiants, des versions et des textes courts masqués sont conservés : jamais de secret.
- * Stockage : un réglage du cœur (pas de colonne, donc pas de migration), lu directement en base. Les 50 dernières demandes sont gardées.
+ * Stockage : un réglage du cœur (pas de colonne, donc pas de migration), lu directement en base. Les 50 dernières demandes TERMINÉES sont gardées (jamais une demande en attente ou en cours).
  */
 export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
@@ -79,28 +79,60 @@ export type MaintenanceRequest = {
   progress?: RunProgress;
 };
 
-let chain: Promise<unknown> = Promise.resolve();
-/** Une seule lecture-modification-écriture à la fois dans ce processus. */
+/**
+ * One read-modify-write at a time, in this process AND across copies of this module: the chain lives on `globalThis` like the maintenance lock (0.46.1; it used to be in
+ * module scope, so two copies of the module, one per bundle, did not exclude each other). Across processes the write itself is a compare-and-swap, see `transact`.
+ */
+const g = globalThis as unknown as { curiosaRequestsChain?: Promise<unknown> };
 function exclusive<T>(fn: () => Promise<T>): Promise<T> {
-  const run = chain.then(fn, fn);
-  chain = run.catch(() => {});
+  const run = (g.curiosaRequestsChain ?? Promise.resolve()).then(fn, fn);
+  g.curiosaRequestsChain = run.catch(() => {});
   return run;
 }
 
-async function load(): Promise<MaintenanceRequest[]> {
+async function loadRaw(): Promise<{ list: MaintenanceRequest[]; raw: string | null }> {
   const row = await prisma.setting.findUnique({ where: { key_locale: { key: KEY, locale: "" } } });
-  if (!row) return [];
+  if (!row) return { list: [], raw: null };
   try {
     const v = JSON.parse(row.value);
-    return Array.isArray(v) ? (v as MaintenanceRequest[]).filter((r) => r && typeof r.id === "string" && (LEVEL3_ACTIONS as readonly string[]).includes(r.action)) : [];
-  } catch { return []; }
+    return { raw: row.value, list: Array.isArray(v) ? (v as MaintenanceRequest[]).filter((r) => r && typeof r.id === "string" && (LEVEL3_ACTIONS as readonly string[]).includes(r.action)) : [] };
+  } catch { return { raw: row.value, list: [] }; }
 }
-async function save(list: MaintenanceRequest[]): Promise<void> {
+
+/** The list as it will be stored: see the retention rules in the comment. */
+function trimmed(list: MaintenanceRequest[]): string {
   // (0.46.0) The last 50 requests of independent accesses and, separately, the last 50 of personal ones: many people cannot push each other's pending requests out.
+  // (0.46.1) Only FINISHED requests are cut: one that still waits for a decision (or is being run) is never dropped, however many newer ones there are. It is bounded anyway:
+  // at most MAX_PENDING_PER_TOKEN wait per access, and each one expires after REQUEST_TTL_MS, which makes it a finished one.
   const own = (r: MaintenanceRequest) => !!r.ownerId;
-  const keep = new Set([...list.filter((r) => !own(r)).slice(-KEEP), ...list.filter(own).slice(-KEEP)]);
-  const json = JSON.stringify(list.filter((r) => keep.has(r)));
-  await prisma.setting.upsert({ where: { key_locale: { key: KEY, locale: "" } }, create: { key: KEY, locale: "", value: json }, update: { value: json } });
+  const open = (r: MaintenanceRequest) => r.status === "pending" || r.status === "running";
+  const finished = (pick: (r: MaintenanceRequest) => boolean) => list.filter((r) => pick(r) && !open(r)).slice(-KEEP);
+  const keep = new Set([...list.filter(open), ...finished((r) => !own(r)), ...finished(own)]);
+  return JSON.stringify(list.filter((r) => keep.has(r)));
+}
+
+/** Compare-and-swap: writes only if the stored value is still `raw` (what this change was computed from). False: somebody else (another process) wrote first. */
+async function save(list: MaintenanceRequest[], raw: string | null): Promise<boolean> {
+  const value = trimmed(list);
+  if (raw === null) {
+    try { await prisma.setting.create({ data: { key: KEY, locale: "", value } }); return true; } catch { return false; }
+  }
+  return (await prisma.setting.updateMany({ where: { key: KEY, locale: "", value: raw }, data: { value } })).count === 1;
+}
+
+/**
+ * A change of the queue: `change` receives the list, edits it and says whether to store it; it must be a pure function of the list (it is run again on a conflict).
+ * Serialised in this process by `exclusive`, and retried from a fresh read when another process changed the stored value in between (compare-and-swap).
+ */
+function transact<T>(change: (list: MaintenanceRequest[]) => { out: T; dirty: boolean }): Promise<T> {
+  return exclusive(async () => {
+    for (let attempt = 0; attempt < 12; attempt++) {
+      const { list, raw } = await loadRaw();
+      const r = change(list);
+      if (!r.dirty || (await save(list, raw))) return r.out;
+    }
+    throw new Error("the request queue is busy, try again");
+  });
 }
 
 /** Les demandes en attente dont le délai est passé deviennent « expirées » (et ne s'exécuteront plus jamais). */
@@ -111,12 +143,11 @@ function sweep(list: MaintenanceRequest[], now: number): boolean {
 }
 
 export async function listRequests(now = Date.now()): Promise<MaintenanceRequest[]> {
-  return exclusive(async () => {
-    const list = await load();
+  return transact((list) => {
     // Two sweeps, both saved at once: pending requests whose time is over, and approved requests whose work died with a restart.
     const expired = sweep(list, now);
-    if (closeInterrupted(list, now) || expired) await save(list);
-    return list.slice().reverse();
+    const closed = closeInterrupted(list, now);
+    return { out: list.slice().reverse(), dirty: closed || expired };
   });
 }
 
@@ -132,21 +163,21 @@ const same = (a: Plan, b: Plan) => JSON.stringify(a) === JSON.stringify(b);
 /** Pending requests per access. A bundle (several modules in one request) counts as ONE. */
 export const MAX_PENDING_PER_TOKEN = 5;
 
+type CreateResult = { ok: true; request: MaintenanceRequest; existing: boolean } | { ok: false; error: string };
+
 /** Crée une demande, ou renvoie celle qui attend déjà pour la même chose (un appel répété ne remplit pas la file). */
-export async function createRequest(input: { action: Level3Action; plan: Plan; tokenId: string; tokenName: string; ownerId?: string }, now = Date.now()): Promise<{ ok: true; request: MaintenanceRequest; existing: boolean } | { ok: false; error: string }> {
-  return exclusive(async () => {
-    const list = await load();
-    sweep(list, now);
+export async function createRequest(input: { action: Level3Action; plan: Plan; tokenId: string; tokenName: string; ownerId?: string }, now = Date.now()): Promise<CreateResult> {
+  return transact<CreateResult>((list) => {
+    const swept = sweep(list, now);
     const twin = list.find((r) => r.status === "pending" && r.tokenId === input.tokenId && r.action === input.action && same(r.plan, input.plan));
-    if (twin) return { ok: true as const, request: twin, existing: true };
-    if (list.filter((r) => r.status === "pending" && r.tokenId === input.tokenId).length >= MAX_PENDING_PER_TOKEN) return { ok: false as const, error: `Too many requests are already waiting for approval (${MAX_PENDING_PER_TOKEN}). Ask the owner to answer them first.` };
+    if (twin) return { out: { ok: true as const, request: twin, existing: true as boolean }, dirty: swept };
+    if (list.filter((r) => r.status === "pending" && r.tokenId === input.tokenId).length >= MAX_PENDING_PER_TOKEN) return { out: { ok: false as const, error: `Too many requests are already waiting for approval (${MAX_PENDING_PER_TOKEN}). Ask the owner to answer them first.` }, dirty: swept };
     const request: MaintenanceRequest = {
       id: `req_${crypto.randomBytes(9).toString("base64url")}`, action: input.action, plan: input.plan,
       tokenId: input.tokenId, tokenName: redactSecrets(input.tokenName, 80), ...(input.ownerId ? { ownerId: input.ownerId } : {}), createdAt: now, expiresAt: now + REQUEST_TTL_MS, status: "pending",
     };
     list.push(request);
-    await save(list);
-    return { ok: true as const, request, existing: false };
+    return { out: { ok: true as const, request, existing: false }, dirty: true };
   });
 }
 
@@ -154,76 +185,69 @@ export type ClaimResult = { ok: true; request: MaintenanceRequest } | { ok: fals
 
 /** Approbation : fait passer la demande de « en attente » à « en cours », une seule fois. Rien n'est exécuté ici. */
 export async function claimRequest(id: string, now = Date.now()): Promise<ClaimResult> {
-  return exclusive(async () => {
-    const list = await load();
+  return transact<ClaimResult>((list) => {
     const changed = sweep(list, now);
     const r = list.find((x) => x.id === id);
-    if (changed) await save(list);
-    if (!r) return { ok: false as const, reason: "unknown" as const };
-    if (r.status === "expired") return { ok: false as const, reason: "expired" as const };
-    if (r.status !== "pending") return { ok: false as const, reason: "not-pending" as const };
+    if (!r) return { out: { ok: false, reason: "unknown" }, dirty: changed };
+    if (r.status === "expired") return { out: { ok: false, reason: "expired" }, dirty: changed };
+    if (r.status !== "pending") return { out: { ok: false, reason: "not-pending" }, dirty: changed };
     r.status = "running"; r.decidedAt = now; r.decidedBy = "owner";
-    await save(list);
-    return { ok: true as const, request: { ...r } };
+    return { out: { ok: true, request: { ...r } }, dirty: true };
   });
 }
 
 export async function denyRequest(id: string, now = Date.now()): Promise<ClaimResult> {
-  return exclusive(async () => {
-    const list = await load();
-    sweep(list, now);
+  return transact<ClaimResult>((list) => {
+    const changed = sweep(list, now);
     const r = list.find((x) => x.id === id);
-    if (!r) return { ok: false as const, reason: "unknown" as const };
-    if (r.status === "expired") { await save(list); return { ok: false as const, reason: "expired" as const }; }
-    if (r.status !== "pending") return { ok: false as const, reason: "not-pending" as const };
+    if (!r) return { out: { ok: false, reason: "unknown" }, dirty: changed };
+    if (r.status === "expired") return { out: { ok: false, reason: "expired" }, dirty: changed };
+    if (r.status !== "pending") return { out: { ok: false, reason: "not-pending" }, dirty: changed };
     r.status = "denied"; r.decidedAt = now; r.decidedBy = "owner";
-    await save(list);
-    return { ok: true as const, request: { ...r } };
+    return { out: { ok: true, request: { ...r } }, dirty: true };
   });
 }
 
 /** L'exécution n'a pas pu commencer (une autre opération tourne) : la demande redevient « en attente », l'approbation n'est pas consommée. */
 export async function reopenRequest(id: string): Promise<void> {
-  await exclusive(async () => {
-    const list = await load();
+  await transact((list) => {
     const r = list.find((x) => x.id === id);
-    if (!r || r.status !== "running") return;
+    if (!r || r.status !== "running") return { out: undefined, dirty: false };
     r.status = "pending"; delete r.decidedAt; delete r.decidedBy;
-    await save(list);
+    return { out: undefined, dirty: true };
   });
 }
 
-/** Garde le résultat de l'exécution (texte court, masqué). */
+/**
+ * Garde le résultat de l'exécution (texte court, masqué). (0.46.1) Only a request that is running (or that a sweep just closed as interrupted while its work was
+ * still alive) receives a result: a refused, expired or still pending request is never turned into "done" by a late call.
+ */
 export async function finishRequest(id: string, result: RunResult, now = Date.now()): Promise<void> {
-  await exclusive(async () => {
-    const list = await load();
+  await transact((list) => {
     const r = list.find((x) => x.id === id);
-    if (!r) return;
+    if (!r || !(r.status === "running" || (r.status === "failed" && r.result?.message === INTERRUPTED_MESSAGE))) return { out: undefined, dirty: false };
     r.status = result.ok ? "done" : "failed";
     r.result = boundResult(result);
     r.decidedAt ??= now;
-    await save(list);
+    return { out: undefined, dirty: true };
   });
 }
 
 /** The progress of the long action an approved request is running (module by module). */
 export async function setRequestProgress(id: string, progress: RunProgress): Promise<void> {
-  await exclusive(async () => {
-    const list = await load();
+  await transact((list) => {
     const r = list.find((x) => x.id === id);
-    if (!r || r.status !== "running") return;
+    if (!r || r.status !== "running") return { out: undefined, dirty: false };
     r.progress = progress;
-    await save(list);
+    return { out: undefined, dirty: true };
   });
 }
 
 /** (0.46.0) Pending requests of the personal AI of one user, as `expired` at once (the right was withdrawn, or the person was demoted): they never run. Returns how many. */
 export async function expirePendingOf(ownerId: string): Promise<number> {
-  return exclusive(async () => {
-    const list = await load();
+  return transact((list) => {
     let n = 0;
     for (const r of list) if (r.status === "pending" && r.ownerId === ownerId) { r.status = "expired"; n++; }
-    if (n) await save(list);
-    return n;
+    return { out: n, dirty: n > 0 };
   });
 }

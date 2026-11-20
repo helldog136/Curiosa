@@ -394,12 +394,12 @@ Un dépôt peut contenir plusieurs skins (comme `modules/` dans `curiosa-extras`
 | `name`, `description` | objets `{ fr, en }`, **les deux obligatoires** (parité FR/EN) ; `name` ≤ 40 caractères, `description` ≤ 200. Les autres langues du site retombent sur `en`. |
 | `version` | `x.y.z`, sert à détecter les mises à jour. |
 | `minCore` | `"x.y.z"` comme pour les modules ; absent = aucune exigence (le kit avertit : un skin déclare toujours le sien). |
-| `author`, `license` | `license` : identifiant SPDX de **tout le contenu du skin** ; liste autorisée : MIT, Apache-2.0, BSD-2-Clause, BSD-3-Clause, ISC, CC0-1.0, CC-BY-4.0, CC-BY-SA-4.0, OFL-1.1 (pour les polices). |
+| `author`, `license` | `license` : **texte libre** (200 caractères au plus) ou absent, **jamais contrôlé** : « MIT », « Private », « All rights reserved » ou une phrase sont tous acceptés. Il est montré à la personne qui installe, à titre d'information seulement (« Licence Private »), sans avertissement ni blocage : la responsabilité de la licence d'un skin externe est celle de la personne qui l'installe, pas du cœur. Une politique de licence (identifiants SPDX) n'existe que pour le **catalogue officiel**, et elle est appliquée par la CI du dépôt `curiosa-skins`, jamais par ce cœur. |
 | `tags` | vocabulaire contrôlé : `light`, `dark`, `serif`, `sans`, `mono`, `pixel`, `playful`, `minimal`, `bold`, `editorial`, `retro`, `glass`, `high-contrast`. 6 au plus. |
 | `modes` | `["light"]`, `["dark"]` ou `["light","dark"]`. |
 | `tokens`, `stylesheet` | chemins relatifs dans le dossier du skin. `stylesheet` est facultatif (un skin peut n'être que des jetons). |
 | `previews` | 1 à 4 images `webp` ≤ 150 Ko, **1280 × 800** (ordinateur) **ou 390 × 844** (téléphone) : montrées **seulement** dans l'administration (copiées et servies par le site, jamais chargées depuis GitHub chez une personne qui visite), réduites à la largeur de l'écran (mobile d'abord). `alt` obligatoire. Le cœur ne mesure pas les dimensions (il vérifie le format, la signature et le poids) ; c'est `skin:check` qui avertit (`kit-preview-size`) hors de ces deux formats, et `skin:bench --previews` produit le format ordinateur. `width` (facultatif) ne sert qu'à décrire la capture. Les planches du banc (`--shots`, 390 à 1920 px) sont d'autres images : ne les mettez pas dans `previews/`. |
-| `assets` | **toute** police ou image embarquée est listée avec sa `license` (SPDX), son `licenseFile`, son `author` et sa `source`. Un fichier de `fonts/` ou `images/` non listé = refus. |
+| `assets` | **toute** police ou image embarquée est listée ; sa `license` (texte libre), son `licenseFile`, son `author` et sa `source` sont **facultatifs** (montrés quand ils existent, jamais exigés ni contrôlés ; le kit donne seulement un conseil). Un fichier de `fonts/` ou `images/` non listé = refus. |
 | `defaults` | valeurs de départ de ce que la personne peut retoucher : `headerLayout` (`classic`/`twoRows`/`centered`/`minimal`), `font` (`sans`/`serif`/`mono`/`skin` : `skin` = la police du skin), `glow` (`none`/`soft`/`strong`), `background` (`"none"`, `"dusk"`, `"grid"` ou un tableau de couches au format de `src/core/background.ts`). Ce sont les valeurs que les retouches remplacent. |
 | `options` | §3.4. |
 | `breakpoints` | largeurs (px) où la mise en page change : le banc d'essai les capture en plus de 390, 768, 1280, 1920. 4 au plus. |
@@ -856,6 +856,27 @@ Toujours en mots simples, sous le champ concerné, avec un exemple : « Le texte
 
 « Ajouter depuis une adresse » : champ + [Vérifier]. Le cœur clone, valide, et montre un résumé : nom, auteur, **licences des polices et images**, taille, résultat du contrôle de lisibilité. Confirmation explicite (case + bouton) : « Ce skin ne vient pas de la liste vérifiée. Il ne peut pas faire tourner de programme : il ne peut changer que l'apparence. Je l'ajoute. » Le dépôt est mémorisé avec `source: "personal"` ; il n'est pas ajouté au catalogue.
 
+### 10.5b From your folder to your site (core 0.46.1)
+
+*(English: this section is new. The rest of this file stays in French until it is touched for its own sake.)*
+
+Appearance has a first block, **Add a skin from a file**, for a skin made by hand: no repository, no access code. The owner (right `core:modules.install`, like every way of adding a skin) drops a `.zip`; it is checked at once, shown on the real site, then added. Plain steps for the person making the skin:
+
+1. **Make the zip.** Select the files of your skin folder (the ones next to `skin.json`), or the folder itself, then: Windows, right-click, *Send to*, *Compressed (zipped) folder*. Mac, right-click, *Compress*. Linux, `zip -r my-skin.zip my-skin`.
+2. **Drop it** on the box (or press *Choose a file*). It is checked immediately. A refusal says what is wrong, what to do and gives one example; your file stays chosen so you can fix the folder and drop the new zip.
+3. **Look at it.** Your skin is shown on your own site, with nothing saved.
+4. **Press *Add this skin*.** The sentence next to the button says the skin does not come from the catalog and that you are responsible for it. There is no tick box: a skin only changes the look and runs nothing, so a plain sentence and an explicit click are the confirmation.
+5. **Press *Use this skin*** (or *Keep as is*). It is the same choice as for any skin; *Go back* and removal work as usual.
+6. **To change it later**, raise `version` in `skin.json` and drop the new zip: it replaces the skin, and *Go back to the previous version* stays available. A skin added from a file is never updated by itself.
+
+**The file is not kept.** The zip is read in memory and dropped; you may delete your copy. Only the checked skin files, the ones the validator allows, are copied to the skin's normal place (`data/skins/<id>/<version>/`). What is recorded: the skin's row (provenance "uploaded file", date, the file's SHA-256 and size, no address) and the audit line `skin.install <id>@<version> uploaded file sha256:… <size>B` with who did it. A skin added from a file has no address, so *Update* and *reinstall* are refused with a sentence ("drop the new file"), and a backup restore lists it as "added from a file: add it again" (its files are not in a backup, as for any skin).
+
+**Layout.** The skin files at the top of the zip, or all inside **one** folder, whatever its name (Windows and macOS name it after the zip, GitHub after the branch). The skin's name is the `id` in `skin.json`, never the folder's name. Ignored without a word: `__MACOSX/`, `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`. Backslashes are read as slashes (old Windows tools write them) before any other check.
+
+**What the reader refuses** (`src/core/skins/zip.ts`, no library: the central directory is read by hand and `node:zlib` inflates): not a zip, more than one end record, truncated or inconsistent file, overlapping entries, zip64, encryption, any method other than stored and deflate, links and special files (Unix mode), `..`, absolute paths, drive letters, control characters, empty parts, paths over 200 characters or 6 levels deep, duplicate names or names that differ only by case or Unicode form, more than 60 files kept (400 entries counting junk), a file over 512 KB or a total over 2.5 MB (the validator then applies its own, tighter, limits), a compression ratio over 100:1 for a file of 8 KB or more, and a size or CRC that does not match. The inflate is given the declared size as its output ceiling, so a lie about the size stops at the declared size and is refused; nothing is ever executed. The archive itself is at most 4 MB (the server action body limit is raised to 5 MB in `next.config.mjs` for it). At most 12 files per owner per 10 minutes.
+
+**Staging.** Between *drop* and *Add this skin* the checked skin files sit at their normal place with a note in `data/skins/.staged/<sha256>.json` and **no registry row**, so the site is unchanged; the preview loads them (only a preview link can: never the site's skin, never a page's skin). The staged copy lives 30 minutes at most and is removed by *Add* (it becomes the installed copy), *Cancel*, a new drop, any error, and a sweep when Appearance loads. *Add* re-reads and re-checks the staged files first.
+
 ### 10.6 Assistant IA / MCP
 
 Même philosophie que les outils `maintenance_*` existants : **lecture** (`appearance_status` : skin actif, retouches, avertissements de lisibilité ; `appearance_skins` : installés et du catalogue) et **demande** (`appearance_request_skin` : « changer pour le skin X » crée une demande en attente que la personne confirme dans l'administration, comme `maintenance_request_status`). Aucun outil n'installe ni n'active sans validation humaine ; aucun ne lit ou n'écrit de contenu.
@@ -900,8 +921,8 @@ Commande : `npm run skin:check -- <dossier-du-skin>` (réalisé au lot S8, §23 
 
 | Niveau | Exigences (obligatoires sauf mention) |
 |---|---|
-| **Manifeste** | `skin.json` valide ; `id` = dossier ; FR + EN pour `name`/`description` ; `version`, `skinContract`, `minCore` ; licence SPDX autorisée ; tags du vocabulaire ; `modes` ; `previews` avec `alt` |
-| **Ressources** | chaque fichier de `fonts/` / `images/` listé dans `assets` avec licence + fichier de licence ; signatures ; plafonds §5.3 ; SVG assaini ; aucune URL absolue ni `data:` nulle part |
+| **Manifeste** | `skin.json` valide ; `id` = dossier ; FR + EN pour `name`/`description` ; `version`, `skinContract`, `minCore` ; licence en texte libre (facultative, jamais contrôlée) ; tags du vocabulaire ; `modes` ; `previews` avec `alt` |
+| **Ressources** | chaque fichier de `fonts/` / `images/` listé dans `assets` (licence, fichier de licence, auteur et source facultatifs) ; signatures ; plafonds §5.3 ; SVG assaini ; aucune URL absolue ni `data:` nulle part |
 | **Jetons** | couleurs de base présentes par mode ; types valides ; jetons inconnus ⚠️ ; jetons de modules sans module ⚠️ |
 | **Feuille** | analyse PostCSS : sélecteurs §6.1, at-règles §6.2, propriétés/valeurs §6.3, plafonds ; `!important` ; `content` ; `animation` hors `prefers-reduced-motion: no-preference` |
 | **Principe fondateur (§0)** | aucune règle de masquage ou d'injection (§6.3, §9.3) ; sélecteurs uniquement sur régions/pièces connues ; aucune option qui ne soit pas un jeton |
@@ -934,7 +955,7 @@ But : une personne teste son skin **sans installer un site entier**.
 - **Portée** : toutes les règles préfixées `:root[data-skin="<id>"]` ; jamais l'administration, les overlays, les routes `/m`.
 - **Liste blanche** de sélecteurs, d'at-règles, de propriétés, de valeurs (§6) ; plafonds de taille et de nombre de règles ; sortie assainie recalculée côté serveur (le fichier source n'est jamais servi).
 - **Aucune ressource tierce** : toute URL non `skin:` est refusée. Polices (`.woff2`) et images **servies par le site lui-même** depuis `/skins/<id>/<version>/…` (même origine) ; aucune requête vers Google Fonts, un CDN ou GitHub chez la personne qui visite. Les aperçus ne sont chargés que par l'administration, depuis le site (copie locale). Aucune ressource de skin n'est conditionnée par un cookie ; aucun suivi.
-- **Licences** : toute ressource a sa licence listée et affichée dans « Voir les licences » ; liste d'identifiants SPDX autorisés ; `THIRD-PARTY-NOTICES.md` n'embarque pas les skins (ils sont installés, pas livrés).
+- **Licences** : la licence d'une ressource, quand elle est indiquée, est affichée dans « Voir les licences » (jamais exigée) ; aucune liste d'identifiants imposée par le cœur (la politique SPDX du catalogue officiel est dans la CI de `curiosa-skins`) ; `THIRD-PARTY-NOTICES.md` n'embarque pas les skins (ils sont installés, pas livrés).
 - **Préférence clair/sombre** : `localStorage` du navigateur uniquement, jamais envoyée, déclarée dans `privacy` et la page de confidentialité (§3.8) ; aucun cookie ajouté ; bandeau de cookies inchangé.
 - **Pas de minuteur de fond** : composition calculée à la demande avec cache expirant (10 min) ; rien ne tourne en arrière-plan ; vérification de mises à jour des skins avec celle des modules (déjà planifiée par le cœur).
 - **Catalogue relu** (`ref` épinglé) ; dépôt personnel avec confirmation explicite (§10.5).
@@ -1143,8 +1164,8 @@ Laissé aux lots suivants : saisie des deux modes et encadré de lisibilité (S7
 | Fichier (`src/core/skins/`) | Rôle | Pur ? |
 |---|---|---|
 | `manifest.ts` | schéma zod de `skin.json` (§5.2) | oui |
-| `validate.ts` | **LA** validation d'un dossier local (manifeste, fichiers, ressources, licences, jetons, feuille, lisibilité) ; partagée par l'installation, l'aperçu, la mise à jour et `skin:check` | lit un dossier, rien d'autre |
-| `constants.ts`, `semver.ts` | plafonds (§5.3), licences permises, vocabulaire d'étiquettes, comparaison de versions | oui |
+| `validate.ts` | **LA** validation d'un dossier local (manifeste, fichiers, ressources, jetons, feuille, lisibilité ; la licence n'est jamais jugée) ; partagée par l'installation, l'aperçu, la mise à jour et `skin:check` | lit un dossier, rien d'autre |
+| `constants.ts`, `semver.ts` | plafonds (§5.3), plafonds de texte de licence, vocabulaire d'étiquettes, comparaison de versions | oui |
 | `source.ts` | récupération git (hôtes autorisés, clone superficiel, sous-dossier) en réutilisant `modules/installer.ts` | réseau |
 | `catalogue.ts` | `catalogue/index.json` du dépôt de skins, copie reçue, index supplémentaire | réseau |
 | `registry.ts` | registre `skin.installed`, verrou, rangement | base |
@@ -1195,7 +1216,7 @@ A skin can be installed from a **private GitHub repository**: Appearance, "Add f
 
 ### 21.5 Ce que la validation refuse (`validateSkinFolder`)
 
-Dans l'ordre : dossier (aucun lien symbolique, un seul niveau `fonts/ images/ previews/ LICENSES/`, noms simples, 60 fichiers, 2 Mo) → manifeste (zod ; id = nom du dossier, `basic` réservé, contrat et `minCore` pas trop récents, licence SPDX permise) → fichiers prévus (tout fichier hors liste est refusé) → plafonds (§5.3) → ressources (extension **et** octets magiques ; SVG réécrit par `sanitizeSvg` ou refusé ; licence, fichier de licence, auteur et source pour chaque police et image) → `tokens.json` (forme, noms, chaque valeur par `sanitizeTokenValue`, plus un contrôle typé des jetons de nature connue, ex. `--sk-text-*` comme `font-size`) → feuille (`sanitizeSkinCss`, `assetBase = /skins/<id>/<version>/`) → lisibilité (`checkReadability`, **chaque mode déclaré**, refus sous AA) → animations sans `supports.reducedMotion`. Un skin refusé n'installe rien (`installFiles` est vide).
+Dans l'ordre : dossier (aucun lien symbolique, un seul niveau `fonts/ images/ previews/ LICENSES/`, noms simples, 60 fichiers, 2 Mo) → manifeste (zod ; id = nom du dossier, `basic` réservé, contrat et `minCore` pas trop récents ; la licence est un texte libre, jamais refusée) → fichiers prévus (tout fichier hors liste est refusé) → plafonds (§5.3) → ressources (extension **et** octets magiques ; SVG réécrit par `sanitizeSvg` ou refusé ; les informations de licence, d'auteur et de source sont facultatives et jamais jugées) → `tokens.json` (forme, noms, chaque valeur par `sanitizeTokenValue`, plus un contrôle typé des jetons de nature connue, ex. `--sk-text-*` comme `font-size`) → feuille (`sanitizeSkinCss`, `assetBase = /skins/<id>/<version>/`) → lisibilité (`checkReadability`, **chaque mode déclaré**, refus sous AA) → animations sans `supports.reducedMotion`. Un skin refusé n'installe rien (`installFiles` est vide).
 
 ### 21.6 Mise à jour, retour arrière, retrait, repli
 
@@ -1250,7 +1271,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 
 | Fichier | Rôle |
 |---|---|
-| `src/app/admin/(panel)/appearance/` | la page (`page.tsx`), ses actions (`actions.ts`), la fenêtre d'aperçu (`PreviewDialog.tsx`), les cartes (`SkinCards.tsx`), le catalogue (`CatalogueCard.tsx`), l'ajout par adresse (`PersonalRepo.tsx`, `InspectPanel.tsx`), la gestion (`ManageSkin.tsx`), les couleurs (`ColorSection.tsx`) |
+| `src/app/admin/(panel)/appearance/` | la page (`page.tsx`), ses actions (`actions.ts`), la fenêtre d'aperçu (`PreviewDialog.tsx`), les cartes (`SkinCards.tsx`), le catalogue (`CatalogueCard.tsx`), l'ajout par adresse (`PersonalRepo.tsx`, `InspectPanel.tsx`), l'ajout depuis un fichier .zip (`UploadSkin.tsx`, §10.5b), la gestion (`ManageSkin.tsx`), les couleurs (`ColorSection.tsx`) |
 | `src/core/skins/appearance.ts` | **tout ce que la page écrit** : `chooseSkin`, `resetToSkin`, `undoLastChange`, `saveSkinOptions`, `saveRetouches` (+ `parseRetouchForm`, `checkRetouchInput`), `readSnapshot` ; aucun accès à Next |
 | `src/core/skins/appearanceView.ts` | le modèle de la page (`loadAppearanceView`), composé avec les mêmes fonctions que le rendu du site ; `activePreviewTokens` pour l'éditeur d'entrée |
 | `src/core/skins/previewToken.ts`, `render.ts` (`resolveLook(…, { previewSkinId })`), `src/proxy.ts`, `src/app/(site)/layout.tsx` | l'aperçu d'un skin avant de l'utiliser |

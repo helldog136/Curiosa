@@ -81,6 +81,7 @@ async function sha256(file) {
  * @param {boolean} [o.last]     faux : une étape suit, le statut reste « en cours » après celle-ci
  * @param {boolean} [o.resume]   étape suivante d'une même mise à jour : le verrou posé par l'étape précédente n'est pas un conflit
  */
+const CLAIM_STALE_MS = 10_000;
 export async function runUpdate(o) {
   const { appDir, dataDir, tag, exec, download, databaseUrl, platform = platformId(), restartCommand, serverPid, supervised = false, now = Date.now } = o;
   const sys = o.sys ?? systemProc();
@@ -101,12 +102,28 @@ export async function runUpdate(o) {
   };
 
   // 1. verrou et vérifications — rien n'est touché tant qu'elles ne passent pas
-  const previous = readState(dataDir);
-  if (!o.resume && previous.status === "running" && now() - (previous.startedAt ?? 0) < STALE_LOCK_MS) return { ok: false, error: "already-running" };
-  if (!TAG_RE.test(String(tag))) { save({ status: "failed", error: "invalid-tag", finishedAt: now() }); return { ok: false, error: "invalid-tag" }; }
-  log(`=== mise à jour vers ${tag} ===`);
-  for (const w of o.warnings ?? []) log(w);
-  save({});
+  // Read-then-write on state.json is not atomic: two starts could both see "idle". An exclusive-create claim file (wx) covers just that window.
+  const claim = path.join(dir, "state.claim");
+  let claimed = false;
+  for (let i = 0; i < 2 && !claimed; i++) {
+    try { fs.writeFileSync(claim, String(process.pid), { flag: "wx" }); claimed = true; }
+    catch (e) {
+      if (e?.code !== "EEXIST") break; // claim not possible for another reason: fall back to the old behaviour rather than block updates
+      let age = 0; try { age = Date.now() - fs.statSync(claim).mtimeMs; } catch { continue; }
+      if (age < CLAIM_STALE_MS) return { ok: false, error: "already-running" };
+      try { fs.unlinkSync(claim); } catch { /* another start removed it first */ }
+    }
+  }
+  try {
+    const previous = readState(dataDir);
+    if (!o.resume && previous.status === "running" && now() - (previous.startedAt ?? 0) < STALE_LOCK_MS) return { ok: false, error: "already-running" };
+    if (!TAG_RE.test(String(tag))) { save({ status: "failed", error: "invalid-tag", finishedAt: now() }); return { ok: false, error: "invalid-tag" }; }
+    log(`=== mise à jour vers ${tag} ===`);
+    for (const w of o.warnings ?? []) log(w);
+    save({});
+  } finally {
+    if (claimed) { try { fs.unlinkSync(claim); } catch { /* already gone */ } }
+  }
   const fail = async (error, extra = {}) => { log(`✘ ${error}`); save({ status: "failed", error, finishedAt: now(), ...extra }); return { ok: false, error }; };
 
   const current = readRelease(appDir);

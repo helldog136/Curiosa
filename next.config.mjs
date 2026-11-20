@@ -25,6 +25,8 @@ const nextConfig = {
   images: { unoptimized: true },
   // Les modules installés vivent dans data/modules et sont chargés à l'exécution :
   // ils ne doivent jamais être analysés ni embarqués par le bundler.
+  // (0.46.1) The skin the owner drops as a .zip (Appearance) is at most 4 MB: the default cap of a server action (1 MB) would refuse it. The check of the file itself (size, content) is core/skins/zip.ts.
+  experimental: { serverActions: { bodySizeLimit: "5mb" } },
   serverExternalPackages: ["@prisma/client", "@prisma/adapter-better-sqlite3", "better-sqlite3", "bcryptjs", "sharp"],
   /**
    * Language prefix (/fr/blog -> /blog) and the "link ended" page (410), as CONFIG rewrites with a path-only destination. They used to be

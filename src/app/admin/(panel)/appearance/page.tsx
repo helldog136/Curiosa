@@ -26,6 +26,8 @@ import { ManageSkin, type ManagedSkin } from "./ManageSkin";
 import { accessState } from "@/core/gitAccess";
 import { readRows } from "@/core/skins/registry";
 import { PersonalRepo } from "./PersonalRepo";
+import { UploadSkin } from "./UploadSkin";
+import { sweepStagedFiles } from "@/core/skins/uploadService";
 import { SkinCards, SwatchTile } from "./SkinCards";
 import { FontPickers } from "./FontPickers";
 import { FontUpload } from "./FontUpload";
@@ -87,6 +89,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const locale: "fr" | "en" = rawLocale === "fr" ? "fr" : "en";
   // « isOwner » : peut installer des extensions (droit `core:modules.install` : propriétaire, coordinateur technique).
   const isOwner = can(user, "core:modules.install");
+  if (isOwner) await sweepStagedFiles();   // a checked skin nobody added within 30 minutes is removed
   const view = await loadAppearanceView();
   const legacy = view.activeId === "basic";
   const labels = appearanceLabels(t);
@@ -118,11 +121,13 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
 
   const pictureCounts = Object.fromEntries(await Promise.all(view.cards.filter((c) => c.source !== "basic").map(async (c) => [c.id, (await pictureUsage(c.id)).files] as const)));
   // (0.42.0) A skin from a private repository: where it comes from and what is saved for it (never the code), for the summary line in its management area.
-  const repos = new Map((isOwner ? await readRows() : []).map((r) => [r.id, r.repo] as const));
+  const ownerRows = isOwner ? await readRows() : [];
+  const repos = new Map(ownerRows.map((r) => [r.id, r.repo] as const));
+  const uploads = new Map(ownerRows.filter((r) => r.upload).map((r) => [r.id, { date: r.installedAt.slice(0, 10), print: r.upload!.sha256.slice(0, 12) }] as const));
   const managed: ManagedSkin[] = await Promise.all(view.cards.filter((c) => c.source !== "basic").map(async (c) => {
     const repo = repos.get(c.id);
-    const access = c.source === "personal" && repo ? await accessState(repo) : undefined;
-    return { id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status, pictures: pictureCounts[c.id] ?? 0, ...(repo && access && access.state !== "none" ? { repo, access } : {}) };
+    const access = c.source === "personal" && repo ? await accessState(repo) : undefined;   // no address for a skin added from a file: nothing to look up
+    return { id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status, pictures: pictureCounts[c.id] ?? 0, ...(uploads.has(c.id) ? { upload: uploads.get(c.id)! } : {}), ...(repo && access && access.state !== "none" ? { repo, access } : {}) };
   }));
 
   return (
@@ -183,6 +188,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
           <Suspense fallback={<p role="status" className={ui.help}>{t("appearance.catalogue.loading")}</p>}>
             <Catalogue locale={locale} canInstall={isOwner} />
           </Suspense>
+          {isOwner && <UploadSkin />}
           {isOwner && <PersonalRepo locale={locale} />}
         </section>
 

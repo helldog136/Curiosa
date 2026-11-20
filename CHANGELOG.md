@@ -7,6 +7,45 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.46.1 — 2026-11-20
+
+**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence, et vous pouvez l'ajouter en déposant son fichier .zip dans Apparence.
+
+**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. A skin you install yourself is no longer refused because of its license, and you can add it by dropping its .zip file in Appearance.
+
+### Corrections
+
+- **Une demande en attente ne disparaît plus.** Quand un assistant avait fait beaucoup de demandes déjà traitées, une demande encore en attente pouvait être effacée de la liste sans prévenir. Elle reste maintenant jusqu'à ce que vous répondiez ou qu'elle expire.
+- **(English) A waiting request no longer vanishes.** After many requests had been answered, one that was still waiting could be dropped from the list without a word. It now stays until you answer or it expires.
+- **Votre accord ne publie que ce que vous avez vu.** Si un assistant changeait le lien, le code ou les étiquettes d'un brouillon après sa demande de publication, votre accord publiait la version modifiée. Maintenant l'assistant doit refaire sa demande, y compris pour celles en attente pendant la mise à jour.
+- **(English) Your approval publishes only what you saw.** If an assistant changed the link, code or tags of a draft after asking to publish it, your approval published the changed version. Now the assistant has to ask again, including for requests waiting during the update.
+- **Une longue opération n'est plus doublée.** Une mise à jour très lente pouvait être oubliée au bout de 30 minutes, et une seconde opération démarrait en même temps. Tant qu'elle avance, elle garde sa place.
+- **(English) A long operation is no longer doubled.** A very slow update could be forgotten after 30 minutes, and a second operation started alongside it. As long as it makes progress, it keeps its place.
+- **Un skin privé s'installe.** Un skin sous licence « Private », « All rights reserved » ou sans licence était refusé, tout comme une image sans licence ou sans auteur. Il s'installe maintenant, et sa licence s'affiche sans avertissement.
+- **(English) A private skin installs.** A skin under "Private", "All rights reserved" or no license was refused, as was a picture without license or author. It now installs, and its license is shown with no warning.
+
+### Nouveautés
+
+- **Ajoutez un skin depuis un fichier.** Dans Apparence, déposez le .zip de votre skin : vous le voyez sur votre site avant de l'ajouter, et le fichier n'est pas gardé. Pour le modifier, augmentez sa version et déposez le nouveau.
+- **(English) Add a skin from a file.** In Appearance, drop the .zip of your skin: you see it on your site before adding it, and the file is not kept. To change it, raise its version and drop the new one.
+
+### Pour les développeurs
+
+- `core/skins/zip.ts` : lecteur de zip sans bibliothèque (liens, chemins, doublons, zip64, bombes refusés) ; `uploadService.ts` : `stageUpload` puis `addStaged`, copie validée sans ligne de registre 30 minutes au plus ; l'archive n'est jamais écrite. `bodySizeLimit` des actions : 5 Mo.
+- **(English)** `core/skins/zip.ts`: library-free zip reader (links, paths, duplicates, zip64, bombs refused); `uploadService.ts`: `stageUpload` then `addStaged`, validated copy with no registry row for 30 minutes at most; the archive is never written. Action `bodySizeLimit`: 5 MB.
+
+- `maintenance/requests.ts` : `save` ne coupe plus que les demandes terminées (50 par catégorie) ; une demande « en attente » ou « en cours » est toujours gardée. `maintenance/publish.ts` : l'empreinte d'un brouillon couvre aussi `url`, `code`, `tags`, `cover`, `icon`, `fields` (en plus des textes et du skin).
+- **(English)** `maintenance/requests.ts`: `save` only cuts finished requests (50 per class); a pending or running one is always kept. `maintenance/publish.ts`: the fingerprint of a draft also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (besides the texts and the skin).
+- `maintenance/background.ts` : le verrou est un bail renouvelé à chaque étape (`touch`), `LOCK_STALE_MS` reste le filet de sécurité. `maintenance/requests.ts` : chaîne `exclusive()` sur `globalThis`, écriture en compare-and-swap avec nouvel essai (`transact`), `finishRequest` seulement sur une demande en cours.
+- **(English)** `maintenance/background.ts`: the lock is a lease renewed on each step (`touch`), `LOCK_STALE_MS` stays as the safety net. `maintenance/requests.ts`: `exclusive()` chain on `globalThis`, compare-and-swap write with retry (`transact`), `finishRequest` only on a running request.
+- `ownerCeiling.ts` : `none` à côté d'une autre clé n'ouvre rien. `scripts/update-lib.mjs` : fichier `state.claim` créé en exclusivité autour de la lecture de `state.json`.
+- **(English)** `ownerCeiling.ts`: `none` next to another key opens nothing. `scripts/update-lib.mjs`: `state.claim` file created exclusively around the read of `state.json`.
+- Revue formelle : modèles et tests dans `docs/formal/` et `tests/**/formal-*.test.mjs` (plafond des assistants personnels, file d'approbation, verrou de maintenance en TLA+). Les constats y sont décrits avec leur trace.
+- **(English)** Formal review: models and tests in `docs/formal/` and `tests/**/formal-*.test.mjs` (personal assistant ceiling, approval queue, maintenance lock in TLA+). Findings are described there with their trace.
+- `skins/manifest.ts` : `license` (skin et ressources) est un texte libre facultatif (200 caractères, `LICENSE_TEXT_MAX`). `skins/validate.ts` ne juge plus aucune licence : `SPDX_ALLOWED` et les codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` et `asset-license-file` sont supprimés. Le kit donne le conseil `kit-asset-credits`.
+- **(English)** `skins/manifest.ts`: `license` (skin and assets) is optional free text (200 characters, `LICENSE_TEXT_MAX`). `skins/validate.ts` no longer judges any license: `SPDX_ALLOWED` and the codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` and `asset-license-file` are removed. The kit gives the tip `kit-asset-credits`.
+
+
 ## 0.46.0 — 2026-11-21
 
 **En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).

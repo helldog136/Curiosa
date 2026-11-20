@@ -13,7 +13,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { sanitizeSvg } from "../svg";
 import { FONT_PATH_RE, IMAGE_PATH_RE, SKIN_ID_RE } from "./allowlist";
-import { BASIC_ID, FILE_LIMITS, SPDX_ALLOWED } from "./constants";
+import { BASIC_ID, FILE_LIMITS } from "./constants";
 import { parseSkinManifest, type SkinManifest } from "./manifest";
 import { makeIssue, type Params, type SkinIssue } from "./messages";
 import { checkReadability, type Mode, type ModulePair, type ReadabilityIssue } from "./readability";
@@ -169,7 +169,6 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if (m.id === BASIC_ID || !SKIN_ID_RE.test(m.id)) add("bad-skin-id");
   if (opts.folderName && opts.folderName !== m.id) add("manifest-id-folder", { id: m.id });
   if (opts.expectId && opts.expectId !== m.id) add("manifest-id-expected", { id: m.id });
-  if (!SPDX_ALLOWED.includes(m.license)) add("manifest-license-not-allowed", { license: m.license });
   if (!m.minCore) add("manifest-no-mincore");
   else if (!coreSatisfies(m.minCore, opts.coreVersion)) add("manifest-core-newer", { need: m.minCore, have: opts.coreVersion });
   if ((m.previews ?? []).length === 0) add("manifest-no-preview");
@@ -232,15 +231,11 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   for (const [rel, kind] of kinds) if (kind === "license" || kind === "readme") tooLarge(rel, FILE_LIMITS.textBytes);
   if (hasTokens && sizeOf(tokensRel) > FILE_LIMITS.tokensBytes) add("tokens-too-large", { size: kb(sizeOf(tokensRel)), max: kb(FILE_LIMITS.tokensBytes) });
 
-  // ---- 5. Ressources : licence, signature, SVG assaini.
+  // ---- 5. Ressources : signature, SVG assaini (leur licence n'est jamais jugée).
   const content = new Map<string, Buffer>();
   const read = (rel: string): Buffer => { let b = content.get(rel); if (!b) { b = fs.readFileSync(byRel.get(rel)!.abs); content.set(rel, b); } return b; };
   for (const a of assets) {
-    if (!a.license || !a.licenseFile || !a.author || !a.source) { add("asset-license-missing", { file: a.file }); }
-    else {
-      if (!SPDX_ALLOWED.includes(a.license)) add("asset-license-not-allowed", { file: a.file });
-      if (!LICENSE_FILE_RE.test(a.licenseFile) || !byRel.has(a.licenseFile)) add("asset-license-file", { file: a.file });
-    }
+    // (core 0.46.1) license, license file, author and source of an asset are optional information: never checked here (the kit only gives a tip).
     if (sizeOf(a.file) > (a.file.endsWith(".svg") ? FILE_LIMITS.svgBytes : a.kind === "font" ? FILE_LIMITS.fontBytes : FILE_LIMITS.imageBytes)) continue;   // déjà signalé : pas la peine de le lire
     const bytes = read(a.file);
     if (a.file.endsWith(".svg")) {
@@ -500,11 +495,6 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     if (imagesTotal > FILE_LIMITS.imagesTotalBytes) add("images-total-too-large", { size: kb(imagesTotal), max: kb(FILE_LIMITS.imagesTotalBytes) });
     for (const a of sceneImages) {
       const svg = a.file.endsWith(".svg"), cap = svg ? FILE_LIMITS.svgBytes : FILE_LIMITS.imageBytes;
-      if (!a.license || !a.licenseFile || !a.author || !a.source) add("asset-license-missing", { file: a.file });
-      else {
-        if (!SPDX_ALLOWED.includes(a.license)) add("asset-license-not-allowed", { file: a.file });
-        if (!LICENSE_FILE_RE.test(a.licenseFile) || !byRel.has(a.licenseFile)) add("asset-license-file", { file: a.file });
-      }
       if (sizeOf(a.file) > cap) { add("file-too-large", { file: a.file, size: kb(sizeOf(a.file)), max: kb(cap) }); continue; }
       const bytes = read(a.file);
       if (svg) {

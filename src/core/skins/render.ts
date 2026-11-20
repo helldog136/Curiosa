@@ -19,6 +19,7 @@ import { MODE_SCRIPT_URL } from "./modeScript";
 import { retouchesFrom, RETOUCH_READ_KEYS } from "./retouch";
 import { loadInstalledSkin } from "./service";
 import { renderSheet } from "./sheet";
+import { loadStagedSkin } from "./uploadService";
 import { loadResolved } from "./customizeStore";
 import type { SkinDefinition } from "./types";
 
@@ -55,9 +56,11 @@ const MAX_ENTRIES = 24;
 export { invalidateSkinCache };
 
 /** Le skin d'un APERÇU (page Apparence) : celui qu'on demande, s'il est installé et intact ; sinon basic. Rien n'est enregistré. */
-async function previewSkin(id: string, moduleParts: Readonly<Record<string, readonly string[]>>): Promise<{ skin: SkinDefinition; serial: string }> {
+async function previewSkin(id: string, moduleParts: Readonly<Record<string, readonly string[]>>, staged = false): Promise<{ skin: SkinDefinition; serial: string }> {
   if (id === BASIC.id) return { skin: BASIC, serial: "basic" };
-  const loaded = await loadInstalledSkin(id, { moduleParts });
+  let loaded = await loadInstalledSkin(id, { moduleParts });
+  // (0.46.1) A skin dropped as a file and checked, not added yet: only a PREVIEW link may show it (never the site's skin, never a page's skin).
+  if (!loaded.ok && staged) loaded = loadStagedSkin(id, { moduleParts });
   if (!loaded.ok) return { skin: BASIC, serial: "basic" };
   const skin = toSkinDefinition(loaded);
   return { skin, serial: `${skin.id}@${skin.version}:${loaded.fingerprint}` };
@@ -72,7 +75,7 @@ export async function resolveLook(localized: SiteConfig, opts: { previewSkinId?:
   // (0.45.0) `pageSkinId`: ONE page asks for an installed site skin other than the site's (docs/SKINS.md "Skin for this page"). It is rendered exactly like the preview of that
   // skin (the skin as shipped plus its own saved customization, never the retouches or options the owner made for the site's skin), and it is the only extra skin loaded
   // by the request. An unusable skin (removed, modified, invalid) falls back to the site's skin, never to basic. A preview link (Appearance page) wins over it.
-  let forced = opts.previewSkinId !== undefined ? await previewSkin(opts.previewSkinId, moduleLayer.byModule) : opts.pageSkinId !== undefined ? await previewSkin(opts.pageSkinId, moduleLayer.byModule) : null;
+  let forced = opts.previewSkinId !== undefined ? await previewSkin(opts.previewSkinId, moduleLayer.byModule, true) : opts.pageSkinId !== undefined ? await previewSkin(opts.pageSkinId, moduleLayer.byModule) : null;
   if (forced && opts.previewSkinId === undefined && forced.skin === BASIC) forced = null;
   const preview = forced !== null;
   const { skin, serial } = forced ?? await activeSkin(moduleLayer.byModule);

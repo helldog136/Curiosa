@@ -19,7 +19,7 @@ import type { Plan } from "./requests";
  *    (`fallbackToDefault: false`), every language of the site must exist. A missing version is refused with the languages named, never published "half";
  *  - it FOLLOWS the approval setting of the access, exactly like updates and uninstalls (see `callLevel3`): "I approve every request" -> a request the owner approves in
  *    Admin > AI assistants, "act without asking" -> done at once;
- *  - what the owner approves is what is published: the request holds a fingerprint of the texts; a draft edited afterwards is not published (ask again);
+ *  - what the owner approves is what is published: the request holds a fingerprint of the texts AND of the link, code, tags, cover, icon, fields and skin; a draft edited afterwards is not published (ask again);
  *  - the journal gets who / what / when (`entry.publish` with `<instance>/<entry id>`), never a title or a text.
  */
 export const MAX_ENTRIES_PER_CALL = 12;
@@ -37,11 +37,16 @@ export function publishInput(locales: string[]): JsonSchemaLite {
 
 type Item = { id: string; title: string; locales: string[]; fp: string; skin?: string };
 
-/** A fingerprint of the texts of an entry (not the texts): lets the approval cover exactly what the owner saw. */
-function fingerprint(translations: { locale: string; title: string; summary: string; body: string }[], skin: string | null = null): string {
+/** What a visitor sees of an entry besides its texts, and that an AI or a person can change on a draft: all of it is part of what the owner approves. */
+type Shown = { skin: string | null; url: string | null; code: string | null; tags: string; cover: string | null; icon: string | null; fields: string };
+
+/**
+ * A fingerprint of what the owner is shown (not the content itself): the texts of every language AND the link, code, tags, cover, icon, custom fields and page skin.
+ * (0.46.1) It used to cover the texts and the skin only: `update_draft` changes `url`, `code` and `tags`, so a draft could change where it points after the request.
+ */
+function fingerprint(translations: { locale: string; title: string; summary: string; body: string }[], shown: Shown): string {
   const rows = translations.map((t) => [t.locale, t.title, t.summary, t.body]).sort((a, b) => String(a[0]).localeCompare(String(b[0])));
-  // (0.45.0) the page skin is part of what the owner approves: a draft whose skin changed after the request is not published
-  return crypto.createHash("sha256").update(JSON.stringify(skin ? [rows, skin] : rows)).digest("hex").slice(0, 16);
+  return crypto.createHash("sha256").update(JSON.stringify([rows, [shown.skin, shown.url, shown.code, shown.tags, shown.cover, shown.icon, shown.fields]])).digest("hex").slice(0, 16);
 }
 
 const idList = (args: { id?: unknown; ids?: unknown }): string[] => {
@@ -82,7 +87,7 @@ export async function prepareEntryPublish(action: "entry_publish" | "entry_unpub
       if (missing.length) { problems.push(`${id}: the ${missing.join(", ")} version is missing and this site shows each language only when it is written; add it with update_draft (locale) first, nothing was published`); continue; }
     }
     const shown = e.translations.find((t) => t.locale === config.defaultLocale) ?? e.translations[0];
-    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations, e.skin), ...(e.skin && SKIN_ID_RE.test(e.skin) ? { skin: e.skin } : {}) });
+    items.push({ id: e.id, title: redactSecrets(shown?.title ?? "", 80), locales: e.translations.map((t) => t.locale).sort(), fp: fingerprint(e.translations, e), ...(e.skin && SKIN_ID_RE.test(e.skin) ? { skin: e.skin } : {}) });
   }
   if (problems.length) throw new McpToolError(`Not ${publish ? "published" : "unpublished"}: ${problems.join("; ")}.`);
   return { entry: { instance: instance.key, ...(locale ? { locale } : {}), items } };
