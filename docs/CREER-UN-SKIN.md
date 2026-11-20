@@ -122,9 +122,9 @@ La règle pour trancher : **« si on retire le skin, la personne perd-elle une i
 
 ## 6. Polices, images et licences
 
-- **Une police** : un fichier `.woff2` dans `fonts/` (150 Ko au plus, 4 polices et 400 Ko au total), **déclarée dans `assets`** avec `family`, `weight`, `style`, `license`, `licenseFile` (le texte de la licence, dans `LICENSES/`), `author` et `source`. Puis un `@font-face` **tout en haut** de `skin.css` : `src: url(skin:fonts/ma-police.woff2) format("woff2")`, et la famille dans `--v-font` ou `--sk-font-heading`. N'embarquez que des polices dont la licence le permet (OFL-1.1 est la plus courante).
+- **Une police** : un fichier `.woff2` dans `fonts/` (150 Ko au plus, 4 polices et 400 Ko au total), **déclarée dans `assets`** avec `family`, `weight`, `style`, `license`, `licenseFile` (le texte de la licence, dans `LICENSES/`), `author` et `source`. Puis un `@font-face` **tout en haut** de `skin.css` : `src: url(skin:fonts/ma-police.woff2) format("woff2")`, et la famille dans `--v-font` ou `--sk-font-heading`. N'embarquez que des polices dont la licence le permet (OFL-1.1 est la plus courante) ; le texte de `license` est libre, le cœur ne le juge pas.
 - **Une image** : `png`, `webp`, `avif`, `jpg` (200 Ko) ou `svg` (30 Ko, nettoyé par Curiosa : pas de script), 12 au plus, 1,2 Mo au total, déclarée dans `assets`, appelée par `url(skin:images/motif.svg)`. Jamais une image qui **porte une information** (un texte dessiné) : c'est du décor.
-- Le kit vérifie : l'extension **et** le contenu du fichier (une police qui n'en est pas une est refusée), les plafonds, les licences (liste permise), la présence du fichier de licence, les polices et images **inutilisées**, et — dans le navigateur — que **la police se charge vraiment**.
+- Le kit vérifie : l'extension **et** le contenu du fichier (une police qui n'en est pas une est refusée), les plafonds, la présence de la licence et de son fichier pour chaque police et image (leur contenu n'est jamais jugé : « Private » ou une phrase libre passent), les polices et images **inutilisées**, et — dans le navigateur — que **la police se charge vraiment**.
 - **Aucune** ressource d'un tiers, jamais : ni police, ni image, ni feuille.
 
 ## 7. Lisibilité

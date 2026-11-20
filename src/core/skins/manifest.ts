@@ -6,7 +6,7 @@
  */
 import { z } from "zod";
 import { SKIN_ID_RE } from "./allowlist";
-import { HEADER_LAYOUTS, TAG_VOCABULARY, maxSkinContract } from "./constants";
+import { HEADER_LAYOUTS, LICENSE_TEXT_MAX, TAG_VOCABULARY, maxSkinContract } from "./constants";
 import { makeIssue, type SkinIssue } from "./messages";
 import { SEMVER_RE } from "./semver";
 import { readCustomize } from "./customizeRead";
@@ -19,7 +19,7 @@ const TOKEN_NAME_RE = /^--(sk|v)-[a-z0-9][a-z0-9-]{0,60}$/;
 const asset = z.object({
   file: z.string().min(1).max(100),
   kind: z.enum(["font", "image"]),
-  license: z.string().max(40).optional(),
+  license: z.string().max(LICENSE_TEXT_MAX).optional(),
   licenseFile: z.string().max(100).optional(),
   author: z.string().trim().min(1).max(120).optional(),
   source: z.string().trim().min(1).max(300).optional(),
@@ -61,7 +61,8 @@ export const skinManifestSchema = z.object({
   version: z.string().regex(SEMVER_RE),
   minCore: z.string().regex(SEMVER_RE).optional(),
   author: z.union([z.string().trim().min(1).max(120), z.object({ name: z.string().trim().min(1).max(120), url: z.string().max(300).optional() })]).optional(),
-  license: z.string().min(1).max(40),
+  /** Free text, information only (core 0.46.1): the core never judges a skin's licence, that is the installer's own responsibility. Any string or absent. */
+  license: z.string().max(LICENSE_TEXT_MAX).optional(),
   tags: z.array(z.string().max(30)).max(12).optional(),
   modes: z.array(z.enum(["light", "dark"])).min(1).max(2).refine((m) => new Set(m).size === m.length, "duplicate mode").optional(),
   tokens: z.string().min(1).max(100),

@@ -26,8 +26,12 @@ export const OVERLAY_SKIN_CONTRACT_V5 = 5;
 /** The highest contract this core understands for a skin of this kind. */
 export const maxSkinContract = (kind: unknown): number => (kind === "overlay" ? OVERLAY_SKIN_CONTRACT_V5 : SKIN_CONTRACT);
 
-/** Licences SPDX permises pour le contenu d'un skin et pour chacune de ses ressources (§5.2). */
-export const SPDX_ALLOWED: readonly string[] = ["MIT", "Apache-2.0", "BSD-2-Clause", "BSD-3-Clause", "ISC", "CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0", "OFL-1.1"];
+/**
+ * Longest `license` text a skin manifest may carry (skin and assets). The licence is FREE TEXT shown to the owner as information only: the core never validates it
+ * (responsibility is on the person who installs a skin, not on the framework). A licence policy exists only for the OFFICIAL catalogue, enforced by the CI of the separate skins catalogue repository,
+ * never by this runtime.
+ */
+export const LICENSE_TEXT_MAX = 200;
 
 /** Vocabulaire contrôlé des étiquettes d'un skin (§5.2). */
 export const TAG_VOCABULARY: readonly string[] = ["light", "dark", "serif", "sans", "mono", "pixel", "playful", "minimal", "bold", "editorial", "retro", "glass", "high-contrast", "epic", "spooky", "fantasy", "scifi", "cozy", "neon", "nature"];

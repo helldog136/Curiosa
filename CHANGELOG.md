@@ -7,6 +7,22 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+**En bref.** Un skin que vous installez vous-même n'est plus jamais refusé à cause de sa licence : elle vous est seulement montrée, à titre d'information.
+
+**In short.** A skin you install yourself is never refused because of its license any more: it is only shown to you, as information.
+
+### Corrections
+
+- **Un skin privé s'installe.** Un skin sous licence « Private », « All rights reserved » ou sans licence était refusé. Il s'installe maintenant, et sa licence s'affiche sans avertissement.
+- **(English) A private skin installs.** A skin under "Private", "All rights reserved" or no license was refused. It now installs, and its license is shown with no warning.
+
+### Pour les développeurs
+
+- `skins/manifest.ts` : `license` (skin et ressources) est un texte libre facultatif (200 caractères, `LICENSE_TEXT_MAX`). `skins/validate.ts` ne juge plus aucune licence : `SPDX_ALLOWED` et les codes `manifest-license-not-allowed` et `asset-license-not-allowed` sont supprimés.
+- **(English)** `skins/manifest.ts`: `license` (skin and assets) is optional free text (200 characters, `LICENSE_TEXT_MAX`). `skins/validate.ts` no longer judges any license: `SPDX_ALLOWED` and the codes `manifest-license-not-allowed` and `asset-license-not-allowed` are removed.
+
 ## 0.46.0 — 2026-11-21
 
 **En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).

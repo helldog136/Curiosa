@@ -517,7 +517,7 @@ export type InspectSummary = {
   description: Text;
   version: string;
   author?: { name: string; url?: string };
-  license: string;
+  license?: string;
   minCore?: string;
   skinContract: number;
   modes: ("light" | "dark")[];
