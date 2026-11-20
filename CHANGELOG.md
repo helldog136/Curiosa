@@ -7,11 +7,11 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.46.1 — 2026-11-20
 
-**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence.
+**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence, et vous pouvez l'ajouter en déposant son fichier .zip dans Apparence.
 
-**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. A skin you install yourself is no longer refused because of its license.
+**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. A skin you install yourself is no longer refused because of its license, and you can add it by dropping its .zip file in Appearance.
 
 ### Corrections
 
