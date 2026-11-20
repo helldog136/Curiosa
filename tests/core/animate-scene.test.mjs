@@ -158,7 +158,8 @@ test("install: the images gate is lifted ONLY for a skin that declares a scene, 
 test("install: pictures are checked for what they really are — licence, signature, sanitised SVG, decoded size from the header, no animation, size ceilings", async () => {
   const m = JSON.parse(fs.readFileSync(`${FIX}/skin.json`, "utf8")), one = (f) => ({ ...m.assets.find((a) => a.file === f) });
   const without = (f) => m.assets.filter((a) => a.file !== f);
-  refused({ manifest: { assets: [...without("images/leaf.png"), { ...one("images/leaf.png"), license: undefined }] } }, "asset-license-missing");
+  const bare = validate(copyFixture({ manifest: { assets: [...without("images/leaf.png"), { file: "images/leaf.png", kind: "image" }] } }));
+  assert.equal(bare.ok, true, "a scene picture without license details is accepted (they are optional information)"); assert.deepEqual(bare.issues, []);
   refused({ files: { "images/leaf.png": "this is text" } }, "asset-signature");
   refused({ files: { "images/tick.svg": '<svg xmlns="http://www.w3.org/2000/svg" width="4" height="4"><script>alert(1)</script></svg>' } }, "asset-svg-refused");
   refused({ files: { "images/tick.svg": '<svg xmlns="http://www.w3.org/2000/svg"><rect width="4" height="4"/></svg>' } }, "asset-svg-refused");   // no viewBox: refused by the sanitiser

@@ -9,9 +9,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Rien d'autre ne change.
+**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence.
 
-**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. Nothing else changes.
+**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. A skin you install yourself is no longer refused because of its license.
 
 ### Corrections
 
@@ -21,6 +21,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Your approval publishes only what you saw.** If an assistant changed the link, code or tags of a draft after asking to publish it, your approval published the changed version. Now the assistant has to ask again, including for requests waiting during the update.
 - **Une longue opération n'est plus doublée.** Une mise à jour très lente pouvait être oubliée au bout de 30 minutes, et une seconde opération démarrait en même temps. Tant qu'elle avance, elle garde sa place.
 - **(English) A long operation is no longer doubled.** A very slow update could be forgotten after 30 minutes, and a second operation started alongside it. As long as it makes progress, it keeps its place.
+- **Un skin privé s'installe.** Un skin sous licence « Private », « All rights reserved » ou sans licence était refusé, tout comme une image sans licence ou sans auteur. Il s'installe maintenant, et sa licence s'affiche sans avertissement.
+- **(English) A private skin installs.** A skin under "Private", "All rights reserved" or no license was refused, as was a picture without license or author. It now installs, and its license is shown with no warning.
 
 ### Pour les développeurs
 
@@ -32,6 +34,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** `ownerCeiling.ts`: `none` next to another key opens nothing. `scripts/update-lib.mjs`: `state.claim` file created exclusively around the read of `state.json`.
 - Revue formelle : modèles et tests dans `docs/formal/` et `tests/**/formal-*.test.mjs` (plafond des assistants personnels, file d'approbation, verrou de maintenance en TLA+). Les constats y sont décrits avec leur trace.
 - **(English)** Formal review: models and tests in `docs/formal/` and `tests/**/formal-*.test.mjs` (personal assistant ceiling, approval queue, maintenance lock in TLA+). Findings are described there with their trace.
+- `skins/manifest.ts` : `license` (skin et ressources) est un texte libre facultatif (200 caractères, `LICENSE_TEXT_MAX`). `skins/validate.ts` ne juge plus aucune licence : `SPDX_ALLOWED` et les codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` et `asset-license-file` sont supprimés. Le kit donne le conseil `kit-asset-credits`.
+- **(English)** `skins/manifest.ts`: `license` (skin and assets) is optional free text (200 characters, `LICENSE_TEXT_MAX`). `skins/validate.ts` no longer judges any license: `SPDX_ALLOWED` and the codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` and `asset-license-file` are removed. The kit gives the tip `kit-asset-credits`.
+
 
 ## 0.46.0 — 2026-11-21
 

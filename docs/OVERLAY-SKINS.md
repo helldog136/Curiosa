@@ -33,7 +33,7 @@ Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in
 ```
 
 - `skinContract: 2` is required (an older core refuses the skin as "contract newer" instead of misreading it). `modes` does not apply to an overlay skin.
-- The folder rules, licences (SPDX), previews (at least one `.webp`, 150 KB at most) and fingerprint are the ones of site skins. **No fonts and no images**: overlay skins use system fonts and CSS gradients.
+- The folder rules, licences (texte libre, jamais jugé par le cœur), previews (at least one `.webp`, 150 KB at most) and fingerprint are the ones of site skins. **No fonts and no images**: overlay skins use system fonts and CSS gradients.
 - Install: the same pipeline as site skins (`https://github.com/<owner>/curiosa-skins#<id>/v<version>:skins/<id>`, the catalogue, personal repositories with confirmation). The registry row carries `kind: "overlay"`. The Appearance page lists only site skins; the overlay skin tab lists only overlay skins.
 - Previews: `previews/overlay-640.webp` (still, 150 KB at most) and optionally `previews/overlay-anim.webp` (a looping animated webp of the same scene, 640 x 360, 450 KB at most; the catalogue entry names it in `previewAnim`). The catalogue shows the animated one when the card is on screen and the animation budget allows, and falls back to the still one; both are read once from the repository, checked on their bytes, kept on the site and served by the site itself.
 - Catalogue: official overlay skins are listed in `catalogue/overlay-skins.json` of the skins repository (same entry format as `catalogue/index.json`), a separate file so that older cores never see them.

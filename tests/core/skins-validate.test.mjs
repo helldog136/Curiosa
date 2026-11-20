@@ -77,7 +77,7 @@ test("skin hostile : chaque tentative est refusée et dite en mots simples", () 
   for (const i of r.issues) { assert.ok(i.message.fr && i.message.en && i.hint.fr && i.hint.en, i.code); assert.ok(!/postcss|undefined/i.test(i.message.fr + i.message.en)); }
 });
 
-test("manifeste : absent, illisible, champs manquants, id différent du dossier, id réservé, contrat et cœur trop récents, licence non permise", () => {
+test("manifeste : absent, illisible, champs manquants, id différent du dossier, id réservé, contrat et cœur trop récents, licence jamais jugée", () => {
   assert.deepEqual(codes(check(path.join(tmp, "n'existe-pas"))), ["manifest-missing"]);
   const bad = mk(); fs.writeFileSync(path.join(bad, "skin.json"), "{ pas du json");
   assert.deepEqual(codes(check(bad)), ["manifest-unreadable"]);
@@ -95,7 +95,23 @@ test("manifeste : absent, illisible, champs manquants, id différent du dossier,
   const young = V.validateSkinFolder(mk(), { coreVersion: "0.3.0", folderName: "plain-light" });
   assert.deepEqual(codes(young, "error"), ["manifest-core-newer"]);
   assert.equal(young.manifest.minCore, "0.4.0");
-  assert.ok(codes(check(mk({ patch: (m) => { m.license = "GPL-3.0"; } }))).includes("manifest-license-not-allowed"));
+});
+
+test("licence du skin : texte libre, jamais jugée (« Private », « All rights reserved », phrase libre, absente) : valide, sans erreur ni avertissement", () => {
+  for (const license of ["Private", "All rights reserved", "GPL-3.0", "Propriétaire : usage réservé à l'étiquette de Camille, ne pas redistribuer", "x".repeat(200), "SEE LICENSE IN LICENSE", ""]) {
+    const r = check(mk({ patch: (m) => { m.license = license; } }));
+    assert.deepEqual(r.issues, [], `licence « ${license.slice(0, 30)} »`);
+    assert.equal(r.ok, true);
+    assert.equal(r.manifest.license, license);
+  }
+  const none = check(mk({ patch: (m) => { delete m.license; } }));
+  assert.deepEqual(none.issues, [], "sans champ license : valide, rien à signaler");
+  assert.equal(none.ok, true);
+  assert.equal(none.manifest.license, undefined);
+  assert.ok(!Object.keys(M).includes("SPDX_ALLOWED"));
+  const tooLong = check(mk({ patch: (m) => { m.license = "x".repeat(201); } }));
+  assert.ok(codes(tooLong).includes("manifest-field"), "seule la taille est plafonnée (201 caractères)");
+  assert.ok(!codes(tooLong).includes("manifest-license-not-allowed"));
 });
 
 test("manifeste : avertissements (pas de minCore, pas d'aperçu, clé inconnue, étiquette hors vocabulaire) sans refuser", () => {
@@ -164,18 +180,22 @@ test("ressources : type de fichier non permis (gif, ttf, js) refusé", () => {
   }
 });
 
-test("ressources : licence absente, fichier de licence introuvable, licence non permise", () => {
+test("ressources : licence, fichier de licence, auteur et source sont facultatifs (jamais un refus) ; le chemin du fichier de licence n'est pas contrôlé non plus", () => {
   const base = { "fonts/a.woff2": fakeFont(), ...LIC };
-  const missing = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: base }));
-  assert.ok(codes(missing).includes("asset-license-missing"));
-  const noAuthor = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { author: undefined })]; }, files: base }));
-  assert.ok(codes(noAuthor).includes("asset-license-missing"), "auteur et source sont exigés aussi");
+  const none = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: base }));
+  assert.deepEqual(codes(none), [], "aucune information de licence : valide");
+  assert.equal(none.ok, true);
+  const noAuthor = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { author: undefined, source: undefined })]; }, files: base }));
+  assert.deepEqual(codes(noAuthor), []);
   const noFile = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { licenseFile: "LICENSES/absent.txt" })]; }, files: { "fonts/a.woff2": fakeFont() } }));
-  assert.ok(codes(noFile).includes("asset-license-file"));
+  assert.deepEqual(codes(noFile), [], "fichier de licence introuvable : pas une erreur");
   const badPath = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { licenseFile: "../x.txt" })]; }, files: base }));
-  assert.ok(codes(badPath).includes("asset-license-file"));
+  assert.deepEqual(codes(badPath), [], "ce chemin n'est jamais lu : rien à refuser");
   const bad = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { license: "Proprietary" })]; }, files: base }));
-  assert.ok(codes(bad).includes("asset-license-not-allowed"));
+  assert.deepEqual(codes(bad), [], "la licence d'une ressource est un texte libre");
+  // les vraies protections restent : un fichier qui n'est pas une police est refusé, licence ou non
+  const fake = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: { "fonts/a.woff2": "<html>pas une police</html>" + "x".repeat(40) } }));
+  assert.ok(codes(fake).includes("asset-signature"));
 });
 
 test("ressources : déclarée mais absente, déclarée deux fois", () => {
