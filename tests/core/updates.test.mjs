@@ -282,6 +282,23 @@ test("mise à jour : une seule à la fois (verrou), mais un verrou périmé ne b
   } finally { s.cleanup(); }
 });
 
+test("mise à jour : deux démarrages qui lisent « au repos » en même temps — le fichier de réservation (wx) n'en laisse passer qu'un", async () => {
+  const s = setup(); try {
+    s.build("1.1.0");
+    const dir = path.join(s.dataDir, "update"); fs.mkdirSync(dir, { recursive: true });
+    const claim = path.join(dir, "state.claim");
+    // The other process is between its read of state.json and its write: state.json still says "idle", the claim exists.
+    fs.writeFileSync(claim, "4242");
+    assert.deepEqual(await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() }), { ok: false, error: "already-running" });
+    assert.deepEqual(s.calls, [], "rien n'est touché");
+    assert.ok(fs.existsSync(claim), "la réservation de l'autre n'est pas retirée");
+    // A claim left by a crashed process (older than 10 s) does not block forever.
+    const old = new Date(Date.now() - 60_000); fs.utimesSync(claim, old, old);
+    assert.equal((await runUpdate({ ...opts(s), tag: "v1.1.0", exec: s.make() })).ok, true);
+    assert.ok(!fs.existsSync(claim), "la réservation est retirée une fois l'état « en cours » écrit");
+  } finally { s.cleanup(); }
+});
+
 test("sauvegardes : on garde les 5 dernières seulement", async () => {
   const s = setup(); try {
     const backups = path.join(s.dataDir, "backups");
