@@ -28,18 +28,17 @@ for (const tier of TIERS) for (const set of subsets(RIGHTS)) for (const active o
 
 /** Every shape of requirement, including the broken ones (fail closed). */
 const REQUIREMENTS = [
-  undefined, {}, { none: true }, { right: "" }, { tier: "bogus" }, { right: "unknown:right" },
+  undefined, {}, { none: true }, { right: "" }, { none: true, right: "core:updates" }, { none: true, tier: "owner" }, { tier: "bogus" }, { right: "unknown:right" },
   ...RIGHTS.map((right) => ({ right })),
   ...["editor", "admin", "owner"].map((tier) => ({ tier })),
   ...RIGHTS.flatMap((right) => ["editor", "admin", "owner"].map((tier) => ({ right, tier }))),
 ];
 
-/** What the doc comment says (independent of the code). `none` alone is open; an empty requirement never passes; several keys must all hold. */
+/** What the doc comment says (independent of the code). `none` alone is open; an empty requirement never passes; several keys must all hold (`none` next to another key opens nothing, fixed in 0.46.1). */
 function oracleMet(req, owner) {
   if (!owner.active || req === undefined) return false;
-  if (req.none === true) return true;
   const keys = ["right", "tier"].filter((k) => req[k] !== undefined);
-  if (keys.length === 0) return false;
+  if (keys.length === 0) return req.none === true;
   if (req.right !== undefined && !(typeof req.right === "string" && req.right.length > 0 && (owner.tier === "owner" || owner.rights.has(req.right)))) return false;
   if (req.tier !== undefined && !(RANK[req.tier] !== undefined && req.tier !== "none" && RANK[owner.tier] >= RANK[req.tier])) return false;
   return true;
