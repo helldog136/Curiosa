@@ -5,9 +5,9 @@ import { useTestDb } from "../helpers/db.mjs";
 /**
  * FORMAL REVIEW, maintenance lock and closeInterrupted (spec: docs/formal/maintenance-lock.md, model docs/formal/tla/MaintenanceLock.tla).
  * These replay, on the REAL code and with an injected clock, the traces TLC found in the model:
- *   - the lock of an operation that is slow but alive is ignored after 30 minutes: a second operation starts while the first still works
- *     (model MaintenanceLock_Code.cfg: AtMostOneLive violated). REPORTED, NOT FIXED: the stale rule trades safety for "never blocked for ever" (MaintenanceLock_NoStaleRule.cfg),
- *     the fix is a policy decision (a lease renewed by progress, MaintenanceLock_Lease.cfg). The test pins today's behaviour and what stays true around it, so that a fix changes it on purpose;
+ *   - the lock of an operation that is slow but alive used to be ignored after 30 minutes: a second operation started while the first still worked
+ *     (model MaintenanceLock_Code.cfg: AtMostOneLive violated). FIXED in 0.46.1 by a lease renewed by progress (MaintenanceLock_Lease.cfg), the stale rule stays as the safety net
+ *     (MaintenanceLock_NoStaleRule.cfg: without it a hung operation blocks the site for ever);
  *   - a request run inline (not in BACKGROUND_LEVEL3, so not in active()) is shown as "failed: interrupted" after 2 minutes while it is still running, and its real result replaces that
  *     when it ends (model MaintenanceLock_Inline.cfg: NoFalseInterrupt violated, transiently).
  * Files covered: src/core/maintenance/background.ts, requests.ts. Last synced with: core 0.46.0 (commit 57236d6).
@@ -43,19 +43,32 @@ test("one operation at a time: a second one is refused while the first holds the
   c.release();
 });
 
-test("trace of MaintenanceLock_Code.cfg: after 30 minutes the lock of a slow operation is ignored and a second operation starts while the first still works (KNOWN, reported)", () => {
+test("lease (MaintenanceLock_Lease.cfg): progress renews the lock, so an operation that is slow but alive is never ignored; without progress for 30 minutes it still is", () => {
   const first = B.takeLock({ name: "modules_update_all", by: "Camille" });
   assert.equal(first.ok, true);
-  clock += 29 * MIN;
-  assert.equal(B.takeLock({ name: "module_install", by: "x" }).ok, false, "still held at 29 minutes");
-  clock += 2 * MIN; // 31 minutes: the first operation has NOT released anything, its work goes on
+  for (let i = 0; i < 4; i++) { clock += 29 * MIN; first.touch(); assert.equal(B.takeLock({ name: "module_install", by: "x" }).ok, false, `held after ${(i + 1) * 29} minutes of work with progress`); }
+  clock += 31 * MIN; // alive in the model of the old code, but no progress at all for 31 minutes: the safety net applies
   const second = B.takeLock({ name: "module_install", by: "lune_douce" });
-  assert.equal(second.ok, true, "today's behaviour: the lock was ignored although the first operation is alive (two operations at once)");
-  // what stays true around it: the late release of the first never frees the lock of the second
+  assert.equal(second.ok, true, "a lock with no progress for 30 minutes cannot block the site for ever");
+  first.touch(); // a late touch of the old holder must not renew the lock of the new one
+  clock += 31 * MIN;
+  assert.equal(B.takeLock({ name: "module_update", by: "y" }).ok, true, "touch of a lock that is no longer ours does nothing");
   first.release();
-  assert.equal(B.takeLock({ name: "module_update", by: "y" }).ok, false, "the second operation still holds the lock");
   second.release();
-  assert.equal(B.takeLock({ name: "module_update", by: "y" }).ok, true);
+});
+
+test("ctx.step of a background run renews the lease (a long update of many modules is never taken for a hung one)", async () => {
+  D.setMaintenanceDeps({ quickWaitMs: 0 });
+  const made = await Q.createRequest({ action: "modules_update_all", plan: { modules: [] }, tokenId: "tok_a", tokenName: "Camille" }, clock);
+  const id = made.request.id;
+  await Q.claimRequest(id, clock);
+  let step, release; const hold = new Promise((r) => { release = r; });
+  const lock = B.takeLock({ name: "modules_update_all", by: "Camille", requestId: id });
+  await B.runInBackground({ id, store: { setPlan: async () => {}, setProgress: async () => {}, finish: (r) => Q.finishRequest(id, r, clock) }, lock, work: async (ctx) => { step = ctx.step; await hold; return { ok: true, message: "updated" }; }, after: async () => {} });
+  for (let i = 0; i < 4; i++) { clock += 25 * MIN; step(4, { id: `m${i}`, status: "updated" }); assert.equal(B.takeLock({ name: "x", by: "y" }).ok, false, `still held after ${(i + 1) * 25} minutes`); }
+  release();
+  await new Promise((r) => setTimeout(r, 50));
+  assert.equal(B.takeLock({ name: "x", by: "y" }).ok, true, "released when the work ends");
 });
 
 test("anti-vacuity of the replay: below the limit nothing is ignored, and a lock that is never released does not block for ever (the reason for the rule)", () => {
