@@ -82,10 +82,11 @@ export type MaintenanceRun = {
   plan?: Plan; progress?: RunProgress; result?: RunResult; finishedAt?: number;
 };
 
-let chain: Promise<unknown> = Promise.resolve();
+/** On `globalThis` like the lock (0.46.1): two copies of this module (one per bundle) must not interleave their changes of the runs record. */
 function exclusive<T>(fn: () => Promise<T>): Promise<T> {
-  const run = chain.then(fn, fn);
-  chain = run.catch(() => {});
+  const h = globalThis as unknown as { curiosaRunsChain?: Promise<unknown> };
+  const run = (h.curiosaRunsChain ?? Promise.resolve()).then(fn, fn);
+  h.curiosaRunsChain = run.catch(() => {});
   return run;
 }
 async function loadRuns(): Promise<MaintenanceRun[]> {
@@ -105,7 +106,8 @@ export function boundResult(r: RunResult): RunResult {
   return { ok: r.ok, message: redactSecrets(r.message, 400), ...(details !== undefined && json.length <= 4000 ? { details } : {}) };
 }
 
-const INTERRUPTED: RunResult = { ok: false, message: "Interrupted: the site restarted while this was running. Check maintenance_modules, then ask again if something is left." };
+export const INTERRUPTED_MESSAGE = "Interrupted: the site restarted while this was running. Check maintenance_modules, then ask again if something is left.";
+const INTERRUPTED: RunResult = { ok: false, message: INTERRUPTED_MESSAGE };
 
 /** Closes the records that say "running" although nothing of this process works on them any more (the site restarted). */
 export function closeInterrupted<T extends { id: string; status: string; startedAt?: number; createdAt: number; decidedAt?: number; result?: unknown }>(list: T[], now: number): boolean {

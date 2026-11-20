@@ -214,6 +214,44 @@ test("an expired request is never claimable, even when nobody swept it before th
   await Q.reopenRequest(d.request.id);
   await Q.finishRequest(d.request.id, { ok: true, message: "x" }, T0 + 6).catch(() => {});
   const status = (await Q.listRequests(T0 + 7)).find((r) => r.id === d.request.id).status;
-  // `finishRequest` is only ever called after a claim (actions.ts); this pins what it does if it were called on a refused request
-  assert.ok(["denied", "done"].includes(status), status);
+  // (0.46.1) a result is only recorded on a request that is running: a late `finishRequest` never turns a refused request into "done"
+  assert.equal(status, "denied");
+});
+
+test("two copies of the module (one per bundle) exclude each other: an approved request is never lost to a concurrent write of the other copy (0.46.1)", async () => {
+  const Q2 = await import("../../src/core/maintenance/requests.ts?second-copy");
+  assert.notEqual(Q2.claimRequest, Q.claimRequest, "really two copies");
+  for (let round = 0; round < 20; round++) {
+    await db.prisma.setting.deleteMany({ where: { key: "maintenance.requests" } });
+    const a = await Q.createRequest({ action: "module_update", plan: PLANS[0], tokenId: "tok_c", tokenName: "tok_c" }, T0);
+    const [claim, made, claim2] = await Promise.all([Q2.claimRequest(a.request.id, T0 + 1), Q.createRequest({ action: "module_update", plan: PLANS[1], tokenId: "tok_c", tokenName: "tok_c" }, T0 + 1), Q.claimRequest(a.request.id, T0 + 1)]);
+    const list = await Q.listRequests(T0 + 2);
+    assert.equal([claim, claim2].filter((c) => c.ok).length, 1, "approved exactly once");
+    assert.equal(list.find((r) => r.id === a.request.id).status, "running", "the approval is not undone by the other copy's write");
+    assert.ok(made.ok && list.some((r) => r.id === made.request.id), "and the other copy's request is not lost either");
+  }
+});
+
+test("another PROCESS writing between the read and the write is not overwritten: the write is a compare-and-swap and the change is redone from a fresh read (0.46.1)", async () => {
+  const a = await Q.createRequest({ action: "module_update", plan: PLANS[0], tokenId: "tok_c", tokenName: "tok_c" }, T0);
+  const setting = db.prisma.setting;
+  const original = setting.updateMany.bind(setting);
+  let injected = 0;
+  setting.updateMany = async (args) => {
+    if (injected++ === 0) { // the "other process" wins the race: it stores a list with one more request just before our write
+      const row = await setting.findUnique({ where: { key_locale: { key: "maintenance.requests", locale: "" } } });
+      const list = JSON.parse(row.value);
+      list.push({ id: "req_foreign", action: "navigation_set", plan: { module: "x" }, tokenId: "tok_other", tokenName: "other", createdAt: T0, expiresAt: T0 + Q.REQUEST_TTL_MS, status: "pending" });
+      await original({ where: { key: "maintenance.requests", locale: "" }, data: { value: JSON.stringify(list) } });
+    }
+    return original(args);
+  };
+  try {
+    const claim = await Q.claimRequest(a.request.id, T0 + 1);
+    assert.equal(claim.ok, true);
+    assert.ok(injected >= 2, "the first write was refused (the stored value had changed) and the change was redone");
+  } finally { setting.updateMany = original; }
+  const list = await Q.listRequests(T0 + 2);
+  assert.equal(list.find((r) => r.id === a.request.id).status, "running");
+  assert.ok(list.some((r) => r.id === "req_foreign"), "the other process's request survived");
 });
