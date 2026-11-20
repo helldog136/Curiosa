@@ -13,7 +13,7 @@ import { boundResult, closeInterrupted, type RunProgress, type RunResult } from 
  *  - le « plan » (version de départ et d'arrivée…) est figé à la création : à l'exécution, les conditions sont revérifiées et la demande n'est exécutée
  *    que si elle vise toujours la même chose ;
  *  - seuls des identifiants, des versions et des textes courts masqués sont conservés : jamais de secret.
- * Stockage : un réglage du cœur (pas de colonne, donc pas de migration), lu directement en base. Les 50 dernières demandes sont gardées.
+ * Stockage : un réglage du cœur (pas de colonne, donc pas de migration), lu directement en base. Les 50 dernières demandes TERMINÉES sont gardées (jamais une demande en attente ou en cours).
  */
 export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
@@ -97,8 +97,12 @@ async function load(): Promise<MaintenanceRequest[]> {
 }
 async function save(list: MaintenanceRequest[]): Promise<void> {
   // (0.46.0) The last 50 requests of independent accesses and, separately, the last 50 of personal ones: many people cannot push each other's pending requests out.
+  // (0.46.1) Only FINISHED requests are cut: one that still waits for a decision (or is being run) is never dropped, however many newer ones there are. It is bounded anyway:
+  // at most MAX_PENDING_PER_TOKEN wait per access, and each one expires after REQUEST_TTL_MS, which makes it a finished one.
   const own = (r: MaintenanceRequest) => !!r.ownerId;
-  const keep = new Set([...list.filter((r) => !own(r)).slice(-KEEP), ...list.filter(own).slice(-KEEP)]);
+  const open = (r: MaintenanceRequest) => r.status === "pending" || r.status === "running";
+  const finished = (pick: (r: MaintenanceRequest) => boolean) => list.filter((r) => pick(r) && !open(r)).slice(-KEEP);
+  const keep = new Set([...list.filter(open), ...finished((r) => !own(r)), ...finished(own)]);
   const json = JSON.stringify(list.filter((r) => keep.has(r)));
   await prisma.setting.upsert({ where: { key_locale: { key: KEY, locale: "" } }, create: { key: KEY, locale: "", value: json }, update: { value: json } });
 }
