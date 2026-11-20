@@ -18,7 +18,9 @@ import { invalidateSkinCache } from "./invalidate";
 import { SEMVER_RE } from "./semver";
 
 export type SkinSource = "catalogue" | "personal";
-export type PreviousVersion = { version: string; ref: string | null; commit: string; tree: string | null; fingerprint: string };
+/** (core 0.46.1) What is kept of a skin added from a file: the archive's SHA-256 and size, never its content (the file itself is not kept). */
+export type UploadProvenance = { sha256: string; bytes: number };
+export type PreviousVersion = { version: string; ref: string | null; commit: string; tree: string | null; fingerprint: string; upload?: UploadProvenance };
 export type SkinRow = {
   id: string;
   version: string;
@@ -36,7 +38,16 @@ export type SkinRow = {
   installedAt: string;
   /** Version d'avant la dernière mise à jour, gardée sur le disque pour « Revenir à la version d'avant ». */
   previous?: PreviousVersion;
+  /** (core 0.46.1) Present when the skin was added from a file: then `repo` is empty, there is no address to update from, and `installedAt` is the date of the file. */
+  upload?: UploadProvenance;
 };
+
+const SHA_RE = /^[0-9a-f]{64}$/;
+function cleanUpload(raw: unknown): UploadProvenance | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const u = raw as Record<string, unknown>;
+  return typeof u.sha256 === "string" && SHA_RE.test(u.sha256) ? { sha256: u.sha256, bytes: typeof u.bytes === "number" && Number.isFinite(u.bytes) && u.bytes >= 0 ? Math.floor(u.bytes) : 0 } : undefined;
+}
 
 const strOrNull = (v: unknown, max = 300): string | null => (typeof v === "string" && v.length > 0 && v.length <= max ? v : null);
 
@@ -50,11 +61,12 @@ function cleanRow(raw: unknown): SkinRow | null {
     id: r.id, version: r.version, repo: r.repo, ref: strOrNull(r.ref, 100), subdir: strOrNull(r.subdir, 200),
     source: r.source === "personal" ? "personal" : "catalogue",
     ...(r.kind === "overlay" ? { kind: "overlay" as const } : {}),
+    ...(cleanUpload(r.upload) ? { upload: cleanUpload(r.upload) } : {}),
     commit: typeof r.commit === "string" ? r.commit.slice(0, 64) : "", tree: strOrNull(r.tree, 64),
     fingerprint: typeof r.fingerprint === "string" ? r.fingerprint.slice(0, 64) : "",
     installedAt: typeof r.installedAt === "string" ? r.installedAt.slice(0, 40) : "",
     ...(prev && typeof prev.version === "string" && SEMVER_RE.test(prev.version)
-      ? { previous: { version: prev.version, ref: strOrNull(prev.ref, 100), commit: typeof prev.commit === "string" ? prev.commit.slice(0, 64) : "", tree: strOrNull(prev.tree, 64), fingerprint: typeof prev.fingerprint === "string" ? prev.fingerprint.slice(0, 64) : "" } }
+      ? { previous: { version: prev.version, ref: strOrNull(prev.ref, 100), commit: typeof prev.commit === "string" ? prev.commit.slice(0, 64) : "", tree: strOrNull(prev.tree, 64), fingerprint: typeof prev.fingerprint === "string" ? prev.fingerprint.slice(0, 64) : "", ...(cleanUpload(prev.upload) ? { upload: cleanUpload(prev.upload) } : {}) } }
       : {}),
   };
 }

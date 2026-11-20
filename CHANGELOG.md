@@ -24,7 +24,15 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un skin privé s'installe.** Un skin sous licence « Private », « All rights reserved » ou sans licence était refusé, tout comme une image sans licence ou sans auteur. Il s'installe maintenant, et sa licence s'affiche sans avertissement.
 - **(English) A private skin installs.** A skin under "Private", "All rights reserved" or no license was refused, as was a picture without license or author. It now installs, and its license is shown with no warning.
 
+### Nouveautés
+
+- **Ajoutez un skin depuis un fichier.** Dans Apparence, déposez le .zip de votre skin : vous le voyez sur votre site avant de l'ajouter, et le fichier n'est pas gardé. Pour le modifier, augmentez sa version et déposez le nouveau.
+- **(English) Add a skin from a file.** In Appearance, drop the .zip of your skin: you see it on your site before adding it, and the file is not kept. To change it, raise its version and drop the new one.
+
 ### Pour les développeurs
+
+- `core/skins/zip.ts` : lecteur de zip sans bibliothèque (liens, chemins, doublons, zip64, bombes refusés) ; `uploadService.ts` : `stageUpload` puis `addStaged`, copie validée sans ligne de registre 30 minutes au plus ; l'archive n'est jamais écrite. `bodySizeLimit` des actions : 5 Mo.
+- **(English)** `core/skins/zip.ts`: library-free zip reader (links, paths, duplicates, zip64, bombs refused); `uploadService.ts`: `stageUpload` then `addStaged`, validated copy with no registry row for 30 minutes at most; the archive is never written. Action `bodySizeLimit`: 5 MB.
 
 - `maintenance/requests.ts` : `save` ne coupe plus que les demandes terminées (50 par catégorie) ; une demande « en attente » ou « en cours » est toujours gardée. `maintenance/publish.ts` : l'empreinte d'un brouillon couvre aussi `url`, `code`, `tags`, `cover`, `icon`, `fields` (en plus des textes et du skin).
 - **(English)** `maintenance/requests.ts`: `save` only cuts finished requests (50 per class); a pending or running one is always kept. `maintenance/publish.ts`: the fingerprint of a draft also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (besides the texts and the skin).

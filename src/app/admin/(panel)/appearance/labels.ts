@@ -7,6 +7,6 @@ import type { Translator } from "@/core/i18n/dictionary";
  */
 export function appearanceLabels(t: Translator): Record<string, string> {
   const out: Record<string, string> = {};
-  for (const key of Object.keys(en)) if (key.startsWith("appearance.") || key.startsWith("skins.error.") || key.startsWith("access.") || key === "modal.close") out[key] = t(key);
+  for (const key of Object.keys(en)) if (key.startsWith("appearance.") || key.startsWith("skins.error.") || key.startsWith("skins.upload.") || key.startsWith("access.") || key === "modal.close") out[key] = t(key);
   return out;
 }

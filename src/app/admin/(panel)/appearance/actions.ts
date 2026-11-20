@@ -19,6 +19,9 @@ import { UPLOAD_LIMITS } from "@/core/fonts/types";
 import { accessState, type AccessState } from "@/core/gitAccess";
 import { saveAccessCode } from "@/core/gitAccessAdmin";
 import { parseSkinRepoUrl } from "@/core/skins/source";
+import { addStaged, discardStaged, stageUpload, stagedId, uploadRateOk } from "@/core/skins/uploadService";
+import { ZIP_LIMITS } from "@/core/skins/zip";
+import { friendlyIssue, uploadErrorKey } from "@/core/skins/uploadMessages";
 
 /**
  * Actions de la page Apparence. Choisir, retoucher, revenir au skin, annuler : « admin » (comme les réglages). Ajouter, mettre à jour, retirer un skin,
@@ -242,4 +245,64 @@ export async function deleteFontAction(_prev: ActionState, fd: FormData): Promis
   if (!r.ok) return { error: t("appearance.font.error.gone") };
   done();
   return { ok: r.reset.length ? t("appearance.font.removedReset", { name: r.family }) : t("appearance.font.removed", { name: r.family }) };
+}
+
+// ── (0.46.1) a skin from a file: drop the .zip, see it, add it
+
+export type UploadView =
+  | { ok: true; token: string; id: string; name: string; description: string; version: string; author?: string; modes: string[]; kb: number; files: number; replaces?: string; previewable: boolean; previews: { alt: string; dataUrl: string; mode?: string }[]; notes: string[] }
+  | { ok: false; error: string };
+
+/** One sentence for a refusal of a file: what is wrong, what to do, an example (the sentence itself), then the file concerned, then up to three precise problems. */
+async function uploadFailureText(r: { error: string; issues?: SkinIssue[]; detail?: string; target?: string }, t: Translator, locale: string): Promise<string> {
+  const file = r.detail && !/^[a-z0-9-]+$/.test(r.detail) ? r.detail : "";
+  const head = t(uploadErrorKey(r.error), { id: r.detail ?? "", version: r.target ?? "" });
+  const where = file && r.error.startsWith("skins.upload.") ? ` ${t("skins.upload.file", { file })}` : "";
+  const issues = (r.issues ?? []).filter((i) => i.severity === "error").slice(0, 3).map((i) => friendlyIssue(i, t, locale));
+  return [head + where, ...issues].join(" ");
+}
+
+/**
+ * Checks a dropped .zip WITHOUT adding anything: the archive is read in memory and dropped, the checked skin files wait (30 minutes at most) for "Add this skin".
+ * Owner only (as every way of adding a skin). The request is a server action: the same-origin check of the framework applies. At most 12 files per 10 minutes.
+ */
+export async function checkSkinFileAction(fd: FormData): Promise<UploadView> {
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
+  const text = (x: { fr: string; en: string }) => (locale === "fr" ? x.fr : x.en);
+  const file = fd.get("skinFile");
+  if (!(file instanceof File) || file.size === 0) return { ok: false, error: t("skins.upload.nofile") };
+  if (file.size > ZIP_LIMITS.archiveBytes) return { ok: false, error: t("skins.upload.too-big") };
+  if (!uploadRateOk(user.email)) return { ok: false, error: t("skins.upload.rate") };
+  const r = await stageUpload(Buffer.from(await file.arrayBuffer()), { actor: user.email });
+  if (!r.ok) return { ok: false, error: await uploadFailureText(r, t, locale) };
+  const s = r.summary;
+  return {
+    ok: true, token: r.token, id: r.id, name: text(s.name), description: text(s.description), version: r.version, author: s.author?.name, modes: s.modes, kb: Math.ceil(s.sizeBytes / 1024), files: s.files,
+    ...(r.replaces ? { replaces: r.replaces } : {}), previewable: r.previewable,
+    previews: s.previews.map((p) => ({ alt: text(p.alt), dataUrl: p.dataUrl, mode: p.mode })),
+    notes: r.issues.slice(0, 5).map((i) => issueText(i, locale)),
+  };
+}
+
+/** "Add this skin": adds the checked skin (re-checked first). The one button; the plain sentence next to it replaces a tick box (a skin only changes the look and runs nothing). */
+export async function addUploadedSkinAction(_prev: ActionState, fd: FormData): Promise<ActionState> {
+  const { user, t, locale } = await adminCtx({ right: "core:modules.install" });
+  const r = await addStaged(String(fd.get("token") ?? ""), { actor: user.email });
+  if (!r.ok) return { errors: { skinFile: await uploadFailureText(r, t, locale) } };
+  done();
+  return { ok: t("appearance.file.added") };
+}
+
+/** "Cancel" (or a new drop): the checked copy is removed. */
+export async function cancelUploadAction(token: string): Promise<void> {
+  await adminCtx({ right: "core:modules.install" });
+  await discardStaged(String(token));
+}
+
+/** The preview address of a checked skin (fifteen minutes): the site's own page, dressed with it, nothing saved. */
+export async function previewStagedAction(token: string, path = "/"): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const { t } = await adminCtx({ right: "core:modules.install" });
+  const id = stagedId(String(token));
+  if (!id) return { ok: false, error: t("skins.upload.expired") };
+  return { ok: true, url: previewUrl(path, signPreview(id, getAuthSecret())) };
 }

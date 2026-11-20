@@ -136,7 +136,9 @@ test("téléchargement : jamais de GET, route sous /api/admin (authentifiée), p
   const h = fs.readFileSync("src/core/modules/adminTransferHandlers.ts", "utf8");
   // La garde passe AVANT toute lecture du corps.
   assert.ok(h.indexOf("await enter(") < h.indexOf("readBodyBounded(request"));
-  assert.ok(!fs.readFileSync("next.config.mjs", "utf8").includes("bodySizeLimit"), "la limite des actions serveur n'est pas relevée");
+  // (0.46.1) The only raise allowed is the 5 MB one for the skin .zip drop (4 MB archive cap, checked in core/skins/zip.ts); transfers never go through server actions.
+  const limits = [...fs.readFileSync("next.config.mjs", "utf8").matchAll(/bodySizeLimit:\s*"([^"]+)"/g)].map((m) => m[1]);
+  assert.ok(limits.every((l) => l === "5mb"), "la limite des actions serveur n'est relevée qu'à 5 Mo, pour le .zip d'un skin");
 });
 
 // ── Flux ──────────────────────────────────────────────────────────────────────────────────────────────────────────────

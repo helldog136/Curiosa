@@ -131,7 +131,7 @@ export async function skinStatus(): Promise<unknown> {
 export async function skinList(args: Record<string, unknown>): Promise<unknown> {
   const all = args.include === "all";
   const [view, catalogue] = await Promise.all([loadAppearanceView(), skins.listCatalogue()]);
-  const installed = view.cards.map((c) => ({ id: c.id, name: c.name.en, version: c.version, source: c.source === "personal" ? "personal repository" : c.source === "basic" ? "built in" : "official catalogue", active: c.active, status: c.status, modes: c.modes }));
+  const installed = view.cards.map((c) => ({ id: c.id, name: c.name.en, version: c.version, source: c.source === "personal" ? "personal (repository or uploaded file)" : c.source === "basic" ? "built in" : "official catalogue", active: c.active, status: c.status, modes: c.modes }));
   const available = catalogue.items
     .filter((i) => i.origin === "official" && (all || !i.installed))
     .slice(0, 50)

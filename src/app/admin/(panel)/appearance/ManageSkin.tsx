@@ -12,7 +12,7 @@ import { useAL } from "./AppearanceLabels";
 import { BigCheckbox } from "./Controls";
 import { checkUpdateAction, removeSkinAction, revertSkinAction, updateSkinAction, type UpdateView } from "./actions";
 
-export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** (0.42.0) Private repository: its address and what is saved for it (never the code). */ repo?: string; access?: AccessState; /** Pictures the owner uploaded for this skin (kept when it is removed unless asked). */ pictures?: number };
+export type ManagedSkin = { id: string; name: string; version: string; source: "catalogue" | "personal"; active: boolean; previousVersion?: string; updateKnown: boolean; status: string; /** (0.42.0) Private repository: its address and what is saved for it (never the code). */ repo?: string; access?: AccessState; /** Pictures the owner uploaded for this skin (kept when it is removed unless asked). */ pictures?: number; /** (0.46.1) Added from a file: the date and the fingerprint of that file (never its content, which is not kept). */ upload?: { date: string; print: string } };
 
 /** Mises à jour (avec retour arrière), retrait : par skin installé, dans une zone repliée. Retirer ne change JAMAIS le contenu du site. */
 export function ManageSkin({ skin }: { skin: ManagedSkin }) {
@@ -38,7 +38,9 @@ export function ManageSkin({ skin }: { skin: ManagedSkin }) {
       <div className="space-y-4 px-4 pb-4">
         <section className="space-y-2" aria-label={al("appearance.update.title")}>
           <h4 className="text-sm font-semibold">{al("appearance.update.title")}</h4>
-          <PendingButton type="button" variant="btn" pending={busy} pendingLabel={al("appearance.update.checking")} onClick={check}>{al("appearance.update.check")}</PendingButton>
+          {skin.upload
+            ? <p className="text-sm" data-testid="upload-provenance">{al("appearance.file.update")} <span className="text-muted">{al("appearance.file.provenance", { date: skin.upload.date, print: skin.upload.print })}</span></p>
+            : <PendingButton type="button" variant="btn" pending={busy} pendingLabel={al("appearance.update.checking")} onClick={check}>{al("appearance.update.check")}</PendingButton>}
           {skin.repo && skin.access && <AccessSummary url={skin.repo} access={skin.access} labels={Object.fromEntries(ACCESS_LABEL_KEYS.map((k) => [k, al(k)]))} onChanged={() => router.refresh()} />}
           {result && !result.ok && <p role="alert" className="text-sm text-red-700">{result.error}</p>}
           {result?.ok && (

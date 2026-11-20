@@ -856,6 +856,27 @@ Toujours en mots simples, sous le champ concerné, avec un exemple : « Le texte
 
 « Ajouter depuis une adresse » : champ + [Vérifier]. Le cœur clone, valide, et montre un résumé : nom, auteur, **licences des polices et images**, taille, résultat du contrôle de lisibilité. Confirmation explicite (case + bouton) : « Ce skin ne vient pas de la liste vérifiée. Il ne peut pas faire tourner de programme : il ne peut changer que l'apparence. Je l'ajoute. » Le dépôt est mémorisé avec `source: "personal"` ; il n'est pas ajouté au catalogue.
 
+### 10.5b From your folder to your site (core 0.46.1)
+
+*(English: this section is new. The rest of this file stays in French until it is touched for its own sake.)*
+
+Appearance has a first block, **Add a skin from a file**, for a skin made by hand: no repository, no access code. The owner (right `core:modules.install`, like every way of adding a skin) drops a `.zip`; it is checked at once, shown on the real site, then added. Plain steps for the person making the skin:
+
+1. **Make the zip.** Select the files of your skin folder (the ones next to `skin.json`), or the folder itself, then: Windows, right-click, *Send to*, *Compressed (zipped) folder*. Mac, right-click, *Compress*. Linux, `zip -r my-skin.zip my-skin`.
+2. **Drop it** on the box (or press *Choose a file*). It is checked immediately. A refusal says what is wrong, what to do and gives one example; your file stays chosen so you can fix the folder and drop the new zip.
+3. **Look at it.** Your skin is shown on your own site, with nothing saved.
+4. **Press *Add this skin*.** The sentence next to the button says the skin does not come from the catalog and that you are responsible for it. There is no tick box: a skin only changes the look and runs nothing, so a plain sentence and an explicit click are the confirmation.
+5. **Press *Use this skin*** (or *Keep as is*). It is the same choice as for any skin; *Go back* and removal work as usual.
+6. **To change it later**, raise `version` in `skin.json` and drop the new zip: it replaces the skin, and *Go back to the previous version* stays available. A skin added from a file is never updated by itself.
+
+**The file is not kept.** The zip is read in memory and dropped; you may delete your copy. Only the checked skin files, the ones the validator allows, are copied to the skin's normal place (`data/skins/<id>/<version>/`). What is recorded: the skin's row (provenance "uploaded file", date, the file's SHA-256 and size, no address) and the audit line `skin.install <id>@<version> uploaded file sha256:… <size>B` with who did it. A skin added from a file has no address, so *Update* and *reinstall* are refused with a sentence ("drop the new file"), and a backup restore lists it as "added from a file: add it again" (its files are not in a backup, as for any skin).
+
+**Layout.** The skin files at the top of the zip, or all inside **one** folder, whatever its name (Windows and macOS name it after the zip, GitHub after the branch). The skin's name is the `id` in `skin.json`, never the folder's name. Ignored without a word: `__MACOSX/`, `.DS_Store`, `._*`, `Thumbs.db`, `desktop.ini`. Backslashes are read as slashes (old Windows tools write them) before any other check.
+
+**What the reader refuses** (`src/core/skins/zip.ts`, no library: the central directory is read by hand and `node:zlib` inflates): not a zip, more than one end record, truncated or inconsistent file, overlapping entries, zip64, encryption, any method other than stored and deflate, links and special files (Unix mode), `..`, absolute paths, drive letters, control characters, empty parts, paths over 200 characters or 6 levels deep, duplicate names or names that differ only by case or Unicode form, more than 60 files kept (400 entries counting junk), a file over 512 KB or a total over 2.5 MB (the validator then applies its own, tighter, limits), a compression ratio over 100:1 for a file of 8 KB or more, and a size or CRC that does not match. The inflate is given the declared size as its output ceiling, so a lie about the size stops at the declared size and is refused; nothing is ever executed. The archive itself is at most 4 MB (the server action body limit is raised to 5 MB in `next.config.mjs` for it). At most 12 files per owner per 10 minutes.
+
+**Staging.** Between *drop* and *Add this skin* the checked skin files sit at their normal place with a note in `data/skins/.staged/<sha256>.json` and **no registry row**, so the site is unchanged; the preview loads them (only a preview link can: never the site's skin, never a page's skin). The staged copy lives 30 minutes at most and is removed by *Add* (it becomes the installed copy), *Cancel*, a new drop, any error, and a sweep when Appearance loads. *Add* re-reads and re-checks the staged files first.
+
 ### 10.6 Assistant IA / MCP
 
 Même philosophie que les outils `maintenance_*` existants : **lecture** (`appearance_status` : skin actif, retouches, avertissements de lisibilité ; `appearance_skins` : installés et du catalogue) et **demande** (`appearance_request_skin` : « changer pour le skin X » crée une demande en attente que la personne confirme dans l'administration, comme `maintenance_request_status`). Aucun outil n'installe ni n'active sans validation humaine ; aucun ne lit ou n'écrit de contenu.
@@ -1250,7 +1271,7 @@ Laissé aux lots suivants : le banc d'essai lit `layer.parts` et `demo` (S8) ; l
 
 | Fichier | Rôle |
 |---|---|
-| `src/app/admin/(panel)/appearance/` | la page (`page.tsx`), ses actions (`actions.ts`), la fenêtre d'aperçu (`PreviewDialog.tsx`), les cartes (`SkinCards.tsx`), le catalogue (`CatalogueCard.tsx`), l'ajout par adresse (`PersonalRepo.tsx`, `InspectPanel.tsx`), la gestion (`ManageSkin.tsx`), les couleurs (`ColorSection.tsx`) |
+| `src/app/admin/(panel)/appearance/` | la page (`page.tsx`), ses actions (`actions.ts`), la fenêtre d'aperçu (`PreviewDialog.tsx`), les cartes (`SkinCards.tsx`), le catalogue (`CatalogueCard.tsx`), l'ajout par adresse (`PersonalRepo.tsx`, `InspectPanel.tsx`), l'ajout depuis un fichier .zip (`UploadSkin.tsx`, §10.5b), la gestion (`ManageSkin.tsx`), les couleurs (`ColorSection.tsx`) |
 | `src/core/skins/appearance.ts` | **tout ce que la page écrit** : `chooseSkin`, `resetToSkin`, `undoLastChange`, `saveSkinOptions`, `saveRetouches` (+ `parseRetouchForm`, `checkRetouchInput`), `readSnapshot` ; aucun accès à Next |
 | `src/core/skins/appearanceView.ts` | le modèle de la page (`loadAppearanceView`), composé avec les mêmes fonctions que le rendu du site ; `activePreviewTokens` pour l'éditeur d'entrée |
 | `src/core/skins/previewToken.ts`, `render.ts` (`resolveLook(…, { previewSkinId })`), `src/proxy.ts`, `src/app/(site)/layout.tsx` | l'aperçu d'un skin avant de l'utiliser |

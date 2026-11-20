@@ -43,7 +43,7 @@ import { partsSignature } from "./moduleSkin";
 import type { SkinManifest } from "./manifest";
 import { makeIssue, type SkinIssue, type Text } from "./messages";
 import type { ReadabilityIssue } from "./readability";
-import { fallBackToBasic, filesPresent, pruneUnclaimed, readActiveSetting, readRows, serial, skinDir, writeRows, type SkinRow, type SkinSource } from "./registry";
+import { fallBackToBasic, filesPresent, pruneUnclaimed, readActiveSetting, readRows, serial, skinDir, writeRows, type SkinRow, type SkinSource, type UploadProvenance } from "./registry";
 import { classify, compareVersions, isReleaseTag, tagPrefix, type UpdateLevel } from "./semver";
 import { fetchSkinSource, isCommitRef, latestStableTag, parseSkinRepoUrl, remoteHead, repoAddress, sameRepoUrl, type Fetched, type SkinRepo } from "./source";
 import { fingerprintOf, hasErrors, hasSignature, validateSkinFolder, type SkinTokens, type SkinValidation } from "./validate";
@@ -52,10 +52,10 @@ export type Failure = { ok: false; error: string; issues?: SkinIssue[]; detail?:
 type Opts = { actor?: string };
 
 const systemActor = (o?: Opts) => o?.actor ?? "system";
-const fail = (error: string, extra: Partial<Failure> = {}): Failure => ({ ok: false, error, ...extra });
+export const fail = (error: string, extra: Partial<Failure> = {}): Failure => ({ ok: false, error, ...extra });
 
 /** Hooks pour les tests : simulent une panne au dernier moment d'une installation ou d'une mise à jour (retour arrière). */
-const hooks: { beforeSwitch?: () => void | Promise<void> } = {};
+export const hooks: { beforeSwitch?: () => void | Promise<void> } = {};
 export function setServiceHooksForTests(h: typeof hooks): void { hooks.beforeSwitch = h.beforeSwitch; }
 
 // ---------------------------------------------------------------------------------------------------------------------
@@ -112,7 +112,7 @@ function refusalOf(v: SkinValidation): Failure {
   return fail("skins.error.invalid", { issues });
 }
 
-async function refuse(v: SkinValidation, who: string): Promise<Failure> {
+export async function refuse(v: SkinValidation, who: string): Promise<Failure> {
   // Sans contenu : l'identifiant (déjà contrôlé par le schéma s'il existe) et le code du premier problème, jamais un extrait du skin.
   const id = v.manifest && SKIN_ID_RE.test(v.manifest.id) ? v.manifest.id : "?";
   await audit(who, "skin.refused", `${id} ${codeOf(v.issues)}`);
@@ -123,7 +123,7 @@ async function refuse(v: SkinValidation, who: string): Promise<Failure> {
 // Pose des fichiers (atomique)
 
 /** Écrit le contenu validé dans un dossier temporaire à côté de la destination, puis le renomme : jamais à moitié posé. Rend la destination. */
-function placeVersion(v: SkinValidation): string {
+export function placeVersion(v: SkinValidation): string {
   const m = v.manifest!;
   const base = path.join(SKINS_DIR, m.id);
   const target = skinDir(m.id, m.version);
@@ -253,7 +253,7 @@ function specOf(row: SkinRow): Spec | Failure {
 /** `vX.Y.Z` or, for a repository that holds several skins, `<id>/vX.Y.Z` (0.42.0). */
 const isStableTag = (ref: string | null | undefined, id: string): ref is string => isReleaseTag(ref, id);
 
-export type UpdateCheck = { available: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean; /** (0.42.0) Elle a échoué parce que le dépôt refuse l'accès : un code d'accès expiré ou retiré. */ access?: boolean };
+export type UpdateCheck = { available: boolean; /** (0.46.1) The skin was added from a file: it has no address to look at, the owner drops the new file again. */ upload?: boolean; target?: string; level?: UpdateLevel; needsCore?: string; /** La vérification elle-même a échoué (réseau, dépôt absent). */ failed?: boolean; /** (0.42.0) Elle a échoué parce que le dépôt refuse l'accès : un code d'accès expiré ou retiré. */ access?: boolean };
 
 type Target = { spec: Spec; fromCatalogue: boolean; entry?: SkinCatalogueEntry } | Failure | { none: "pinned" | "uptodate" };
 
@@ -279,6 +279,7 @@ async function targetOf(row: SkinRow, fresh = false): Promise<Target> {
 export async function checkUpdate(id: string, opts: { fresh?: boolean } = {}): Promise<UpdateCheck> {
   const row = (await readRows()).find((r) => r.id === id);
   if (!row) return { available: false };
+  if (row.upload) return { available: false, upload: true };
   try {
     const t = await targetOf(row, opts.fresh);
     if ("ok" in t) return { available: false, failed: true };
@@ -307,6 +308,7 @@ export async function update(id: string, opts: Opts & { acceptMajor?: boolean } 
     const rows = await readRows();
     const row = rows.find((r) => r.id === id);
     if (!row) return fail("skins.error.notfound");
+    if (row.upload) return fail("skins.error.uploaded", { kept: row.version });
     let fetched: Fetched | null = null;
     try {
       const t = await targetOf(row);
@@ -361,9 +363,9 @@ export async function revert(id: string, opts: Opts = {}): Promise<{ ok: true; i
     if (!prev || !filesPresent(id, prev.version)) return fail("skins.error.noprevious");
     const v = validateSkinFolder(skinDir(id, prev.version), { coreVersion: getCoreVersion(), expectId: id, reading: true });
     if (!v.ok || v.fingerprint !== prev.fingerprint) return fail("skins.error.invalid", { issues: v.issues });
-    const { previous: _gone, ...rest } = row;
-    void _gone;
-    const back: SkinRow = { ...rest, version: prev.version, ref: prev.ref, commit: prev.commit, tree: prev.tree, fingerprint: prev.fingerprint };
+    const { previous: _gone, upload: _up, ...rest } = row;
+    void _gone; void _up;
+    const back: SkinRow = { ...rest, version: prev.version, ref: prev.ref, commit: prev.commit, tree: prev.tree, fingerprint: prev.fingerprint, ...(prev.upload ? { upload: prev.upload } : {}) };
     await writeRows(rows.map((r) => (r.id === id ? back : r)));
     fs.rmSync(skinDir(id, row.version), { recursive: true, force: true });
     await audit(systemActor(opts), "skin.update", `${id}@${prev.version} revert`);
@@ -375,6 +377,7 @@ export async function revert(id: string, opts: Opts = {}): Promise<{ ok: true; i
 export async function reinstall(id: string, opts: Opts = {}): Promise<InstallOk | Failure> {
   const row = (await readRows()).find((r) => r.id === id);
   if (!row) return fail("skins.error.notfound");
+  if (row.upload) return fail("skins.error.uploaded");   // the file was not kept: the skin files on disk are the only copy
   const spec = specOf(row);
   if ("ok" in spec) return spec;
   return installFrom(spec, { source: row.source, expectId: id, actor: systemActor(opts), mode: "reinstall" });
@@ -421,6 +424,8 @@ export type InstalledSkin = {
   commit: string;
   fingerprint: string;
   installedAt: string;
+  /** (0.46.1) Set for a skin added from a file: SHA-256 and size of that file (the file itself is not kept). */
+  upload?: UploadProvenance;
   active: boolean;
   /** ok : prêt · missing : fichiers absents (basic s'applique en attendant) · modified : fichiers changés depuis l'installation · invalid : ne passe plus le contrôle. */
   status: "ok" | "missing" | "modified" | "invalid";
@@ -434,7 +439,7 @@ export async function installed(): Promise<InstalledSkin[]> {
   const active = await readActiveSetting();
   const out: InstalledSkin[] = [];
   for (const row of rows) {
-    const base = { id: row.id, kind: row.kind ?? "site" as const, version: row.version, source: row.source, repo: row.repo, ref: row.ref, subdir: row.subdir, commit: row.commit, fingerprint: row.fingerprint, installedAt: row.installedAt, active: active === row.id, ...(row.previous ? { previous: { version: row.previous.version } } : {}) };
+    const base = { id: row.id, kind: row.kind ?? "site" as const, version: row.version, source: row.source, repo: row.repo, ref: row.ref, subdir: row.subdir, commit: row.commit, fingerprint: row.fingerprint, installedAt: row.installedAt, ...(row.upload ? { upload: row.upload } : {}), active: active === row.id, ...(row.previous ? { previous: { version: row.previous.version } } : {}) };
     const fallbackName: Text = { fr: row.id, en: row.id };
     if (!filesPresent(row.id, row.version)) {
       out.push({ ...base, name: fallbackName, description: { fr: "", en: "" }, modes: [], tags: [], status: "missing", problems: [makeIssue("skin-files-missing")], previews: [] });
@@ -580,6 +585,30 @@ function findCandidates(root: string): { subdir: string; id: string; name: Text 
   return out;
 }
 
+/** What a checked skin folder contains, for the summary before adding (the same for an address and for a file). `v` must have a manifest. */
+export function summaryOf(root: string, v: SkinValidation): InspectSummary {
+  const m = v.manifest!;
+  const own = (name: RegExp) => v.files.find((f) => name.test(f.path) && !f.path.includes("/"));
+  const readme = own(/^README(\.[a-z]{2})?\.md$/);
+  const readmeText = readme ? readText(path.join(root, readme.path), 100_000) : null;
+  const lic = own(/^LICENSE(\.md|\.txt)?$/);
+  const licText = lic ? readText(path.join(root, lic.path), 20_000) : null;
+  const previews = (m.previews ?? []).flatMap((p) => {
+    const b = readPreviewFile(root, p.file);
+    return b ? [{ file: p.file, mode: p.mode, alt: p.alt, dataUrl: `data:image/webp;base64,${b.toString("base64")}` }] : [];
+  });
+  const summary: InspectSummary = {
+    id: m.id, name: m.name, description: m.description, version: m.version, author: m.author, license: m.license, minCore: m.minCore, skinContract: m.skinContract,
+    modes: m.modes, tags: m.tags,
+    assets: m.assets.map((a) => ({ file: a.file, kind: a.kind, license: a.license, author: a.author, source: a.source, family: a.family })),
+    options: (m.options ?? []).map((o) => ({ id: o.id, label: o.label, values: o.values.map((x) => ({ id: x.id, label: x.label })) })),
+    breakpoints: m.breakpoints ?? [], sizeBytes: v.totalBytes, files: v.files.length,
+    permissions: { executesCode: false, loadsFromOtherSites: false, changesContent: false, touchesAdmin: false },
+    readme: readmeText ? plainReadme(readmeText.text) : null, readmeTruncated: readmeText?.truncated ?? false, licenseText: licText?.text ?? null, previews,
+  };
+  return summary;
+}
+
 /** Ce qu'un dépôt contient, SANS rien installer ni changer (même contrôle qu'à l'installation, mêmes garde-fous de récupération). */
 export async function inspect(url: string): Promise<InspectResult> {
   const parsed = parseSkinRepoUrl(url);
@@ -599,24 +628,7 @@ export async function inspect(url: string): Promise<InspectResult> {
     const m = v.manifest;
     if (!m) return fail(refusalOf(v).error, { issues: v.issues });
     const rows = await readRows();
-    const own = (name: RegExp) => v.files.find((f) => name.test(f.path) && !f.path.includes("/"));
-    const readme = own(/^README(\.[a-z]{2})?\.md$/);
-    const readmeText = readme ? readText(path.join(fetched.root, readme.path), 100_000) : null;
-    const lic = own(/^LICENSE(\.md|\.txt)?$/);
-    const licText = lic ? readText(path.join(fetched.root, lic.path), 20_000) : null;
-    const previews = (m.previews ?? []).flatMap((p) => {
-      const b = readPreviewFile(fetched.root, p.file);
-      return b ? [{ file: p.file, mode: p.mode, alt: p.alt, dataUrl: `data:image/webp;base64,${b.toString("base64")}` }] : [];
-    });
-    const summary: InspectSummary = {
-      id: m.id, name: m.name, description: m.description, version: m.version, author: m.author, license: m.license, minCore: m.minCore, skinContract: m.skinContract,
-      modes: m.modes, tags: m.tags,
-      assets: m.assets.map((a) => ({ file: a.file, kind: a.kind, license: a.license, author: a.author, source: a.source, family: a.family })),
-      options: (m.options ?? []).map((o) => ({ id: o.id, label: o.label, values: o.values.map((x) => ({ id: x.id, label: x.label })) })),
-      breakpoints: m.breakpoints ?? [], sizeBytes: v.totalBytes, files: v.files.length,
-      permissions: { executesCode: false, loadsFromOtherSites: false, changesContent: false, touchesAdmin: false },
-      readme: readmeText ? plainReadme(readmeText.text) : null, readmeTruncated: readmeText?.truncated ?? false, licenseText: licText?.text ?? null, previews,
-    };
+    const summary = summaryOf(fetched.root, v);
     const existing = rows.find((r) => r.id === m.id);
     return {
       ok: true, origin, repo: { url: spec.url, ...(spec.ref ? { ref: spec.ref } : {}), ...(spec.subdir ? { subdir: spec.subdir } : {}) },
