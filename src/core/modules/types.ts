@@ -906,6 +906,12 @@ export type McpDecl = {
    * read-only, never on by default (the owner grants it). An older core ignores the key: `ctx.api.files.upload` is then absent. See docs/MODULES.md, "Files an assistant sends".
    */
   uploads?: boolean;
+  /**
+   * (core 0.46.0) What a PERSONAL AI (an AI that belongs to a user) needs from its owner to see and call this action: a LOCAL right id of this module (see `rights`, or the
+   * implicit `open`), for example `"phone.edit"`. A personal AI is limited to what its owner can do, so an action WITHOUT `right` is hidden from personal AIs until the module
+   * declares one (independent accesses are not concerned). A right of another module, or an unknown id, gives an action nobody can call that way. An older core ignores the key.
+   */
+  right?: string;
   input?: JsonSchemaLite;
 };
 

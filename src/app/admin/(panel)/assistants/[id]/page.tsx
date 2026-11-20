@@ -43,7 +43,8 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   const { t, locale, config, advanced, user } = await adminCtx({ right: "core:mcp.tokens" });
   const { id } = await params;
   const row = await prisma.apiToken.findUnique({ where: { id } });
-  if (!row) notFound();
+  // A personal AI (0.46.0) is managed by its owner, never from the sheet of an independent access.
+  if (!row || row.ownerId) notFound();
   const revoked = !!row.revokedAt;
   const writes = row.scope === "write";
   const fullPowers = !revoked && writes && (await hasFullPowers(id));

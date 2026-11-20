@@ -1,3 +1,7 @@
+import { isPersonalToken, ownerOfToken } from "@/core/services/mcp/tokens";
+import { requirementMet, requirementOfAction } from "@/core/services/mcp/ownerCeiling";
+import { resolveOwner } from "@/core/services/mcp/ownerResolver";
+import { getPersonalPolicy } from "@/core/personalAi/policy";
 import fs from "node:fs";
 import { prisma } from "@/core/db";
 import { getInstanceByKey } from "@/core/instances";
@@ -9,7 +13,7 @@ import { deps } from "./deps";
 import { isStableVersion, moduleUpdateRefusal, updateRunning } from "./inspect";
 import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
-import { claimRequest, createRequest, denyRequest, finishRequest, reopenRequest, setRequestProgress, type Level3Action, type Plan } from "./requests";
+import { claimRequest, createRequest, denyRequest, getRequest, finishRequest, reopenRequest, setRequestProgress, type Level3Action, type Plan } from "./requests";
 import { openRun, resetLock, runInBackground, takeLock, type Outcome, type RecordStore, type RunContext, type RunDone, type Started } from "./background";
 import { within } from "./within";
 import { getApprovalMode } from "./settings";
@@ -467,7 +471,9 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
   // Same for a new instance (it may get a public page).
-  const direct = !ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct";
+  // A personal AI (0.46.0) may act without asking only when the site policy allows it (`allowDirect`, off by default); otherwise its requests always wait for a human.
+  const personalAccess = !!actor.tokenId && (await isPersonalToken(actor.tokenId));
+  const direct = !ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct" && (!personalAccess || (await getPersonalPolicy()).allowDirect);
   if (direct && BACKGROUND_LEVEL3.has(action)) return callDirectInBackground(action, args, actor);
   const plan = await prepare(action, args);
   if (direct) {
@@ -476,7 +482,8 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
     if (outcome.busy) throw new McpToolError(outcome.message);
     return { status: outcome.ok ? "done" : "failed", message: outcome.message };
   }
-  const created = await createRequest({ action, plan, tokenId: actor.tokenId ?? "unknown", tokenName: actor.name });
+  const ownerId = actor.tokenId ? await ownerOfToken(actor.tokenId) : null;
+  const created = await createRequest({ action, plan, tokenId: actor.tokenId ?? "unknown", tokenName: actor.name, ...(ownerId ? { ownerId } : {}) });
   if (!created.ok) throw new McpToolError(created.error);
   if (!created.existing) {
     await prisma.auditLog.create({ data: { actor: `mcp:${redactSecrets(actor.name, 80)}`, action: "mcp.maintenance.request", target: redactSecrets(`${created.request.id} ${action} [${paramsText(plan)}]`, 300) } }).catch(() => {});
@@ -491,12 +498,36 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
 /* ───────────── Décision humaine ───────────── */
 
 /** Qui décide : `owner` vient de `can(user, "core:mcp.tokens")` (personne relue en base), jamais d'un formulaire. */
-export type Decider = { email: string; owner: boolean };
+export type Decider = { email: string; owner: boolean; /** (0.46.0) The signed-in user (read from the session, never from a form): lets the OWNER of a personal AI decide that AI's requests. */ userId?: string };
 export type DecisionResult = { ok: boolean; message: string; reason?: "forbidden" | "unknown" | "not-pending" | "expired" | "busy" | "failed" | "running" };
+
+/**
+ * Who decides a request (0.46.0): a holder of `core:mcp.tokens` (`by.owner`), or the user who OWNS the personal AI that made it. Returns a refusal, or null when allowed.
+ * For an approval of a personal AI's request, the owner's CURRENT rights are checked again here, before anything runs: an approval given after a demotion never executes
+ * (the request is closed as refused). Independent accesses: exactly the old rule.
+ */
+async function mayDecide(id: string, by: Decider, verb: "approve" | "refuse"): Promise<DecisionResult | null> {
+  const r = await getRequest(id, deps.now());
+  const ownsIt = !!r?.ownerId && !!by?.userId && by.userId === r.ownerId;
+  if (by?.owner !== true && !ownsIt) return { ok: false, reason: "forbidden", message: `Only the owner can ${verb} a request.` };
+  if (verb === "approve" && r?.ownerId && r.status === "pending" && !(await ownerStillMayRun(r.ownerId, r.action))) {
+    await denyRequest(r.id, deps.now());
+    await prisma.auditLog.create({ data: { actor: by.email, action: "mcp.personal.inert", target: redactSecrets(`${r.id} ${r.action}: above the owner's rights now`, 200) } }).catch(() => {});
+    return { ok: false, reason: "forbidden", message: "This request is above what its owner may do now. It was refused and will never run." };
+  }
+  return null;
+}
+
+/** The owner of the personal AI may still do what the request does, right now (and the AI is still allowed to exist). */
+async function ownerStillMayRun(ownerId: string, action: string): Promise<boolean> {
+  const owner = await resolveOwner(ownerId);
+  return owner.active && requirementMet(requirementOfAction(action), owner);
+}
 
 /** Le propriétaire approuve : la demande est exécutée UNE fois, avec les mêmes fonctions que l'admin et les mêmes vérifications. */
 export async function approveRequest(id: string, by: Decider): Promise<DecisionResult> {
-  if (by?.owner !== true) return { ok: false, reason: "forbidden", message: "Only the owner can approve a request." };
+  const gate = await mayDecide(id, by, "approve");
+  if (gate) return gate;
   const claim = await claimRequest(id, deps.now());
   if (!claim.ok) return { ok: false, reason: claim.reason, message: `Request ${claim.reason === "expired" ? "expired" : claim.reason === "unknown" ? "not found" : "already answered"}.` };
   const r = claim.request;
@@ -509,7 +540,8 @@ export async function approveRequest(id: string, by: Decider): Promise<DecisionR
 }
 
 export async function denyRequestBy(id: string, by: Decider): Promise<DecisionResult> {
-  if (by?.owner !== true) return { ok: false, reason: "forbidden", message: "Only the owner can refuse a request." };
+  const gate = await mayDecide(id, by, "refuse");
+  if (gate) return gate;
   const r = await denyRequest(id, deps.now());
   if (!r.ok) return { ok: false, reason: r.reason, message: `Request ${r.reason === "expired" ? "expired" : r.reason === "unknown" ? "not found" : "already answered"}.` };
   await prisma.auditLog.create({ data: { actor: by.email, action: "mcp.maintenance.deny", target: redactSecrets(`${r.request.id} ${r.request.action}`, 200) } }).catch(() => {});

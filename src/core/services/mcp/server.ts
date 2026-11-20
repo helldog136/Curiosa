@@ -87,7 +87,7 @@ async function handle(rpc: RpcRequest, token: AuthedToken, listTools: ListTools,
       // whether or not the box of that action was also ticked: the owner sees what the switch was used for.
       if (token.fullPowers && dangerousUnderFullPowers(tool)) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: "mcp.fullpowers.action", target: tool.name, module: tool.moduleId ?? "", instance: tool.moduleId ? tool.source : "" } }).catch(() => {});
       try {
-        const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name, tokenId: token.id });
+        const result = await tool.call((rpc.params?.arguments as Record<string, unknown>) ?? {}, { name: token.name, tokenId: token.id, ...(token.ownerId ? { ownerId: token.ownerId } : {}) });
         if (!tool.readOnly && !tool.audited) await prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: `mcp.${tool.name}`, target: tool.source, module: tool.moduleId ?? "", instance: tool.moduleId ? tool.source : "" } }).catch(() => {});
         // (0.25.0) a tool may answer with a picture (mcpImage): an `image` content item, then its text
         return rpcResult(rpc.id, { content: toolContent(result) });
@@ -133,7 +133,29 @@ export async function handleMcpRequest(request: Request, listTools: ListTools, v
   return run(request, token, listTools, serverIcons);
 }
 
+/** Last inert reason written to the journal per personal access: one line per TRANSITION (not per call), in memory. */
+const inertSeen = ((globalThis as unknown as { curiosaInertSeen?: Map<string, string> }).curiosaInertSeen ??= new Map<string, string>());
+
+/** A personal AI that cannot answer: say why to its owner, without revealing anything about anyone else. A missing owner looks like an unknown access. */
+function inertAnswer(token: AuthedToken): Response | null {
+  const personal = token.personal;
+  if (!personal) return null;
+  if (personal.active) { inertSeen.delete(token.id); return null; }
+  const why = personal.inert;
+  if (why && inertSeen.get(token.id) !== why) {
+    inertSeen.set(token.id, why);
+    void prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: "mcp.personal.inert", target: why } }).catch(() => {});
+  }
+  if (why === "owner_missing" || why === "unavailable" || why === undefined) return json(rpcError(null, -32001, "Missing or invalid token."), 401, { "WWW-Authenticate": "Bearer" });
+  const message = why === "paused" ? "Your personal assistant is paused. Its owner can resume it from the account page."
+    : why === "owner_locked" ? "Your personal assistant waits until its owner has finished securing the account."
+    : "Your personal assistant is switched off by an administrator.";
+  return json(rpcError(null, -32003, message), 403);
+}
+
 async function run(request: Request, token: AuthedToken, listTools: ListTools, serverIcons?: ServerIcons): Promise<Response> {
+  const inert = inertAnswer(token);
+  if (inert) return inert;
   if (rateLimited(token.id)) return json(rpcError(null, -32002, "Too many requests."), 429);
 
   const icons = await serverIcons?.(request).catch(() => []) ?? [];

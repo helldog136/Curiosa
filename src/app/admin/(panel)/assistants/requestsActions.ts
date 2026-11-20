@@ -17,7 +17,7 @@ import { accessHref, assistantsTabHref, ASSISTANTS_HREF } from "@/core/services/
 /** Le propriétaire approuve : la demande s'exécute (une seule fois), avec les mêmes vérifications que si l'IA l'avait faite directement. */
 export async function approveRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
-  const result = await approveRequest(String(id), { email: user.email, owner: can(user, "core:mcp.tokens") });
+  const result = await approveRequest(String(id), { email: user.email, owner: can(user, "core:mcp.tokens"), userId: user.id });
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(ADMIN_HREF, "layout");
   if (!result.ok && (result.reason === "busy" || result.reason === "expired" || result.reason === "not-pending" || result.reason === "unknown" || result.reason === "forbidden")) redirect(assistantsTabHref("requests", { notice: result.reason }));
@@ -25,7 +25,7 @@ export async function approveRequestAction(id: string): Promise<void> {
 
 export async function denyRequestAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
-  const result = await denyRequestBy(String(id), { email: user.email, owner: can(user, "core:mcp.tokens") });
+  const result = await denyRequestBy(String(id), { email: user.email, owner: can(user, "core:mcp.tokens"), userId: user.id });
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(ADMIN_HREF, "layout");
   if (!result.ok && result.reason) redirect(assistantsTabHref("requests", { notice: result.reason }));
@@ -35,7 +35,7 @@ export async function denyRequestAction(id: string): Promise<void> {
 export async function setApprovalAction(tokenId: string, mode: ApprovalMode): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId) } });
-  if (!row || row.revokedAt) throw new Error("unknown access");
+  if (!row || row.revokedAt || row.ownerId) throw new Error("unknown access");
   const next: ApprovalMode = mode === "direct" ? "direct" : "human";
   await setApprovalMode(row.id, next);
   await audit(user.email, "mcp.maintenance.mode", `${row.name}: ${next}`);

@@ -22,7 +22,7 @@ import { PendingButton } from "@/components/admin/PendingButton";
 export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Translator; locale: string; defaultLocale: string; notice?: string }) {
   const [requests, names, notify, mailOk, approval, catalogue, tokens, fullIds] = await Promise.all([
     listRequests(), moduleNames(locale, defaultLocale), getNotifyMode(), isMailConfigured(), getApprovalModes(),
-    listMcpToolCatalogue(), prisma.apiToken.findMany({ where: { revokedAt: null }, orderBy: { createdAt: "desc" } }), fullPowersIds(),
+    listMcpToolCatalogue(), prisma.apiToken.findMany({ where: { revokedAt: null, ownerId: null }, orderBy: { createdAt: "desc" } }), fullPowersIds(),
   ]);
   const name = (id: string) => names.get(id) ?? id;
   const when = (ms: number) => new Date(ms).toLocaleString(locale);

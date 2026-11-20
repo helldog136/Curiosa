@@ -38,8 +38,9 @@ export async function setFullPowers(id: string, on: boolean): Promise<boolean> {
     await setSetting(FULL_POWERS_KEY, ids.filter((x) => x !== id));
     return true;
   }
-  const row = await prisma.apiToken.findUnique({ where: { id }, select: { scope: true, revokedAt: true } });
-  if (!row || row.revokedAt || row.scope !== "write") return false;
+  const row = await prisma.apiToken.findUnique({ where: { id }, select: { scope: true, revokedAt: true, ownerId: true } });
+  // A personal AI (an access that belongs to a user) never holds full powers (core 0.46.0).
+  if (!row || row.revokedAt || row.scope !== "write" || row.ownerId) return false;
   if (!ids.includes(id)) await setSetting(FULL_POWERS_KEY, [...ids, id]);
   return true;
 }
@@ -48,6 +49,6 @@ export async function setFullPowers(id: string, on: boolean): Promise<boolean> {
 export async function accessesWithFullPowers(): Promise<{ id: string; name: string }[]> {
   const ids = await fullPowersIds();
   if (!ids.length) return [];
-  const rows = await prisma.apiToken.findMany({ where: { id: { in: ids }, revokedAt: null, scope: "write" }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } });
+  const rows = await prisma.apiToken.findMany({ where: { id: { in: ids }, revokedAt: null, scope: "write", ownerId: null }, select: { id: true, name: true }, orderBy: { createdAt: "asc" } });
   return rows;
 }

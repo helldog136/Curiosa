@@ -471,6 +471,8 @@ Un module peut donc **implémenter plus d'actions qu'il n'en active d'office** :
 Les arguments inconnus sont refusés ; le schéma `input` accepte `type`, `properties` (`string`, `number`, `integer`, `boolean`, `array`), `enum`, `maxLength`, `minimum`, `maximum`, `items`, `required`. Écrivez la `description`
 **pour l'assistant** qui la lira. Permission : `mcp`. Voir la référence : « API MCP ».
 
+(Core 0.46.0) Declare `"right": "phone.edit"` (a right of your module, or `open` / `history`) on every action that a **personal AI** may call: a personal AI is limited to what its owner can do, and an action without `right` stays hidden from it. Independent accesses are not affected. See [PERSONAL-AI.md](PERSONAL-AI.md).
+
 ## 12 bis. Faire évoluer ses données (migrations)
 
 Quand une version de votre module change la **forme** des données qu'il stocke, déclarez `"dataVersion": N` dans `module.json` et écrivez la fonction `migrations[N]` (elle reçoit `ctx`) qui convertit les données

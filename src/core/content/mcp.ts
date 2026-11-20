@@ -13,6 +13,7 @@ import { isSafeExternalUrl } from "@/core/url";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import type { JsonSchemaLite } from "@/core/modules/types";
+import { CONTENT_EDIT, CONTENT_PUBLISH } from "@/core/services/mcp/ownerCeiling";
 import { callLevel3 } from "@/core/maintenance/actions";
 import { publishInput } from "@/core/maintenance/publish";
 import { updatePublishedSummary } from "@/core/maintenance/entryMeta";
@@ -53,7 +54,8 @@ export const contentToolProvider: McpToolProvider = {
       if (!mod.manifest.content) continue;
       const label = labeler.label(instance);
       const add = (name: string, t: Pick<McpTool, "description" | "readOnly" | "input" | "call"> & { default?: boolean; request?: boolean; audited?: boolean }) =>
-        tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, ...t });
+        // (0.46.0) What a personal AI needs from its owner: publishing is the right to publish, everything else of the engine is the right to write content.
+        tools.push({ name: `${instance.key}__${name}`, title: `${label}: ${name}`, source: instance.key, instanceId: instance.id, default: t.default ?? true, destructive: false, requires: /^(publish|unpublish|update_published_meta)$/.test(name) ? CONTENT_PUBLISH : CONTENT_EDIT, ...t });
 
       const listSchema: JsonSchemaLite = { type: "object", properties: { status: { type: "string", enum: ["published", "draft", "all"] }, locale: { type: "string", enum: locales }, limit: { type: "integer", minimum: 1, maximum: 100 }, cursor: str(200) } };
       add("list_entries", {

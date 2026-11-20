@@ -9,8 +9,12 @@
  * - à défaut de surcharge : le défaut déclaré par le module (`default`). Une action destructrice n'a
  *   jamais `default: true` : elle n'est active que si un administrateur l'a accordée à ce jeton.
  */
+import { ownerCeilingAllows, type OwnerState, type ToolRequirement } from "./ownerCeiling";
+
 export type ToolAccessInfo = {
   name: string; readOnly: boolean; default: boolean;
+  /** (0.46.0) What a personal AI needs from its owner for this tool (ownerCeiling.ts). Absent: classified by name for a core tool, hidden from personal AIs otherwise. */
+  requires?: ToolRequirement; instanceId?: string; moduleId?: string;
   /** Défaut pour un jeton « maintenance » (voir MAINTENANCE_PROFILE) : seuls les outils de maintenance peuvent l'avoir à vrai. Absent = faux. */
   profileDefault?: boolean;
 };
@@ -54,7 +58,11 @@ export function isGranted(tool: ToolAccessInfo, grants: Grants): boolean {
  * What stays outside, because it protects the core itself: see `neverUnderFullPowers`. The ceiling stays (a read-only access is never raised), the approval
  * setting, the hourly limits and the upload limits are separate checks that this file does not touch.
  */
-export type AccessToken = { scope: Scope; grants: Grants; fullPowers?: boolean };
+export type AccessToken = {
+  scope: Scope; grants: Grants; fullPowers?: boolean;
+  /** (0.46.0) Present ONLY for a personal AI (an access that belongs to a user): the owner as seen now. Absent = an independent access, whose behaviour is unchanged. */
+  personal?: OwnerState;
+};
 
 /**
  * Tools that no switch grants, by name (the short name for a module tool, `<instance>__<tool>`). They would let an access manage accesses, rights or
@@ -78,6 +86,10 @@ export function grantedByFullPowers(tool: ToolAccessInfo, token: AccessToken): b
 
 /** Le jeton peut-il voir et appeler cette action ? */
 export function canUse(tool: ToolAccessInfo, token: AccessToken): boolean {
+  if (token.personal !== undefined) {
+    // A personal AI: the owner's CURRENT rights are a ceiling on top of the ordinary rules, and full powers never apply to it (belt and braces: it cannot be set either).
+    return ownerCeilingAllows(tool, token.personal) && withinCeiling(tool, token.scope) && isGranted(tool, token.grants);
+  }
   return grantedByFullPowers(tool, token) || (withinCeiling(tool, token.scope) && isGranted(tool, token.grants));
 }
 

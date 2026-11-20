@@ -59,6 +59,16 @@ export async function accessOf(user: { id: string; role: string; coordinator?: b
   return { level, roles, rights };
 }
 
+/** The AdminUser of a `User` row (rights read from the database, two-factor and temporary-password state included). No session rule here. */
+async function adminUserOfRow(user: NonNullable<Awaited<ReturnType<typeof prisma.user.findUnique>>>): Promise<AdminUser> {
+  const totp = !!user.totpEnabledAt;
+  const passkeys = await prisma.passkey.count({ where: { userId: user.id } });
+  const twoFactor = totp || passkeys > 0; // une clé d'accès vaut les deux facteurs à elle seule
+  const required = (await getSetting<boolean>("security.require2fa")) === true;
+  const access = await accessOf(user);
+  return { id: user.id, email: user.email, name: user.name, level: access.level, roles: access.roles, rights: access.rights, locale: user.locale, advanced: user.advanced, totp, passkeys, twoFactor, needsTwoFactor: required && !twoFactor, mustChangePassword: user.mustChangePassword };
+}
+
 /** Le compte d'une session (relu en base À CHAQUE REQUÊTE : un compte supprimé, dont les sessions ont été coupées, ou dont un droit a été retiré, le perd immédiatement). Le jeton de session ne décide de rien. Aucune règle de page ici : voir `accessGate`. */
 export async function loadAdminUser(id: string | undefined, tokenVersion: unknown): Promise<AdminUser | null> {
   if (!id) return null;
@@ -66,12 +76,13 @@ export async function loadAdminUser(id: string | undefined, tokenVersion: unknow
   if (!user) return null;
   // Session coupée (déconnexion de tous les appareils, mot de passe changé ou réinitialisé…) : le jeton d'avant ne vaut plus rien.
   if (!sessionIsCurrent(tokenVersion, user.sessionVersion)) return null;
-  const totp = !!user.totpEnabledAt;
-  const passkeys = await prisma.passkey.count({ where: { userId: user.id } });
-  const twoFactor = totp || passkeys > 0; // une clé d'accès vaut les deux facteurs à elle seule
-  const required = (await getSetting<boolean>("security.require2fa")) === true;
-  const access = await accessOf(user);
-  return { id: user.id, email: user.email, name: user.name, level: access.level, roles: access.roles, rights: access.rights, locale: user.locale, advanced: user.advanced, totp, passkeys, twoFactor, needsTwoFactor: required && !twoFactor, mustChangePassword: user.mustChangePassword };
+  return adminUserOfRow(user);
+}
+
+/** (0.46.0) The account of a user by id, with no session: for what acts FOR a user without a session (a personal AI). Null when the user does not exist. */
+export async function loadAdminUserById(id: string): Promise<{ user: AdminUser; personalAi: string } | null> {
+  const row = await prisma.user.findUnique({ where: { id: String(id ?? "") } });
+  return row ? { user: await adminUserOfRow(row), personalAi: row.personalAi } : null;
 }
 
 /**

@@ -7,6 +7,30 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.46.0 — 2026-11-21
+
+**En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).
+
+**In short.** First step of personal AI assistants: a team member will be able to have their own assistant, which can do only what that person can do. Nothing changes on your site until you turn the feature on, and there is no screen yet (it comes in 0.46.1).
+
+### Nouveautés
+
+- **Un assistant qui appartient à une personne.** Il perd tout pouvoir que sa personne n'a pas : l'assistant d'un éditeur ne peut ni modifier le menu, ni mettre à jour le site. Si la personne change de rôle, l'assistant suit tout de suite.
+- **(English) An assistant that belongs to a person.** It cannot do anything its person cannot: an editor's assistant cannot change the menu or update the site. If the person changes role, the assistant follows at once.
+- **Vous décidez qui peut en avoir un.** La fonction est éteinte par défaut. Une fois allumée, les administrateurs peuvent en avoir un, les éditeurs non, et vous pouvez autoriser ou interdire une personne en particulier ou un rôle (nouveau droit « Avoir un assistant IA personnel »).
+- **(English) You decide who can have one.** The feature is off by default. Once on, administrators can have one and editors cannot; you can allow or forbid one person, or a role (new right "Have a personal AI assistant").
+- **Des gardes-fous.** Un assistant personnel est mis en pause quand sa personne coupe toutes ses sessions ou change son mot de passe, et retiré si la personne est supprimée. Il ne peut pas agir sans demander, sauf si vous l'autorisez.
+- **(English) Safeguards.** A personal assistant is paused when its person signs out everywhere or changes their password, and removed if the person is deleted. It cannot act without asking unless you allow it.
+
+### Pour les développeurs
+
+- Migration `20261121090000_personal_ai` (ajouts seulement) : `ApiToken.ownerId`, `ApiToken.pausedAt`, `User.personalAi`. Réglage `mcp.personalPolicy` (`enabled`, `allowDirect`, éteints par défaut). Plafond calculé à chaque requête (`services/mcp/ownerCeiling.ts`), droit `core:ai.personal`.
+- **(English)** Additive migration `20261121090000_personal_ai`: `ApiToken.ownerId`, `ApiToken.pausedAt`, `User.personalAi`. Setting `mcp.personalPolicy` (`enabled`, `allowDirect`, both off by default). Ceiling computed on every request (`services/mcp/ownerCeiling.ts`), right `core:ai.personal`.
+- Clé de manifeste facultative `mcp[].right` : le droit local du module qu'exige l'action pour un assistant personnel. Sans elle, l'action reste cachée à ces assistants (les accès indépendants ne changent pas).
+- **(English)** Optional manifest key `mcp[].right`: the module's local right the action needs for a personal assistant. Without it the action stays hidden from them (independent accesses are unchanged).
+- Ne revenez pas à un cœur plus ancien tant que des assistants personnels existent : un ancien cœur ignorerait `ownerId`. Voir `docs/PERSONAL-AI.md`.
+- **(English)** Do not go back to an older core while personal assistants exist: an old core would ignore `ownerId`. See `docs/PERSONAL-AI.md`.
+
 ## 0.45.2 — 2026-11-20
 
 **En bref.** Sur une page d'administration partagée par plusieurs extensions, les boutons, liens et champs de recherche que les extensions dessinent eux-mêmes fonctionnent maintenant tous. Aucune extension n'a besoin d'être mise à jour.

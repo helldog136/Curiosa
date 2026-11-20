@@ -16,6 +16,8 @@ import { redirectsToolProvider } from "@/core/redirectMcp";
 import { journalToolProvider } from "@/core/journalMcp";
 import { setupToolProvider } from "@/core/siteMcp";
 import { overlaySkinsToolProvider } from "@/core/overlaySkinsMcp";
+// (0.46.0) Registers how the MCP mechanism learns who owns a personal AI and what that person can do now (the mechanism itself knows nothing of users).
+import "@/core/personalAi/owner";
 import { getInstanceLabeler } from "@/core/modules/labels";
 import { mcpInstanceKey, moduleActionProvider } from "@/core/modules/mcpProvider";
 import { getActiveInstances } from "@/core/modules/registry";
