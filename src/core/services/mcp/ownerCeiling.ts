@@ -53,8 +53,8 @@ export function ownerHasTier(owner: OwnerState, tier: Tier): boolean {
 /** The requirement is met by this owner? An empty requirement (`{}`) is NOT "no requirement": it never passes (fail closed). */
 export function requirementMet(req: ToolRequirement | undefined, owner: OwnerState): boolean {
   if (!req || !owner.active) return false;
-  if (req.none === true) return true;
-  if (!req.right && !req.tier) return false;
+  // (0.46.1) `none` alone is open; combined with another key it does NOT open anything: all the keys present must hold.
+  if (!req.right && !req.tier) return req.none === true;
   if (req.right && !ownerHolds(owner, req.right)) return false;
   if (req.tier && !ownerHasTier(owner, req.tier)) return false;
   return true;

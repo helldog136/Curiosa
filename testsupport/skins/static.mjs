@@ -141,6 +141,9 @@ export async function staticCheck(dir, options = {}) {
   }
   const names = fs.readdirSync(folder);
   if (!names.some((n) => /^LICENSE(\.md|\.txt)?$/.test(n))) add(kitIssue("kit-no-own-license"));
+  // (core 0.46.1) a tip only: an asset's license, license file, author and source are optional information, shown when present; their absence never refuses a skin
+  const uncredited = (m.assets ?? []).filter((a) => !a.license || !a.author || !a.source || !a.licenseFile || !fs.existsSync(path.join(folder, a.licenseFile)));
+  if (uncredited.length) add(kitIssue("kit-asset-credits", { n: uncredited.length, file: uncredited[0].file }));
   if (!names.some((n) => /^README(\.[a-z]{2})?\.md$/.test(n))) add(kitIssue("kit-no-readme"));
 
   // ── feuille : points de rupture, tailles minimales
@@ -192,6 +195,9 @@ function overlayStatic(result, folder, m, options) {
   }
   const names = fs.readdirSync(folder);
   if (!names.some((n) => /^LICENSE(\.md|\.txt)?$/.test(n))) add(kitIssue("kit-no-own-license"));
+  // (core 0.46.1) a tip only: an asset's license, license file, author and source are optional information, shown when present; their absence never refuses a skin
+  const uncredited = (m.assets ?? []).filter((a) => !a.license || !a.author || !a.source || !a.licenseFile || !fs.existsSync(path.join(folder, a.licenseFile)));
+  if (uncredited.length) add(kitIssue("kit-asset-credits", { n: uncredited.length, file: uncredited[0].file }));
   if (!names.some((n) => /^README(\.[a-z]{2})?\.md$/.test(n))) add(kitIssue("kit-no-readme"));
   const rules = parseRules(loadRulesText(options.neutrality));
   if (!rules.length) add(kitIssue("kit-neutral-skipped"));

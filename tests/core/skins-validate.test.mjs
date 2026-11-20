@@ -180,18 +180,22 @@ test("ressources : type de fichier non permis (gif, ttf, js) refusé", () => {
   }
 });
 
-test("ressources : licence absente, fichier de licence introuvable, licence non permise", () => {
+test("ressources : licence, fichier de licence, auteur et source sont facultatifs (jamais un refus) ; le chemin du fichier de licence n'est pas contrôlé non plus", () => {
   const base = { "fonts/a.woff2": fakeFont(), ...LIC };
-  const missing = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: base }));
-  assert.ok(codes(missing).includes("asset-license-missing"));
-  const noAuthor = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { author: undefined })]; }, files: base }));
-  assert.ok(codes(noAuthor).includes("asset-license-missing"), "auteur et source sont exigés aussi");
+  const none = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: base }));
+  assert.deepEqual(codes(none), [], "aucune information de licence : valide");
+  assert.equal(none.ok, true);
+  const noAuthor = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { author: undefined, source: undefined })]; }, files: base }));
+  assert.deepEqual(codes(noAuthor), []);
   const noFile = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { licenseFile: "LICENSES/absent.txt" })]; }, files: { "fonts/a.woff2": fakeFont() } }));
-  assert.ok(codes(noFile).includes("asset-license-file"));
+  assert.deepEqual(codes(noFile), [], "fichier de licence introuvable : pas une erreur");
   const badPath = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { licenseFile: "../x.txt" })]; }, files: base }));
-  assert.ok(codes(badPath).includes("asset-license-file"));
+  assert.deepEqual(codes(badPath), [], "ce chemin n'est jamais lu : rien à refuser");
   const bad = check(mk({ patch: (m) => { m.assets = [asset("fonts/a.woff2", "font", { license: "Proprietary" })]; }, files: base }));
-  assert.deepEqual(codes(bad), [], "la licence d'une ressource est un texte libre : « Proprietary » n'est pas refusé (seule sa déclaration complète est exigée)");
+  assert.deepEqual(codes(bad), [], "la licence d'une ressource est un texte libre");
+  // les vraies protections restent : un fichier qui n'est pas une police est refusé, licence ou non
+  const fake = check(mk({ patch: (m) => { m.assets = [{ file: "fonts/a.woff2", kind: "font" }]; }, files: { "fonts/a.woff2": "<html>pas une police</html>" + "x".repeat(40) } }));
+  assert.ok(codes(fake).includes("asset-signature"));
 });
 
 test("ressources : déclarée mais absente, déclarée deux fois", () => {

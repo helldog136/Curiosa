@@ -134,6 +134,13 @@ test("licence : un skin dont le manifeste ET les ressources sont « Private » (
   assert.equal(again.ok, true, JSON.stringify(again));
 });
 
+test("licence : une image sans licence, sans fichier de licence, sans auteur ni source s'installe (informations facultatives)", async () => {
+  await cat.publish("image-nue", { listed: false, patch: (m) => { m.assets = [{ file: "images/a.png", kind: "image" }]; }, files: { "images/a.png": fakePng() } });
+  const ok = await S.install(personal("image-nue"), { confirmPersonal: true, actor: "owner@test" });
+  assert.equal(ok.ok, true, JSON.stringify(ok));
+  assert.deepEqual(ok.warnings, []);
+});
+
 test("un skin listé au catalogue officiel s'installe sans confirmation, même par son adresse ; l'index supplémentaire exige la confirmation", async () => {
   await cat.publish("plain-light");
   const ok = await S.install(`${SKINS_HTTPS}#plain-light-v1.0.0:skins/plain-light`);
@@ -216,12 +223,11 @@ test("refus : skin hostile — et l'audit ne contient AUCUN extrait du skin", as
   assert.ok(!/evil|example\.org|Offre|expression/i.test(all));
 });
 
-test("refus : ressources trop grosses, mauvaise signature, licence absente, lien symbolique, fichier hors liste, SVG dangereux", async () => {
+test("refus : ressources trop grosses, mauvaise signature, lien symbolique, fichier hors liste, SVG dangereux", async () => {
   const lic = { "LICENSES/ofl.txt": "Licence." };
   await refused("police-lourde", { patch: (m) => { m.id = "police-lourde"; m.assets = [asset("fonts/a.woff2", "font")]; }, files: { ...lic, "fonts/a.woff2": fakeFont(160 * 1024) } }, "skins.error.invalid", "file-too-large");
   await refused("deux-mega", { files: { "images/a.png": fakePng(1024), ...Object.fromEntries(Array.from({ length: 24 }, (_, i) => [`LICENSES/l${i}.txt`, "x".repeat(90 * 1024)])) } }, "skins.error.invalid", "skin-too-big");
   await refused("fausse-police", { patch: (m) => { m.assets = [asset("fonts/a.woff2", "font")]; }, files: { ...lic, "fonts/a.woff2": "<html>pas une police</html>" + "x".repeat(40) } }, "skins.error.invalid", "asset-signature");
-  await refused("sans-licence", { patch: (m) => { m.assets = [{ file: "images/a.png", kind: "image" }]; }, files: { "images/a.png": fakePng() } }, "skins.error.invalid", "asset-license-missing");
   await refused("svg-piege", { patch: (m) => { m.assets = [asset("images/m.svg", "image")]; }, files: { ...lic, "images/m.svg": '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' } }, "skins.error.invalid", "asset-svg-refused");
   await refused("intrus", { files: { "install.sh": "rm -rf /" } }, "skins.error.invalid", "skin-file-unlisted");
 });

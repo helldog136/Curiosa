@@ -18,7 +18,11 @@ import type { Plan } from "./requests";
  * of the interrupted work is closed as "failed: interrupted" the next time it is read (`closeInterrupted`).
  */
 export const MAX_QUICK_WAIT_MS = 20_000;
-/** A lock older than this is a bug, not an operation: it is ignored (and logged) so that the site never stays blocked. */
+/**
+ * A lock that has seen NO PROGRESS for this long is a bug, not an operation: it is ignored (and logged) so that the site never stays blocked.
+ * (0.46.1) It is a lease: the work renews it each time it makes progress (`touch`, called by `ctx.step`), so a slow operation that is alive is never ignored.
+ * It is renewed by progress and not by a timer on purpose: a timer would also keep a hung operation's lock alive for ever.
+ */
 export const LOCK_STALE_MS = 30 * 60_000;
 /** Direct runs (no owner approval involved) kept in the settings. */
 const KEEP_RUNS = 30;
@@ -54,12 +58,12 @@ export function busyMessage(lock: LockInfo): string {
 }
 
 /** Takes the lock, or says why not. The returned function gives it back (only once, and only if it is still ours). */
-export function takeLock(info: Omit<LockInfo, "since">): { ok: true; release: () => void; tag: (requestId: string) => void } | { ok: false; outcome: Outcome } {
+export function takeLock(info: Omit<LockInfo, "since">): { ok: true; release: () => void; tag: (requestId: string) => void; touch: () => void } | { ok: false; outcome: Outcome } {
   const held = currentLock();
   if (held) return { ok: false, outcome: { ok: false, busy: true, message: busyMessage(held) } };
   const mine: LockInfo = { ...info, since: deps.now() };
   g.curiosaMaintenanceBusy = mine;
-  return { ok: true, release: () => { if (g.curiosaMaintenanceBusy === mine) g.curiosaMaintenanceBusy = null; }, tag: (requestId) => { mine.requestId = requestId; } };
+  return { ok: true, release: () => { if (g.curiosaMaintenanceBusy === mine) g.curiosaMaintenanceBusy = null; }, tag: (requestId) => { mine.requestId = requestId; }, touch: () => { if (g.curiosaMaintenanceBusy === mine) mine.since = deps.now(); } };
 }
 
 /** Tests: forgets the lock and the running work. */
@@ -78,10 +82,11 @@ export type MaintenanceRun = {
   plan?: Plan; progress?: RunProgress; result?: RunResult; finishedAt?: number;
 };
 
-let chain: Promise<unknown> = Promise.resolve();
+/** On `globalThis` like the lock (0.46.1): two copies of this module (one per bundle) must not interleave their changes of the runs record. */
 function exclusive<T>(fn: () => Promise<T>): Promise<T> {
-  const run = chain.then(fn, fn);
-  chain = run.catch(() => {});
+  const h = globalThis as unknown as { curiosaRunsChain?: Promise<unknown> };
+  const run = (h.curiosaRunsChain ?? Promise.resolve()).then(fn, fn);
+  h.curiosaRunsChain = run.catch(() => {});
   return run;
 }
 async function loadRuns(): Promise<MaintenanceRun[]> {
@@ -101,7 +106,8 @@ export function boundResult(r: RunResult): RunResult {
   return { ok: r.ok, message: redactSecrets(r.message, 400), ...(details !== undefined && json.length <= 4000 ? { details } : {}) };
 }
 
-const INTERRUPTED: RunResult = { ok: false, message: "Interrupted: the site restarted while this was running. Check maintenance_modules, then ask again if something is left." };
+export const INTERRUPTED_MESSAGE = "Interrupted: the site restarted while this was running. Check maintenance_modules, then ask again if something is left.";
+const INTERRUPTED: RunResult = { ok: false, message: INTERRUPTED_MESSAGE };
 
 /** Closes the records that say "running" although nothing of this process works on them any more (the site restarted). */
 export function closeInterrupted<T extends { id: string; status: string; startedAt?: number; createdAt: number; decidedAt?: number; result?: unknown }>(list: T[], now: number): boolean {
@@ -181,7 +187,7 @@ export async function openRun(input: { action: string; tokenId: string; tokenNam
  * the rights, taken the rate-limit slot and (for an approved request) claimed the request.
  */
 export async function runInBackground(opts: {
-  id: string; store: RecordStore; lock: { release: () => void };
+  id: string; store: RecordStore; lock: { release: () => void; /** Progress: renews the lease of the lock (see LOCK_STALE_MS). */ touch?: () => void };
   work: (ctx: RunContext) => Promise<Outcome>;
   /** Audit line and owner's notice; skipped when the work was refused before doing anything. */
   after: (outcome: Outcome) => Promise<void>;
@@ -191,8 +197,9 @@ export async function runInBackground(opts: {
   let progress: RunProgress = { total: 0, done: 0, items: [] };
   let writing: Promise<void> = Promise.resolve();
   const ctx: RunContext = {
-    setPlan: (plan) => { writing = writing.then(() => store.setPlan(plan)).catch(() => {}); },
+    setPlan: (plan) => { opts.lock.touch?.(); writing = writing.then(() => store.setPlan(plan)).catch(() => {}); },
     step: (total, item) => {
+      opts.lock.touch?.();
       progress = { total, done: progress.done + 1, items: [...progress.items, item].slice(-200) };
       const snapshot = progress;
       writing = writing.then(() => store.setProgress(snapshot)).catch(() => {});

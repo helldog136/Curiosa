@@ -49,7 +49,7 @@ Dans le dossier du skin, **seuls ces fichiers existent** (tout le reste est refu
 
 ### `skin.json` : qui est le skin
 
-La copie annotée du fichier est dans `docs/skin-starter/docs/skin.commente.jsonc`. L'essentiel : `id` (identique au nom du dossier), `name` et `description` **dans les deux langues**, `version` (égale à l'étiquette git), `minCore`, `license` (MIT, Apache-2.0, BSD, ISC, CC0, CC-BY, CC-BY-SA ou OFL-1.1), `modes` (`["light"]`, `["dark"]` ou les deux), `previews` (WebP 1280 × 800, 150 Ko au plus, `alt` obligatoire), `assets` (chaque police ou image, avec sa licence), `breakpoints` (les largeurs où **votre** mise en page change).
+La copie annotée du fichier est dans `docs/skin-starter/docs/skin.commente.jsonc`. L'essentiel : `id` (identique au nom du dossier), `name` et `description` **dans les deux langues**, `version` (égale à l'étiquette git), `minCore`, `license` (texte libre et facultatif : « MIT », « Private »…), `modes` (`["light"]`, `["dark"]` ou les deux), `previews` (WebP 1280 × 800, 150 Ko au plus, `alt` obligatoire), `assets` (chaque police ou image ; leurs informations de licence sont facultatives), `breakpoints` (les largeurs où **votre** mise en page change).
 
 ### `tokens.json` : les valeurs
 
@@ -122,9 +122,9 @@ La règle pour trancher : **« si on retire le skin, la personne perd-elle une i
 
 ## 6. Polices, images et licences
 
-- **Une police** : un fichier `.woff2` dans `fonts/` (150 Ko au plus, 4 polices et 400 Ko au total), **déclarée dans `assets`** avec `family`, `weight`, `style`, `license`, `licenseFile` (le texte de la licence, dans `LICENSES/`), `author` et `source`. Puis un `@font-face` **tout en haut** de `skin.css` : `src: url(skin:fonts/ma-police.woff2) format("woff2")`, et la famille dans `--v-font` ou `--sk-font-heading`. N'embarquez que des polices dont la licence le permet (OFL-1.1 est la plus courante) ; le texte de `license` est libre, le cœur ne le juge pas.
+- **Une police** : un fichier `.woff2` dans `fonts/` (150 Ko au plus, 4 polices et 400 Ko au total), **déclarée dans `assets`** avec `family`, `weight`, `style` ; vous pouvez ajouter `license`, `licenseFile` (le texte de la licence, dans `LICENSES/`), `author` et `source` : c'est facultatif, ces informations sont montrées quand elles existent. Puis un `@font-face` **tout en haut** de `skin.css` : `src: url(skin:fonts/ma-police.woff2) format("woff2")`, et la famille dans `--v-font` ou `--sk-font-heading`. N'embarquez que des polices dont la licence le permet (OFL-1.1 est la plus courante) ; le texte de `license` est libre, le cœur ne le juge pas.
 - **Une image** : `png`, `webp`, `avif`, `jpg` (200 Ko) ou `svg` (30 Ko, nettoyé par Curiosa : pas de script), 12 au plus, 1,2 Mo au total, déclarée dans `assets`, appelée par `url(skin:images/motif.svg)`. Jamais une image qui **porte une information** (un texte dessiné) : c'est du décor.
-- Le kit vérifie : l'extension **et** le contenu du fichier (une police qui n'en est pas une est refusée), les plafonds, la présence de la licence et de son fichier pour chaque police et image (leur contenu n'est jamais jugé : « Private » ou une phrase libre passent), les polices et images **inutilisées**, et — dans le navigateur — que **la police se charge vraiment**.
+- Le kit vérifie : l'extension **et** le contenu du fichier (une police qui n'en est pas une est refusée), les plafonds, les informations de licence des polices et images (facultatives : leur absence ou leur contenu ne refuse jamais le skin, le kit donne seulement un conseil), les polices et images **inutilisées**, et — dans le navigateur — que **la police se charge vraiment**.
 - **Aucune** ressource d'un tiers, jamais : ni police, ni image, ni feuille.
 
 ## 7. Lisibilité
@@ -146,7 +146,7 @@ npm run skin:check -- <dossier> [--visual] [--shots <dossier>] [--modules <dossi
 | Niveau | Ce qui est contrôlé |
 |---|---|
 | **Manifeste** | `skin.json` valide ; `id` = dossier ; FR + EN ; version, contrat, `minCore` ; licence ; étiquettes ; `modes` ; aperçus avec `alt` |
-| **Ressources** | chaque fichier de `fonts/` ou `images/` est listé, chaque fichier listé existe ; signatures ; plafonds ; SVG nettoyé ; licences ; aperçus 1280 × 800 ou 390 × 844 ; polices et images utilisées ; LICENSE, README |
+| **Ressources** | chaque fichier de `fonts/` ou `images/` est listé, chaque fichier listé existe ; signatures ; plafonds ; SVG nettoyé ; aperçus 1280 × 800 ou 390 × 844 ; polices et images utilisées ; LICENSE, README |
 | **Jetons** | couleurs de base par mode ; type de chaque valeur ; jetons inconnus ; jetons de pièces de modules (`--modules`) ; corrections de lisibilité que Curiosa devrait faire |
 | **Feuille** | sélecteurs, at-règles, propriétés, valeurs, plafonds ; animations hors `prefers-reduced-motion` ; points de rupture non déclarés ; cibles, interligne et taille de texte réglés trop bas |
 | **Principe fondateur** | aucun masquage, aucun texte injecté, aucune région ou pièce inventée ; **dans le navigateur** : rien de masqué, recouvert, repoussé hors de l'écran ou ajouté par rapport à basic |
@@ -212,6 +212,7 @@ Chaque problème porte un code stable (entre crochets dans le rapport), dans les
 | `kit-font-unused` | ⚠️ | police embarquée mais inutilisée |
 | `kit-image-unused` | ⚠️ | image embarquée mais inutilisée |
 | `kit-no-own-license` | 💡 | pas de fichier LICENSE |
+| `kit-asset-credits` | 💡 | une police ou image sans toutes ses informations de licence (facultatif) |
 | `kit-no-readme` | 💡 | pas de README.md |
 | `kit-breakpoint-undeclared` | 💡 | largeur de rupture absente de `breakpoints` |
 | `kit-target-small` | ⚠️ | cible réglée sous 44 px |
@@ -306,7 +307,7 @@ Vous êtes un assistant qui écrit un skin pour une personne qui n'est pas techn
 - [ ] `npm run skin:check -- <dépôt> --coverage` : la liste des pièces non ciblées est faite exprès (le skin de base les habille) ou complétée par des règles.
 - [ ] Les captures regardées (planches, mobile compris), en clair **et** en sombre si le skin a les deux.
 - [ ] `version` de `skin.json` = l'étiquette ; `README.md` à jour (polices, licences, comment tester).
-- [ ] Chaque police et chaque image : licence, fichier de licence, nom de la personne qui l'a créée et source dans `assets`.
+- [ ] Chaque police et chaque image : si vous le pouvez, licence, fichier de licence, nom de la personne qui l'a créée et source dans `assets` (facultatif).
 - [ ] Aucun nom de site, d'association ou de ville dans les textes.
 
 ## English summary
