@@ -4,7 +4,7 @@
 **Damage if broken.** A demoted, locked or switched-off person keeps a working assistant, or an assistant does something its person could not.
 
 Files covered: `src/core/services/mcp/ownerCeiling.ts`, `src/core/services/mcp/access.ts` (`canUse`), `src/core/services/mcp/tokens.ts`, `src/core/services/mcp/server.ts`, `src/core/personalAi/{owner,policy,service,lifecycle}.ts`, `src/core/auth/{access,rights}.ts`, `src/core/maintenance/myAccess.ts`.
-Last synced with: core 0.46.0, commit `57236d6`.
+Last synced with: core 0.46.0, commit `57236d6`, plus the `none` hardening of this review.
 
 ## Method (cheapest tool that answers each question)
 
@@ -32,7 +32,7 @@ Last synced with: core 0.46.0, commit `57236d6`.
 
 ## Observations (no bug)
 
-- `requirementMet({ none: true, right: "x" }, owner)` is true for an owner without the right: `none` wins. The header comment says several keys must all hold. Nothing builds such a requirement today (`declaredRequirement` only returns `{ right }`, the table has `none` alone), so it is latent only.
+- `requirementMet({ none: true, right: "x" }, owner)` was true for an owner without the right (`none` won). Fixed: `none` only counts when it is the only key; next to another key it opens nothing (fail closed). Nothing built such a requirement, so it was latent. Pinned by the oracle of `formal-personal-ai-ceiling`.
 - `NEVER_UNDER_FULL_POWERS` is a default for independent accesses; a personal AI never gets full powers at all, so the list does not matter for it.
 
 ## Not covered

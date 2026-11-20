@@ -9,9 +9,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
-**En bref.** Deux corrections sur les demandes d'actions des assistants IA : une demande en attente ne peut plus disparaître de la liste, et votre accord ne publie que ce que vous avez vu. Rien d'autre ne change.
+**En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Rien d'autre ne change.
 
-**In short.** Two fixes on the requests of AI assistants: a waiting request can no longer vanish from the list, and your approval publishes only what you saw. Nothing else changes.
+**In short.** Fixes on the requests of AI assistants and on maintenance: a waiting request no longer vanishes, your approval publishes only what you saw, and a long operation is no longer doubled. Nothing else changes.
 
 ### Corrections
 
@@ -19,13 +19,19 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) A waiting request no longer vanishes.** After many requests had been answered, one that was still waiting could be dropped from the list without a word. It now stays until you answer or it expires.
 - **Votre accord ne publie que ce que vous avez vu.** Si un assistant changeait le lien, le code ou les étiquettes d'un brouillon après sa demande de publication, votre accord publiait la version modifiée. Maintenant l'assistant doit refaire sa demande, y compris pour celles en attente pendant la mise à jour.
 - **(English) Your approval publishes only what you saw.** If an assistant changed the link, code or tags of a draft after asking to publish it, your approval published the changed version. Now the assistant has to ask again, including for requests waiting during the update.
+- **Une longue opération n'est plus doublée.** Une mise à jour très lente pouvait être oubliée au bout de 30 minutes, et une seconde opération démarrait en même temps. Tant qu'elle avance, elle garde sa place.
+- **(English) A long operation is no longer doubled.** A very slow update could be forgotten after 30 minutes, and a second operation started alongside it. As long as it makes progress, it keeps its place.
 
 ### Pour les développeurs
 
 - `maintenance/requests.ts` : `save` ne coupe plus que les demandes terminées (50 par catégorie) ; une demande « en attente » ou « en cours » est toujours gardée. `maintenance/publish.ts` : l'empreinte d'un brouillon couvre aussi `url`, `code`, `tags`, `cover`, `icon`, `fields` (en plus des textes et du skin).
 - **(English)** `maintenance/requests.ts`: `save` only cuts finished requests (50 per class); a pending or running one is always kept. `maintenance/publish.ts`: the fingerprint of a draft also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (besides the texts and the skin).
-- Revue formelle : modèles et tests dans `docs/formal/` et `tests/**/formal-*.test.mjs` (plafond des assistants personnels, file d'approbation, verrou de maintenance en TLA+). Les constats non corrigés y sont décrits avec leur trace.
-- **(English)** Formal review: models and tests in `docs/formal/` and `tests/**/formal-*.test.mjs` (personal assistant ceiling, approval queue, maintenance lock in TLA+). Findings that are not fixed are described there with their trace.
+- `maintenance/background.ts` : le verrou est un bail renouvelé à chaque étape (`touch`), `LOCK_STALE_MS` reste le filet de sécurité. `maintenance/requests.ts` : chaîne `exclusive()` sur `globalThis`, écriture en compare-and-swap avec nouvel essai (`transact`), `finishRequest` seulement sur une demande en cours.
+- **(English)** `maintenance/background.ts`: the lock is a lease renewed on each step (`touch`), `LOCK_STALE_MS` stays as the safety net. `maintenance/requests.ts`: `exclusive()` chain on `globalThis`, compare-and-swap write with retry (`transact`), `finishRequest` only on a running request.
+- `ownerCeiling.ts` : `none` à côté d'une autre clé n'ouvre rien. `scripts/update-lib.mjs` : fichier `state.claim` créé en exclusivité autour de la lecture de `state.json`.
+- **(English)** `ownerCeiling.ts`: `none` next to another key opens nothing. `scripts/update-lib.mjs`: `state.claim` file created exclusively around the read of `state.json`.
+- Revue formelle : modèles et tests dans `docs/formal/` et `tests/**/formal-*.test.mjs` (plafond des assistants personnels, file d'approbation, verrou de maintenance en TLA+). Les constats y sont décrits avec leur trace.
+- **(English)** Formal review: models and tests in `docs/formal/` and `tests/**/formal-*.test.mjs` (personal assistant ceiling, approval queue, maintenance lock in TLA+). Findings are described there with their trace.
 
 ## 0.46.0 — 2026-11-21
 

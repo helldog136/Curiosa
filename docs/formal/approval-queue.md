@@ -4,11 +4,11 @@
 **Damage if broken.** An action runs twice, runs after it was refused, or the owner approves one thing and gets another.
 
 Files covered: `src/core/maintenance/requests.ts`, `src/core/maintenance/publish.ts`, `src/core/maintenance/actions.ts` (`approveRequest`, `mayDecide`, `runGuarded`), the `closeInterrupted` part of `src/core/maintenance/background.ts`, `update_draft` in `src/core/content/mcp.ts`.
-Last synced with: core 0.46.0, commit `57236d6`, plus the two fixes of this review (core 0.46.1 branch).
+Last synced with: core 0.46.0, commit `57236d6`, plus the fixes of this review (core 0.46.1 branch: F1, F2, F4, `finishRequest` guard).
 
 ## Method
 
-A **model-based test of the real queue** (the real functions and the real database, an injected clock): a small model of the queue, written from the header comment of `requests.ts`, runs in lockstep with the real code under 120 reproducible random sequences of 80 commands (create, claim, deny, reopen, finish, expire one owner's requests, time passing, list). After every command the whole real queue is compared with the model and the invariants are checked on the real data. TLA+ was not needed here: the queue is one JSON setting guarded by an in-process lock, so one process is a plain state machine; the interleavings between *processes* are described under F4 and were exercised directly.
+A **model-based test of the real queue** (the real functions and the real database, an injected clock): a small model of the queue, written from the header comment of `requests.ts`, runs in lockstep with the real code under 120 reproducible random sequences of 80 commands (create, claim, deny, reopen, finish, expire one owner's requests, time passing, list). After every command the whole real queue is compared with the model and the invariants are checked on the real data. TLA+ was not needed here: the queue is one JSON setting, so one process is a plain state machine; the interleavings between copies of the module and between processes (F4) were exercised directly, with two copies of the module loaded in one test and an injected foreign write.
 
 ## Invariants and results
 
@@ -23,7 +23,7 @@ A **model-based test of the real queue** (the real functions and the real databa
 | Q7 | The purge of old requests never removes a request that still waits or is running | **bug, fixed** (F1) | `formal-approval-queue-retention` |
 | Q8 | What is published is what the owner was shown: any change to the draft after the request, in any field a visitor can see, makes the approval do nothing | **bug, fixed** (F2) | `formal-publish-fingerprint` |
 | Q9 | An approval given after the owner lost the right never runs (the request is closed as refused); the right is the same as the one the tool asked with | holds | already in `personal-ai-lifecycle.test.mjs`; same-table check in `formal-personal-ai-owner-matrix` test 4 |
-| Q10 | Two processes (or two copies of the module) cannot approve the same request twice | **bug, reported, conditional** (F4) | trace below |
+| Q10 | Two processes (or two copies of the module) cannot approve the same request twice | **bug, fixed** (F4) | `formal-approval-queue` tests 5 and 6 |
 
 Navigation, home page and site settings plans (`change`, `site`) keep a fingerprint of the **whole state they started from** and re-check it before writing, so they do not have the F2 problem (read, not modelled).
 
@@ -42,17 +42,17 @@ Trace on the real server: 1. an assistant creates a draft with `url: https://exa
 Where: `fingerprint` in `publish.ts`. Fix: the fingerprint also covers `url`, `code`, `tags`, `cover`, `icon`, `fields` (`update_draft` can set the first three, a person can change the others in the admin). A pending request made before the update fails closed ("changed since the request, ask again"), it never publishes.
 Test: `formal-publish-fingerprint.test.mjs` (red before the fix; an anti-vacuity test shows the same flow publishes when nothing changed). This changes the approval path (it only makes it stricter): review it as security-relevant; it is a separate commit and can be reverted on its own.
 
-### F4 (reported, not fixed, conditional): the queue is a read-modify-write of one setting, serialised only inside one copy of the module
+### F4 (fixed, conditional): the queue was a read-modify-write of one setting, serialised only inside one copy of the module
 *Severity: medium if the condition holds, none otherwise. Not verified in a production Next.js build.*
-`exclusive()` in `requests.ts` (and in `background.ts`) is a promise chain held in module scope, while the lock and the running set of the same file live on `globalThis` "so that every bundle shares one" (the comment in `ownerResolver.ts` shows the project knows bundles can be duplicated). If the admin actions and the MCP route ever run their own copy of the module, or if two server processes share the database, two operations read the same list and the later write wins.
+`exclusive()` in `requests.ts` (and in `background.ts`) was a promise chain held in module scope, while the lock of the same file lives on `globalThis` so that every bundle shares one. With two copies of the module in one process, or two server processes on one database, two operations read the same list and the later write won.
 Trace, reproduced with two copies of `requests.ts` loaded in one test: 1. a request is pending. 2. copy B claims it (running) while copy A creates another request; both read before either writes. 3. A writes its list last: the first request is **pending again**. 4. a second claim of the same request succeeds: it can run twice.
-Proposed patch (not applied: it touches the approval path and the right fix is a design choice): at least hold the chain on `globalThis` like the lock (`const g = globalThis as { curiosaRequestsChain?: Promise<unknown> }`, same in `background.ts`); for several processes, write with a compare-and-swap (`updateMany({ where: { key, locale: "", value: previousValue }, data: { value } })` and retry when `count` is 0) or store one row per request.
-The in-process behaviour (Q1) is verified; this trace is the proof that Q1 depends on the single copy.
+Fix, two layers. (1) The chain lives on `globalThis` (`curiosaRequestsChain`, and `curiosaRunsChain` in `background.ts`), so all copies in a process queue behind each other. (2) Every change goes through `transact`: read the raw value, compute, write with a **compare-and-swap** (`updateMany where value = the raw value read`; the first write is a create), and retry up to 12 times when another writer got in between, then fail with "the request queue is busy, try again". This covers a second process.
+Tests: `formal-approval-queue` test 5 (two copies, 20 rounds of claim/create/claim: red before, one winner, nothing lost) and test 6 (a foreign write injected between read and write: one retry, no data lost). Not modelled in TLA+; the compare-and-swap is a standard pattern and the tests exercise the real database.
 
 ### Observations
-- `finishRequest` records a result on any request that exists, even a denied one. It is only called after a claim (`runGuarded`), so it cannot happen today; pinned by `formal-approval-queue` test 4.
+- `finishRequest` used to record a result on any request, even a denied one. It now records only on a running request (or on one closed as interrupted, so the real result replaces the interruption); a late finish of a denied request changes nothing (test 4).
 - `expirePendingOf` expires pending requests only; a request already running when the owner is demoted goes on (the approval was legitimate when it was given; `mayDecide` checked the right just before the claim). There is a window of two awaits between that check and the claim in `approveRequest` where a demotion would not be seen; it is not exploitable without the owner's own approval click and was not exercised.
-- `startUpdate` (`src/core/updates/service.ts`) and `runUpdate` (`scripts/update-lib.mjs`) both check `state.json` for "running" and then write it, with the spawn of the detached updater in between; two starts within the start-up time of the updater could both pass. Found by reading only, **not exercised**, the window is a few milliseconds. A `wx` lock file would close it.
+- `runUpdate` (`scripts/update-lib.mjs`) read `state.json` for "running" and then wrote it; two starts in that window could both pass. Fixed: a short `state.claim` file created exclusively (`wx`, stale after 10 s) covers only that window; the `state.json` lifecycle is unchanged. Test in `tests/core/updates.test.mjs`. `startUpdate` only spawns this script, so it is covered by the same claim.
 
 ## Replay
 
@@ -64,4 +64,4 @@ npm test -- tests/services/formal-approval-queue.test.mjs tests/services/formal-
 
 ## Next
 
-A TLA+ model of two processes and the setting row with a compare-and-swap, if F4 is fixed that way; the same fingerprint review for `skin_*`, `font_set` and `instance_add` plans (they re-read and compare in `execute`, not modelled here).
+A TLA+ model of two processes and the setting row with the compare-and-swap; the same fingerprint review for `skin_*`, `font_set` and `instance_add` plans (they re-read and compare in `execute`, not modelled here).
