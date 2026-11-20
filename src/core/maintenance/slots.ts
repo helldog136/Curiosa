@@ -1,6 +1,7 @@
 import { prisma } from "@/core/db";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { deps } from "./deps";
+import { isPersonalToken } from "@/core/services/mcp/tokens";
 
 /**
  * RATE LIMITS of the actions an AI access takes (one small shared API, used by the maintenance actions, the content writers, media and site settings).
@@ -17,6 +18,9 @@ export const DEFAULT_LIMITS: Record<SlotClass, number> = { risky: 12, content: 1
 export const LIMIT_BOUNDS: Record<SlotClass, readonly [number, number]> = { risky: [1, 60], content: [10, 1000] };
 export const WINDOW_MS = 3_600_000;
 const KEY = "maintenance.limits";
+/** (0.46.0) The shared hourly budget of ALL personal AI assistants of the site, per class (in memory like the rest). The per-access limits above still apply to each one. */
+export const PERSONAL_SITE_LIMITS: Record<SlotClass, number> = { risky: 30, content: 300 };
+const PERSONAL_POOL = "personal-assistants";
 
 const g = globalThis as unknown as { curiosaSlotHits?: Map<string, number[]> };
 const hits: Map<string, number[]> = (g.curiosaSlotHits ??= new Map<string, number[]>());
@@ -69,6 +73,15 @@ export async function takeSlot(tokenId: string | undefined, cls: SlotClass = "ri
   if (list.length >= limit) {
     const wait = minutes(list[0]! + WINDOW_MS - deps.now());
     throw new McpToolError(`Limit reached: ${limit} ${cls === "risky" ? "risky" : "content"} actions per hour for this access. Next slot in ${wait} min, or the owner can reset it in Admin > AI assistants.`);
+  }
+  // (0.46.0) Personal AI assistants ALSO share one site-wide hourly budget per class, so that many people cannot add up to a flood. Checked before anything is taken.
+  if (tokenId && (await isPersonalToken(tokenId))) {
+    const all = recent(PERSONAL_POOL, cls);
+    if (all.length >= PERSONAL_SITE_LIMITS[cls]) {
+      const wait = minutes(all[0]! + WINDOW_MS - deps.now());
+      throw new McpToolError(`Limit reached: personal assistants share ${PERSONAL_SITE_LIMITS[cls]} ${cls === "risky" ? "risky" : "content"} actions per hour on this site. Next slot in ${wait} min.`);
+    }
+    all.push(deps.now());
   }
   list.push(deps.now());
 }

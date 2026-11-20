@@ -7,6 +7,15 @@ import { prisma } from "../db";
  */
 export async function revokeSessions(userId: string): Promise<void> {
   await prisma.user.update({ where: { id: userId }, data: { sessionVersion: { increment: 1 } } }).catch(() => {});
+  await pausePersonalAccesses(userId);
+}
+
+/**
+ * (core 0.46.0) Cutting someone's sessions (sign out everywhere, lost device, password changed or reset, two-factor reset) is a compromise signal: the personal AI assistant
+ * of that person, a long-lived credential, is PAUSED until they resume it themselves. Nothing is deleted. Never throws (a failure here must not block the sign-out).
+ */
+export async function pausePersonalAccesses(userId: string): Promise<void> {
+  await prisma.apiToken.updateMany({ where: { ownerId: userId, revokedAt: null, pausedAt: null }, data: { pausedAt: new Date() } }).catch(() => {});
 }
 
 export const sessionIsCurrent = (tokenVersion: unknown, dbVersion: number): boolean => (typeof tokenVersion === "number" ? tokenVersion : 0) === dbVersion;

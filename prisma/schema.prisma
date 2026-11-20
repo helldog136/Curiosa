@@ -34,6 +34,8 @@ model User {
   totpPending   String?
   totpEnabledAt DateTime?
   totpLastStep  Int?
+  // (0.46.0) Personal AI assistant, per-person override of the role rule: "inherit" (the role right `core:ai.personal` decides), "allow" or "deny". Only holders of `core:mcp.tokens` change it.
+  personalAi   String   @default("inherit")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -381,6 +383,13 @@ model ApiToken {
   createdAt  DateTime  @default(now())
   lastUsedAt DateTime?
   revokedAt  DateTime?
+  // (0.46.0) Personal AI assistant: the id of the User who owns this access (null = an independent access, as before). A PLAIN string on purpose, like `createdBy`:
+  // no relation and no `SetNull` (a deleted user's accesses are revoked by the code, never turned into independent ones; see src/core/personalAi/).
+  ownerId    String?
+  // (0.46.0) Paused (sign-out-everywhere, password reset): the access answers nothing until its owner resumes it.
+  pausedAt   DateTime?
+
+  @@index([ownerId])
 }
 
 /// Statistiques de visite ANONYMES, agrégées par jour : jamais d'adresse IP, de cookie ni d'identifiant stocké.

@@ -11,6 +11,8 @@ import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
+import { setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
+import { revokePersonalAccessById } from "@/core/personalAi/service";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { addTrustedSource, MAX_SOURCES, parseSource, PRESET_SOURCE, removeTrustedSource, sourceLabel } from "@/core/trustedImageSources";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -81,7 +83,7 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
   const tool = catalogue.find((t) => t.name === toolName);
-  if (!token || !tool) return { ok: false };
+  if (!token || !tool || token.ownerId) return { ok: false };
   // Plafond : on n'accorde pas une action qui écrit à un jeton « lecture seule ».
   if (enabled && !withinCeiling(tool, token.scope)) return { ok: false };
   await saveTokenGrants(tokenId, setGrant(token.grants, tool, enabled));
@@ -98,7 +100,7 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
 export async function applyGrantsAction(tokenId: string, changes: Record<string, boolean>): Promise<{ ok: boolean; applied: string[]; rejected: GrantRejection[] }> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
-  if (!token) return { ok: false, applied: [], rejected: [] };
+  if (!token || token.ownerId) return { ok: false, applied: [], rejected: [] };
   const clean = Object.fromEntries(Object.entries(changes ?? {}).slice(0, 500).filter(([, v]) => typeof v === "boolean"));
   const result = applyGrantChanges(token.grants, token.scope, catalogue, clean);
   if (result.applied.length) {
@@ -116,7 +118,7 @@ export async function applyGrantsAction(tokenId: string, changes: Record<string,
 export async function resetGrantsAction(tokenId: string, instanceKey: string | null, mode: "defaults" | "none"): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
-  if (!token) return;
+  if (!token || token.ownerId) return;
   let grants: Grants = token.grants;
   for (const tool of catalogue.filter((t) => instanceKey === null || t.source === instanceKey)) grants = setGrant(grants, tool, mode === "defaults" ? defaultFor(tool, grants) : false);
   await saveTokenGrants(tokenId, grants);
@@ -156,3 +158,34 @@ export async function removeTrustedSourceAction(label: string): Promise<void> {
   revalidatePath(ASSISTANTS_HREF);
 }
 
+
+/**
+ * (core 0.46.0) Policy of personal AI assistants: the master switch (off by default) and "may people choose to act without asking". Only holders of `core:mcp.tokens`.
+ * The screen comes with 0.46.1; until then these are the entry points (and the setting `mcp.personalPolicy` itself). Journal: what changed, never a value that is a secret.
+ */
+export async function setPersonalPolicyAction(patch: { enabled?: boolean; allowDirect?: boolean }): Promise<{ enabled: boolean; allowDirect: boolean }> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const next = await setPersonalPolicy({ ...(typeof patch?.enabled === "boolean" ? { enabled: patch.enabled } : {}), ...(typeof patch?.allowDirect === "boolean" ? { allowDirect: patch.allowDirect } : {}) });
+  await audit(user.email, "mcp.personal.policy", `enabled: ${next.enabled}, allowDirect: ${next.allowDirect}`);
+  revalidatePath(ASSISTANTS_HREF);
+  return next;
+}
+
+/** Per-person override (inherit, allow, deny): `core:mcp.tokens` only, never a person for themselves through a form field (the target id is checked against the team). */
+export async function setPersonAiOverrideAction(userId: string, value: string): Promise<boolean> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  if (!isOverride(value)) return false;
+  const target = await prisma.user.findUnique({ where: { id: String(userId) }, select: { id: true, email: true } });
+  if (!target || !(await setPersonOverride(target.id, value))) return false;
+  await audit(user.email, "mcp.personal.policy", `${target.email}: ${value}`);
+  revalidatePath(TEAM_HREF);
+  return true;
+}
+
+/** Remove one person's personal AI (revoked for good). */
+export async function revokePersonalAccessAction(tokenId: string): Promise<boolean> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const done = await revokePersonalAccessById(String(tokenId), user.email);
+  revalidatePath(ASSISTANTS_HREF);
+  return done;
+}

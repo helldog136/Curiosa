@@ -67,6 +67,8 @@ export type RequestStatus = "pending" | "running" | "done" | "failed" | "denied"
 export type MaintenanceRequest = {
   id: string; action: Level3Action; plan: Plan;
   tokenId: string; tokenName: string;
+  /** (0.46.0) The user who owns the access that asked (a personal AI), read from the access row when the request is made. Absent for an independent access. */
+  ownerId?: string;
   createdAt: number; expiresAt: number;
   status: RequestStatus;
   decidedAt?: number;
@@ -94,7 +96,10 @@ async function load(): Promise<MaintenanceRequest[]> {
   } catch { return []; }
 }
 async function save(list: MaintenanceRequest[]): Promise<void> {
-  const json = JSON.stringify(list.slice(-KEEP));
+  // (0.46.0) The last 50 requests of independent accesses and, separately, the last 50 of personal ones: many people cannot push each other's pending requests out.
+  const own = (r: MaintenanceRequest) => !!r.ownerId;
+  const keep = new Set([...list.filter((r) => !own(r)).slice(-KEEP), ...list.filter(own).slice(-KEEP)]);
+  const json = JSON.stringify(list.filter((r) => keep.has(r)));
   await prisma.setting.upsert({ where: { key_locale: { key: KEY, locale: "" } }, create: { key: KEY, locale: "", value: json }, update: { value: json } });
 }
 
@@ -128,7 +133,7 @@ const same = (a: Plan, b: Plan) => JSON.stringify(a) === JSON.stringify(b);
 export const MAX_PENDING_PER_TOKEN = 5;
 
 /** Crée une demande, ou renvoie celle qui attend déjà pour la même chose (un appel répété ne remplit pas la file). */
-export async function createRequest(input: { action: Level3Action; plan: Plan; tokenId: string; tokenName: string }, now = Date.now()): Promise<{ ok: true; request: MaintenanceRequest; existing: boolean } | { ok: false; error: string }> {
+export async function createRequest(input: { action: Level3Action; plan: Plan; tokenId: string; tokenName: string; ownerId?: string }, now = Date.now()): Promise<{ ok: true; request: MaintenanceRequest; existing: boolean } | { ok: false; error: string }> {
   return exclusive(async () => {
     const list = await load();
     sweep(list, now);
@@ -137,7 +142,7 @@ export async function createRequest(input: { action: Level3Action; plan: Plan; t
     if (list.filter((r) => r.status === "pending" && r.tokenId === input.tokenId).length >= MAX_PENDING_PER_TOKEN) return { ok: false as const, error: `Too many requests are already waiting for approval (${MAX_PENDING_PER_TOKEN}). Ask the owner to answer them first.` };
     const request: MaintenanceRequest = {
       id: `req_${crypto.randomBytes(9).toString("base64url")}`, action: input.action, plan: input.plan,
-      tokenId: input.tokenId, tokenName: redactSecrets(input.tokenName, 80), createdAt: now, expiresAt: now + REQUEST_TTL_MS, status: "pending",
+      tokenId: input.tokenId, tokenName: redactSecrets(input.tokenName, 80), ...(input.ownerId ? { ownerId: input.ownerId } : {}), createdAt: now, expiresAt: now + REQUEST_TTL_MS, status: "pending",
     };
     list.push(request);
     await save(list);
@@ -209,5 +214,16 @@ export async function setRequestProgress(id: string, progress: RunProgress): Pro
     if (!r || r.status !== "running") return;
     r.progress = progress;
     await save(list);
+  });
+}
+
+/** (0.46.0) Pending requests of the personal AI of one user, as `expired` at once (the right was withdrawn, or the person was demoted): they never run. Returns how many. */
+export async function expirePendingOf(ownerId: string): Promise<number> {
+  return exclusive(async () => {
+    const list = await load();
+    let n = 0;
+    for (const r of list) if (r.status === "pending" && r.ownerId === ownerId) { r.status = "expired"; n++; }
+    if (n) await save(list);
+    return n;
   });
 }

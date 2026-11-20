@@ -8,6 +8,7 @@ import { prisma } from "../db";
 import { levelOf } from "./access";
 import { passwordProblem } from "./passwordPolicy";
 import { revokeSessions } from "./sessions";
+import { revokePersonalAccessesOf } from "../personalAi/lifecycle";
 import { unlockEmail } from "./lockout";
 import { disableTwoFactor } from "./twoFactor";
 import { assignInitialRole } from "./roles";
@@ -68,12 +69,14 @@ export async function deleteMember(actorId: string, targetId: string): Promise<M
   if (actor.level === "admin") {
     const row = await prisma.user.findUnique({ where: { id: String(targetId ?? "") }, select: { id: true, email: true, role: true, coordinator: true } });
     if (!row || row.id === actor.id || levelOf(row) !== "editor") return { ok: false, reason: "denied" };
+    await revokePersonalAccessesOf(row.id, actor.email);
     await prisma.user.delete({ where: { id: row.id } });
     await audit(actor.email, "user.delete", row.email);
     return { ok: true };
   }
   const t = await target(actor, targetId);
   if (!t.ok) return t;
+  await revokePersonalAccessesOf(t.row.id, actor.email);
   await prisma.user.delete({ where: { id: t.row.id } });
   await audit(actor.email, "user.delete", t.row.email);
   return { ok: true };

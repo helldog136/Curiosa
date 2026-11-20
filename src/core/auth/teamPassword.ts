@@ -6,6 +6,7 @@ import { getSiteConfig } from "../settings";
 import { generateTemporaryPassword, passwordProblem } from "./passwordPolicy";
 import { levelOf } from "./access";
 import { canManageMember, levelHolds } from "./team";
+import { pausePersonalAccesses } from "./sessions";
 
 /**
  * MOT DE PASSE TEMPORAIRE FIXÉ PAR LE PROPRIÉTAIRE. Ce module porte toute la règle ; les actions serveur ne font que l'appeler.
@@ -63,6 +64,7 @@ export async function resetMemberPassword(input: { actorId: string; targetId: st
 
   const password = custom ? String(input.password) : generateTemporaryPassword();
   await prisma.user.update({ where: { id: target.id }, data: { passwordHash: await bcrypt.hash(password, COST), mustChangePassword: true, sessionVersion: { increment: 1 } } });
+  await pausePersonalAccesses(target.id);
   // Qui, pour qui : jamais le mot de passe. (Pas d'`audit()` ici : on ne veut pas d'un `.catch` qui avale une erreur d'écriture du journal sans rien dire.)
   await prisma.auditLog.create({ data: { actor: actor.email, action: "user.password.reset", target: target.email } });
   const mailed = await notify(target);

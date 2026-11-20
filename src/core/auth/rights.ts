@@ -16,7 +16,12 @@ export const SYSTEM_ROLE_KEYS = ["owner", "coordinator", "admin", "editor"] as c
 export type SystemRoleKey = (typeof SYSTEM_ROLE_KEYS)[number];
 export const isSystemKey = (k: string): k is SystemRoleKey => (SYSTEM_ROLE_KEYS as readonly string[]).includes(k);
 
-export const CORE_DELEGABLE = ["core:entries.edit", "core:entries.publish"] as const;
+export const CORE_DELEGABLE = ["core:entries.edit", "core:entries.publish", "core:ai.personal"] as const;
+/**
+ * (0.46.0) `core:ai.personal`: have a personal AI assistant (an access that belongs to the person and can do only what the person can do). Delegable like the other content
+ * rights, but NOT held by the editor level by default (administrators, the coordinator and the owner hold it). The site-wide switch and the per-person override are in src/core/personalAi/.
+ */
+export const PERSONAL_AI_RIGHT = "core:ai.personal";
 export const CORE_RESERVED = ["core:team", "core:roles", "core:backup", "core:updates", "core:modules.install", "core:mcp.tokens", "core:security"] as const;
 const RESERVED = new Set<string>(CORE_RESERVED);
 export const isReserved = (right: string): boolean => RESERVED.has(right);
@@ -107,7 +112,7 @@ export function actionRight(moduleId: string, right: unknown): string | null {
 /** Tous les droits connus : ceux du cœur, puis par module (« ouvrir », puis ceux du manifeste, 20 au plus, doublons et identifiants invalides ignorés). */
 export function rightsCatalogue(modules: ModuleRightsSource[]): RightInfo[] {
   const out: RightInfo[] = [
-    ...CORE_DELEGABLE.map((id) => ({ id, moduleId: null, moduleName: null, local: id.slice(5), label: null, help: null, sensitive: false, reserved: false, admin: true, editor: true })),
+    ...CORE_DELEGABLE.map((id) => ({ id, moduleId: null, moduleName: null, local: id.slice(5), label: null, help: null, sensitive: false, reserved: false, admin: true, editor: id !== PERSONAL_AI_RIGHT })),
     ...CORE_RESERVED.map((id) => ({ id, moduleId: null, moduleName: null, local: id.slice(5), label: null, help: null, sensitive: false, reserved: true, admin: false, editor: false })),
   ];
   for (const m of [...modules].sort((a, b) => a.moduleId.localeCompare(b.moduleId))) {

@@ -1,5 +1,7 @@
 import { buildContext } from "@/core/modules/context";
 import { providerInstance } from "@/core/modules/dependencies";
+import { declaredRequirement } from "@/core/services/mcp/ownerCeiling";
+import { actionRight } from "@/core/auth/rights";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
 import { validateArgs } from "@/core/services/mcp/validate";
 import { COVERS_MODULE, COVERS_SERVICE } from "@/core/services/rawgRelay";
@@ -28,7 +30,8 @@ export const rawgToolProvider: McpToolProvider = {
         name, title: name, description: decl.description, readOnly: decl.readOnly === true, destructive: decl.destructive === true,
         default: decl.destructive ? false : (decl.default ?? decl.readOnly === true),
         input: decl.input ?? { type: "object" },
-        source: provider.instance.key, instanceId: provider.instance.id,
+        source: provider.instance.key, instanceId: provider.instance.id, moduleId: provider.mod.manifest.id,
+        ...(decl.right !== undefined ? { requires: declaredRequirement(provider.mod.manifest.id, decl.right, actionRight) } : {}),
         // Le module est relu à chaque appel (il a pu être mis à jour ou retiré depuis la liste).
         call: async (args, actor) => {
           const now = await providerInstance(COVERS_SERVICE, COVERS_MODULE);
