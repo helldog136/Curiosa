@@ -78,7 +78,7 @@ Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.
 
 ### Le chemin facile
 
-**Il vous faut :** un petit serveur Linux (Ubuntu ou Debian, processeur **x86_64 / amd64**, 1 à 2 Go de mémoire) et un **nom de domaine** dont l'enregistrement `A` pointe vers lui. Pas encore de serveur ? [Le guide explique comment le choisir](docs/AGENT-INSTALL.md#choisir-et-préparer-son-serveur), se connecter et régler le domaine.
+**Il vous faut :** un petit serveur Linux (Ubuntu ou Debian, processeur **x86_64 / amd64**, 1 à 2 Go de mémoire) **avec un accès SSH** (certains VPS livrés avec un CMS préinstallé n'en donnent pas : vérifiez avant de commander) et un **nom de domaine** dont l'enregistrement `A` pointe vers lui. Pas encore de serveur ? [Le guide explique comment le choisir](docs/AGENT-INSTALL.md#choisir-et-préparer-son-serveur), se connecter et régler le domaine.
 
 Connecté au serveur, deux commandes (la première télécharge le script, que vous pouvez relire avant de lancer la seconde) :
 
