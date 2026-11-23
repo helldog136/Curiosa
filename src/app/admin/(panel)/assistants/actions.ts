@@ -9,11 +9,12 @@ import { createAccess } from "@/core/mcpAccess";
 import { findTokenId, getTokenGrants, revokeToken, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
 import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
+import { expirePendingOfToken } from "@/core/maintenance/requests";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
 import { setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
 import { pausePersonalAccessById, revokePersonalAccessById } from "@/core/personalAi/service";
-import { assignOwner, mayOwnAccess } from "@/core/personalAi/owners";
+import { actorMayGiveTo, assignOwner, mayOwnAccess } from "@/core/personalAi/owners";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { addTrustedSource, MAX_SOURCES, parseSource, PRESET_SOURCE, removeTrustedSource, sourceLabel } from "@/core/trustedImageSources";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -42,7 +43,7 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   if (!name) return { error: t("assistants.error.name") };
   const askedOwner = String(formData.get("owner") ?? "").trim();
   const ownerId = askedOwner || user.id;
-  if (!(await mayOwnAccess(ownerId))) return { error: t("assistants.error.owner") };
+  if (!(await mayOwnAccess(ownerId)) || !(await actorMayGiveTo(user.id, ownerId))) return { error: t("assistants.error.owner") };
   const { token } = await createAccess({ name, scope, actorEmail: user.email, ownerId, grants: maintenance ? { [MAINTENANCE_PROFILE]: true } : undefined, note: maintenance ? "maintenance" : undefined });
   if (maintenance) {
     const id = await findTokenId(token);
@@ -74,6 +75,7 @@ export async function setUrlAccessAction(tokenId: string, enabled: boolean): Pro
 export async function revokeTokenAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   await revokeToken(id);
+  await expirePendingOfToken(id); // its pending requests never run
   await audit(user.email, "mcp.token.revoke", id);
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(TEAM_HREF);
@@ -193,7 +195,7 @@ export async function setPersonAiOverrideAction(userId: string, value: string): 
 /** (0.47.0) Choose the owner of an access (permanent: the row menu "Choose an owner" and the Assign owners page both use it). Only `core:mcp.tokens`; the person must be allowed to own an access. */
 export async function assignOwnerAction(tokenId: string, ownerId: string): Promise<{ ok: boolean; reason?: string }> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
-  const r = await assignOwner(String(tokenId), String(ownerId), user.email);
+  const r = await assignOwner(String(tokenId), String(ownerId), user.email, user.id);
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(TEAM_HREF);
   return r.ok ? { ok: true } : { ok: false, reason: r.reason };

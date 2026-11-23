@@ -24,7 +24,7 @@ import { ui } from "./ui";
  */
 export type AccessRowView = { id: string; name: string; level: string; levelLabel: string; state: "active" | "paused" | "inert"; stateLabel: string; stateWhy?: string };
 export type MyAccessesLabels = {
-  name: string; example: string; password: string; level: string; submit: string; new: string; pending: string; createdTitle: string; secret: string; createdOnce: string; copy: string; copied: string; connect: string;
+  name: string; example: string; password: string; level: string; submit: string; new: string; levelReplaces: string; pending: string; createdTitle: string; secret: string; createdOnce: string; copy: string; copied: string; connect: string;
   active: string; paused: string; switchLabel: string; resumeNeed: string; resume: string; resumeWith: string;
   menu: string; changeLevel: string; saveLevel: string; remove: string; removeConfirm: string; removeAction: string; ceiling: string;
 };
@@ -134,9 +134,11 @@ function AccessRow({ row, pause, resume, remove, setLevel, levels, labels }: { r
 function LevelForm({ row, levels, setLevel, labels }: { row: AccessRowView; levels: { value: string; label: string }[]; setLevel: (id: string, level: string) => Promise<{ ok?: boolean; error?: string }>; labels: MyAccessesLabels }) {
   const [message, setMessage] = useState<string | null>(null);
   const [busy, start] = useTransition();
+  // The person may no longer choose any level (the right was withdrawn): the current level is shown, nothing to pick.
+  if (levels.length === 0) return <p className="px-4 py-2 text-sm"><span className="font-medium">{labels.changeLevel}</span> {row.levelLabel}</p>;
   return (
     <form className="space-y-2 px-4 py-2" onSubmit={(e) => { e.preventDefault(); const level = String(new FormData(e.currentTarget).get("level") ?? ""); start(async () => { const r = await setLevel(row.id, level); setMessage(r.error ?? null); }); }}>
-      <label className="block text-sm font-medium" htmlFor={`level-${row.id}`}>{labels.changeLevel}</label>
+      <span className="flex items-center gap-1.5"><label className="block text-sm font-medium" htmlFor={`level-${row.id}`}>{labels.changeLevel}</label><HelpTip help={labels.levelReplaces} name={labels.changeLevel} always /></span>
       <select id={`level-${row.id}`} name="level" defaultValue={row.level} className={ui.input}>{levels.map((l) => <option key={l.value} value={l.value}>{l.label}</option>)}</select>
       <PendingButton pending={busy}>{labels.saveLevel}</PendingButton>
       {message && <p role="alert" className="text-xs font-medium text-red-700">{message}</p>}

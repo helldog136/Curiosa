@@ -17,19 +17,19 @@ import { OwnerSelect } from "./OwnerSelect";
 
 /** The few filter pills for the owners: more than this many people and the search does the job (R19: never a wall of pills). */
 const OWNER_PILLS_MAX = 6;
-type State = "active" | "paused" | "stopped" | "none";
-const TONE: Record<State, BadgeTone> = { active: "ok", paused: "warn", stopped: "warn", none: "danger" };
+type State = "active" | "paused" | "stopped" | "none" | "gone";
+const TONE: Record<State, BadgeTone> = { active: "ok", paused: "warn", stopped: "warn", none: "danger", gone: "danger" };
 
 /**
  * "By person" tab (0.47.0): every AI access with the person it belongs to, its level and its state. One table (R30), search always present (R15), at most two visible
  * actions per row (R16): Pause, and the "⋯" menu (choose an owner, remove). An access with no owner works as before and says so ("No owner"); an owner that does not
  * exist (after a restore) counts as none. Only holders of `core:mcp.tokens` see this page (the page and every action check it).
  */
-export async function OwnersTab({ t }: { t: Translator }) {
+export async function OwnersTab({ t, viewerId }: { t: Translator; viewerId: string }) {
   const [rows, users, eligible] = await Promise.all([
     prisma.apiToken.findMany({ where: { revokedAt: null }, orderBy: { createdAt: "asc" } }),
     prisma.user.findMany({ select: { id: true, name: true, email: true } }),
-    eligibleOwners(),
+    eligibleOwners(viewerId),
   ]);
   const byId = new Map(users.map((u) => [u.id, u]));
   const owners = ownerOptions(eligible);
@@ -37,14 +37,15 @@ export async function OwnersTab({ t }: { t: Translator }) {
   for (const r of rows) if (r.ownerId && byId.has(r.ownerId) && !ownerStates.has(r.ownerId)) ownerStates.set(r.ownerId, await resolvePersonalOwner(r.ownerId));
   const levelText = (l: string) => t(`myai.level.${l}`);
   const stateOf = (r: (typeof rows)[number]): { state: State; why?: string } => {
-    if (!r.ownerId || !byId.has(r.ownerId)) return { state: "none", why: t("owners.state.noneWhy") };
+    if (!r.ownerId) return { state: "none", why: t("owners.state.noneWhy") };
+    if (!byId.has(r.ownerId)) return { state: "gone", why: t("owners.state.goneWhy") };
     if (r.pausedAt) return { state: "paused" };
     return ownerStates.get(r.ownerId)?.active ? { state: "active" } : { state: "stopped", why: t("owners.state.stoppedWhy") };
   };
   const ownerIds = [...new Set(rows.map((r) => r.ownerId).filter((id): id is string => !!id && byId.has(id)))];
   const pills = ownerIds.length > 1 && ownerIds.length <= OWNER_PILLS_MAX;
   const assignLabels = { choose: t("owners.choose"), assign: t("owners.assign.assign"), failed: t("owners.assign.failed"), done: t("owners.assign.done"), pick: t("owners.assign.pick") };
-  const counts: Record<State, number> = { active: 0, paused: 0, stopped: 0, none: 0 };
+  const counts: Record<State, number> = { active: 0, paused: 0, stopped: 0, none: 0, gone: 0 };
   const tableRows: TableRow[] = rows.map((r) => {
     const { state, why } = stateOf(r);
     counts[state]++;
@@ -74,22 +75,22 @@ export async function OwnersTab({ t }: { t: Translator }) {
     };
   });
   const filters = [
-    { key: "state", allLabel: t("owners.filter.all"), options: (["active", "paused", "stopped", "none"] as State[]).filter((s) => counts[s] > 0).map((s) => ({ value: s, label: t(`owners.state.${s}`), count: counts[s] })) },
+    { key: "state", allLabel: t("owners.filter.all"), options: (["active", "paused", "stopped", "none", "gone"] as State[]).filter((s) => counts[s] > 0).map((s) => ({ value: s, label: t(`owners.state.${s}`), count: counts[s] })) },
     ...(pills ? [{ key: "owner", allLabel: t("owners.filter.everyone"), options: ownerIds.map((id) => ({ value: id, label: byId.get(id)!.name, count: rows.filter((r) => r.ownerId === id).length })) }] : []),
   ];
   return (
     <div className="space-y-8" data-testid="assistants-owners">
-      <AssignOwners t={t} />
+      <AssignOwners t={t} viewerId={viewerId} />
       <Panel title={t("owners.title")} testid="owners-table">
         {rows.length === 0 ? <EmptyState icon="🤖" title={t("owners.empty.title")}>{t("owners.empty.body")}</EmptyState> : (
           <>
             <LiveSearch scope="owners" placeholder={t("owners.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")} filters={filters} />
             <RowTable scope="owners" actionsLabel={t("users.actions")}
               columns={[
-                { key: "access", label: t("owners.col.access"), width: "w-[22%]" },
-                { key: "owner", label: t("owners.col.owner"), width: "w-[24%]" },
+                { key: "access", label: t("owners.col.access"), width: "w-[20%]" },
+                { key: "owner", label: t("owners.col.owner"), width: "w-[22%]" },
                 { key: "level", label: t("owners.col.level"), width: "w-[19%]" },
-                { key: "state", label: t("owners.col.state"), width: "w-[14%]" },
+                { key: "state", label: t("owners.col.state"), width: "w-[17%]" },
               ]} rows={tableRows} />
           </>
         )}

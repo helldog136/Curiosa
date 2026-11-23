@@ -6,7 +6,7 @@ import { levelsFor, ownAccessStates } from "@/core/personalAi/service";
 import { createMyAccessAction, pauseMyAccessAction, removeMyAccessAction, resumeMyAccessAction, setMyAccessLevelAction } from "./actions";
 import type { MyAccessState } from "./actions";
 
-const LABEL_KEYS = ["name", "example", "password", "level", "submit", "new", "pending", "createdTitle", "secret", "createdOnce", "copy", "copied", "connect", "active", "paused", "switchLabel", "resumeNeed", "resume", "resumeWith", "menu", "changeLevel", "saveLevel", "remove", "removeConfirm", "removeAction", "ceiling"] as const;
+const LABEL_KEYS = ["name", "example", "password", "level", "submit", "new", "levelReplaces", "pending", "createdTitle", "secret", "createdOnce", "copy", "copied", "connect", "active", "paused", "switchLabel", "resumeNeed", "resume", "resumeWith", "menu", "changeLevel", "saveLevel", "remove", "removeConfirm", "removeAction", "ceiling"] as const;
 
 /**
  * "My AI accesses" on the account page: the accesses that belong to the signed-in person. Shown to a person who may own one, or who already owns one (an access they own keeps
@@ -21,7 +21,6 @@ export async function MyAccessesCard({ t, userId, initial }: { t: Translator; us
   const labels = Object.fromEntries(LABEL_KEYS.map((k) => [k, t(`myai.${k}`)])) as MyAccessesLabels;
   return (
     <Panel title={t("myai.title")} help={t("myai.help")} testid="my-accesses-card">
-      <p className="text-sm">{t("myai.intro")}</p>
       <MyAccesses rows={rows} levels={levels} canCreate={mayOwn} create={createMyAccessAction} pause={pauseMyAccessAction} resume={resumeMyAccessAction} remove={removeMyAccessAction} setLevel={setMyAccessLevelAction} labels={labels} initial={initial} />
     </Panel>
   );

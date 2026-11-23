@@ -8,6 +8,7 @@ import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
 import { ALWAYS_HUMAN } from "./actions";
 import { reconnectView } from "./reconnect";
 import { getApprovalMode } from "./settings";
+import { getPersonalPolicy } from "@/core/personalAi/policy";
 import { remainingSlots } from "./slots";
 import { prisma } from "@/core/db";
 import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
@@ -56,7 +57,8 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   // Module tools whose text is not in the site language (the module has no translation): shown in English, and said so, so that nobody blames the site.
   const wanted = (config.adminLocale ?? config.defaultLocale).split("-")[0]!;
   const inEnglish = tools.filter((x) => x.descriptionLang && x.descriptionLang.split("-")[0] !== wanted).map((x) => x.name);
-  const approval = await getApprovalMode(actor.tokenId);
+  // A new personal access acts without asking only when the site policy allows it; a legacy one keeps its stored mode.
+  const approval = token.personal && !token.coarse && !(await getPersonalPolicy()).allowDirect ? "human" : await getApprovalMode(actor.tokenId);
   const readOnly = token.scope === "read";
   const slots = await remainingSlots(actor.tokenId);
   const media = await mediaLimitsNow();

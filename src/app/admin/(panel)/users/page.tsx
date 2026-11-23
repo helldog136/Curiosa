@@ -90,7 +90,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const mixed = !!ai && ai.rows.length > 0;
   // Per person (holders of `core:mcp.tokens` only): the override and what it means now, and how many accesses the person owns.
   const personAi = canAssistants ? new Map(await Promise.all(users.map(async (u) => [u.id, { effective: await mayOwnAccess(u.id), owned: await countOwned(u.id) }] as const))) : null;
-  const ownerChoices = canAssistants ? ownerOptions(await eligibleOwners()) : [];
+  const ownerChoices = canAssistants ? ownerOptions(await eligibleOwners(user.id)) : [];
   const aiLabels = { title: t("owners.person.title"), inherit: t("owners.person.inherit"), allow: t("owners.person.allow"), deny: t("owners.person.deny"), save: t("owners.person.save"), may: t("owners.person.may"), mayNot: t("owners.person.mayNot"), owned: t("owners.person.owned"), done: t("owners.assign.done"), failed: t("owners.assign.failed") };
   const guide = Object.fromEntries(GUIDE_KEYS.map((k) => [k, t(k)])) as GuideTexts;
   const required = (await getSetting<boolean>("security.require2fa")) === true;
@@ -160,7 +160,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           )}
           {hasMenu && (
             <RowMenu label={t("users.menu.open", { name: u.name })}>
-              {personAi && <PersonAiOverride value={(u.personalAi === "allow" || u.personalAi === "deny" ? u.personalAi : "inherit")} effective={personAi.get(u.id)!.effective} owned={personAi.get(u.id)!.owned} save={setPersonAiOverrideAction.bind(null, u.id)} labels={aiLabels} />}
+              {personAi && <PersonAiOverride id={u.id} value={(u.personalAi === "allow" || u.personalAi === "deny" ? u.personalAi : "inherit")} effective={personAi.get(u.id)!.effective} owned={personAi.get(u.id)!.owned} save={setPersonAiOverrideAction.bind(null, u.id)} labels={aiLabels} />}
               {manageable && lock && <form action={unlockUser.bind(null, u.id)}><PendingButton variant="menu">{t("users.unlock")}</PendingButton></form>}
               {canTempPassword && (
                 <TemporaryPasswordButton menu memberName={`${u.name} — ${u.email}`} action={setTemporaryPassword.bind(null, u.id)} labels={tempLabels} />

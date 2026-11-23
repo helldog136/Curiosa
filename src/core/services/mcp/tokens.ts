@@ -72,6 +72,12 @@ export async function isPersonalToken(id: string): Promise<boolean> {
   return !!row?.ownerId;
 }
 
+/** A personal AI that is NOT a legacy access (`coarseCeiling` off): it follows the site policy for "act without asking" and never holds full powers or a secret address. */
+export async function isStrictPersonalToken(id: string): Promise<boolean> {
+  const row = await prisma.apiToken.findUnique({ where: { id }, select: { ownerId: true, coarseCeiling: true } });
+  return !!row?.ownerId && !row.coarseCeiling;
+}
+
 /** The user who owns this access, or null for an independent one (read from the access row). */
 export async function ownerOfToken(id: string): Promise<string | null> {
   return (await prisma.apiToken.findUnique({ where: { id }, select: { ownerId: true } }))?.ownerId ?? null;
@@ -130,6 +136,12 @@ export async function getTokenGrants(id: string): Promise<{ scope: TokenScope; g
   const scope: TokenScope = row.scope === "write" ? "write" : "read";
   if (row.ownerId) return { scope, grants: parseGrants(row.grants), fullPowers: false, ownerId: row.ownerId, coarse: row.coarseCeiling, personal: await personalState({ ownerId: row.ownerId, pausedAt: row.pausedAt }) };
   return { scope, grants: parseGrants(row.grants), fullPowers: scope === "write" && (await fullPowersIds()).includes(id) };
+}
+
+/** Sets the LEVEL of an access (scope and grants together). Any level change also turns full powers off: a level is a fresh start, never a level plus leftover powers. */
+export async function saveTokenLevel(id: string, scope: TokenScope, grants: Grants): Promise<void> {
+  await prisma.apiToken.updateMany({ where: { id, revokedAt: null }, data: { scope, grants: JSON.stringify(grants) } });
+  await setFullPowers(id, false);
 }
 
 export async function saveTokenGrants(id: string, grants: Grants): Promise<void> {

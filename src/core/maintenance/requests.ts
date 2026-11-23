@@ -243,6 +243,15 @@ export async function setRequestProgress(id: string, progress: RunProgress): Pro
   });
 }
 
+/** Pending requests of ONE access as `expired` at once (the access was removed): they never run. Other accesses of the same person are untouched. Returns how many. */
+export async function expirePendingOfToken(tokenId: string): Promise<number> {
+  return transact((list) => {
+    let n = 0;
+    for (const r of list) if (r.status === "pending" && r.tokenId === tokenId) { r.status = "expired"; n++; }
+    return { out: n, dirty: n > 0 };
+  });
+}
+
 /** (0.46.0) Pending requests of the personal AI of one user, as `expired` at once (the right was withdrawn, or the person was demoted): they never run. Returns how many. */
 export async function expirePendingOf(ownerId: string): Promise<number> {
   return transact((list) => {

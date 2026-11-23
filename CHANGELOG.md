@@ -31,6 +31,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Existing AI accesses keep their tools.** With one account, they go to that account. With several, they work as before, marked "No owner", until you choose one (temporary page).
 - **Un nouvel accès IA a toujours une personne propriétaire.** Par défaut, vous. Un nouvel accès n'a plus d'adresse secrète ; les anciens la gardent.
 - **(English) A new AI access always has an owner.** By default, you. A new access no longer has a secret address; existing ones keep it.
+- **Un accès IA se met en pause si vous vous déconnectez partout ou changez de mot de passe.** Avec un seul compte, cela arrête aussi les accès repris : relancez-les depuis *Mon compte*.
+- **(English) An AI access pauses when you sign out everywhere or change your password.** With one account, this also stops the migrated accesses: resume them from *My account*.
+- **Un accès créé avant ce changement garde son réglage « agir sans demander » et ses limites par heure.** Seuls les nouveaux accès suivent le réglage du site.
+- **(English) An access created before this change keeps its "act without asking" choice and its hourly limits.** Only new accesses follow the site setting.
 
 ### Corrections
 

@@ -9,6 +9,8 @@ import { approveRequest, denyRequestBy } from "@/core/maintenance/actions";
 import { setApprovalMode, setNotifyMode, type ApprovalMode } from "@/core/maintenance/settings";
 import { audit } from "@/core/permissions";
 import { prisma } from "@/core/db";
+import { isStrictPersonalToken } from "@/core/services/mcp/tokens";
+import { getPersonalPolicy } from "@/core/personalAi/policy";
 import { DEFAULT_LIMITS, LIMIT_BOUNDS, resetSlots, setLimits } from "@/core/maintenance/slots";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { accessHref, assistantsTabHref, ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
@@ -35,8 +37,9 @@ export async function denyRequestAction(id: string): Promise<void> {
 export async function setApprovalAction(tokenId: string, mode: ApprovalMode): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId) } });
-  if (!row || row.revokedAt || row.ownerId) throw new Error("unknown access");
-  const next: ApprovalMode = mode === "direct" ? "direct" : "human";
+  if (!row || row.revokedAt) throw new Error("unknown access");
+  // Same rule as the run itself (maintenance/actions.ts): a newer personal access acts without asking only when the site policy allows it; a legacy one keeps its choice.
+  const next: ApprovalMode = mode === "direct" && (!(await isStrictPersonalToken(row.id)) || (await getPersonalPolicy()).allowDirect) ? "direct" : "human";
   await setApprovalMode(row.id, next);
   await audit(user.email, "mcp.maintenance.mode", `${row.name}: ${next}`);
   revalidatePath(ASSISTANTS_HREF);

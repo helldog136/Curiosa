@@ -5,9 +5,9 @@ import { applyProfile, type AccessProfile } from "@/core/services/mcp/profiles";
 import { MAINTENANCE_PROFILE } from "@/core/services/mcp/access";
 import { isGranted, parseGrants, withinCeiling, type Grants } from "@/core/services/mcp/access";
 import { ownerCeilingAllows } from "@/core/services/mcp/ownerCeiling";
-import { createToken, findTokenId, revokeToken, saveTokenGrants } from "@/core/services/mcp/tokens";
+import { createToken, findTokenId, revokeToken, saveTokenGrants, saveTokenLevel } from "@/core/services/mcp/tokens";
 import { setApprovalMode } from "@/core/maintenance/settings";
-import { expirePendingOf } from "@/core/maintenance/requests";
+import { expirePendingOfToken } from "@/core/maintenance/requests";
 import { resolvePersonalOwner } from "./owner";
 import { getPersonalPolicy } from "./policy";
 
@@ -98,7 +98,9 @@ async function grantsForLevel(userId: string, level: AccessLevel, profileOverrid
 const NAME_MAX = 80;
 async function freeName(base: string, ignoreId?: string): Promise<string> {
   const clean = base.replace(/\s+/g, " ").trim().slice(0, NAME_MAX);
-  const taken = new Set((await prisma.apiToken.findMany({ where: { revokedAt: null, ...(ignoreId ? { id: { not: ignoreId } } : {}) }, select: { name: true } })).map((r) => r.name));
+  // The journal and the history attribute what an access did BY ITS NAME: a name is never reused, whether the access using it is live, removed, or was renamed since.
+  const taken = new Set((await prisma.apiToken.findMany({ where: ignoreId ? { id: { not: ignoreId } } : {}, select: { name: true } })).map((r) => r.name));
+  for (const line of await prisma.auditLog.findMany({ where: { action: "mcp.personal.rename" }, select: { target: true } })) taken.add(line.target.split(" -> ")[0] ?? "");
   let name = clean;
   for (let n = 2; taken.has(name); n++) name = `${clean.slice(0, NAME_MAX - 5)} (${n})`;
   return name;
@@ -131,7 +133,7 @@ export async function revokeOwnPersonalAccess(userId: string, tokenId: string): 
   const row = user ? await ownAccess(user.id, tokenId) : null;
   if (!user || !row) return { ok: false, reason: "missing" };
   await revokeToken(row.id);
-  await expirePendingOf(user.id);
+  await expirePendingOfToken(row.id);
   await journal(user.email, "mcp.personal.revoke", row.name);
   return { ok: true };
 }
@@ -149,14 +151,16 @@ export async function renameOwnPersonalAccess(userId: string, tokenId: string, n
   return { ok: true, name: next };
 }
 
-/** Changes the level of one of the person's own accesses, within what they can do now. The rights of the new level replace the old ones. */
+/** Changes the level of one of the person's own accesses, within what they can do now. A DIFFERENT level replaces the old rights (and full powers); the same level changes nothing. */
 export async function setOwnAccessLevel(userId: string, tokenId: string, level: unknown): Promise<PersonalResult<{ level: AccessLevel }>> {
   const user = await prisma.user.findUnique({ where: { id: String(userId ?? "") }, select: { id: true, email: true } });
   const row = user ? await ownAccess(user.id, tokenId) : null;
   if (!user || !row) return { ok: false, reason: "missing" };
   if (!isAccessLevel(level) || !(await levelsFor(user.id)).includes(level)) return { ok: false, reason: "not_allowed" };
+  // Saving the level an access already has changes nothing: hand-picked rights are never replaced by a save.
+  if (levelOfRow(row) === level) return { ok: true, level };
   const { scope, grants } = await grantsForLevel(user.id, level);
-  await prisma.apiToken.update({ where: { id: row.id }, data: { scope, grants: JSON.stringify(grants) } });
+  await saveTokenLevel(row.id, scope, grants); // also turns full powers off: a new level starts from the level alone
   await journal(user.email, "mcp.personal.rights", `${row.name}: level ${level}`);
   return { ok: true, level };
 }
@@ -236,7 +240,7 @@ export async function revokePersonalAccessById(tokenId: string, actorEmail: stri
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId ?? "") } });
   if (!row || !row.ownerId || row.revokedAt) return false;
   await revokeToken(row.id);
-  await expirePendingOf(row.ownerId);
+  await expirePendingOfToken(row.id);
   await journal(actorEmail, "mcp.personal.revoke", row.name);
   return true;
 }
