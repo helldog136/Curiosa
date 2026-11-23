@@ -7,7 +7,7 @@ import { useTestDb } from "../helpers/db.mjs";
  * FORMAL REVIEW, personal AI ceiling, END TO END (spec: docs/formal/personal-ai-ceiling.md). The real MCP server, the real resolver, the real database.
  *
  * (1) Answered or inert: every combination of {site switch, per-person override, account locked, access paused, level of the person} is compared with an ORACLE written
- *     from the documented rules (policy.ts and owner.ts header comments). 2 x 3 x 2 x 2 x 4 = 96 combinations, each one a real request.
+ *     from the documented rules (policy.ts and owner.ts header comments). 3 x 2 x 2 x 4 = 48 combinations (the site switch is gone in 0.47.0), each one a real request.
  * (2) What is visible and callable: a token whose grants tick EVERY tool of the catalogue (written by hand in the database, so "a grant above the owner's rights" is the
  *     normal case) sees exactly the tools the person's level allows, at each level of a demotion chain owner > coordinator > admin > editor > nothing, and the visible set
  *     only ever shrinks. A tool that is not visible is not callable.
@@ -102,12 +102,12 @@ test("demotion chain: at every level the visible set is exactly the documented o
   assert.equal((await rpc(p.code, "tools/list")).status, 403);
 });
 
-test("answered or inert: 96 combinations of switch, override, lock, pause and level against the documented rule", async () => {
+test("answered or inert: 48 combinations of override, lock, pause and level against the documented rule", async () => {
   const levels = ["owner", "coordinator", "admin", "editor"];
   // does the ROLE hold core:ai.personal? administrators, the coordinator and the owner do; editors do not (rights.ts)
   const roleHolds = (level) => level !== "editor";
   let answered = 0, inert = 0, n = 0;
-  for (const enabled of [true, false]) for (const override of ["inherit", "allow", "deny"]) for (const locked of [false, true]) for (const paused of [false, true]) for (const level of levels) {
+  for (const enabled of [true]) for (const override of ["inherit", "allow", "deny"]) for (const locked of [false, true]) for (const paused of [false, true]) for (const level of levels) {
     await db.reset();
     await setSetting("i18n.default", "en");
     await POL.setPersonalPolicy({ enabled });
@@ -128,10 +128,10 @@ test("answered or inert: 96 combinations of switch, override, lock, pause and le
       inert++;
     }
   }
-  assert.equal(n, 96);
+  assert.equal(n, 48);
   // anti-vacuity: both answers happen, and neither is rare
   // (by the rule: 3 levels with the role + 4 with `allow`, switch on, not locked, not paused = 7)
-  assert.ok(answered === 7 && inert === 89, `answered ${answered}, inert ${inert}`);
+  assert.ok(answered === 7 && inert === 41, `answered ${answered}, inert ${inert}`);
 });
 
 test("a revoked personal access never answers again, whatever its owner can do", async () => {

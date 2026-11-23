@@ -388,6 +388,8 @@ model ApiToken {
   ownerId    String?
   // (0.46.0) Paused (sign-out-everywhere, password reset): the access answers nothing until its owner resumes it.
   pausedAt   DateTime?
+  // (0.47.0) Every access belongs to a person. true = an access that existed before that rule: the owner's ceiling uses the coarse fallback for module tools that declare no `right`, so no tool callable before disappears.
+  coarseCeiling Boolean  @default(false)
 
   @@index([ownerId])
 }

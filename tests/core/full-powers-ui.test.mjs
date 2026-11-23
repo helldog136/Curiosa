@@ -95,7 +95,7 @@ test("wiring: the chip is on the access row and the page header while any access
   assert.match(page, /data-testid="fullpowers-banner"/);
   assert.match(page, /\{owner && <form action=\{turnOffFullPowersAction/);
   const access = read(`${PANEL}/assistants/[id]/page.tsx`);
-  assert.match(access, /\(fullPowers \|\| owner\)/);
+  assert.match(access, /\(fullPowers \|\| \(owner && row\.ownerId && row\.coarseCeiling\)\)/, "only the owner, and only for an access that predates the owners and now has one");
   assert.match(access, /owner && writes && \(fullPowers/);
   assert.match(access, /<FullPowersWindow/);
   assert.match(access, /data-testid="fullpowers-all"/, "the per-tool checkboxes give way to one read-only line, in the same card");

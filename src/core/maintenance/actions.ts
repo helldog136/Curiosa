@@ -1,4 +1,4 @@
-import { isPersonalToken, ownerOfToken } from "@/core/services/mcp/tokens";
+import { isStrictPersonalToken, ownerOfToken } from "@/core/services/mcp/tokens";
 import { requirementMet, requirementOfAction } from "@/core/services/mcp/ownerCeiling";
 import { resolveOwner } from "@/core/services/mcp/ownerResolver";
 import { getPersonalPolicy } from "@/core/personalAi/policy";
@@ -472,7 +472,8 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
   // Same for a new instance (it may get a public page).
   // A personal AI (0.46.0) may act without asking only when the site policy allows it (`allowDirect`, off by default); otherwise its requests always wait for a human.
-  const personalAccess = !!actor.tokenId && (await isPersonalToken(actor.tokenId));
+  // An access that predates the owners (coarse) keeps its stored mode exactly as before; only a newer personal access follows the policy.
+  const personalAccess = !!actor.tokenId && (await isStrictPersonalToken(actor.tokenId));
   const direct = !ALWAYS_HUMAN.includes(action) && (await getApprovalMode(actor.tokenId)) === "direct" && (!personalAccess || (await getPersonalPolicy()).allowDirect);
   if (direct && BACKGROUND_LEVEL3.has(action)) return callDirectInBackground(action, args, actor);
   const plan = await prepare(action, args);
