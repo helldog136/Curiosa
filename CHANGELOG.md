@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Corrections
+
+- **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.
+- **(English) A skin from a private repository can finally be added.** On a server with an old Git, the access code was refused even when it was right. It is now passed on in a way every Git accepts.
+- **Chaque échec dit ce qu'il faut changer.** Au lieu d'un seul message, vous voyez si le code est refusé ou périmé, si le dépôt est introuvable, s'il a changé de nom (avec sa nouvelle adresse), si GitHub est injoignable ou si Git est trop ancien.
+- **(English) Each failure says what to change.** Instead of one message, you see whether the code is rejected or expired, the repository is not found, it was renamed (with its new address), GitHub cannot be reached or Git is too old.
+
+### Pour les développeurs
+
+- `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
+- **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
+
 ## 0.46.1 — 2026-11-20
 
 **En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence, et vous pouvez l'ajouter en déposant son fichier .zip dans Apparence.

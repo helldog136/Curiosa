@@ -126,14 +126,15 @@ test("saving a code: tried against the repository first, stored sealed, never in
   assert.ok(!log.split("\n").filter((l) => l.startsWith("ARGV:") || l.startsWith("CONFIG:")).join("\n").includes(B64));
 });
 
-test("a code that does not work is never stored, and 'refused' and 'not found' read exactly the same", async () => {
+test("a code that does not work is never stored, and each cause has its own message (rejected, not found, code not used by git)", async () => {
   setMode("401");
   const a = await A.saveAccessCode(PRIVATE, TOKEN, "o@e.org");
   setMode("404");
   const b = await A.saveAccessCode(PRIVATE, TOKEN, "o@e.org");
   setMode("noprompt");
   const c = await A.saveAccessCode(PRIVATE, TOKEN, "o@e.org");
-  assert.deepEqual([a, b, c], [{ ok: false, error: "refused" }, { ok: false, error: "refused" }, { ok: false, error: "refused" }]);
+  // "noprompt" with a code attached: git never used the code (an old git, a broken configuration), the host did not refuse it.
+  assert.deepEqual([a, b, c], [{ ok: false, error: "rejected" }, { ok: false, error: "notFound" }, { ok: false, error: "tooOld" }]);
   assert.deepEqual(await G.accessState(PRIVATE), { state: "none", repo: "test-owner/private-assets" });
   assert.equal(await db.prisma.setting.count({ where: { key: G.ACCESS_SETTING } }), 0);
   assert.deepEqual(await A.saveAccessCode(PRIVATE, `ghp_${"b".repeat(36)}`, "o@e.org"), { ok: false, error: "broad" });
@@ -178,7 +179,7 @@ test("the header is never offered to another repository, and a public repository
 
 test("a git failure never carries the code: a refusal becomes one neutral error, anything else is cleaned", async () => {
   await A.saveAccessCode(PRIVATE, TOKEN, "owner@example.org");
-  for (const mode of ["401", "404", "noprompt"]) {
+  for (const mode of ["401", "404"]) {
     setMode(mode);
     const e = await git(["ls-remote", "--", PRIVATE, "HEAD"]).then(() => null, (x) => x);
     assert.ok(G.isGitAccessError(e), mode);

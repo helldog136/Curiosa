@@ -27,7 +27,8 @@ import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./com
 import { classify, compareVersions, isReleaseTag, pickLatestTag, PREFIXED_TAG_RE, tagPrefix, TAG_RE, type UpdateLevel } from "../updates/versions";
 import { opStep } from "../operations/tracker";
 import { reconcileManaged } from "../managedRedirects";
-import { accessCodeFor, accessEnv, accessTarget, GitAccessError, hasAnyAccess, isAccessRefusal, isGitAccessError, scrub, testSeam } from "../gitAccess";
+import { accessCodeFor, accessEnv, accessEnvLegacy, accessTarget, GIT_LEGACY_HELPER, GitAccessError, hasAnyAccess, isGitAccessError, scrub, testSeam } from "../gitAccess";
+import { classifyGitFailure, isAccessKind, parseGitVersion, supportsEnvConfig, type GitFailure } from "../gitFailure";
 
 const run = promisify(execFile);
 
@@ -138,7 +139,7 @@ export function parseRepoUrl(input: string): { ok: true; repo: ParsedRepo } | { 
 // The environment of every git child: an allow-list, never a copy of process.env (src/core/gitEnv.ts).
 
 /** `hardened`: a code is attached to this call (0.42.0). Git then follows no redirect (a redirect re-sends the header to the new address) and speaks https only. */
-function gitArgs(args: string[], hardened = false): string[] {
+function gitArgs(args: string[], hardened = false, legacy = false): string[] {
   const protocolFile = process.env.CURIOSA_ALLOW_LOCAL_MODULES === "1" ? "always" : "never";
   return [
     "-c", "protocol.ext.allow=never",
@@ -146,9 +147,25 @@ function gitArgs(args: string[], hardened = false): string[] {
     "-c", "core.hooksPath=/dev/null",
     ...GIT_NO_LFS_ARGS,
     "-c", "credential.helper=",   // (0.42.0) no helper of the machine ever stores or hands out a credential
+    ...(hardened && legacy ? ["-c", `credential.helper=${GIT_LEGACY_HELPER}`] : []),   // (0.46.2) git < 2.31 only: the code reaches git through this helper and the environment, see gitAccess.ts
     ...(hardened ? ["-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", ...(testSeam.loopback ? ["-c", "protocol.http.allow=always"] : [])] : []),
     ...args,
   ];
+}
+
+/**
+ * (0.46.2) Does the git of this server read GIT_CONFIG_COUNT/KEY_n/VALUE_n (git ≥ 2.31)? Older ones ignore them silently: the header was never sent and every private
+ * repository answered "authentication failed". Asked once per PATH; an answer that cannot be read counts as recent (the header path is the normal one).
+ */
+const versionMemo = new Map<string, boolean>();
+async function envConfigWorks(): Promise<boolean> {
+  const key = process.env.PATH ?? "";
+  const known = versionMemo.get(key);
+  if (known !== undefined) return known;
+  let works = true;
+  try { works = supportsEnvConfig(parseGitVersion((await run("git", ["--version"], { timeout: 10_000, env: gitChildEnv(), maxBuffer: 4096 })).stdout)); } catch { works = true; }
+  versionMemo.set(key, works);
+  return works;
 }
 
 const NETWORK_COMMANDS = new Set(["fetch", "clone", "ls-remote", "pull"]);
@@ -180,16 +197,19 @@ async function remoteOf(args: string[], cwd?: string): Promise<string | undefine
  * when the checkout's `origin` has a saved code: a partial clone (`--filter=blob:none`, used by the extension fiche) fetches missing files from `origin` during `show`,
  * `ls-tree` or `sparse-checkout`, and those requests need the header as much as the clone did.
  */
-async function authFor(args: string[], cwd: string | undefined, env: Record<string, string> | undefined, override?: { url: string; code: string }): Promise<{ code: string | null; env: Record<string, string> }> {
+async function authFor(args: string[], cwd: string | undefined, env: Record<string, string> | undefined, override?: { url: string; code: string }): Promise<{ code: string | null; env: Record<string, string>; legacy: boolean }> {
   let url = override?.url;
   if (!url) {
     const cmd = subcommandOf(args);
     if (cmd && NETWORK_COMMANDS.has(cmd)) url = await remoteOf(args, cwd);
     else if (cwd && (await hasAnyAccess().catch(() => false))) url = await remoteOf([], cwd);
   }
-  if (!url || !accessTarget(url)) return { code: null, env: {} };
+  if (!url || !accessTarget(url)) return { code: null, env: {}, legacy: false };
   const code = override?.code ?? await accessCodeFor(url).catch(() => null);
-  return code ? { code, env: accessEnv(url, code, gitChildEnv(env)) } : { code: null, env: {} };
+  if (!code) return { code: null, env: {}, legacy: false };
+  return (await envConfigWorks())
+    ? { code, env: accessEnv(url, code, gitChildEnv(env)), legacy: false }
+    : { code, env: accessEnvLegacy(code), legacy: true };
 }
 
 /**
@@ -204,16 +224,18 @@ async function runGit(args: string[], cwd: string | undefined, env: Record<strin
   const auth = await authFor(args, cwd, env, override);
   const code = auth.code;
   try {
-    const { stdout } = await run("git", gitArgs(args, !!code), { cwd, timeout: timeoutMs, env: gitChildEnv({ ...(env ?? {}), ...auth.env }), maxBuffer: 1024 * 1024 });
+    const { stdout } = await run("git", gitArgs(args, !!code, auth.legacy), { cwd, timeout: timeoutMs, env: gitChildEnv({ ...(env ?? {}), ...auth.env }), maxBuffer: 1024 * 1024 });
     return stdout.trim();
   } catch (error) {
-    const e = error as { stderr?: unknown; message?: string; killed?: boolean; signal?: string };
+    const e = error as { stderr?: unknown; message?: string; killed?: boolean; signal?: string; code?: unknown };
     const stderr = typeof e.stderr === "string" ? e.stderr : "";
-    if (isAccessRefusal(stderr)) throw new GitAccessError();
-    const clean = new Error(scrub(e.message ?? "git failed", code)) as Error & { stderr?: string; killed?: boolean; signal?: string };
+    const failure = classifyGitFailure(scrub(stderr, code), { credentialsSent: !!code, timedOut: !!e.killed || e.signal === "SIGTERM", missing: e.code === "ENOENT" });
+    if (isAccessKind(failure.kind)) throw new GitAccessError(failure);
+    const clean = new Error(scrub(e.message ?? "git failed", code)) as Error & { stderr?: string; killed?: boolean; signal?: string; failure?: GitFailure };
     clean.stderr = scrub(stderr, code);
     clean.killed = e.killed;
     clean.signal = e.signal;
+    clean.failure = failure;
     throw clean;
   }
 }
@@ -245,11 +267,12 @@ export async function gitBlob(spec: string, cwd: string, maxBytes: number): Prom
 async function runRaw(args: string[], cwd: string, timeout: number, maxBuffer: number): Promise<Buffer> {
   const auth = await authFor(args, cwd, undefined);
   try {
-    return (await run("git", gitArgs(args, !!auth.code), { cwd, timeout, env: gitChildEnv(auth.env), maxBuffer, encoding: "buffer" })).stdout;
+    return (await run("git", gitArgs(args, !!auth.code, auth.legacy), { cwd, timeout, env: gitChildEnv(auth.env), maxBuffer, encoding: "buffer" })).stdout;
   } catch (error) {
-    const stderr = String((error as { stderr?: unknown })?.stderr ?? "");
-    if (isAccessRefusal(stderr)) throw new GitAccessError();
-    throw new Error(scrub((error as Error)?.message ?? "git failed", auth.code));
+    const stderr = scrub(String((error as { stderr?: unknown })?.stderr ?? ""), auth.code);
+    const failure = classifyGitFailure(stderr, { credentialsSent: !!auth.code });
+    if (isAccessKind(failure.kind)) throw new GitAccessError(failure);
+    throw Object.assign(new Error(scrub((error as Error)?.message ?? "git failed", auth.code)), { failure });
   }
 }
 

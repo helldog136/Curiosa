@@ -6,6 +6,7 @@
  *     the backup carries only the ciphertext, and the site secret is not in the backup, so a restore on another server asks for the code again);
  *   - it reaches git ONLY through the environment of the child process, inside the single `git()` helper (modules/installer.ts): never in a URL, never in argv,
  *     never in `.git/config` (the checkout of a module stays on disk and its code can read it), never in a log, a journal line, an error, an MCP answer or a page;
+ *   - (0.46.2) a git older than 2.31 ignores that environment: the code then reaches it through a credential helper and `CURIOSA_GIT_CODE` (see `GIT_LEGACY_HELPER`), still never in argv;
  *   - the header is scoped to the exact repository address (`http.<url>.extraheader`). That is defence in depth only: real git re-applies its extra headers after a
  *     redirect, so every call that carries a code also forbids redirects and any protocol but https (see `runGit`).
  * This file holds no network code: the check that a code works is in gitAccessAdmin.ts.
@@ -13,6 +14,7 @@
 import { prisma } from "./db";
 import { seal, unseal } from "./seal";
 import { purgeRepoFromDisk } from "./modules/ficheCache";
+import { classifyGitFailure, isAccessKind, type GitFailure } from "./gitFailure";
 
 export const ACCESS_SETTING = "git.secret.access";
 const PURPOSE = "git-access-seal";
@@ -182,15 +184,29 @@ export function scrub(text: unknown, code?: string | null): string {
     .slice(0, 4000);
 }
 
-/** A refusal by the host: wrong or expired code, no access, or no such repository (GitHub answers "not found" for a private one: the two read the same on purpose). */
+/**
+ * The same code for a git older than 2.31 (Debian 11, Ubuntu 20.04…), which ignores GIT_CONFIG_COUNT/KEY_n/VALUE_n: the header would never be sent and the host
+ * would answer "authentication failed". The code then travels in the environment only (`CURIOSA_GIT_CODE`) and a credential helper that is a one-line shell function
+ * (`GIT_LEGACY_HELPER`, no secret in it, so it may sit on the command line) hands it to git when the host asks. Same scope as the header: redirects and any
+ * protocol but https are forbidden on these calls, so the only host that can ask is the one in the address.
+ */
+export const GIT_LEGACY_HELPER = '!f() { test "$1" = get && printf "username=x-access-token\\npassword=%s\\n" "$CURIOSA_GIT_CODE"; }; f';
+export function accessEnvLegacy(code: string): Record<string, string> { return { CURIOSA_GIT_CODE: code }; }
+
+/** A refusal by the host: wrong or expired code, no access, or no such repository (GitHub answers "not found" for a private one). */
 export function isAccessRefusal(stderr: string): boolean {
-  return /Authentication failed|could not read (Username|Password)|terminal prompts disabled|Repository not found|returned error: (401|403|404)|HTTP Basic: Access denied|Invalid username or password|Permission denied|access denied/i.test(stderr);
+  return isAccessKind(classifyGitFailure(stderr).kind);
 }
 
-/** Thrown by `git()` for a refusal by the host. Carries no text from git. */
+/**
+ * Thrown by `git()` for a refusal by the host. Carries no text from git, only the KIND of failure (`failure`), so the page can say what to change.
+ */
 export class GitAccessError extends Error {
   /** A translation key: code paths that hand `error.code` to the page (module updates) show the right sentence. */
   readonly code = "modules.error.access";
-  constructor() { super("git: access refused or repository not found"); this.name = "GitAccessError"; }
+  readonly failure: GitFailure;
+  constructor(failure: GitFailure = { kind: "notFound" }) { super("git: access refused or repository not found"); this.name = "GitAccessError"; this.failure = failure; }
 }
 export const isGitAccessError = (e: unknown): e is GitAccessError => e instanceof GitAccessError || (e as { code?: string } | null)?.code === "modules.error.access";
+/** What went wrong with a failed git call, whichever way it was thrown (`git()` attaches it to every error it throws). */
+export const failureOf = (e: unknown): GitFailure => (e as { failure?: GitFailure } | null)?.failure ?? { kind: isGitAccessError(e) ? "notFound" : "unknown" };
