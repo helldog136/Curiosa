@@ -9,6 +9,11 @@ import { maintenanceSummary } from "@/core/maintenance/summary";
 import { legacyConversionPending } from "@/core/modules/legacyReport";
 import { legacyUpkeepSummary } from "@/core/modules/legacyUpkeep";
 import { LegacyBanner } from "@/components/admin/LegacyBanner";
+import { TwinOfferNotice } from "@/components/admin/TwinOfferNotice";
+import { dismissTwinOfferAction, applyMatchingOverlaySkinAction } from "./overlay-pages/twinActions";
+import { OVERLAY_NEED } from "@/core/overlays/access";
+import { liveTwinState } from "@/core/overlays/twinState";
+import { pendingTwinOffer } from "@/core/overlays/twinOffer";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
@@ -44,6 +49,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // Le menu ne montre que ce que cette personne peut ouvrir (droit relu en base à chaque requête).
   // (0.31.0) A module that places everything it shows (docs/PLACES.md) leaves the sidebar: its place pages replace its own entry (its page stays in Extensions).
   const placedAway = await fullyPlacedInstances();
+  // (0.47.0) The matching overlay skin, offered once after the site skin changed (one setting read when nothing is pending).
+  const twin = hasRole(user, OVERLAY_NEED) ? await pendingTwinOffer(liveTwinState, locale).catch(() => null) : null;
   const allNav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
@@ -194,6 +201,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {legacyPending && (
             <LegacyBanner title={t("legacy.banner.title")} text={t("legacy.banner.text")} link={can(user, "core:updates") ? t("legacy.banner.link") : null} ownerNote={can(user, "core:updates") ? null : t("legacy.banner.owner")} />
           )}
+          {twin && <TwinOfferNotice text={t("appearance.twin.line", { name: twin.name })} button={t("appearance.twin.use")} dismiss={t("appearance.twin.later")} apply={applyMatchingOverlaySkinAction.bind(null, twin.skin)} notNow={dismissTwinOfferAction} />}
           <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}><CodeCopyProvider labels={codeCopyLabels(t)}>{children}</CodeCopyProvider></HelpTipProvider></CropLabelsProvider></div>
       </main>
       </div>

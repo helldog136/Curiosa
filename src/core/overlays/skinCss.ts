@@ -2,6 +2,7 @@ import postcss from "postcss";
 import { parseColor } from "../skins/colorParse";
 import { composite, contrastRatio } from "../skins/readability";
 import { lengthPx } from "./skinTokens";
+import { mapFontStack, type FontCtx } from "./skinFonts";
 import { PRESET_PROPS, MOTION_TIMING, emptyExpansion, expandPreset, layerDecls, type PresetProp } from "./skinPresets";
 
 /**
@@ -98,7 +99,7 @@ function fontOk(v: string): boolean {
 }
 
 /** Is this declaration allowed? Returns the value to write or a code. */
-function checkValue(prop: string, kind: Kind, value: string, deco: boolean): string | { code: string } {
+function checkValue(prop: string, kind: Kind, value: string, deco: boolean, fonts?: FontCtx): string | { code: string; detail?: string } {
   const v = value.trim().replace(/\s+/g, " ");
   if (!v || v.length > 300) return { code: "value-empty" };
   if (/[;{}<>\\\u0000-\u001f\u007f]|(^|[^a-z-])(url|expression|attr|image-set|element|paint)\s*\(|!important|@/i.test(v)) return { code: "value-forbidden" };
@@ -148,7 +149,11 @@ function checkValue(prop: string, kind: Kind, value: string, deco: boolean): str
     }
     case "radius": { const ws = split(v, /\s/); return ws.length <= 4 && ws.every((w) => /^var\(--ov-radius/.test(w) || (lengthPx(w) !== null && lengthPx(w)! >= 0 && lengthPx(w)! <= 64) || /^\d{1,3}%$/.test(w)) ? v : bad; }
     case "shadow": return shadowOk(v, prop === "text-shadow") ? v : bad;
-    case "font": return fontOk(v) ? v : bad;
+    case "font": {
+      // (0.47.0) a skin of contract 6: the declared families (rewritten to their scoped names) or known system fonts, a generic family last
+      if (fonts && !/^var\(--ov-font(-heading)?(\s*,\s*[^()]+)?\)$/.test(v)) { const m = mapFontStack(v, fonts); return m.ok ? m.value : m.reason === "undeclared" ? { code: "font-undeclared", detail: m.family } : m.reason === "fallback" ? { code: "font-fallback" } : bad; }
+      return fontOk(v) ? v : bad;
+    }
     case "weight": return /^([1-9]00|normal|bold|var\(--ov-weight(-heading)?(\s*,\s*[^()]+)?\))$/.test(v) ? v : bad;
     case "num": {
       const n = Number(v);
@@ -194,7 +199,8 @@ export function rewriteSelectors(list: string, skinId: string): { selectors: str
   return { selectors: out, deco };
 }
 
-export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResult {
+/** `fonts` (core 0.47.0): only for a skin of contract 6, see skinFonts.ts; without it the sheet is read exactly as before. */
+export function sanitizeOverlayCss(css: unknown, skinId: string, fonts?: FontCtx): OverlayCssResult {
   const issues: OverlayCssIssue[] = [];
   const fail = (code: string, line?: number, detail?: string) => { if (issues.length < 60) issues.push({ code, line, detail }); };
   if (typeof css !== "string") return { ok: false, css: "", issues: [{ code: "not-text" }], rules: 0 };
@@ -233,8 +239,8 @@ export function sanitizeOverlayCss(css: unknown, skinId: string): OverlayCssResu
       const kind = PROPS[prop];
       if (!kind) { fail(/^(display|visibility|clip|clip-path|filter|transform|margin|float|overflow|animation)/.test(prop) ? "property-forbidden" : "property-unknown", d.source?.start?.line, prop); continue; }
       if (DECO_ONLY.has(prop) && !sel.deco) { fail("deco-only", d.source?.start?.line, prop); continue; }
-      const r = checkValue(prop, kind, d.value, sel.deco);
-      if (typeof r !== "string") { fail(r.code, d.source?.start?.line, prop); continue; }
+      const r = checkValue(prop, kind, d.value, sel.deco, fonts);
+      if (typeof r !== "string") { fail(r.code, d.source?.start?.line, r.detail ?? prop); continue; }
       decls.push(`${prop}:${r}`);
       seen.set(prop, r);
       if (prop === "font-size" && (/%$/.test(r) ? parseFloat(r) < 100 : /em$/.test(r) && parseFloat(r) < 1)) shrinks++;

@@ -415,6 +415,8 @@ export type InstalledSkin = {
   description: Text;
   author?: string;
   license?: string;
+  /** (0.47.0) Overlay skins: the id of the site skin this one is the twin of (skin.json `twinOf`). */
+  twinOf?: string;
   modes: ("light" | "dark")[];
   tags: string[];
   source: SkinSource;
@@ -449,7 +451,7 @@ export async function installed(): Promise<InstalledSkin[]> {
     const m = v.manifest;
     const modified = v.ok && v.fingerprint !== row.fingerprint;
     out.push({
-      ...base, name: m?.name ?? fallbackName, description: m?.description ?? { fr: "", en: "" }, author: m?.author?.name, license: m?.license, modes: m?.modes ?? [], tags: m?.tags ?? [],
+      ...base, name: m?.name ?? fallbackName, description: m?.description ?? { fr: "", en: "" }, author: m?.author?.name, license: m?.license, ...(m?.kind === "overlay" && m.twinOf ? { twinOf: m.twinOf } : {}), modes: m?.modes ?? [], tags: m?.tags ?? [],
       status: modified ? "modified" : v.ok ? "ok" : "invalid",
       problems: modified ? [makeIssue("skin-modified"), ...v.issues] : v.issues,
       previews: (m?.previews ?? []).map((p) => ({ file: p.file, mode: p.mode, alt: p.alt })),

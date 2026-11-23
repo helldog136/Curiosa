@@ -59,6 +59,7 @@ export function renderSample(payload: SkinPayload | null, t: Translator, lang: s
   return `<!doctype html><html lang="${esc(lang)}" data-ov-region="element"${attrs}><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>${esc(t("ovp.sample.title"))}</title><style nonce="${nonce}">${css}</style></head><body>${body}<script type="application/json" id="ovs-t">${data}</script><script nonce="${nonce}">${SCRIPT}</script></body></html>`;
 }
 
-export function sampleHeaders(nonce: string): Record<string, string> {
-  return pageHeaders(`default-src 'none'; style-src 'nonce-${nonce}'; style-src-attr 'unsafe-inline'; script-src 'nonce-${nonce}'; frame-ancestors 'self'; base-uri 'none'`);
+/** `fonts` (0.47.0): the sheet carries the skin's fonts as `data:` addresses (skinFontData.ts), so only then `font-src data:`; otherwise the policy is the one it always was. */
+export function sampleHeaders(nonce: string, fonts = false): Record<string, string> {
+  return pageHeaders(`default-src 'none'; style-src 'nonce-${nonce}'; style-src-attr 'unsafe-inline'; script-src 'nonce-${nonce}'; frame-ancestors 'self'; base-uri 'none'${fonts ? "; font-src data:" : ""}`);
 }

@@ -11,6 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Les skins d'overlay peuvent avoir leur propre police.** Un skin peut embarquer jusqu'à quatre polices (fichiers woff2) : vos alertes et vos objectifs gardent la même allure partout, même sur un ordinateur qui n'a pas la police. Si une police ne se charge pas, l'overlay s'affiche quand même avec une police de remplacement.
+- **(English) Overlay skins can ship their own font.** A skin can bring up to four fonts (woff2 files): your alerts and goals look the same everywhere, even on a computer without that font. If a font does not load, the overlay is still shown with a fallback font.
+- **Un skin d'overlay peut dire quel skin de site il accompagne.** Dans la galerie, un badge « Assorti à votre skin de site » apparaît quand le skin de site actif est le bon. Quand vous changez de skin de site, un bouton propose le skin d'overlay assorti ; rien n'est appliqué sans votre clic.
+- **(English) An overlay skin can name the site skin it goes with.** In the gallery, a "Matches your site skin" badge appears when the active site skin is the right one. When you change your site skin, a button offers the matching overlay skin; nothing is applied without your click.
 - **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, vous voyez ce que le skin apporte, puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
 - **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it, see what the skin brings, then press one button, "Add this skin". No more tick boxes.
 - **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin et si l'accès est configuré ; un bouton et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer). Chaque action s'ouvre dans une fenêtre.
@@ -35,6 +39,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** The database is read with `ACCOUNT_SELECT` (named columns), each item is built field by field, and `tests/core/account-topic.test.mjs` fails if a column is added to `User` without a decision. Older core: empty list (`docs/MODULES.md`).
 - `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
 - **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
+- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : polices woff2 déclarées dans `assets`, `@font-face` écrit par le cœur (`overlays/skinFonts.ts`), listes de polices vérifiées, chargeur dans la page d'overlay. Contrats 2 à 5 inchangés octet pour octet. Voir `docs/OVERLAY-SKINS.md`.
+- `twinOf` (manifeste et catalogue, sans changement de contrat) : logique `overlays/twin.ts`, offre unique `overlays/twinOffer.ts`.
+- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): woff2 fonts declared in `assets`, `@font-face` written by the core (`overlays/skinFonts.ts`), checked font lists, a loader in the overlay page. Contracts 2 to 5 are byte-identical. See `docs/OVERLAY-SKINS.md`.
+- **(English)** `twinOf` (manifest and catalogue, no contract change): logic in `overlays/twin.ts`, one-time offer in `overlays/twinOffer.ts`.
 
 ## 0.46.1 — 2026-11-20
 
