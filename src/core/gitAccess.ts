@@ -6,7 +6,7 @@
  *     the backup carries only the ciphertext, and the site secret is not in the backup, so a restore on another server asks for the code again);
  *   - it reaches git ONLY through the environment of the child process, inside the single `git()` helper (modules/installer.ts): never in a URL, never in argv,
  *     never in `.git/config` (the checkout of a module stays on disk and its code can read it), never in a log, a journal line, an error, an MCP answer or a page;
- *   - (0.46.2) a git older than 2.31 ignores that environment: the code then reaches it through a credential helper and `CURIOSA_GIT_CODE` (see `GIT_LEGACY_HELPER`), still never in argv;
+ *   - (0.47.0) a git older than 2.31 ignores that environment: the code then reaches it through a credential helper and `CURIOSA_GIT_CODE` (see `GIT_LEGACY_HELPER`), still never in argv;
  *   - the header is scoped to the exact repository address (`http.<url>.extraheader`). That is defence in depth only: real git re-applies its extra headers after a
  *     redirect, so every call that carries a code also forbids redirects and any protocol but https (see `runGit`).
  * This file holds no network code: the check that a code works is in gitAccessAdmin.ts.

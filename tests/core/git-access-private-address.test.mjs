@@ -1,4 +1,4 @@
-// Adding a skin from a PRIVATE repository (core 0.46.2): the check of the access code against REAL git and a fake GitHub-like smart-HTTP server (`git http-backend`
+// Adding a skin from a PRIVATE repository (core 0.47.0): the check of the access code against REAL git and a fake GitHub-like smart-HTTP server (`git http-backend`
 // behind a 401 unless `Authorization: Basic base64(x-access-token:<fake code>)` is present). Reported on production: the code field turned red with one "refused" message.
 // What this proves: (1) a git older than 2.31 ignores the environment the header travels in, so the host never sees the code and answers 401 (emulated here by a
 // `git` first in the PATH that reports 2.25.1 and drops GIT_CONFIG_*), and the credential helper path fixes it; (2) every cause now has its own answer;

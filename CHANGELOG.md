@@ -7,7 +7,11 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.47.0 — 2026-11-23
+
+**En bref.** Chaque accès d'un assistant IA appartient maintenant à une personne : un propriétaire obligatoire, des droits au plus égaux aux siens, un écran « Mes accès IA », un onglet « Par personne » et un panneau temporaire « Attribuer les propriétaires ». Une sauvegarde chiffrée peut vous être envoyée par e-mail. Les skins d'overlay peuvent embarquer leurs polices et dire quel skin de site ils accompagnent. Ajouter un skin est plus simple, l'adresse privée d'un skin fonctionne, et les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.
+
+**In short.** Every AI assistant access now belongs to a person: a mandatory owner, rights at most equal to theirs, a "My AI accesses" screen, a "By person" tab and a temporary "Assign owners" panel. An encrypted backup can be e-mailed to you. Overlay skins can ship their own fonts and say which site skin they match. Adding a skin is simpler, a private skin address works, and password managers no longer step into ordinary fields.
 
 ### Nouveautés
 
@@ -108,7 +112,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** `skins/manifest.ts`: `license` (skin and assets) is optional free text (200 characters, `LICENSE_TEXT_MAX`). `skins/validate.ts` no longer judges any license: `SPDX_ALLOWED` and the codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` and `asset-license-file` are removed. The kit gives the tip `kit-asset-credits`.
 
 
-## 0.46.0 — 2026-11-21
+## 0.46.0 — 2026-11-20
 
 **En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).
 

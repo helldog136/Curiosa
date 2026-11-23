@@ -10,7 +10,7 @@ import { failureOf } from "./gitAccess";
 import type { GitFailureKind } from "./gitFailure";
 
 /**
- * `error` is a translation key under `access.error.*`. One cause per key (core 0.46.2): the owner reads what to change. `address` (of "redirectTo") is the only
+ * `error` is a translation key under `access.error.*`. One cause per key (core 0.47.0): the owner reads what to change. `address` (of "redirectTo") is the only
  * variable of a message, and only a plain repository address that passed `accessTarget`.
  */
 export type SaveAccessError = "empty" | "broad" | "format" | "address" | "notFound" | "rejected" | "tooOld" | "unreachable" | "redirect" | "redirectTo" | "unknown";
