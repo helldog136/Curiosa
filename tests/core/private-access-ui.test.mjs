@@ -47,9 +47,9 @@ for (const locale of ["fr", "en"]) {
   });
 
   test(`[${locale}] wrong code: the error is under the code field`, () => {
-    const html = render(locale, { url: URL_, needsCode: true, codeError: t("access.error.refused") });
+    const html = render(locale, { url: URL_, needsCode: true, codeError: t("access.error.rejected") });
     const i = html.indexOf('name="code"');
-    assert.ok(i > 0 && html.indexOf(esc(t("access.error.refused")), i) > i, "error after the code field");
+    assert.ok(i > 0 && html.indexOf(esc(t("access.error.rejected")), i) > i, "error after the code field");
   });
 
   test(`[${locale}] configured: a summary line, ONE Edit window, a named Remove access; no code field in the page flow`, () => {

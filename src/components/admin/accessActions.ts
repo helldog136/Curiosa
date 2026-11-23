@@ -29,7 +29,7 @@ export async function saveAccessAction(_prev: ActionState, fd: FormData): Promis
   const now = await accessState(url);
   if (!code.trim() && now.state === "configured") return { ok: t("access.unchanged") };
   const r = await saveAccessCode(url, code, user.email);
-  if (!r.ok) return { errors: { code: t(`access.error.${r.error}`) } };
+  if (!r.ok) return { errors: { code: t(`access.error.${r.error}`, r.address ? { address: r.address } : undefined) } };
   refresh();
   return { ok: t("access.saved") };
 }

@@ -128,7 +128,7 @@ export async function inspectSkinAction(url: string, code?: string): Promise<Ins
   // (0.42.0) An access code pasted with the address is tried against the repository and stored sealed ONLY if it works; it is never sent back.
   if (parsed.ok && code && code.trim()) {
     const saved = await saveAccessCode(parsed.repo.url, String(code).slice(0, 400), user.email);
-    if (!saved.ok) return { ok: false, error: t(`access.error.${saved.error}`), field: "code", needsCode: saved.error !== "address", access: await accessState(parsed.repo.url) };
+    if (!saved.ok) return { ok: false, error: t(`access.error.${saved.error}`, saved.address ? { address: saved.address } : undefined), field: "code", needsCode: saved.error !== "address", access: await accessState(parsed.repo.url) };
   }
   const access = parsed.ok ? await accessState(parsed.repo.url) : undefined;
   const r = await skins.inspect(address);
