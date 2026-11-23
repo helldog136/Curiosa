@@ -243,7 +243,7 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   assert.match(html, /La liste des skins est injoignable\./, "catalogue injoignable : message simple, la page s'affiche");
   assert.doesNotMatch(html, /\bappearance\.[a-z]+\.?[A-Za-z.]*|settings\.[a-z]+\.[a-z]+/, "aucune clé de traduction affichée telle quelle");
   assert.match(html, /data-testid="add-skin"/, "le propriétaire voit UNE entrée « Ajouter un skin » avec deux façons");
-  assert.match(html, /<div hidden="" data-way="address"><div[^>]*data-testid="personal-repo"/, "l'adresse est la seconde façon, masquée tant qu'on ne la choisit pas");
+  assert.match(html, /<div hidden="" data-way="address"[^>]*><div[^>]*data-testid="personal-repo"/, "l'adresse est la seconde façon, masquée tant qu'on ne la choisit pas");
 });
 
 test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Revenir au skin, options, onglets Clair/Sombre, bouton Clair/Sombre pour les visiteurs, gestion du skin (mise à jour, retrait)", async () => {

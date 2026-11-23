@@ -11,10 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
-- **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, un seul bouton « Vérifier l'adresse » ; si le dépôt est privé, le champ du code d'accès apparaît juste dessous, avec le même bouton ; vous voyez ce que le skin apporte (les notes, licences, README sont repliés sous « Détails »), puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
-- **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it and press one button, "Check the address"; for a private repository the access code field appears right under it, with the same button; you see what the skin brings (notes, licenses and README are folded under "Details"), then one button, "Add this skin". No more tick boxes.
-- **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin (catalogue, adresse, fichier) et, pour un dépôt privé, si l'accès est configuré ; un bouton (chercher une mise à jour, ou modifier l'accès s'il est à saisir de nouveau) et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer) ; chaque action s'ouvre dans une fenêtre.
-- **(English) Added skins are in one table with a search.** Each row says where the skin comes from (catalogue, address, file) and, for a private repository, whether access is configured; one button (look for an update, or edit the access when it must be entered again) and a "..." menu (edit access, go back to the previous version, remove); each action opens in a window.
+- **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, vous voyez ce que le skin apporte, puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
+- **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it, see what the skin brings, then press one button, "Add this skin". No more tick boxes.
+- **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin et si l'accès est configuré ; un bouton et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer). Chaque action s'ouvre dans une fenêtre.
+- **(English) Added skins are in one table with a search.** Each row says where the skin comes from and whether access is configured; one button and a "..." menu (edit access, go back to the previous version, remove). Each action opens in a window.
 
 ### Corrections
 

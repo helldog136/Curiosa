@@ -43,12 +43,14 @@ for (const locale of ["fr", "en"]) {
 
   test(`[${locale}] one entry, two ways: a file and an address; both panels exist, only the chosen one is shown`, () => {
     const html = add(locale);
-    assert.equal(count(html, /type="radio"/g), 2, "two ways, side by side");
+    assert.equal(count(html, /role="tab"/g), 2, "two ways, side by side, as tabs (not form fields)");
+    assert.equal(count(html, /type="radio"/g), 0);
     assert.ok(html.includes(esc(t("appearance.way.label"))) && html.includes(esc(t("appearance.way.file"))) && html.includes(esc(t("appearance.way.address"))));
-    assert.match(html, /<div data-way="file"><section[^>]*data-testid="upload-skin"/, "the file panel is shown first");
-    assert.match(html, /<div hidden="" data-way="address">/, "the address panel is kept, hidden");
-    assert.match(html, /name="skinWay" checked="" value="file"/);
-    assert.match(add(locale, { way: "address" }), /<div hidden="" data-way="file">/);
+    assert.match(html, /<div data-way="file"[^>]*><section[^>]*data-testid="upload-skin"/, "the file panel is shown first");
+    assert.match(html, /<div hidden="" data-way="address"[^>]*>/, "the address panel is kept, hidden");
+    assert.match(html, /id="skin-way-file" aria-selected="true"/);
+    assert.match(html, /id="skin-way-address" aria-selected="false"/);
+    assert.match(add(locale, { way: "address" }), /<div hidden="" data-way="file"[^>]*>/);
     assert.equal(count(html, /data-testid="add-skin"/g), 1);
   });
 
