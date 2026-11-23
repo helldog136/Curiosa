@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { foldText as fold } from "@/core/modules/installedList";
 
@@ -42,7 +43,7 @@ export function TopicPicker({ options, current, allHref, labels }: { options: To
         </summary>
         <div className="absolute left-0 top-full z-30 mt-1 w-[min(22rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-2 shadow-lg">
           <label htmlFor={`${id}-q`} className="sr-only">{labels.search}</label>
-          <input id={`${id}-q`} ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={labels.search} autoComplete="off" data-testid="topic-search"
+          <input id={`${id}-q`} ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={labels.search} {...PLAIN_INPUT} data-testid="topic-search"
             onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); const first = shown[0]; if (first) window.location.assign(first.href); } }}
             className="min-h-11 w-full rounded-lg border border-line bg-bg px-3 text-base outline-none focus:border-accent" />
           <ul aria-label={labels.list} className="mt-2 max-h-72 overflow-y-auto">

@@ -2,7 +2,8 @@ import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
 import { isLongHelp } from "./helpRule";
 import { ERROR_BORDER, FieldErrorText } from "./FieldErrors";
-import { MANAGER_IGNORE, PasswordInput } from "./PasswordInput";
+import { PasswordInput } from "./PasswordInput";
+import { fieldHints } from "./managerHints";
 
 /**
  * Sous un champ : l'EXEMPLE (« Par exemple : insta, ig », déjà écrit en toutes lettres par l'appelant) puis l'ERREUR (icône + texte, jamais seule : « Écrivez un nombre
@@ -54,12 +55,12 @@ export function TextField({ label, name, help, example, error, required, flag, d
   /** Mot de passe d'un AUTRE compte ou secret technique (clé d'un service) : les gestionnaires de mots de passe ne le proposent pas. Par défaut ils le proposent. */
   noManager?: boolean;
 }) {
-  const aware = autoComplete === "off" ? MANAGER_IGNORE : {};
+  // A plain input (name, label, address, search...) tells the password managers to offer nothing; only an explicit credential token (username, one-time-code...) keeps autofill.
   const field = type === "password" ? (
     <PasswordInput {...inputProps} id={name} name={name} required={required} placeholder={placeholder} passwordMin={passwordMin} autoComplete={autoComplete === "current-password" ? "current-password" : "new-password"} noManager={noManager}
       {...aria(name, example, error)} className={`${ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
   ) : (
-    <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} autoComplete={autoComplete} list={list} pattern={pattern} title={title} min={min} max={max} step={step} inputMode={inputMode} {...inputProps} {...aria(name, example, error)} {...aware} className={`${type === "color" ? ui.colorInput : ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
+    <input id={name} name={name} type={type} required={required} defaultValue={defaultValue} placeholder={placeholder} list={list} pattern={pattern} title={title} min={min} max={max} step={step} inputMode={inputMode} {...inputProps} {...aria(name, example, error)} {...fieldHints(autoComplete)} className={`${type === "color" ? ui.colorInput : ui.input}${error ? ` ${ERROR_BORDER}` : ""}`} />
   );
   return (
     <div className={rowClass(inline)}>

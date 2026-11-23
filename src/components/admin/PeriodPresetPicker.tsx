@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useId, useMemo, useState } from "react";
 import { matchesSearch, searchText } from "@/core/adminkit/search";
 import { dateWords, parsePeriod } from "@/core/adminkit/values";
@@ -52,7 +53,7 @@ export function PeriodPresetPicker({ name, labels, locale, onPick }: { name: str
       </div>
       {open && (
         <div id={panel} className="mt-2 rounded-xl border border-line bg-bg p-2">
-          <input type="search" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={labels.presetSearch} aria-label={labels.presetSearch} className={`${ui.input} min-h-11`} />
+          <input {...PLAIN_INPUT} type="search" autoFocus value={query} onChange={(e) => setQuery(e.target.value)} placeholder={labels.presetSearch} aria-label={labels.presetSearch} className={`${ui.input} min-h-11`} />
           <div className="mt-2 max-h-72 overflow-y-auto">
             {shown.length === 0 && (
               <p className="px-2 py-2 text-sm text-muted">{labels.presetEmpty}{" "}

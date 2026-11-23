@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useId, useState } from "react";
 import { FieldErrorText, useFieldError } from "./FieldErrors";
 import { HelpTip } from "./HelpTip";
@@ -54,7 +55,7 @@ export function TextSizeField({ legend, help, value, inherit, errorPath, onChang
       {other && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label htmlFor={otherId} className="text-sm">{s("ed.textSize.otherLabel")}</label>
-          <input id={otherId} inputMode="numeric" value={draft} onChange={(e) => type(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} aria-invalid={message ? true : undefined} aria-describedby={message ? errId : undefined} className={`${ui.input} ${message ? "border-red-500" : ""}`} style={{ width: "6rem" }} />
+          <input {...PLAIN_INPUT} id={otherId} inputMode="numeric" value={draft} onChange={(e) => type(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} aria-invalid={message ? true : undefined} aria-describedby={message ? errId : undefined} className={`${ui.input} ${message ? "border-red-500" : ""}`} style={{ width: "6rem" }} />
           <span className="text-sm text-muted" aria-hidden>%</span>
           <span className="text-sm text-muted">{s("ed.textSize.bounds", { min: TEXT_SCALE_MIN, max: TEXT_SCALE_MAX })}</span>
         </div>

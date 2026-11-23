@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useState } from "react";
 import { BlockEditor, type BlockLabels, type BlockLocale } from "./BlockEditor";
 import { emptyBlock, type BlockDef, type BlockKind } from "@/core/homeBlocks";
@@ -108,7 +109,7 @@ export function HomeBuilder({ choices, initial, labels, blockLabels, locales }: 
                           <select name={name} value={String(v ?? "")} onChange={(e) => set(e.target.value)} className={ui.input}>{(o.options ?? []).map((op) => <option key={op.value} value={op.value}>{op.label}</option>)}</select></label>
                       ) : (
                         <label key={o.key} className="block text-sm"><span className={ui.label}>{o.label}</span>
-                          <input name={name} type={o.type === "number" ? "number" : "text"} value={v === undefined ? "" : String(v)} onChange={(e) => set(e.target.value)} className={ui.input} /></label>
+                          <input {...PLAIN_INPUT} name={name} type={o.type === "number" ? "number" : "text"} value={v === undefined ? "" : String(v)} onChange={(e) => set(e.target.value)} className={ui.input} /></label>
                       );
                     })}
                   </div>

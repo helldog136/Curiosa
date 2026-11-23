@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useId, useState, useTransition } from "react";
 import { ModalWindow } from "./ModalWindow";
 import { PendingButton } from "./PendingButton";
@@ -75,7 +76,7 @@ export function FullPowersWindow({ labels, name, grant }: { labels: FullPowersLa
             </section>
             <div>
               <label htmlFor={`${id}-name`} className={ui.label}>{labels.typeName}</label>
-              <input id={`${id}-name`} type="text" value={typed} onChange={(e) => { setTyped(e.target.value); setError(null); }} autoComplete="off" autoCapitalize="off" spellCheck={false}
+              <input id={`${id}-name`} type="text" value={typed} onChange={(e) => { setTyped(e.target.value); setError(null); }} {...PLAIN_INPUT} autoCapitalize="off" spellCheck={false}
                 onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} data-testid="fullpowers-typed" aria-describedby={`${id}-ex`} aria-invalid={error ? true : undefined} className={ui.input} />
               <p id={`${id}-ex`} className={ui.help}>{labels.example}</p>
               {error && <p role="alert" className="mt-1 text-sm text-danger" data-testid="fullpowers-error">{error}</p>}

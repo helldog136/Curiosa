@@ -24,6 +24,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Corrections
 
+- **Les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.** Un nom, une étiquette ou une recherche de l'administration n'est plus pris pour un identifiant à enregistrer. Le mot de passe donné à une autre personne n'est plus proposé comme le vôtre.
+- **(English) Password managers no longer step into ordinary fields.** A name, a label or a search in the administration is no longer taken for a login to save. The password given to another person is no longer offered as yours.
+- **Créer un accès pour un assistant ne peut plus en créer deux.** Un double clic, ou une extension qui renvoie le formulaire, ne crée plus un second accès qui cachait le premier : la clé ou l'adresse affichée une seule fois est toujours celle de l'accès créé.
+- **(English) Creating an access for an assistant can no longer create two.** A double click, or an extension that re-sends the form, no longer creates a second access that hid the first: the key or address shown once is always the one of the access created.
 - **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.
 - **(English) A skin from a private repository can finally be added.** On a server with an old Git, the access code was refused even when it was right. It is now passed on in a way every Git accepts.
 - **Chaque échec dit ce qu'il faut changer.** Au lieu d'un seul message, vous voyez si le code est refusé ou périmé, si le dépôt est introuvable, s'il a changé de nom (avec sa nouvelle adresse), si GitHub est injoignable ou si Git est trop ancien.
@@ -31,6 +35,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `components/admin/managerHints.ts` : `PLAIN_INPUT` (`autoComplete="off"` et les indices des gestionnaires) sur tout `<input>` de texte qui n'est pas un identifiant ; `TextField` l'applique par défaut. `tests/core/admin-input-hints.test.mjs` échoue sur un nouvel `<input>` sans lui.
+- **(English)** `components/admin/managerHints.ts`: `PLAIN_INPUT` (`autoComplete="off"` and the managers' hints) on every text input that is not a login; `TextField` applies it by default. `tests/core/admin-input-hints.test.mjs` fails on a new `<input>` without it.
+- `McpTokenCreator` : champ nommé `accessLabel` (l'action lit encore `name`), indices sur le `<form>`, `createGate` (`singleFlight.ts`) pour ignorer un second envoi pendant le premier, bloc créé extrait en `CreatedAccess`. `submitKeepingValues` retombe sur `new FormData(form)` si l'expéditeur n'est pas un bouton du formulaire.
+- **(English)** `McpTokenCreator`: field named `accessLabel` (the action still reads `name`), hints on the `<form>`, `createGate` (`singleFlight.ts`) to ignore a second submit while the first runs, the created block extracted as `CreatedAccess`. `submitKeepingValues` falls back to `new FormData(form)` when the submitter is not a button of the form.
 - `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` refaits ; nouveaux `AddSkin`, `SkinAdded` ; `Segmented` accepte `value` et `onChange` ; `AccessSummary` accepte `compact` (« Retirer l'accès » dans la fenêtre). `InspectView` porte `skinId`. Le serveur exige toujours la confirmation (`understood`) : l'interface l'envoie avec le clic sur « Ajouter ce skin », comme pour l'ajout depuis un fichier.
 - **(English)** `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` rebuilt; new `AddSkin`, `SkinAdded`; `Segmented` takes `value` and `onChange`; `AccessSummary` takes `compact` ("Remove access" inside the window). `InspectView` carries `skinId`. The server still demands the confirmation (`understood`): the screen sends it with the click on "Add this skin", as for adding from a file.
 - `core/auth/accountTopic.ts` : sujet `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), fourni par le cœur seul (`OwnTopic` dans `services/topics.ts`). Lu par un module qui le déclare dans `consumes` ET déclare la permission `topics` ; aucun module ne peut le fournir.

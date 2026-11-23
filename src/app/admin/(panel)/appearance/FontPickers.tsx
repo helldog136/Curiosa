@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { askConfirm } from "@/components/admin/confirmDialog";
 import { fontAdvice, type AdviceInfo, type Role } from "@/core/fonts/types";
 import { ui } from "@/components/admin/ui";
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { useAL } from "./AppearanceLabels";
 import { deleteFontAction } from "./actions";
 
@@ -149,7 +150,7 @@ function FontList({ role, label, value, onChange, groups, options, advice, onUpl
       {open && (
         <div className="mt-2 rounded-xl border border-line bg-surface p-3" data-testid={`font-panel-${role}`}>
           <label className="block text-sm"><span className="sr-only">{al("appearance.font.search")}</span>
-            <input ref={search} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={al("appearance.font.searchExample")} autoComplete="off" spellCheck={false}
+            <input ref={search} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={al("appearance.font.searchExample")} {...PLAIN_INPUT} spellCheck={false}
               className={ui.input} data-testid={`font-search-${role}`} />
           </label>
           <div role="listbox" aria-label={label} className="mt-2 max-h-[min(30rem,65vh)] space-y-3 overflow-y-auto pr-1">
