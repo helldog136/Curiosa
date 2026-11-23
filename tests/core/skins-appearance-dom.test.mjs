@@ -197,13 +197,15 @@ test("détails d'un dépôt : ce que le skin ne peut PAS faire, licences, lisibi
   const data = { ok: true, mode: "summary", url: "https://x/y", origin: "personal", compatible: true, installable: false, name: { fr: "Pâle", en: "Pale" }, description: { fr: "Trop pâle.", en: "Too pale." }, version: "1.0.0", author: "Moi", license: "MIT", modes: ["light"], sizeKb: 12,
     assets: [{ file: "fonts/a.woff2", kind: "font", license: "OFL-1.1", author: "Fonderie" }], readme: "# Titre\n<script>alert(1)</script> **gras**", licenseText: "MIT License", previews: [{ alt: "Accueil", dataUrl: "data:image/webp;base64,AAAA" }], issues: ["Une remarque."], unreadable: ["Le texte serait trop pâle sur le fond (rapport 2,1 ; il faut au moins 4,5)."] };
   const html = render(React.createElement(InspectPanel, { data, locale: "fr" }));
-  assert.match(html, /data-testid="inspect-permissions"[^>]*>✓ Ce skin ne peut changer que l&#x27;apparence : il ne peut ni faire tourner de programme/);
+  assert.match(html, /data-testid="inspect-permissions"[^>]*><span aria-hidden="true">✓<\/span> Ce skin ne peut changer que l&#x27;apparence : il ne peut ni faire tourner de programme/);
   assert.match(html, /role="alert"[^>]*>[\s\S]*Ce skin n&#x27;est pas assez lisible, il ne sera pas installé :[\s\S]*trop pâle/);
   assert.match(html, /fonts\/a\.woff2<\/span> · OFL-1\.1 · Fonderie/);
   assert.match(html, /<pre[^>]*>[^<]*&lt;script&gt;alert\(1\)&lt;\/script&gt;/, "le README est du texte : rien n'est interprété");
   assert.doesNotMatch(html, /<script/i);
   assert.match(html, /<img src="data:image\/webp;base64,AAAA" alt="Accueil"/);
-  assert.match(html, /<details[^>]*><summary[^>]*>Lire la licence<\/summary>/);
+  assert.equal(count(html, /<details/g), 1, "la longue lecture tient sous UNE ligne « Détails »");
+  assert.match(html, /<summary[^>]*>[\s\S]*Détails[\s\S]*README · Licence · Remarques \(1\) · Fichiers \(1\)/);
+  assert.match(html, /<h5[^>]*>Licence<\/h5>/);
   assert.match(html, /Par Moi · Licence MIT · 12 Ko/);
   assert.equal(render(React.createElement(InspectPanel, { data: { ...data, name: { fr: "Pâle", en: "Pale" } }, locale: "en" }), "en").includes("By Moi · License MIT · 12 KB"), true);
 });
@@ -240,9 +242,8 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   assert.doesNotMatch(html, /name="palette" value="both"/, "basic n'a qu'un mode");
   assert.match(html, /La liste des skins est injoignable\./, "catalogue injoignable : message simple, la page s'affiche");
   assert.doesNotMatch(html, /\bappearance\.[a-z]+\.?[A-Za-z.]*|settings\.[a-z]+\.[a-z]+/, "aucune clé de traduction affichée telle quelle");
-  assert.match(html, /data-testid="personal-repo"/, "le propriétaire voit l'ajout par adresse (replié)");
-  assert.match(html, /<details[^>]*data-testid="personal-repo"/);
-  assert.doesNotMatch(html, /<details[^>]*data-testid="personal-repo"[^>]*open/);
+  assert.match(html, /data-testid="add-skin"/, "le propriétaire voit UNE entrée « Ajouter un skin » avec deux façons");
+  assert.match(html, /<div hidden="" data-way="address"><div[^>]*data-testid="personal-repo"/, "l'adresse est la seconde façon, masquée tant qu'on ne la choisit pas");
 });
 
 test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Revenir au skin, options, onglets Clair/Sombre, bouton Clair/Sombre pour les visiteurs, gestion du skin (mise à jour, retrait)", async () => {
@@ -261,8 +262,20 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.match(html, /data-testid="customize-link"[^>]*>Personnaliser</);
   assert.doesNotMatch(html, /data-testid="skin-options"/);
   assert.match(html, /data-testid="visitor-switch"[\s\S]*data-switch="on"[^>]*>Votre public peut choisir Clair, Sombre ou Automatique/);
-  assert.match(html, /data-testid="manage-skins"[\s\S]*data-manage="duo"/);
+  assert.match(html, /data-testid="manage-skins"[\s\S]*data-testid="skin-row-duo"/);
   assert.match(html, /data-catalogue-skin="duo"[\s\S]*Installé/, "le catalogue dit ce qui est installé");
+  // (R15, R16, R17, R30, R33) les skins ajoutés : UN tableau, recherche en direct dès le départ, origine en pastille écrite, au plus deux actions visibles, le reste dans « ⋯ » et dans des fenêtres
+  const manage = html.slice(html.indexOf('data-testid="manage-skins"'));
+  assert.match(manage, /<h2[^>]*>Skins ajoutés<\/h2>/);
+  assert.match(manage, /data-testid="live-search"/, "la recherche est là même pour un seul skin");
+  assert.equal(count(manage, /data-live-item="skins"/g), 1);
+  assert.match(manage, /data-search="[^"]*catalogue/, "la recherche couvre l'origine");
+  assert.match(manage, /bg-sky-500\/15[^>]*>Catalogue<\/span>/, "l'origine est une pastille colorée ET écrite");
+  assert.match(manage, /data-testid="skin-primary"[^>]*>Chercher une mise à jour<\/button>/);
+  assert.match(manage, /data-testid="row-menu"/);
+  assert.equal(count(manage, /<details/g), 1, "une seule zone repliée par ligne : le menu « ⋯ » (plus de zone repliée par skin)");
+  assert.doesNotMatch(html, /data-manage=|Mises à jour et retrait/);
+
   assert.match(html, /<option value="skin"[^>]*>Celui du skin<\/option>/, "halo et fond : « celui du skin »");
   assert.match(html, /name="light_background"[\s\S]*name="dark_accent"/);
   // anglais : même structure
@@ -296,7 +309,7 @@ test("page, un administrateur (pas propriétaire) : il règle l'apparence, mais 
   process.env.CURIOSA_SKINS_REPO = cat.url;
   await install("plain-light", "plain-light");
   const html = await page("fr", "admin");
-  assert.doesNotMatch(html, /data-testid="personal-repo"|data-testid="manage-skins"/);
+  assert.doesNotMatch(html, /data-testid="add-skin"|data-testid="personal-repo"|data-testid="upload-skin"|data-testid="manage-skins"/);
   assert.match(html, /Seule la personne propriétaire du site peut ajouter ou retirer un skin\./);
   assert.doesNotMatch(html, /name="id" value="plain-light"[\s\S]{0,200}Installer/);
 });

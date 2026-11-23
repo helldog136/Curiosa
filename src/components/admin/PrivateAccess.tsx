@@ -30,7 +30,7 @@ export function CodeField({ labels, error, keep = false, name = "code", value, o
   );
 }
 
-function EditForm({ url, state, labels, onChanged }: { url: string; state: AccessState["state"]; labels: AccessLabels; onChanged: () => void }) {
+export function EditForm({ url, state, labels, onChanged }: { url: string; state: AccessState["state"]; labels: AccessLabels; onChanged: () => void }) {
   const [res, act, pending] = useActionState(saveAccessAction, null);
   const form = useRef<HTMLFormElement>(null);
   useEffect(() => { clearSecrets(form.current); if (res?.ok) onChanged(); }, [res, onChanged]);
@@ -46,7 +46,7 @@ function EditForm({ url, state, labels, onChanged }: { url: string; state: Acces
   );
 }
 
-function RemoveForm({ url, repo, labels, onChanged }: { url: string; repo: string; labels: AccessLabels; onChanged: () => void }) {
+export function RemoveForm({ url, repo, labels, onChanged }: { url: string; repo: string; labels: AccessLabels; onChanged: () => void }) {
   const [res, act] = useActionState(removeAccessAction, null);
   useEffect(() => { if (res?.ok) onChanged(); }, [res, onChanged]);
   return (
@@ -62,7 +62,7 @@ function RemoveForm({ url, repo, labels, onChanged }: { url: string; repo: strin
  * and a named "Remove access" that says what stops working. No field is shown any more. The state is said in words: configured, or to enter again (with the
  * reason: a restored backup does not carry the code).
  */
-export function AccessSummary({ url, access, labels, onChanged }: { url: string; access: AccessState; labels: AccessLabels; onChanged: () => void }) {
+export function AccessSummary({ url, access, labels, onChanged, compact = false }: { url: string; access: AccessState; labels: AccessLabels; onChanged: () => void; /** One visible button ("Edit"): "Remove access" moves into the edit window (the Appearance page). Default: both visible, as on the Extensions page. */ compact?: boolean }) {
   if (access.state === "none" || !access.repo) return null;
   const repo = access.repo;
   const configured = access.state === "configured";
@@ -74,8 +74,9 @@ export function AccessSummary({ url, access, labels, onChanged }: { url: string;
         <span className="flex flex-wrap items-center gap-2">
           <FormDialog trigger={labels["access.edit"] ?? ""} triggerLabel={`${labels["access.edit"]} ${repo}`} title={fill(labels["access.edit.title"], repo)} closeLabel={labels["modal.close"] ?? ""} testid="access-edit-open">
             <EditForm url={url} state={access.state} labels={labels} onChanged={onChanged} />
+            {compact && <div className="border-t border-line pt-3"><RemoveForm url={url} repo={repo} labels={labels} onChanged={onChanged} /></div>}
           </FormDialog>
-          <RemoveForm url={url} repo={repo} labels={labels} onChanged={onChanged} />
+          {!compact && <RemoveForm url={url} repo={repo} labels={labels} onChanged={onChanged} />}
         </span>
       </div>
       {!configured && <p className="text-sm text-muted">{labels["access.reenter.why"]}</p>}

@@ -9,6 +9,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, un seul bouton « Vérifier l'adresse » ; si le dépôt est privé, le champ du code d'accès apparaît juste dessous, avec le même bouton ; vous voyez ce que le skin apporte (les notes, licences, README sont repliés sous « Détails »), puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
+- **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it and press one button, "Check the address"; for a private repository the access code field appears right under it, with the same button; you see what the skin brings (notes, licenses and README are folded under "Details"), then one button, "Add this skin". No more tick boxes.
+- **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin (catalogue, adresse, fichier) et, pour un dépôt privé, si l'accès est configuré ; un bouton (chercher une mise à jour, ou modifier l'accès s'il est à saisir de nouveau) et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer) ; chaque action s'ouvre dans une fenêtre.
+- **(English) Added skins are in one table with a search.** Each row says where the skin comes from (catalogue, address, file) and, for a private repository, whether access is configured; one button (look for an update, or edit the access when it must be entered again) and a "..." menu (edit access, go back to the previous version, remove); each action opens in a window.
+
 ### Corrections
 
 - **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.
@@ -18,6 +25,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` refaits ; nouveaux `AddSkin`, `SkinAdded` ; `Segmented` accepte `value` et `onChange` ; `AccessSummary` accepte `compact` (« Retirer l'accès » dans la fenêtre). `InspectView` porte `skinId`. Le serveur exige toujours la confirmation (`understood`) : l'interface l'envoie avec le clic sur « Ajouter ce skin », comme pour l'ajout depuis un fichier.
+- **(English)** `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` rebuilt; new `AddSkin`, `SkinAdded`; `Segmented` takes `value` and `onChange`; `AccessSummary` takes `compact` ("Remove access" inside the window). `InspectView` carries `skinId`. The server still demands the confirmation (`understood`): the screen sends it with the click on "Add this skin", as for adding from a file.
 - `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
 - **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
 
