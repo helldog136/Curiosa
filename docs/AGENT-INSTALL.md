@@ -49,8 +49,11 @@ Le script s'est arrêté ?
 | Mémoire | **1 à 2 Go de RAM** | En dessous de 1 Go, le site peut s'arrêter. |
 | Disque | **environ 20 Go** | L'application pèse près de 1 Go ; le reste sert aux images et aux sauvegardes. |
 | Réseau | adresse IPv4 publique ; ports **22, 80 et 443** accessibles | 22 pour se connecter, 80 et 443 pour le site et son certificat HTTPS. |
+| Accès | **SSH avec les droits d'administration** (`root` ou un compte autorisé à utiliser `sudo`) | Le script s'exécute sur le serveur, dans un terminal. Sans SSH, impossible d'installer Curiosa. |
 
-Un « serveur privé virtuel » (VPS) ou une « instance cloud » convient. Évitez : l'hébergement mutualisé (pas d'accès au serveur), les offres « ARM », et les systèmes autres qu'Ubuntu / Debian.
+Un « serveur privé virtuel » (VPS) ou une « instance cloud » convient, **à condition d'avoir un accès SSH**. Évitez : l'hébergement mutualisé (pas d'accès au serveur), les offres « ARM », et les systèmes autres qu'Ubuntu / Debian.
+
+**Piège à vérifier avant de payer : le SSH.** Certains hébergeurs louent des VPS avec un CMS ou une application déjà installés (WordPress, Plesk, cPanel, « boutique en un clic »…) et **ne donnent pas d'accès SSH**, seulement un tableau de bord. Sur une telle offre, Curiosa ne peut pas s'installer. Avant de commander, cherchez sur la page de l'offre ou dans la documentation de l'hébergeur les mots « accès SSH », « accès root » ou « accès complet au serveur », et choisissez une offre qui propose un **système nu** (Ubuntu LTS ou Debian) avec ce SSH. En cas de doute, demandez au support avant de payer.
 
 ### Reconnaître x86_64 et ARM sur la page d'un hébergeur
 
@@ -64,7 +67,7 @@ Des hébergeurs de serveurs virtuels connus, parmi beaucoup d'autres : OVHcloud,
 
 ### Créer le serveur
 
-À la création, l'hébergeur demande en général : une **région** (proche de votre public), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter : un **mot de passe** ou une **clé SSH**. Retenez l'**adresse IP** affichée une fois le serveur prêt.
+À la création, l'hébergeur demande en général : une **région** (proche de votre public), un **système** (Ubuntu LTS), un **modèle** (voir le profil), et comment se connecter en SSH : un **mot de passe** ou une **clé SSH**. Si l'hébergeur ne propose aucun de ces deux modes, ce n'est pas la bonne offre. Retenez l'**adresse IP** affichée une fois le serveur prêt.
 
 ### Se connecter en SSH (minimum utile)
 
