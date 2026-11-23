@@ -9,9 +9,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## 0.47.0 — 2026-11-23
 
-**En bref.** Les skins d'overlay peuvent embarquer leurs polices, l'Apparence est plus simple à utiliser, et une sauvegarde chiffrée peut vous être envoyée par e-mail. Plusieurs corrections touchent les gestionnaires de mots de passe et l'ajout d'un skin d'un dépôt privé.
+**En bref.** Chaque accès d'un assistant IA appartient maintenant à une personne : un propriétaire obligatoire, des droits au plus égaux aux siens, un écran « Mes accès IA », un onglet « Par personne » et un panneau temporaire « Attribuer les propriétaires ». Une sauvegarde chiffrée peut vous être envoyée par e-mail. Les skins d'overlay peuvent embarquer leurs polices et dire quel skin de site ils accompagnent. Ajouter un skin est plus simple, l'adresse privée d'un skin fonctionne, et les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.
 
-**In short.** Overlay skins can ship their own fonts, Appearance is simpler to use, and an encrypted backup can be e-mailed to you. Several fixes concern password managers and adding a skin from a private repository.
+**In short.** Every AI assistant access now belongs to a person: a mandatory owner, rights at most equal to theirs, a "My AI accesses" screen, a "By person" tab and a temporary "Assign owners" panel. An encrypted backup can be e-mailed to you. Overlay skins can ship their own fonts and say which site skin they match. Adding a skin is simpler, a private skin address works, and password managers no longer step into ordinary fields.
 
 ### Nouveautés
 
