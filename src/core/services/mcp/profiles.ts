@@ -28,7 +28,7 @@ export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
     "site_info",
     "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit",
     "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
-    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_catalog_plan", "maintenance_places",
+    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_available_operations", "maintenance_catalog_plan", "maintenance_places",
     "navigation_get", "home_sections_list",
     "redirects_list", "redirects_stats", "redirects_summary",
     "media_list", "site_settings_get",

@@ -7,6 +7,13 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Un assistant IA voit tout ce que le site pourrait lui permettre de faire.** Il connaît la liste à jour des opérations, même celles qu'il n'a pas, et lesquelles demandent votre validation. Il peut vous dire « si vous m'accordez ceci, je pourrais le faire moi-même », ou signaler ce que vos propres droits ne permettent pas.
+- **(English) An AI assistant can see everything the site could let it do.** It knows the up-to-date list of every operation, even those not granted to it, and whether they need your approval. It can tell you "if you grant me this, I could do it myself", or warn you that an operation is above your own rights.
+
 ## 0.47.0 — 2026-11-23
 
 **En bref.** Chaque accès d'un assistant IA appartient maintenant à une personne : un propriétaire obligatoire, des droits au plus égaux aux siens, un écran « Mes accès IA », un onglet « Par personne » et un panneau temporaire « Attribuer les propriétaires ». Une sauvegarde chiffrée peut vous être envoyée par e-mail. Les skins d'overlay peuvent embarquer leurs polices et dire quel skin de site ils accompagnent. Ajouter un skin est plus simple, l'adresse privée d'un skin fonctionne, et les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.

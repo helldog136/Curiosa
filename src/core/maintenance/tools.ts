@@ -7,6 +7,7 @@ import { CATALOG_PLAN_INPUT, catalogPlan } from "./catalogPlan";
 import { INSTANCE_ADD_ARG } from "./instances";
 import { MAX_BUNDLE } from "./install";
 import { myAccess } from "./myAccess";
+import { OPERATIONS_INPUT, availableOperations } from "./operations";
 import { CONFIGURE_INPUT, SETTINGS_INPUT, readSettings } from "./moduleSettings";
 import { PLACES_INPUT, PLACE_SETTINGS_INPUT, listPlaces, readPlaceSettings } from "./places";
 import { auditTrail, diagnose, health, modules, status, updates } from "./inspect";
@@ -96,6 +97,11 @@ const DEFS: Def[] = [
     name: "my_access", level: 1, default: true, title: "What this access can do",
     description: "What THIS access can and cannot do: the tools granted, the tools NOT granted (each with the right the owner has to tick, in plain words), the ceiling of the access (read only or read and write), the approval setting (requests wait for the owner, or actions happen at once) and the reminder that tools granted or modules installed after you connected only show up after you reconnect. Starts with reconnectNeeded (true when the rights or the installed features changed after your tool list was sent: tell the owner sayToTheUser). Call it first, and whenever a tool you expect is missing from your list. Read-only; no secret, nothing about other accesses.",
     input: NONE, run: (_args, actor) => myAccess(actor),
+  },
+  {
+    name: "available_operations", level: 1, default: true, title: "Everything this site could let you do",
+    description: "The up-to-date list of EVERY operation (tool) the site offers, the ones your access cannot use included, grouped by module: for each its name, what it does in one line, its kind (read, draft, write, publish, request, delete), the right it needs, and its state for YOUR access: allowed, needs_approval (the owner approves each use), not_granted (the owner can grant it: howToGrant says how) or above_owner_ceiling (the owner cannot grant it: say so, do not suggest granting it). Use it to tell the owner: \"if you grant me this, I could do it myself\". Only installed and enabled modules are listed. Optional filters: module (identifier, instance key or core), status, limit, offset. Always available, read-only, no secret, nothing about other accesses.",
+    input: OPERATIONS_INPUT as unknown as McpTool["input"], run: (args, actor) => availableOperations(actor, args),
   },
   { name: "status", level: 1, title: "Site status", description: "Core version and update channel, Node version, uptime, number of modules, state of the update in progress, and reconnectNeeded (true when the rights of this access or the installed features changed after your tool list was sent: tell the owner the sentence in sayToTheUser). Start here.", input: NONE, run: (_args, actor) => status(actor) },
   { name: "health", level: 1, title: "Site health", description: "Disk space and what the site itself takes by category (sizes only, no paths), database state, date of the last backup (and whether it is recent), recent errors (limited and with secrets masked).", input: NONE, run: () => health() },

@@ -4,11 +4,9 @@ import { ownerCeilingAllows } from "@/core/services/mcp/ownerCeiling";
 import { getTokenGrants } from "@/core/services/mcp/tokens";
 import type { McpTool } from "@/core/services/mcp/types";
 import { getSiteConfig } from "@/core/settings";
-import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
+import { approvalOf, plainTool } from "./operations";
 import { ALWAYS_HUMAN } from "./actions";
 import { reconnectView } from "./reconnect";
-import { getApprovalMode } from "./settings";
-import { getPersonalPolicy } from "@/core/personalAi/policy";
 import { remainingSlots } from "./slots";
 import { prisma } from "@/core/db";
 import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
@@ -38,13 +36,7 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   if (!token) return { error: t("aim.my.inactive") };
   const tools = await listMcpTools();
 
-  const plain = (tool: McpTool): string => {
-    const short = tool.name.includes("__") ? tool.name.split("__")[1]! : SETUP_TOOLS.includes(tool.name) ? tool.name : tool.name.replace(/^maintenance_/, "");
-    const key = `aim.tool.${short}`;
-    const text = t(key, { name: tool.source });
-    if (text && text !== key && (tool.source === "maintenance" || SETUP_TOOLS.includes(tool.name) || (!!tool.instanceId && /^(publish|unpublish|update_published_meta)$/.test(short)))) return text;
-    return tool.description.replace(/^\[[^\]]*\]\s*/, "").split(/(?<=[.!?])\s/)[0]!.slice(0, 200);
-  };
+  const plain = (tool: McpTool): string => plainTool(tool, t);
 
   const granted: { tool: string; kind: string; summary: string }[] = [];
   const notGranted: { tool: string; kind: string; why: "access_is_read_only" | "box_not_ticked" | "above_owner_rights"; rightToTick: string }[] = [];
@@ -58,7 +50,7 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   const wanted = (config.adminLocale ?? config.defaultLocale).split("-")[0]!;
   const inEnglish = tools.filter((x) => x.descriptionLang && x.descriptionLang.split("-")[0] !== wanted).map((x) => x.name);
   // A new personal access acts without asking only when the site policy allows it; a legacy one keeps its stored mode.
-  const approval = token.personal && !token.coarse && !(await getPersonalPolicy()).allowDirect ? "human" : await getApprovalMode(actor.tokenId);
+  const approval = await approvalOf(token, actor.tokenId);
   const readOnly = token.scope === "read";
   const slots = await remainingSlots(actor.tokenId);
   const media = await mediaLimitsNow();

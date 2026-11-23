@@ -74,7 +74,7 @@ export type AccessToken = {
  */
 const NEVER_UNDER_FULL_POWERS = /(^|_)(token|tokens|secret|secrets|credential|credentials|password|passwords|oauth|grant|grants|rights|permission|permissions|fullpowers|full_powers|access_create|access_revoke|access_set|approval)(_|$)/;
 /** Reads of the own access that the word list above would catch by mistake. */
-const MANAGEMENT_LOOKALIKES = new Set(["maintenance_my_access", "maintenance_request_status"]);
+const MANAGEMENT_LOOKALIKES = new Set(["maintenance_my_access", "maintenance_available_operations", "maintenance_request_status"]);
 export const neverUnderFullPowers = (tool: Pick<ToolAccessInfo, "name">): boolean => {
   if (MANAGEMENT_LOOKALIKES.has(tool.name)) return false;
   const short = tool.name.includes("__") ? tool.name.split("__").slice(1).join("__") : tool.name;
@@ -86,8 +86,15 @@ export function grantedByFullPowers(tool: ToolAccessInfo, token: AccessToken): b
   return token.fullPowers === true && withinCeiling(tool, token.scope) && !neverUnderFullPowers(tool);
 }
 
+/**
+ * Read-only tools that every valid access is shown and may call, whatever its rights: they only describe the access and what it could be given (no write, no secret, no approval).
+ * Revoking one by hand (`grants[name] = false`) changes nothing. The ceiling of a personal AI does not apply either (they need nothing from the owner: `none`).
+ */
+export const ALWAYS_LISTED: ReadonlySet<string> = new Set(["maintenance_my_access", "maintenance_available_operations"]);
+
 /** Le jeton peut-il voir et appeler cette action ? */
 export function canUse(tool: ToolAccessInfo, token: AccessToken): boolean {
+  if (ALWAYS_LISTED.has(tool.name) && tool.readOnly) return true;
   if (token.personal !== undefined) {
     // A personal AI: the owner's CURRENT rights are a ceiling on top of the ordinary rules, and full powers apply only to an access that already held them before owners were mandatory (`coarse`; fullPowers.ts never sets them on another one): even then the ceiling comes first.
     return ownerCeilingAllows(tool, token.personal, { coarse: token.coarse }) && ((token.coarse === true && grantedByFullPowers(tool, token)) || (withinCeiling(tool, token.scope) && isGranted(tool, token.grants)));
