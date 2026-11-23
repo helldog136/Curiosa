@@ -1,21 +1,28 @@
-# Personal AI assistants (core 0.46.0: backend and enforcement)
+# AI accesses that belong to a person (core 0.46.0 backend, 0.47.0 screens and the owner rule)
 
-A personal AI assistant is an AI access that **belongs to one team member** and can do **only what that person can do**. An editor's assistant cannot update the site, change the menu or edit the site settings, because an editor cannot. The other kind, the **independent** access, is unchanged: it is created by a holder of `core:mcp.tokens` in Admin > AI assistants and its rights are the ones ticked there.
+**Every AI access belongs to a person** and can do **only what that person can do**, checked on every request. An editor's access cannot update the site, change the menu or edit the site settings, because an editor cannot. There is no longer a second kind of access without an owner: the one word is **access** (EN "AI access", FR "accès IA"), and an access has an **owner**, a **level** (look only, look and prepare, site upkeep) and a **state** (active, paused, stopped, no owner). A person may own **several** accesses, each with its own level, never above what the person can do. (The filename keeps its old name so that links keep working.)
 
-0.46.0 ships the rules and their enforcement. There is **no screen yet**: the account page and the admin tab come in 0.46.1, and the rights that modules declare for their tools in 0.46.2. **Nothing changes on a site until the owner turns the feature on.**
+## Where the screens are
 
-## Who may have one
+| Screen | Who | What |
+|---|---|---|
+| Account page, block "My AI accesses" | a person who may own an access (or already owns one) | Create an access: name, password again, level, one click. The connection key is shown **once**, above the form. Each row: name, level, state, a switch to pause or resume (resuming asks for the password again), a "..." menu (change the level within what you can do, remove with a confirmation that says what is lost). Nothing is shown to a person who may not own one. |
+| Admin > AI assistants > "By person" | holders of `core:mcp.tokens` (owner, technical coordination) | One table of every access: access, owner, level, state. Search always present; filters by state and, with a few owners, by owner. Row: a Pause button and the "..." menu (**Choose an owner**, remove). |
+| Admin > Users, "..." menu of a person | holders of `core:mcp.tokens` | "AI accesses": Default / Allowed / Not allowed, the effective result in words and how many accesses the person owns. Never a field of the invitation form. |
+| Admin > Users > add an assistant | holders of `core:mcp.tokens` | The new access **belongs to you** (one summary line); another owner can be chosen under "More options". |
+| Admin > AI assistants (any tab) | holders of `core:mcp.tokens` | A short notice with a button **only while** at least one access has no owner. |
 
-`allowed = master switch ON and override is not "deny" and (override is "allow" or the person holds core:ai.personal)`
+## Who may own an access
 
-- **Master switch**: core setting `mcp.personalPolicy` = `{ "enabled": false, "allowDirect": false }` (both off by default). Switching it off makes every personal assistant inert at once; independent accesses are not concerned. Until the screen exists, a holder of `core:mcp.tokens` changes it through `setPersonalPolicyAction` (Admin actions of the assistants page) or the core settings API (`setSetting("mcp.personalPolicy", { enabled: true, allowDirect: false })`).
-- **Right `core:ai.personal`** ("Have a personal AI assistant"): a delegable right of the roles system. Held by the owner, the coordinator and administrators, **not by editors**; a custom role can carry it.
-- **Per-person override** `User.personalAi` = `inherit` | `allow` | `deny`, changed only by a holder of `core:mcp.tokens` (`setPersonAiOverrideAction`). `allow` never raises the person's own rights: the ceiling below still applies.
-- `allowDirect`: a person may choose "act without asking" for their own assistant only when this is on. Installs and new instances always wait for a human.
+`allowed = override is not "deny" and (override is "allow" or the person holds the right core:ai.personal)`
+
+- **Right `core:ai.personal`** ("Have an AI access"): a delegable right. Held by the owner, the coordinator and administrators, **not by editors**; a custom role can carry it.
+- **Per-person override** `User.personalAi` = `inherit` | `allow` | `deny`, changed only by a holder of `core:mcp.tokens` (`setPersonAiOverrideAction`). `allow` never raises the person's own rights: the ceiling still applies.
+- **No master switch any more (0.47.0).** The old setting `mcp.personalPolicy.enabled` is ignored and always read as true; the global AI switch is `mcp.enabled` ("Pause all assistants"). `allowDirect` (default off) is kept: a person may choose "act without asking" for an access only when it is on. It has no screen yet (the service function `setOwnPersonalApproval` exists). Installs and new instances always wait for a human.
 
 ## The ceiling
 
-On **every request** (`tools/list` and `tools/call`), `canUse` (`services/mcp/access.ts`) adds one condition for a personal access: the owner may do what the tool does **now** (`services/mcp/ownerCeiling.ts`). The owner's level and rights are read from the database each time, so a demotion or a withdrawn right applies to the very next call. The ordinary rules (scope ceiling, grants) still apply on top; full powers never apply.
+On **every request** (`tools/list` and `tools/call`), `canUse` (`services/mcp/access.ts`) adds one condition: the owner may do what the tool does **now** (`services/mcp/ownerCeiling.ts`). The owner's level and rights are read from the database each time, so a demotion or a withdrawn right applies to the very next call. The ordinary rules (scope ceiling, grants) still apply on top.
 
 | Tool | The owner needs |
 |---|---|
@@ -29,26 +36,36 @@ On **every request** (`tools/list` and `tools/call`), `canUse` (`services/mcp/ac
 | `site_info`, `maintenance_my_access`, `maintenance_request_status` | nothing |
 | a module tool | its manifest key `mcp[].right` (a local right of that module) |
 
-- A tool with **no declared requirement is hidden** from personal assistants (fail closed). A module that has not declared `right` yet is invisible to them, never open to them. A catalogue test fails when a core tool is missing from the table.
-- An owner who does not exist, a policy that is off, a paused access, a locked account (temporary password, two-factor required and missing) or a missing resolver: the assistant answers nothing, with a clear message to its owner (or "invalid token" when the owner is gone).
-- `maintenance_my_access` says `above_owner_rights` for tools the owner cannot do (no box to tick: ask an administrator), and `maintenance_status` reports `reconnectNeeded` when the owner's rights changed.
+- **A new access hides a tool with no declared requirement** (fail closed). A catalogue test fails when a core tool is missing from the table.
+- **The coarse fallback (0.47.0).** An access that existed before every access had an owner carries `ApiToken.coarseCeiling = true`. For a **module tool that declares no `right`** its requirement is the **admin tier** (`COARSE_FALLBACK` in `ownerCeiling.ts`): the level of the people who could create those accesses. Why: many modules do not declare `right` yet; hiding their tools would switch off every access on upgrade. An owner who is an administrator or above keeps every such tool; an editor does not. Tools with a declared requirement and **every core tool keep the table above**: so an access given to an administrator loses only the tools that need a reserved right (updates, backup, installs). Full powers granted before the change keep working for such an access (and for it only), and so does its secret address; the ceiling always comes first. A new access never has the fallback, full powers or a secret address.
+- An owner who does not exist, a paused access, a locked account (temporary password, two-factor required and missing) or a missing resolver: the access answers nothing, with a clear message (or "invalid token" when the owner is gone).
+- `maintenance_my_access` reports `access.owner` (the owner's name, or "no owner" with what to do), `above_owner_rights` for tools the owner cannot do (no box to tick) and `reconnectNeeded` when the owner's rights changed. `maintenance_health` reports `accessesWithoutOwner` (a number) and `maintenance_diagnose` lists it as "needs a human"; both read only.
+
+## Choosing owners (temporary page: removed in 0.49.0)
+
+- **One account on the site** (a row of the user table; an invited person who has not signed in is a row too, so an owner plus a pending invitation counts as two): at start-up, every live access without an owner is given to that account, with the coarse ceiling. Idempotent; a journal row `mcp.personal.assign` per access (actor "system", the access name and the person's e-mail, never a code). Nothing to do on screen.
+- **Several accounts:** nothing is assigned. Every access without an owner **keeps working exactly as before** and shows **No owner**. It cannot be given new rights (only turned off) until it has an owner. A holder of `core:mcp.tokens` opens Admin > AI assistants > By person: a panel **"Choose who owns each access"** lists them (search, one select and "Assign" per row, and "Give all to this person" with a confirmation that says what changes). **The panel is shown only while an access has no owner** (no empty panel, no link, no notice otherwise). Who may be chosen: the people allowed to own an access (right or override).
+- **Permanent part:** the row menu "Choose an owner" of the By person table, `assignOwner` (`personalAi/owners.ts`), the "No owner" state, and the rule that **no access is created without an owner** (enforced in code and by a source test, not by a NOT NULL column: the column stays additive and nullable). An access whose owner row no longer exists (a restored site, a person removed by hand) counts as "No owner" and answers "invalid token" until someone is chosen.
+- **Sunset: 0.49.0.** Delete `src/core/personalAi/legacyOwners.ts`, its call in `src/instrumentation.ts` and the folder `src/app/admin/(panel)/assistants/assign-owners/` (plus its import in `OwnersTab.tsx`, the locale keys `owners.assign.*` and the test `the single-account step and its page are temporary` of `tests/services/access-owners.test.mjs`, which fails once `package.json` reaches 0.49.0 while they exist). The migration registry of `docs/MIGRATIONS.md` works by support floor, not by version, so it does not fit; the test is the reminder.
+- **Rollback by hand:** `UPDATE ApiToken SET ownerId = NULL, coarseCeiling = 0 WHERE coarseCeiling = 1;` (the accesses go back to what they were: no owner, every tool as before).
 
 ## Requests and approvals
 
-A request made by a personal assistant stores its owner (read from the access row). It is decided by **the person who owns the assistant**, or by a holder of `core:mcp.tokens`; nobody else. At approval the owner's rights are **checked again**: a request that is above what the owner may do now is refused and never runs.
+A request made by an access stores its owner (read from the access row). It is decided by **the person who owns the access**, or by a holder of `core:mcp.tokens`; nobody else. At approval the owner's rights are **checked again**: a request above what the owner may do now is refused and never runs. A request of an access with no owner is decided by a holder of `core:mcp.tokens` only, as before.
 
 ## Lifecycle
 
 | Event | Result |
 |---|---|
-| Demotion, right withdrawn, policy off, `deny` | Inert on the next request; nothing deleted; restored when the right comes back |
-| Sign out everywhere, administrator cuts the sessions, password changed or reset, two-factor reset | The assistant is **paused**; its owner resumes it (password asked again) |
-| User deleted | Every personal access of that user is **revoked** first; it never becomes independent (no `SetNull`) |
+| Demotion, right withdrawn, `deny` | Stopped on the next request; nothing deleted; restored when the right comes back |
+| Sign out everywhere, administrator cuts the sessions, password changed or reset, two-factor reset | Every access of that person is **paused**; the owner resumes it (password asked again) |
+| User deleted | Every access of that user is **revoked** first; it never becomes ownerless (no `SetNull`) |
+| Backup restored | Accesses are not part of a backup; an access whose owner no longer exists shows "No owner" |
 
-## Connection
+## Creating, pausing, removing
 
-One personal assistant per person. Creation and resuming ask for the person's password again (5 wrong answers per 15 minutes at most). The access code is shown **once**; only its hash is stored. No secret address, no full powers. Personal assistants also share a site-wide hourly budget (risky 30, content 300) on top of the per-access limits. The journal records `mcp.personal.create`, `.revoke`, `.pause`, `.resume`, `.rights`, `.inert` (once per transition) and `.policy`; names and counts only, never a code.
+Creation and resuming ask for the person's password again (5 wrong answers per 15 minutes at most). The connection key is shown **once**; only its hash is stored. No secret address and no full powers for a new access. Accesses share a site-wide hourly budget for the ones that belong to a person (risky 30, content 300) on top of the per-access limits. A holder of `core:mcp.tokens` can pause or remove any access; only its owner resumes it. The journal records `mcp.personal.create`, `.assign`, `.revoke`, `.pause`, `.resume`, `.rename`, `.rights`, `.inert` (once per transition) and `.policy`; names and counts, never a code.
 
 ## Do not downgrade
 
-An **older core ignores `ApiToken.ownerId`** and would treat a personal access as an independent one. Updates are forward only and keep a copy of the database at each step; do not restore an older core while personal assistants exist. Revoke them first.
+An **older core ignores `ApiToken.ownerId`** and would treat an owned access as one without an owner (no ceiling). Updates are forward only and keep a copy of the database at each step; do not restore an older core while accesses have owners.

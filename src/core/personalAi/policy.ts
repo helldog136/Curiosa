@@ -5,10 +5,10 @@ import { PERSONAL_AI_RIGHT } from "@/core/auth/rights";
 /**
  * POLICY OF PERSONAL AI ASSISTANTS (core 0.46.0): who may have an AI that belongs to them.
  *
- *   allowed(person) = master switch ON  AND  override is not "deny"  AND  (override is "allow"  OR  the person holds the right `core:ai.personal`)
+ *   allowed(person) = override is not "deny"  AND  (override is "allow"  OR  the person holds the right `core:ai.personal`)
  *
- * - The master switch (`enabled`) is OFF by default: nothing changes on a site until its owner turns it on. Turning it off makes every personal AI inert at once
- *   (independent accesses are not concerned).
+ * (0.47.0) Every AI access belongs to a person, so the old master switch ("personal assistants on/off") is gone: the global AI switch is `mcp.enabled` (setMcpEnabled). The stored
+ * `enabled` flag is ignored and always read as true; only `allowDirect` is still a real option.
  * - `core:ai.personal` is a delegable right of the roles system (administrators, the coordinator and the owner hold it; editors do not; a custom role can carry it).
  * - The per-person override is the column `User.personalAi` (`inherit` | `allow` | `deny`). "allow" never raises the rights of the person: the ceiling still bounds the AI.
  * - `allowDirect` (default off): a person may choose "act without asking" for their own AI only when the policy allows it.
@@ -17,7 +17,7 @@ import { PERSONAL_AI_RIGHT } from "@/core/auth/rights";
  */
 export const PERSONAL_POLICY_KEY = "mcp.personalPolicy";
 export type PersonalPolicy = { enabled: boolean; allowDirect: boolean };
-export const DEFAULT_POLICY: PersonalPolicy = { enabled: false, allowDirect: false };
+export const DEFAULT_POLICY: PersonalPolicy = { enabled: true, allowDirect: false };
 export type Override = "inherit" | "allow" | "deny";
 export const isOverride = (v: unknown): v is Override => v === "inherit" || v === "allow" || v === "deny";
 
@@ -27,21 +27,20 @@ export async function getPersonalPolicy(): Promise<PersonalPolicy> {
   if (!row) return { ...DEFAULT_POLICY };
   try {
     const v = JSON.parse(row.value);
-    return v && typeof v === "object" && !Array.isArray(v) ? { enabled: v.enabled === true, allowDirect: v.allowDirect === true } : { ...DEFAULT_POLICY };
+    return v && typeof v === "object" && !Array.isArray(v) ? { enabled: true, allowDirect: v.allowDirect === true } : { ...DEFAULT_POLICY };
   } catch { return { ...DEFAULT_POLICY }; }
 }
 
 /** The caller (an admin action) has checked `core:mcp.tokens`. */
 export async function setPersonalPolicy(patch: Partial<PersonalPolicy>): Promise<PersonalPolicy> {
   const now = await getPersonalPolicy();
-  const next: PersonalPolicy = { enabled: patch.enabled === undefined ? now.enabled : patch.enabled === true, allowDirect: patch.allowDirect === undefined ? now.allowDirect : patch.allowDirect === true };
+  const next: PersonalPolicy = { enabled: true, allowDirect: patch.allowDirect === undefined ? now.allowDirect : patch.allowDirect === true };
   await setSetting(PERSONAL_POLICY_KEY, next);
   return next;
 }
 
 /** Pure: may this person have a personal AI under this policy? `holdsRight`: the person holds `core:ai.personal` (and is not locked: see `can`). */
 export function personalAiAllowed(policy: PersonalPolicy, override: string, holdsRight: boolean): boolean {
-  if (!policy.enabled) return false;
   if (override === "deny") return false;
   return override === "allow" || holdsRight;
 }

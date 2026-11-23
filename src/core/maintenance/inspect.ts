@@ -153,6 +153,8 @@ export async function health() {
     /** Automatic backup by e-mail: read-only. State, frequency, last result and a masked recipient; never the passphrase, never an address in full. */
     autoBackup: auto,
     instancesSetAside: instances.length,
+    /** (0.47.0) Read-only: AI accesses that belong to nobody (they work as before; a human chooses an owner in Admin > AI assistants). Count only, no name. */
+    accessesWithoutOwner: (await import("@/core/personalAi/owners").then((m) => m.accessesWithoutOwner()).catch(() => [])).length,
     recentErrors: errors,
     updateRunning: updateRunning(),
   };
@@ -359,6 +361,7 @@ export async function diagnose() {
     if (!h.lastBackup.at) add({ severity: "warning", problem: "No backup has ever been made.", probableCause: "backups are manual", proposedAction: "Make a server-side copy of the database now.", tool: "maintenance_backup_run", needsHuman: false });
     else if (!h.lastBackup.recent) add({ severity: "warning", problem: `The last backup is old (${h.lastBackup.at.slice(0, 10)}).`, probableCause: "backups are manual", proposedAction: "Make a fresh copy of the database before any update.", tool: "maintenance_backup_run", needsHuman: false });
     if (h.autoBackup?.enabled && h.autoBackup.state === "degraded") add({ severity: "warning", problem: `The automatic backup by e-mail is degraded (${(h.autoBackup.reason ?? "unknown").replace(/_/g, " ")}).`, probableCause: "the last run failed or the e-mail settings changed", proposedAction: "Tell the owner: Admin > Backup shows the reason and what to do. You cannot change this feature.", tool: null, needsHuman: true });
+    if (h.accessesWithoutOwner > 0) add({ severity: "info", problem: `AI accesses without an owner: ${h.accessesWithoutOwner}.`, probableCause: "they were created before every access belonged to a person, or their owner no longer exists", proposedAction: "Tell the owner: they work as before, but only a person can choose their owner (Admin > AI assistants > By person). You cannot do it, and these accesses cannot be given new rights until then.", tool: null, needsHuman: true });
     if (h.updateRunning) add({ severity: "info", problem: "A core update is running.", probableCause: "an update was started recently", proposedAction: "Wait a few minutes, then call maintenance_status again. Do not start anything else meanwhile.", tool: "maintenance_status", needsHuman: false });
   }
   const state = readUpdateState(dataDir());

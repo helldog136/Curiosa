@@ -61,6 +61,13 @@ async function maintenanceToken(grant = [], name = "Maintenance AI") {
   const token = await T.createToken(name, "write", "owner@example.org", { grants: { [A.MAINTENANCE_PROFILE]: true, ...Object.fromEntries(grant.map((g) => [`maintenance_${g}`, true])) } });
   return { token, id: await T.findTokenId(token) };
 }
+// A healthy site has no unowned AI access (an unowned one is reported as an info item): give the fixture access to an owner-level person.
+async function owned(id) {
+  await import("@/core/personalAi/owner"); // registers the resolver of the owner of an access
+  const { columnsOf } = await import("@/core/auth/rights");
+  const user = await db.prisma.user.upsert({ where: { email: "etoile_nord@example.org" }, update: {}, create: { email: "etoile_nord@example.org", name: "etoile_nord", passwordHash: "x", ...columnsOf("owner") } });
+  await db.prisma.apiToken.update({ where: { id }, data: { ownerId: user.id } });
+}
 async function threeModules() {
   for (const id of ["a", "b", "c"]) await db.prisma.module.create({ data: { id, source: "git", repoUrl: `https://example.org/${id}.git`, ref: "v1.0.0", version: "1.0.0" } });
   report = { checkedAt: Date.now(), checked: 3, unchecked: [], outdated: ["a", "b", "c"].map((id) => ({ id, current: "1.0.0", target: "1.0.1" })) };
@@ -258,7 +265,8 @@ test("diagnose: when the check of the repositories is not over, the last saved o
 });
 
 test("diagnose: a complete, quick answer has no 'unknown' and keeps the former verdicts", async () => {
-  const { token } = await maintenanceToken();
+  const { token, id } = await maintenanceToken();
+  await owned(id);
   await db.prisma.auditLog.create({ data: { actor: "owner@example.org", action: "backup.create", target: "x" } });
   const { value } = await call(token, "maintenance_diagnose");
   assert.equal(value.unknown, undefined);

@@ -13,7 +13,7 @@ const en = JSON.parse(read("src/locales/en.json"));
 const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(`${d}/${e.name}`) : [`${d}/${e.name}`]));
 
 test("adresses : onglet par défaut, onglet inconnu, adresses construites au même endroit", () => {
-  assert.deepEqual(L.ASSISTANT_TABS, ["access", "requests", "history"]);
+  assert.deepEqual(L.ASSISTANT_TABS, ["access", "owners", "requests", "history"]);
   assert.equal(L.parseTab(undefined), "access");
   assert.equal(L.parseTab("n'importe quoi"), "access");
   assert.equal(L.parseTab(["history", "access"]), "history", "un paramètre répété : le premier");

@@ -9,6 +9,7 @@ import { ALWAYS_HUMAN } from "./actions";
 import { reconnectView } from "./reconnect";
 import { getApprovalMode } from "./settings";
 import { remainingSlots } from "./slots";
+import { prisma } from "@/core/db";
 import { mediaLimitsNow } from "@/core/services/mcp/uploadLift";
 import { DAILY_BYTES as FILES_DAILY_BYTES, DAILY_FILES as FILES_DAILY } from "@/core/services/assistantUploads";
 
@@ -49,7 +50,7 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   for (const tool of tools) {
     if (canUse(tool, token)) granted.push({ tool: tool.name, kind: kindOf(tool), summary: plain(tool) });
     // A personal AI (0.46.0): a tool above its owner's rights is not a box to tick; it needs an administrator, and no tick would help.
-    else if (token.personal && !ownerCeilingAllows(tool, token.personal)) notGranted.push({ tool: tool.name, kind: kindOf(tool), why: "above_owner_rights", rightToTick: t("aim.my.aboveOwner") });
+    else if (token.personal && !ownerCeilingAllows(tool, token.personal, { coarse: token.coarse })) notGranted.push({ tool: tool.name, kind: kindOf(tool), why: "above_owner_rights", rightToTick: t("aim.my.aboveOwner") });
     else notGranted.push({ tool: tool.name, kind: kindOf(tool), why: withinCeiling(tool, token.scope) ? "box_not_ticked" : "access_is_read_only", rightToTick: plain(tool) });
   }
   // Module tools whose text is not in the site language (the module has no translation): shown in English, and said so, so that nobody blames the site.
@@ -63,7 +64,11 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
   const reconnect = await reconnectView(actor.tokenId, token, t, granted.map((g) => g.tool));
   return {
     ...reconnect,
-    access: { name: actor.name, ceiling: token.scope, ceilingMeaning: t(readOnly ? "aim.my.ceiling.read" : "aim.my.ceiling.write") },
+    access: {
+      name: actor.name, ceiling: token.scope, ceilingMeaning: t(readOnly ? "aim.my.ceiling.read" : "aim.my.ceiling.write"),
+      // (0.47.0) Every access belongs to a person: the name of the owner (never an e-mail or a secret), or the plain fact that nobody owns this one yet.
+      owner: token.ownerId ? { name: await ownerDisplayName(token.ownerId) } : { name: null, meaning: t("aim.my.noOwner") },
+    },
     approvalSetting: {
       value: approval === "direct" ? "act_without_asking" : "ask_first",
       meaning: t(approval === "direct" ? "aim.my.approval.direct" : "aim.my.approval.ask"),
@@ -98,4 +103,9 @@ export async function myAccess(actor: { name: string; tokenId?: string }): Promi
     reconnect: t("aim.my.reconnect"),
     discover: t("aim.my.discover"),
   };
+}
+
+/** The display name of the owner of an access (name only; null when the person does not exist). */
+async function ownerDisplayName(ownerId: string): Promise<string | null> {
+  return (await prisma.user.findUnique({ where: { id: ownerId }, select: { name: true } }))?.name ?? null;
 }

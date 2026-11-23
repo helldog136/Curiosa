@@ -62,6 +62,8 @@ export type AccessToken = {
   scope: Scope; grants: Grants; fullPowers?: boolean;
   /** (0.46.0) Present ONLY for a personal AI (an access that belongs to a user): the owner as seen now. Absent = an independent access, whose behaviour is unchanged. */
   personal?: OwnerState;
+  /** (0.47.0) The access existed before every access had an owner: undeclared module tools use the coarse fallback (ownerCeiling.ts). */
+  coarse?: boolean;
 };
 
 /**
@@ -87,8 +89,8 @@ export function grantedByFullPowers(tool: ToolAccessInfo, token: AccessToken): b
 /** Le jeton peut-il voir et appeler cette action ? */
 export function canUse(tool: ToolAccessInfo, token: AccessToken): boolean {
   if (token.personal !== undefined) {
-    // A personal AI: the owner's CURRENT rights are a ceiling on top of the ordinary rules, and full powers never apply to it (belt and braces: it cannot be set either).
-    return ownerCeilingAllows(tool, token.personal) && withinCeiling(tool, token.scope) && isGranted(tool, token.grants);
+    // A personal AI: the owner's CURRENT rights are a ceiling on top of the ordinary rules, and full powers apply only to an access that already held them before owners were mandatory (`coarse`; fullPowers.ts never sets them on another one): even then the ceiling comes first.
+    return ownerCeilingAllows(tool, token.personal, { coarse: token.coarse }) && ((token.coarse === true && grantedByFullPowers(tool, token)) || (withinCeiling(tool, token.scope) && isGranted(tool, token.grants)));
   }
   return grantedByFullPowers(tool, token) || (withinCeiling(tool, token.scope) && isGranted(tool, token.grants));
 }

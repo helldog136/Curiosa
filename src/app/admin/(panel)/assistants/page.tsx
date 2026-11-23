@@ -3,7 +3,7 @@ import { adminCtx } from "@/core/admin";
 import { isOwner } from "@/core/permissions";
 import { CREDIT_URL } from "@/core/credit";
 import { adminBugReportUrl } from "@/core/bugReport";
-import { REQUEST_NOTICES, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
+import { REQUEST_NOTICES, assistantsTabHref, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { markSeen } from "@/core/maintenance/settings";
 import { accessesWithFullPowers } from "@/core/services/mcp/fullPowers";
@@ -15,6 +15,9 @@ import { turnOffFullPowersAction } from "./fullPowersActions";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { PageHeader } from "@/components/admin/Page";
 import { AccessTab } from "./AccessTab";
+import { OwnersTab } from "./OwnersTab";
+import { accessesWithoutOwner } from "@/core/personalAi/owners";
+import { Callout } from "@/components/admin/Page";
 import { AssistantTabs } from "./AssistantTabs";
 import { HistoryTab } from "./HistoryTab";
 import { RequestsTab } from "./RequestsTab";
@@ -34,10 +37,10 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
   // Ancien lien « ajouter un assistant d'entretien » : le formulaire est maintenant dans l'Équipe.
   if (tab === "access" && query.profile === "maintenance") redirect(newAccessHref(true));
   const notice = REQUEST_NOTICES.find((n) => n === query.notice);
-  const [{ pending }, bugUrl, fullPowers] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t), accessesWithFullPowers()]);
+  const [{ pending }, bugUrl, fullPowers, unowned] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t), accessesWithFullPowers(), accessesWithoutOwner()]);
   const owner = isOwner(user);
   // Voir les demandes ou l'historique = avoir vu ce que les IA ont fait : la pastille du menu repart de zéro (les demandes en attente, elles, restent).
-  if (tab !== "access") await markSeen();
+  if (tab !== "access" && tab !== "owners") await markSeen();
 
   return (
     <div className="space-y-8">
@@ -59,8 +62,15 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
           </ul>
         </div>
       )}
+      {/* Only when something waits for input (R33): at least one access has no owner. It keeps working as before. */}
+      {unowned.length > 0 && tab !== "owners" && (
+        <Callout tone="warn" testid="owners-pending">
+          <span className="flex flex-wrap items-center justify-between gap-3"><span>{t("owners.pending", { n: unowned.length })}</span><a href={assistantsTabHref("owners")} className={ui.btn} data-testid="owners-pending-open">{t("owners.pendingOpen")}</a></span>
+        </Callout>
+      )}
       <AssistantTabs t={t} current={tab} pending={pending} />
       {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} owner={isOwner(user)} />}
+      {tab === "owners" && <OwnersTab t={t} />}
       {tab === "requests" && <RequestsTab t={t} locale={locale} defaultLocale={config.defaultLocale} notice={notice} />}
       {tab === "history" && <HistoryTab t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} />}
 

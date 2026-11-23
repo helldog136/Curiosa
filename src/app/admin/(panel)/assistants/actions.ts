@@ -12,7 +12,8 @@ import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
 import { setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
-import { revokePersonalAccessById } from "@/core/personalAi/service";
+import { pausePersonalAccessById, revokePersonalAccessById } from "@/core/personalAi/service";
+import { assignOwner, mayOwnAccess } from "@/core/personalAi/owners";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { addTrustedSource, MAX_SOURCES, parseSource, PRESET_SOURCE, removeTrustedSource, sourceLabel } from "@/core/trustedImageSources";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -36,9 +37,13 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   // Profil « Maintenance » : le plafond est « écriture » (sinon on ne pourrait jamais accorder une action sans risque), mais SEULS les outils de maintenance
   // sont proposés, et seule la lecture est active ; le reste se coche plus tard, action par action (voir access.ts, MAINTENANCE_PROFILE).
   const scope: TokenScope = maintenance || formData.get("scope") === "write" ? "write" : "read";
-  const byUrl = formData.get("byUrl") === "on";
+  // (0.47.0) Every access belongs to a person: the signed-in one by default; a holder of `core:mcp.tokens` may name another person who may own one. No secret address for a new access.
+  const byUrl = false;
   if (!name) return { error: t("assistants.error.name") };
-  const { token } = await createAccess({ name, scope, actorEmail: user.email, byUrl, grants: maintenance ? { [MAINTENANCE_PROFILE]: true } : undefined, note: maintenance ? "maintenance" : undefined });
+  const askedOwner = String(formData.get("owner") ?? "").trim();
+  const ownerId = askedOwner || user.id;
+  if (!(await mayOwnAccess(ownerId))) return { error: t("assistants.error.owner") };
+  const { token } = await createAccess({ name, scope, actorEmail: user.email, ownerId, grants: maintenance ? { [MAINTENANCE_PROFILE]: true } : undefined, note: maintenance ? "maintenance" : undefined });
   if (maintenance) {
     const id = await findTokenId(token);
     // Validation humaine par défaut ; l'exécution directe doit être choisie explicitement.
@@ -84,7 +89,8 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
   const tool = catalogue.find((t) => t.name === toolName);
-  if (!token || !tool || token.ownerId) return { ok: false };
+  // An access without an owner can only lose rights until someone owns it (0.47.0); an owned one is bounded by its owner at every request.
+  if (!token || !tool || (enabled && !token.ownerId)) return { ok: false };
   // Plafond : on n'accorde pas une action qui écrit à un jeton « lecture seule ».
   if (enabled && !withinCeiling(tool, token.scope)) return { ok: false };
   await saveTokenGrants(tokenId, setGrant(token.grants, tool, enabled));
@@ -101,8 +107,9 @@ export async function setGrantAction(tokenId: string, toolName: string, enabled:
 export async function applyGrantsAction(tokenId: string, changes: Record<string, boolean>): Promise<{ ok: boolean; applied: string[]; rejected: GrantRejection[] }> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
-  if (!token || token.ownerId) return { ok: false, applied: [], rejected: [] };
-  const clean = Object.fromEntries(Object.entries(changes ?? {}).slice(0, 500).filter(([, v]) => typeof v === "boolean"));
+  if (!token) return { ok: false, applied: [], rejected: [] };
+  // No owner: turning rights OFF only (0.47.0).
+  const clean = Object.fromEntries(Object.entries(changes ?? {}).slice(0, 500).filter(([, v]) => typeof v === "boolean" && (token.ownerId || v === false)));
   const result = applyGrantChanges(token.grants, token.scope, catalogue, clean);
   if (result.applied.length) {
     await saveTokenGrants(tokenId, result.grants);
@@ -119,7 +126,7 @@ export async function applyGrantsAction(tokenId: string, changes: Record<string,
 export async function resetGrantsAction(tokenId: string, instanceKey: string | null, mode: "defaults" | "none"): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const [token, catalogue] = await Promise.all([getTokenGrants(tokenId), listMcpToolCatalogue()]);
-  if (!token || token.ownerId) return;
+  if (!token || (!token.ownerId && mode === "defaults")) return;
   let grants: Grants = token.grants;
   for (const tool of catalogue.filter((t) => instanceKey === null || t.source === instanceKey)) grants = setGrant(grants, tool, mode === "defaults" ? defaultFor(tool, grants) : false);
   await saveTokenGrants(tokenId, grants);
@@ -183,10 +190,26 @@ export async function setPersonAiOverrideAction(userId: string, value: string): 
   return true;
 }
 
-/** Remove one person's personal AI (revoked for good). */
+/** (0.47.0) Choose the owner of an access (permanent: the row menu "Choose an owner" and the Assign owners page both use it). Only `core:mcp.tokens`; the person must be allowed to own an access. */
+export async function assignOwnerAction(tokenId: string, ownerId: string): Promise<{ ok: boolean; reason?: string }> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  const r = await assignOwner(String(tokenId), String(ownerId), user.email);
+  revalidatePath(ASSISTANTS_HREF);
+  revalidatePath(TEAM_HREF);
+  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
+}
+
+/** Remove one person's AI access (revoked for good). */
 export async function revokePersonalAccessAction(tokenId: string): Promise<boolean> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const done = await revokePersonalAccessById(String(tokenId), user.email);
   revalidatePath(ASSISTANTS_HREF);
   return done;
+}
+
+/** Pause an owned access (a holder of `core:mcp.tokens`). Resuming is the owner's: the password is asked again. */
+export async function pauseAccessAction(tokenId: string): Promise<void> {
+  const { user } = await adminCtx({ right: "core:mcp.tokens" });
+  await pausePersonalAccessById(String(tokenId), user.email);
+  revalidatePath(ASSISTANTS_HREF);
 }

@@ -14,6 +14,7 @@ import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { RowMenu } from "@/components/admin/RowMenu";
 import type { TableRow } from "@/components/admin/RowTable";
 import { ui } from "@/components/admin/ui";
+import { ownerNames } from "@/core/personalAi/owners";
 import { revokeTokenAction } from "../assistants/actions";
 
 /**
@@ -23,8 +24,9 @@ import { revokeTokenAction } from "../assistants/actions";
  */
 export async function assistantMembers({ t, locale, canHistory }: { t: Translator; locale: string; canHistory: boolean }) {
   const now = new Date();
-  const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ where: { ownerId: null }, orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
+  const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
   const { active, inactive } = splitAccesses(rows, now);
+  const people = await ownerNames();
   // Dernière activité : la plus récente entre l'usage de l'accès et une ligne du Journal central signée de son nom (une seule requête groupée, aucun minuteur).
   const journal = active.length === 0 ? [] : await prisma.auditLog.groupBy({ by: ["actor"], where: { actor: { in: active.map((k) => `mcp:${k.name}`) } }, _max: { createdAt: true } });
   const journalAt = new Map(journal.map((j) => [j.actor, j._max.createdAt]));
@@ -42,20 +44,23 @@ export async function assistantMembers({ t, locale, canHistory }: { t: Translato
     const waiting = pending.get(k.id) ?? 0;
     // Seule l'exception s'écrit (R14) : un assistant d'entretien qui agit sans demander. La validation par une personne est la règle, donc sans étiquette.
     const direct = can.some((a) => a.startsWith("maintenance")) && modes[k.id] === "direct";
+    const ownerName = k.ownerId ? people.get(k.ownerId) : undefined;
+    const noOwner = !ownerName;
     const flags = assistantFlags({ enabled, pending: waiting });
     const historyHref = canHistory ? assistantHistoryHref(k.name) : assistantsTabHref("history");
     return {
       key: `ai:${k.id}`,
       testid: "assistant-row",
-      search: [k.name, t("team.type.assistant"), rightsText, direct && t("assistants.chip.direct"), full && t("fullpowers.chip"), ...flags.map((f) => t(`team.flag.${f}`))],
+      search: [k.name, ownerName, noOwner && t("owners.state.none"), t("team.type.assistant"), rightsText, direct && t("assistants.chip.direct"), full && t("fullpowers.chip"), ...flags.map((f) => t(`team.flag.${f}`))],
       filters: { who: memberFilter("assistant") },
       titles: { person: k.name, role: can.map((a) => t(`assistants.can.${a}`)).join(" ") },
       cells: {
-        person: <span className="block break-words font-medium">{k.name}</span>,
+        person: <><span className="block break-words font-medium">{k.name}</span>{ownerName && <span className="block truncate text-muted">{ownerName}</span>}</>,
         type: <Badge tone="accent" testid="member-type">{t("team.type.assistant")}</Badge>,
         role: <span data-testid="assistant-rights" className="block">{rightsText}</span>,
-        state: flags.length === 0 && !direct && !full ? null : (
+        state: flags.length === 0 && !direct && !full && !noOwner ? null : (
           <span className="flex flex-wrap gap-1.5" data-testid="assistant-flags">
+            {noOwner && <a href={assistantsTabHref("owners")} className={`${ui.chipDanger} underline`} data-testid="assistant-no-owner">{t("owners.state.none")}</a>}
             {flags.includes("paused") && <span className={ui.chipWarn}>{t("team.flag.paused")}</span>}
             {flags.includes("waiting") && <a href={assistantsTabHref("requests")} className={`${ui.chipWarn} underline`}>{t("team.flag.waiting")}</a>}
             {full && <a href={accessHref(k.id)} className={`${ui.chipDanger} underline`} data-testid="fullpowers-chip">{t("fullpowers.chip")}</a>}

@@ -20,5 +20,6 @@ export function creatorLabels(t: Translator, advanced: boolean): CreatorLabels {
       : { label: t("assistants.new.how"), help: t("assistants.new.how.claude"), keyLabel: t("assistants.new.how.key"), keyHelp: t("assistants.new.how.keyHelp") },
     simpleGuide: { claudeTitle: t("mcp.guide.claude.title"), claudeText: t("mcp.guide.claude.text"), keyText: t("assistants.guide.keyText"), warn: t("assistants.guide.warn") },
     more: { title: t("users.addMore"), summary: t("team.ai.moreSummary") },
+    owner: { summary: t("owners.creator.summary"), change: t("owners.creator.change") },
   };
 }

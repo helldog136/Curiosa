@@ -25,6 +25,9 @@ import { canManageMember, grantableLevels } from "@/core/auth/team";
 import { listRoles } from "@/core/auth/roles";
 import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRolesAction, unlockUser } from "./actions";
 import { RolesPanel } from "./RolesPanel";
+import { PersonAiOverride } from "@/components/admin/PersonAiOverride";
+import { countOwned, eligibleOwners, mayOwnAccess, ownerOptions } from "@/core/personalAi/owners";
+import { setPersonAiOverrideAction } from "../assistants/actions";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { AddMember } from "@/components/admin/AddMember";
 import { McpTokenCreator } from "@/components/admin/McpTokenCreator";
@@ -85,6 +88,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   const canAssistants = can(user, "core:mcp.tokens");
   const ai = canAssistants ? await assistantMembers({ t, locale, canHistory: can(user, "core:security") }) : null;
   const mixed = !!ai && ai.rows.length > 0;
+  // Per person (holders of `core:mcp.tokens` only): the override and what it means now, and how many accesses the person owns.
+  const personAi = canAssistants ? new Map(await Promise.all(users.map(async (u) => [u.id, { effective: await mayOwnAccess(u.id), owned: await countOwned(u.id) }] as const))) : null;
+  const ownerChoices = canAssistants ? ownerOptions(await eligibleOwners()) : [];
+  const aiLabels = { title: t("owners.person.title"), inherit: t("owners.person.inherit"), allow: t("owners.person.allow"), deny: t("owners.person.deny"), save: t("owners.person.save"), may: t("owners.person.may"), mayNot: t("owners.person.mayNot"), owned: t("owners.person.owned"), done: t("owners.assign.done"), failed: t("owners.assign.failed") };
   const guide = Object.fromEntries(GUIDE_KEYS.map((k) => [k, t(k)])) as GuideTexts;
   const required = (await getSetting<boolean>("security.require2fa")) === true;
   const locks = new Map(await Promise.all(users.map(async (u) => [u.id, await isEmailLocked(u.email)] as const)));
@@ -118,7 +125,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     const canDelete = canTeam ? manageable : user.level === "admin" && !me && level === "editor";
     const canReset = manageable;
     const canTempPassword = manageable;
-    const hasMenu = canDelete || canReset || canTempPassword || (manageable && !!lock);
+    const hasMenu = canDelete || canReset || canTempPassword || (manageable && !!lock) || !!personAi;
     const levelName = level === "none" ? t("users.noRole") : t(`role.${level}`);
     const rolesText = [levelName, ...custom.map((r) => r.name)].join(", ");
     return {
@@ -153,6 +160,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           )}
           {hasMenu && (
             <RowMenu label={t("users.menu.open", { name: u.name })}>
+              {personAi && <PersonAiOverride value={(u.personalAi === "allow" || u.personalAi === "deny" ? u.personalAi : "inherit")} effective={personAi.get(u.id)!.effective} owned={personAi.get(u.id)!.owned} save={setPersonAiOverrideAction.bind(null, u.id)} labels={aiLabels} />}
               {manageable && lock && <form action={unlockUser.bind(null, u.id)}><PendingButton variant="menu">{t("users.unlock")}</PendingButton></form>}
               {canTempPassword && (
                 <TemporaryPasswordButton menu memberName={`${u.name} — ${u.email}`} action={setTemporaryPassword.bind(null, u.id)} labels={tempLabels} />
@@ -198,7 +206,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           </MoreOptions>
         </ActionForm>
             </div>}
-            assistant={<div data-testid="invite-assistant"><McpTokenCreator compact action={createTokenAction} baseUrl={siteUrl} advanced={advanced} guide={guide} defaultProfile={query.assistant === "maintenance" ? "maintenance" : "standard"} labels={creatorLabels(t, advanced)} /></div>} />
+            assistant={<div data-testid="invite-assistant"><McpTokenCreator compact action={createTokenAction} baseUrl={siteUrl} advanced={advanced} guide={guide} defaultProfile={query.assistant === "maintenance" ? "maintenance" : "standard"} labels={creatorLabels(t, advanced)} owners={ownerChoices} ownerId={user.id} /></div>} />
         </Panel>
       ) : (
       <Panel title={t("users.add")} testid="invite">

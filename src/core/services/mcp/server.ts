@@ -136,7 +136,7 @@ export async function handleMcpRequest(request: Request, listTools: ListTools, v
 /** Last inert reason written to the journal per personal access: one line per TRANSITION (not per call), in memory. */
 const inertSeen = ((globalThis as unknown as { curiosaInertSeen?: Map<string, string> }).curiosaInertSeen ??= new Map<string, string>());
 
-/** A personal AI that cannot answer: say why to its owner, without revealing anything about anyone else. A missing owner looks like an unknown access. */
+/** An access that cannot answer: say why to its owner, without revealing anything about anyone else. A missing owner looks like an unknown access. */
 function inertAnswer(token: AuthedToken): Response | null {
   const personal = token.personal;
   if (!personal) return null;
@@ -147,9 +147,9 @@ function inertAnswer(token: AuthedToken): Response | null {
     void prisma.auditLog.create({ data: { actor: `mcp:${token.name}`, actorKind: "assistant", action: "mcp.personal.inert", target: why } }).catch(() => {});
   }
   if (why === "owner_missing" || why === "unavailable" || why === undefined) return json(rpcError(null, -32001, "Missing or invalid token."), 401, { "WWW-Authenticate": "Bearer" });
-  const message = why === "paused" ? "Your personal assistant is paused. Its owner can resume it from the account page."
-    : why === "owner_locked" ? "Your personal assistant waits until its owner has finished securing the account."
-    : "Your personal assistant is switched off by an administrator.";
+  const message = why === "paused" ? "This access is paused. Its owner can resume it from the account page."
+    : why === "owner_locked" ? "This access waits until its owner has finished securing the account."
+    : "This access is switched off: its owner may no longer have an AI access.";
   return json(rpcError(null, -32003, message), 403);
 }
 

@@ -83,6 +83,13 @@ async function maintenanceToken(grant = [], name = "Ma maintenance") {
   const token = await T.createToken(name, "write", "owner@example.org", { grants: { [A.MAINTENANCE_PROFILE]: true, ...Object.fromEntries(grant.map((g) => [`maintenance_${g}`, true])) } });
   return { token, id: await T.findTokenId(token) };
 }
+// A healthy site has no unowned AI access (an unowned one is reported as an info item): give the fixture access to an owner-level person.
+async function owned(id) {
+  await import("@/core/personalAi/owner"); // registers the resolver of the owner of an access
+  const { columnsOf } = await import("@/core/auth/rights");
+  const user = await db.prisma.user.upsert({ where: { email: "etoile_nord@example.org" }, update: {}, create: { email: "etoile_nord@example.org", name: "etoile_nord", passwordHash: "x", ...columnsOf("owner") } });
+  await db.prisma.apiToken.update({ where: { id }, data: { ownerId: user.id } });
+}
 const owner = { email: "owner@example.org", owner: true };
 const auditRows = (action) => db.prisma.auditLog.findMany({ where: { action: { startsWith: action } }, orderBy: { createdAt: "asc" } });
 
@@ -272,7 +279,8 @@ test("diagnose : un rapport par problème avec la cause probable, l'action propo
 test("diagnose : un site sain, sauvegardé et à jour → aucun problème", async () => {
   latest = { tag: "v0.1.14", notes: "" };
   await db.prisma.auditLog.create({ data: { actor: "owner@example.org", action: "backup.create", target: "" } });
-  const { token } = await maintenanceToken();
+  const { token, id } = await maintenanceToken();
+  await owned(id);
   const { value } = await call(token, "maintenance_diagnose");
   assert.equal(value.verdict, "healthy");
   assert.deepEqual(value.problems, []);
@@ -887,7 +895,8 @@ test("content_check_run : « continue » reprend la vérification commencée ; u
 test("diagnose : les remarques du contenu y figurent en « info » seulement — jamais en alarme —, et rien ne change pour un site sans remarque", async () => {
   latest = { tag: "v0.1.14", notes: "" };
   await db.prisma.auditLog.create({ data: { actor: "owner@example.org", action: "backup.create", target: "" } });
-  const { token } = await maintenanceToken(["content_check_run"]);
+  const { token, id } = await maintenanceToken(["content_check_run"]);
+  await owned(id);
   assert.equal((await call(token, "maintenance_diagnose")).value.verdict, "healthy", "jamais vérifié : aucun bruit");
   await siteWith("[mort](https://mort.example.net/x)", { title: "Accueil" });
   fakeWeb({ "*": { status: 404 } });
