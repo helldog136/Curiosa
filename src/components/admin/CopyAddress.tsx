@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useState } from "react";
 import { ui } from "./ui";
 
@@ -15,7 +16,7 @@ export function CopyAddress({ text, label, copied, manual }: { text: string; lab
   return (
     <span className="inline-flex flex-col gap-1">
       <button type="button" onClick={copy} className={ui.btn} aria-live="polite">{state === "done" ? `✓ ${copied}` : label}</button>
-      {state === "manual" && <input readOnly value={text} aria-label={manual} onFocus={(e) => e.currentTarget.select()} className={`${ui.input} font-mono text-xs`} />}
+      {state === "manual" && <input {...PLAIN_INPUT} readOnly value={text} aria-label={manual} onFocus={(e) => e.currentTarget.select()} className={`${ui.input} font-mono text-xs`} />}
     </span>
   );
 }

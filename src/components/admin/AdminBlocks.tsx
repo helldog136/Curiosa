@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { createContext, startTransition, useActionState, useContext, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
@@ -138,7 +139,7 @@ function Field({ f, labels }: { f: AdminField; labels?: FormLabels }) {
       ) : kind === "select" || f.kind === "segmented" ? (
         <select {...common}>{(f.options ?? []).map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
       ) : (
-        <input {...common} type={kind ?? "text"} placeholder={f.placeholder} />
+        <input {...common} {...PLAIN_INPUT} type={kind ?? "text"} placeholder={f.placeholder} />
       )}
       <HelpBelow help={f.help} className={ui.help} />
       {example && <p id={`ex-${f.name}`} className={ui.help} data-field-example="">{example}</p>}

@@ -1,3 +1,4 @@
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { FieldLabel, Select } from "@/components/admin/Field";
 import { Badge } from "@/components/admin/Badge";
@@ -48,7 +49,7 @@ export function RolesPanel({ roles, catalogue, held, isOwner, t, locale, default
   const field = (id: string, fieldName: string, text: string, opts: { value?: string; required?: boolean; help?: string; example?: string } = {}) => (
     <div>
       <FieldLabel id={id} className={ui.label} help={opts.help} text={text}>{text}</FieldLabel>
-      <input id={id} name={fieldName} defaultValue={opts.value} required={opts.required} maxLength={fieldName === "name" ? 60 : 300} aria-describedby={opts.example ? `${id}-ex` : undefined} className={ui.input} />
+      <input {...PLAIN_INPUT} id={id} name={fieldName} defaultValue={opts.value} required={opts.required} maxLength={fieldName === "name" ? 60 : 300} aria-describedby={opts.example ? `${id}-ex` : undefined} className={ui.input} />
       <HelpBelow help={opts.help} className={ui.help} />
       {opts.example && <p id={`${id}-ex`} className={ui.help} data-field-example="">{opts.example}</p>}
     </div>

@@ -1,4 +1,5 @@
 "use client";
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { LOGIN_HREF } from "@/core/adminLinks";
 
 import { useActionState, useEffect, useRef, useState } from "react";
@@ -158,11 +159,11 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
           <h2 className="text-2xl font-semibold tracking-tight">{t("setup.identity.title")}</h2>
           <div>
             <label className={ui.label} htmlFor="siteName">{t("setup.identity.name")}</label>
-            <input id="siteName" name="siteName" required className={`${ui.input} !py-3 !text-lg`} />
+            <input {...PLAIN_INPUT} id="siteName" name="siteName" required className={`${ui.input} !py-3 !text-lg`} />
           </div>
           <div>
             <label className={ui.label} htmlFor="tagline">{t("setup.identity.tagline")}</label>
-            <input id="tagline" name="tagline" className={ui.input} />
+            <input {...PLAIN_INPUT} id="tagline" name="tagline" className={ui.input} />
           </div>
         </div>
 
@@ -236,10 +237,10 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
           {linkRows.map((row) => (
             <div key={row} className="space-y-3 rounded-2xl border border-line p-4">
               <div className="grid gap-3 sm:grid-cols-2">
-                <input name="linkLabel" placeholder={t("setup.links.label")} aria-label={t("setup.links.label")} className={ui.input} />
-                <input name="linkIcon" placeholder={t("setup.links.icon")} aria-label={t("setup.links.icon")} className={ui.input} />
+                <input {...PLAIN_INPUT} name="linkLabel" placeholder={t("setup.links.label")} aria-label={t("setup.links.label")} className={ui.input} />
+                <input {...PLAIN_INPUT} name="linkIcon" placeholder={t("setup.links.icon")} aria-label={t("setup.links.icon")} className={ui.input} />
               </div>
-              <input name="linkUrl" type="url" placeholder={t("setup.links.url")} aria-label={t("setup.links.url")} className={ui.input} />
+              <input {...PLAIN_INPUT} name="linkUrl" type="url" placeholder={t("setup.links.url")} aria-label={t("setup.links.url")} className={ui.input} />
               <label className="flex items-center gap-2 text-sm">
                 <input type="checkbox" name="linkShortcut" value={row} defaultChecked className="h-4 w-4 accent-[var(--v-accent)]" /> {t("setup.links.shortcut")}
               </label>

@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useCallback, useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -576,7 +577,7 @@ export function ComposeEditor({ src, name, initial, option, labels, others, onUs
               {own && (
                 <div>
                   <label htmlFor={`${ids}-custom`} className="mb-1.5 block text-[15px] font-medium">{L("compose.f.custom")}</label>
-                  <input ref={customRef} id={`${ids}-custom`} type="text" className={field} value={display} maxLength={LIMITS.custom + 40} data-testid="compose-custom"
+                  <input {...PLAIN_INPUT} ref={customRef} id={`${ids}-custom`} type="text" className={field} value={display} maxLength={LIMITS.custom + 40} data-testid="compose-custom"
                     aria-invalid={textError ? true : undefined} aria-describedby={`${ids}-cx${textError ? ` ${ids}-ce` : ""}`}
                     onChange={(e) => patch({ content: { kind: "custom", text: toStored(e.target.value, vars).slice(0, LIMITS.custom) } }, )} />
                   <div className="mt-1.5 flex flex-wrap items-center gap-1" aria-hidden="true">

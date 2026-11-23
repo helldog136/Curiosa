@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { ImageField } from "./ImageField";
 import { ui } from "./ui";
 import { BG_POSITIONS, type BlockDef, type BlockItem, type L } from "@/core/homeBlocks";
@@ -20,7 +21,7 @@ function LField({ label, help, value, onChange, locales, multiline = false, rows
             <span className={ui.label}>{text}</span>
             {multiline
               ? <textarea rows={rows} value={value[l.code] ?? ""} onChange={(e) => set(e.target.value)} className={ui.input} />
-              : <input value={value[l.code] ?? ""} onChange={(e) => set(e.target.value)} className={ui.input} />}
+              : <input {...PLAIN_INPUT} value={value[l.code] ?? ""} onChange={(e) => set(e.target.value)} className={ui.input} />}
           </label>
         );
       })}
@@ -70,7 +71,7 @@ export function BlockEditor({ uid, value, onChange, locales, labels }: { uid: st
           <LField label={lab("buttonLabel")} help={lab("buttonHelp")} value={value.buttonLabel} onChange={(v) => set({ buttonLabel: v })} locales={locales} />
           <label className="block text-sm">
             <span className={ui.label}>{lab("buttonUrl")}</span>
-            <input value={value.buttonUrl} onChange={(e) => set({ buttonUrl: e.target.value })} placeholder="/contact  ·  https://…" className={ui.input} />
+            <input {...PLAIN_INPUT} value={value.buttonUrl} onChange={(e) => set({ buttonUrl: e.target.value })} placeholder="/contact  ·  https://…" className={ui.input} />
           </label>
         </div>
       )}

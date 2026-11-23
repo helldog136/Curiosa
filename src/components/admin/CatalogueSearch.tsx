@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useRef, useState } from "react";
 import { foldText as fold } from "@/core/modules/installedList";
 
@@ -37,8 +38,7 @@ export function CatalogueSearch({ placeholder, noneLabel, clearLabel }: { placeh
     <div>
       <div className="relative">
         <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">🔍</span>
-        <input ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} aria-label={placeholder}
-          autoComplete="off" data-testid="catalogue-search"
+        <input ref={input} type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={placeholder} aria-label={placeholder} {...PLAIN_INPUT} data-testid="catalogue-search"
           className={`w-full rounded-full border border-line bg-bg py-3 pl-11 text-base ${query ? "pr-24" : "pr-4"} outline-none transition-colors focus:border-accent`} />
         {query && <button type="button" onClick={() => { setQuery(""); input.current?.focus(); }} className="absolute right-3 top-1/2 -translate-y-1/2 rounded-full px-3 py-1 text-sm text-muted hover:text-fg">{clearLabel}</button>}
       </div>
