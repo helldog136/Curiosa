@@ -1,5 +1,5 @@
 /**
- * WHY a git command failed, from what git said (core 0.46.2). Pure: no process, no network, no secret. The text it reads has already been through `scrub()`
+ * WHY a git command failed, from what git said (core 0.47.0). Pure: no process, no network, no secret. The text it reads has already been through `scrub()`
  * (gitAccess.ts), and nothing of it is returned except a kind and, for a redirect, an address that passes the same check as every other address.
  * Before this, every host refusal was one "refused" and everything else "cannot be reached": a code that git never sent, a repository that moved and a real
  * wrong code all read the same, and the owner could not tell what to change.

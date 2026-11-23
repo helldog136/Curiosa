@@ -1,4 +1,4 @@
-// Why a git command failed, from realistic stderr samples (core 0.46.2): one kind per cause, never a text from git in the answer.
+// Why a git command failed, from realistic stderr samples (core 0.47.0): one kind per cause, never a text from git in the answer.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";

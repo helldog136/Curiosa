@@ -147,14 +147,14 @@ function gitArgs(args: string[], hardened = false, legacy = false): string[] {
     "-c", "core.hooksPath=/dev/null",
     ...GIT_NO_LFS_ARGS,
     "-c", "credential.helper=",   // (0.42.0) no helper of the machine ever stores or hands out a credential
-    ...(hardened && legacy ? ["-c", `credential.helper=${GIT_LEGACY_HELPER}`] : []),   // (0.46.2) git < 2.31 only: the code reaches git through this helper and the environment, see gitAccess.ts
+    ...(hardened && legacy ? ["-c", `credential.helper=${GIT_LEGACY_HELPER}`] : []),   // (0.47.0) git < 2.31 only: the code reaches git through this helper and the environment, see gitAccess.ts
     ...(hardened ? ["-c", "http.followRedirects=false", "-c", "protocol.allow=never", "-c", "protocol.https.allow=always", ...(testSeam.loopback ? ["-c", "protocol.http.allow=always"] : [])] : []),
     ...args,
   ];
 }
 
 /**
- * (0.46.2) Does the git of this server read GIT_CONFIG_COUNT/KEY_n/VALUE_n (git ≥ 2.31)? Older ones ignore them silently: the header was never sent and every private
+ * (0.47.0) Does the git of this server read GIT_CONFIG_COUNT/KEY_n/VALUE_n (git ≥ 2.31)? Older ones ignore them silently: the header was never sent and every private
  * repository answered "authentication failed". Asked once per PATH; an answer that cannot be read counts as recent (the header path is the normal one).
  */
 const versionMemo = new Map<string, boolean>();
