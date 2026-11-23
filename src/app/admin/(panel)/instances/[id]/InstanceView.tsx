@@ -27,7 +27,7 @@ import { Blocks } from "@/components/site/Blocks";
 import * as adminKit from "@/components/site/adminKit";
 import { siteUrl } from "@/core/config";
 import { effectiveType } from "@/core/modules/manifest";
-import { getSources, providersOf } from "@/core/services/topics";
+import { getSources, isOwnTopic, providersOf } from "@/core/services/topics";
 import { InstanceTabs } from "@/components/admin/InstanceTabs";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { KeptData } from "@/components/admin/KeptData";
@@ -138,7 +138,9 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   const plan = planTabs(mod.manifest.tabs);
   // Les réglages réellement montrés (un « choix parmi » à une seule option est masqué en mode simple, comme dans ModuleSettings).
   const shownSettings = visibleSettings.filter((f) => !(f.type === "choice" && choices[f.key]?.mode === "only" && !advanced));
-  const showSources = manage && advanced && (mod.manifest.consumes ?? []).length > 0;
+  // A topic the core provides alone (`core.user`) has no source to choose: it never makes a « Sources » tab.
+  const consumed = (mod.manifest.consumes ?? []).filter((decl) => !isOwnTopic(decl.topic));
+  const showSources = manage && advanced && consumed.length > 0;
   // R33.4: the address is only needed to paste it into OBS once: one compact « OBS address » fold (the copy button stays inside), no permanent box.
   const overlayNode = mod.def.overlay ? (
     <details className="group rounded-lg border border-line bg-surface text-sm" data-testid="overlay-address">
@@ -198,7 +200,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
         <h2 className="text-lg font-semibold">{t("sources.title")}</h2>
         <p className="mt-1 text-sm text-muted">{t("sources.intro")}</p>
       </div>
-      {await Promise.all((mod.manifest.consumes ?? []).map(async (decl, i) => {
+      {await Promise.all(consumed.map(async (decl, i) => {
         const providers = await providersOf(decl.topic);
         const current = await getSources(id, decl.topic);
         return (
