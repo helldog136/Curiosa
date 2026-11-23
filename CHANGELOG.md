@@ -23,6 +23,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
 - **Une sauvegarde chiffrée peut vous être envoyée par e-mail.** Dans *Sauvegarde*, un interrupteur l'active, chaque semaine par défaut. Le fichier est chiffré avec une phrase secrète montrée une seule fois : gardez-la, sans elle il ne s'ouvre pas.
 - **(English) A backup can be e-mailed to you.** In *Backup*, a switch turns it on, every week by default. The file is encrypted with a passphrase shown only once: keep it, without it the file cannot be opened.
+- **Chaque accès IA appartient à une personne.** Dans *Mon compte*, « Mes accès IA » crée un accès (un nom, votre mot de passe, un niveau), le met en pause, le fait évoluer ou le retire. Il peut faire seulement ce que vous pouvez faire.
+- **(English) Every AI access belongs to a person.** In *My account*, "My AI accesses" creates an access (a name, your password, a level), pauses it, changes it or removes it. It can do only what you can do.
+- **Assistants IA : l'onglet « Par personne » dit à qui appartient chaque accès.** Un tableau avec recherche : vous pouvez mettre en pause, choisir une autre personne propriétaire ou retirer. Dans *Utilisateurs*, le menu d'une personne dit si elle peut avoir des accès IA.
+- **(English) AI assistants: the "By person" tab says who owns each access.** A table with a search: you can pause, choose another owner or remove. In *Users*, a person's menu says whether they may have AI accesses.
+- **Les accès IA déjà créés gardent leurs outils.** Avec un seul compte, ils passent à ce compte. Avec plusieurs, ils fonctionnent comme avant, marqués « Sans propriétaire », jusqu'à ce que vous en choisissiez un (page temporaire).
+- **(English) Existing AI accesses keep their tools.** With one account, they go to that account. With several, they work as before, marked "No owner", until you choose one (temporary page).
+- **Un nouvel accès IA a toujours une personne propriétaire.** Par défaut, vous. Un nouvel accès n'a plus d'adresse secrète ; les anciens la gardent.
+- **(English) A new AI access always has an owner.** By default, you. A new access no longer has a secret address; existing ones keep it.
+- **Un accès IA se met en pause si vous vous déconnectez partout ou changez de mot de passe.** Avec un seul compte, cela arrête aussi les accès repris : relancez-les depuis *Mon compte*.
+- **(English) An AI access pauses when you sign out everywhere or change your password.** With one account, this also stops the migrated accesses: resume them from *My account*.
+- **Un accès créé avant ce changement garde son réglage « agir sans demander » et ses limites par heure.** Seuls les nouveaux accès suivent le réglage du site.
+- **(English) An access created before this change keeps its "act without asking" choice and its hourly limits.** Only new accesses follow the site setting.
 
 ### Corrections
 
@@ -37,6 +49,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Accès IA et propriétaire (0.47.0) : colonne `ApiToken.coarseCeiling`, repli `COARSE_FALLBACK`, `personalAi/owners.ts` ; `legacyOwners.ts` et `assign-owners/` sont **temporaires (à supprimer en 0.49.0)**. Voir [docs/PERSONAL-AI.md](docs/PERSONAL-AI.md).
 - Sauvegarde automatique par e-mail (`src/core/backup/auto/`) : horaire pur, phrase secrète scellée (`seal.ts`), 5 copies dans `data/backups/auto/`, envoi par `sendCoreMailWithAttachment` (cœur seulement), état en lecture seule dans `maintenance_health`. Réglages `autobackup.*` hors sauvegardes. Voir [docs/BACKUP.md](docs/BACKUP.md).
 - **(English)** Automatic backup by e-mail (`src/core/backup/auto/`): pure schedule, sealed passphrase (`seal.ts`), 5 copies in `data/backups/auto/`, sent with `sendCoreMailWithAttachment` (core only), read-only state in `maintenance_health`. `autobackup.*` settings are not in backups. See [docs/BACKUP.md](docs/BACKUP.md).
 - `components/admin/managerHints.ts` : `PLAIN_INPUT` (`autoComplete="off"` et les indices des gestionnaires) sur tout `<input>` de texte qui n'est pas un identifiant ; `TextField` l'applique par défaut. `tests/core/admin-input-hints.test.mjs` échoue sur un nouvel `<input>` sans lui.

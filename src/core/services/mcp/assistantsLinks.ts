@@ -6,8 +6,8 @@ import { ASSISTANTS_HREF, MAINTENANCE_IA_LEGACY_HREF, MCP_LEGACY_HREF, USERS_HRE
 
 export { ASSISTANTS_HREF };
 
-/** Les trois vues de la page, dans l'ordre d'affichage. */
-export const ASSISTANT_TABS = ["access", "requests", "history"] as const;
+/** Les vues de la page, dans l'ordre d'affichage. */
+export const ASSISTANT_TABS = ["access", "owners", "requests", "history"] as const;
 export type AssistantTab = (typeof ASSISTANT_TABS)[number];
 
 /** Un onglet inconnu ou absent ouvre toujours « Accès » : une adresse périmée ne mène jamais à une page vide. */

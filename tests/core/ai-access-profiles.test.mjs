@@ -90,10 +90,16 @@ test("modifications groupées : mêmes règles qu'une modification seule (outil 
   assert.deepEqual(w.rejected, []);
 });
 
+// Every AI access belongs to a person: an owner-level person owns the accesses created below.
+async function ownerLevelPerson() {
+  const { columnsOf } = await import("@/core/auth/rights");
+  return (await prisma.user.upsert({ where: { email: "etoile_nord@example.org" }, update: {}, create: { email: "etoile_nord@example.org", name: "etoile_nord", passwordHash: "x", ...columnsOf("owner") } })).id;
+}
+
 // ── The access is created once, the code is shown once ──────────────────────────────────────────────────────────────────────
 
 test("création : « Read only » = plafond lecture ; le code n'existe que dans le résultat (seul son condensé est en base) et ne figure dans aucune ligne de journal", async () => {
-  const { token, id } = await V.createProfileAccess({ name: "Aide à l'écriture", profile: "read", actorEmail: "camille@example.org", catalogue });
+  const { token, id } = await V.createProfileAccess({ name: "Aide à l'écriture", profile: "read", ownerId: await ownerLevelPerson(), actorEmail: "camille@example.org", catalogue });
   assert.match(token, /^vit_[A-Za-z0-9_-]{20,}$/);
   const row = await prisma.apiToken.findUnique({ where: { id } });
   assert.equal(row.scope, "read");
@@ -110,7 +116,7 @@ test("création : « Read only » = plafond lecture ; le code n'existe que dans 
 });
 
 test("création : « Full setup » = plafond écriture, demandes d'installation accordées, désinstallation non", async () => {
-  const { token } = await V.createProfileAccess({ name: "Complet", profile: "full", actorEmail: "camille@example.org", catalogue });
+  const { token } = await V.createProfileAccess({ name: "Complet", profile: "full", ownerId: await ownerLevelPerson(), actorEmail: "camille@example.org", catalogue });
   const auth = await T.authenticate(`Bearer ${token}`);
   assert.equal(auth.scope, "write");
   assert.ok(A.canUse(byName.get("maintenance_module_install"), auth));

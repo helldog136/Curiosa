@@ -116,9 +116,18 @@ export function requirementOf(tool: { name: string; requires?: ToolRequirement; 
   return Object.hasOwn(CORE_REQUIREMENTS, tool.name) ? CORE_REQUIREMENTS[tool.name] : undefined;
 }
 
-/** The ceiling: may a personal AI whose owner is in this state see and call this tool? (the other rules of the access are checked by `canUse`) */
-export function ownerCeilingAllows(tool: { name: string; requires?: ToolRequirement; instanceId?: string; moduleId?: string }, owner: OwnerState): boolean {
-  return owner.active && requirementMet(requirementOf(tool), owner);
+/**
+ * COARSE FALLBACK (0.47.0), for an access that existed before every access had to belong to a person (`ApiToken.coarseCeiling`).
+ * A module tool that declares no `right` was callable by such an access before, so hiding it would be an outage. Its requirement becomes the admin tier: the level of the people who
+ * could create those accesses (holders of `core:mcp.tokens`). An owner who is an administrator or above keeps every such tool; an editor does not. Tools with a declared
+ * requirement and every core tool keep their documented requirement. A NEW access never gets the fallback: an undeclared tool stays hidden from it (fail closed).
+ */
+export const COARSE_FALLBACK: ToolRequirement = { tier: "admin" };
+
+/** The ceiling: may an AI whose owner is in this state see and call this tool? (the other rules of the access are checked by `canUse`) `coarse`: the fallback above applies to undeclared tools. */
+export function ownerCeilingAllows(tool: { name: string; requires?: ToolRequirement; instanceId?: string; moduleId?: string }, owner: OwnerState, opts: { coarse?: boolean } = {}): boolean {
+  const req = requirementOf(tool) ?? (opts.coarse ? COARSE_FALLBACK : undefined);
+  return owner.active && requirementMet(req, owner);
 }
 
 /** The requirement a module declares with `mcp[].right`: a local id (or `<module>:<id>` of THIS module) turned into a full right; anything else gives `undefined` (the tool stays hidden). */

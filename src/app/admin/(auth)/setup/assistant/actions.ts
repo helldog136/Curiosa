@@ -18,7 +18,7 @@ export async function createSetupAccessAction(_prev: AssistantStepState, formDat
   const profile = isAccessProfile(raw) ? raw : DEFAULT_PROFILE;
   if (!name) return { errors: { name: t("setup.ai.error.name") } };
   try {
-    const { token, id } = await createProfileAccess({ name, profile, actorEmail: user.email, catalogue: await listMcpToolCatalogue() });
+    const { token, id } = await createProfileAccess({ name, profile, actorEmail: user.email, ownerId: user.id, catalogue: await listMcpToolCatalogue() });
     revalidatePath(ASSISTANTS_HREF);
     revalidatePath(TEAM_HREF);
     return { created: { id, name, token, profile } };

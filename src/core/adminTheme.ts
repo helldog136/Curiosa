@@ -86,7 +86,7 @@ export function adminTokens(scheme: AdminScheme): Record<AdminToken, string> {
 const declare = (o: Record<string, string>) => Object.entries(o).map(([k, v]) => `${k}:${v}`).join(";");
 /** Les couleurs « d'état » (erreur, succès, avertissement) posées en dur dans l'admin : éclaircies pour rester lisibles sur fond sombre. */
 const STATE_OVERRIDES: [string[], string][] = [
-  [["text-red-700", "text-red-600", "text-red-500"], "#fca5a5"],
+  [["text-red-700", "text-red-800", "text-red-600", "text-red-500"], "#fca5a5"],
   [["text-emerald-700", "text-emerald-800", "text-emerald-900"], "#6ee7b7"],
   [["text-amber-700", "text-amber-900"], "#fcd34d"],
   [["text-sky-800"], "#7dd3fc"],

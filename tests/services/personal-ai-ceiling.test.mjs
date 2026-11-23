@@ -49,7 +49,8 @@ async function call(token, name, args = {}) {
   let value; try { value = JSON.parse(text); } catch { value = text; }
   return body.result.isError ? { error: text } : { value };
 }
-const switchOn = () => POL.setPersonalPolicy({ enabled: true });
+// (0.47.0) There is no master switch any more: who may own an access depends on the role right and the override only.
+const switchOn = async () => {};
 /** The personal AI of a person, started from a profile. */
 async function personal(user, profile = "full") {
   const made = await PA.createPersonalAccess(user.id, { password: PASSWORD, profile });
@@ -59,23 +60,23 @@ async function personal(user, profile = "full") {
 /** Ticks tools on the personal AI of a person (clipped to what the person can do). */
 async function tick(user, tools) {
   const row = await db.prisma.apiToken.findFirst({ where: { ownerId: user.id, revokedAt: null } });
-  return PA.setOwnPersonalGrants(user.id, { ...JSON.parse(row.grants), ...Object.fromEntries(tools.map((t) => [t, true])) });
+  return PA.setOwnPersonalGrants(user.id, row.id, { ...JSON.parse(row.grants), ...Object.fromEntries(tools.map((t) => [t, true])) });
 }
 
-test("off by default: nobody can create one, the setting is safe, and an independent access sees what it saw before", async () => {
-  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: false, allowDirect: false });
-  assert.deepEqual(await PA.createPersonalAccess(U.admin.id, { password: PASSWORD }), { ok: false, reason: "not_allowed" });
-  const plain = await T.createToken("Independent", "write", "o", { grants: { site_info: true, redirects_list: true, maintenance_status: true } });
+test("who may own an access: the role right and the override, no master switch; the setting is safe, and an access without an owner sees what it saw before", async () => {
+  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: true, allowDirect: false });
+  assert.equal((await PA.createPersonalAccess(U.admin.id, { password: PASSWORD })).ok, true, "an administrator holds the right: allowed with no setup");
+  assert.deepEqual(await PA.createPersonalAccess(U.editor.id, { password: PASSWORD }), { ok: false, reason: "not_allowed" }, "an editor does not, until an override or a role says so");
+  const plain = await T.createToken("No owner", "write", "o", { grants: { site_info: true, redirects_list: true, maintenance_status: true } });
   const before = await names(plain);
-  await switchOn();
-  await personal(U.admin);
-  assert.deepEqual(await names(plain), before, "an independent access is not touched by personal assistants");
-  assert.ok(before.includes("maintenance_status"), "no owner ceiling for it: the admin tier is not required of an independent access");
-  // a garbled setting is the safe default
-  await db.prisma.setting.update({ where: { key_locale: { key: POL.PERSONAL_POLICY_KEY, locale: "" } }, data: { value: "{not json" } });
-  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: false, allowDirect: false });
-  await db.prisma.setting.update({ where: { key_locale: { key: POL.PERSONAL_POLICY_KEY, locale: "" } }, data: { value: JSON.stringify({ enabled: "true", allowDirect: 1 }) } });
-  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: false, allowDirect: false }, "only the literal true switches a flag on");
+  await personal(U.coord);
+  assert.deepEqual(await names(plain), before, "an access without an owner is not touched by the others");
+  assert.ok(before.includes("maintenance_status"), "no owner ceiling for it: it keeps working as before");
+  // a garbled setting is the safe default; the stored `enabled` flag is ignored (always true)
+  await db.prisma.setting.upsert({ where: { key_locale: { key: POL.PERSONAL_POLICY_KEY, locale: "" } }, create: { key: POL.PERSONAL_POLICY_KEY, locale: "", value: "{not json" }, update: { value: "{not json" } });
+  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: true, allowDirect: false });
+  await db.prisma.setting.update({ where: { key_locale: { key: POL.PERSONAL_POLICY_KEY, locale: "" } }, data: { value: JSON.stringify({ enabled: false, allowDirect: 1 }) } });
+  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: true, allowDirect: false }, "only the literal true switches allowDirect on; the old switch is ignored");
 });
 
 test("the right: administrators, the coordinator and the owner hold core:ai.personal, editors do not; a custom role can carry it", async () => {
@@ -90,10 +91,10 @@ test("the right: administrators, the coordinator and the owner hold core:ai.pers
   const ids = [(await db.prisma.role.findUnique({ where: { key: "editor" } })).id, role.id];
   assert.equal((await Roles.setUserRoles(U.owner.id, U.editor.id, ids)).ok, true);
   assert.equal(A.can(await load(U.editor), "core:ai.personal"), true);
-  // the pure rule: master switch x override x right
-  for (const enabled of [false, true]) for (const override of ["inherit", "allow", "deny"]) for (const holds of [false, true]) {
-    const expected = enabled && override !== "deny" && (override === "allow" || holds);
-    assert.equal(POL.personalAiAllowed({ enabled, allowDirect: false }, override, holds), expected, `${enabled}/${override}/${holds}`);
+  // the pure rule: override x right
+  for (const override of ["inherit", "allow", "deny"]) for (const holds of [false, true]) {
+    const expected = override !== "deny" && (override === "allow" || holds);
+    assert.equal(POL.personalAiAllowed({ enabled: true, allowDirect: false }, override, holds), expected, `${override}/${holds}`);
   }
 });
 
@@ -137,7 +138,7 @@ test("no privilege escalation: a grant above the owner's rights (even written by
   for (const n of ["maintenance_core_update", "maintenance_module_install", "maintenance_backup_run"]) assert.ok(!seen.includes(n), n);
   assert.match((await call(ad.token, "maintenance_backup_run")).error, /Unknown tool/);
   // ... and the service clips it as well
-  const clipped = await PA.setOwnPersonalGrants(U.admin.id, { maintenance_core_update: true, maintenance_status: true });
+  const clipped = await PA.setOwnPersonalGrants(U.admin.id, ad.id, { maintenance_core_update: true, maintenance_status: true });
   assert.deepEqual(clipped, { ok: true, on: 1 });
   assert.deepEqual(JSON.parse((await db.prisma.apiToken.findUnique({ where: { id: ad.id } })).grants), { maintenance_status: true });
 });
@@ -163,19 +164,15 @@ test("demotion applies at once: the next list loses the tools, my_access says wh
   assert.ok((await names(ad.token)).includes("navigation_set"), "restorable: nothing was deleted");
 });
 
-test("policy off, deny, withdrawn right, paused: an explicit refusal on the next request, and everything comes back when restored", async () => {
+test("deny, withdrawn right, paused: an explicit refusal on the next request, and everything comes back when restored", async () => {
   await switchOn();
   const ad = await personal(U.admin);
   const status = async () => { const r = await rpc(ad.token, "tools/list"); return [r.status, (await r.json()).error?.message]; };
   assert.equal((await status())[0], 200);
-  await POL.setPersonalPolicy({ enabled: false });
+  await POL.setPersonOverride(U.admin.id, "deny");
   const off = await status();
   assert.equal(off[0], 403);
-  assert.match(off[1], /switched off by an administrator/);
-  await POL.setPersonalPolicy({ enabled: true });
-  assert.equal((await status())[0], 200, "restored with no setup");
-  await POL.setPersonOverride(U.admin.id, "deny");
-  assert.equal((await status())[0], 403);
+  assert.match(off[1], /no longer have an AI access/);
   await POL.setPersonOverride(U.admin.id, "inherit");
   assert.equal((await status())[0], 200);
   // the role right withdrawn: an editor with a custom role carrying it, then the role loses it
@@ -188,7 +185,7 @@ test("policy off, deny, withdrawn right, paused: an explicit refusal on the next
   const gone = await rpc(ed.token, "tools/list");
   assert.equal(gone.status, 403);
   // paused
-  await PA.pauseOwnPersonalAccess(U.admin.id);
+  await PA.pauseOwnPersonalAccess(U.admin.id, ad.id);
   const paused = await rpc(ad.token, "tools/list");
   assert.equal(paused.status, 403);
   assert.match((await paused.json()).error.message, /paused/);

@@ -14,7 +14,6 @@ export async function resolvePersonalOwner(ownerId: string): Promise<OwnerState>
   const found = await loadAdminUserById(ownerId);
   if (!found) return INERT_STATE(ownerId, "owner_missing");
   const { user, personalAi } = found;
-  if (!policy.enabled) return INERT_STATE(ownerId, "policy_off");
   // `can` is false for a locked account (temporary password, two-factor required and missing): the AI is then inert, restorable.
   if (user.mustChangePassword || user.needsTwoFactor) return INERT_STATE(ownerId, "owner_locked");
   if (!personalAiAllowed(policy, personalAi, can(user, PERSONAL_AI_RIGHT))) return INERT_STATE(ownerId, "not_allowed");
