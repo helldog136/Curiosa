@@ -47,7 +47,7 @@ const adapterOf = (topic: string) => ADAPTERS.find((a) => a.topic === topic);
 export type OwnTopic = {
   topic: string;
   schema: TopicField[];
-  read(query: { locale: string; limit: number }): Promise<Record<string, unknown>[]>;
+  read(query: { limit: number }): Promise<Record<string, unknown>[]>;
 };
 const OWN_TOPICS: OwnTopic[] = [{ topic: CORE_USER, schema: ACCOUNT_SCHEMA, read: readAccounts }];
 const ownOf = (topic: string) => OWN_TOPICS.find((o) => o.topic === topic);
@@ -154,7 +154,7 @@ async function collectOwn(consumer: ActiveInstance, own: OwnTopic, opts: { limit
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   let raws: Record<string, unknown>[] = [];
   try {
-    raws = await own.read({ locale: opts.locale, limit });
+    raws = await own.read({ limit });
   } catch (error) {
     console.error(`[modules] core topic ${own.topic} could not be read:`, error);
     return [];

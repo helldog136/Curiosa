@@ -1826,7 +1826,7 @@ const accounts = await ctx.api.topics.collect("core.user", { limit: 200 });
 | `name` | the display name |
 | `email` | the sign-in e-mail (personal data: never publish it, never put it in a public route, a section, a slot or an overlay) |
 | `level` | `owner`, `coordinator`, `admin`, `editor` or `none` (only custom roles). Not translated: compare it. |
-| `roles` | the names of all the roles of the account, in the language of the call (predefined roles translated, custom roles as named by the owner) |
+| `roles` | the names of all the roles of the account, in the main language of the site whoever asks (predefined roles translated, custom roles as named by the owner) |
 | `createdAt`, `updatedAt` | ISO 8601 dates (`updatedAt` also moves for changes unrelated to the profile: compare the fields, not the date) |
 
 **What is never given**: password hash, passkeys, recovery codes, double-verification secrets, session counters, trusted addresses, sign-in locks, interface preferences, assistant access. The core reads only the columns above (`ACCOUNT_SELECT`) and builds each item field by field; a test fails when a column is added to the account table without a decision.

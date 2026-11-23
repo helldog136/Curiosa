@@ -12,6 +12,7 @@ const { createInstance } = await import("@/core/instanceService");
 const { buildContext } = await import("@/core/modules/context");
 const { syncSystemAssignments } = await import("@/core/auth/roles");
 const { ACCOUNT_SCHEMA } = await import("@/core/auth/accountTopic");
+const { setSetting } = await import("@/core/settings");
 
 beforeEach(() => db.reset());
 after(() => db.close());
@@ -66,11 +67,14 @@ test("core.user: nothing secret comes out, whatever the account holds", async ()
   for (const leak of ["HASH-MUST-NOT-LEAK", "TOTP-MUST-NOT-LEAK", "RECOVERY-MUST-NOT-LEAK", "TRUSTED-HASH-MUST-NOT-LEAK", "passwordHash", "sessionVersion", "totp", "passkey", "personalAi"]) assert.ok(!text.includes(leak), `leaked: ${leak}`);
 });
 
-test("core.user: the role names follow the language of the call", async () => {
+test("core.user: the role names are in the main language of the site, whoever asks", async () => {
   const reader = await instanceOf("reader");
   await people();
+  assert.deepEqual((await Topics.collect(reader, "core.user", { locale: "fr" }))[0].roles, ["Owner"]);
+  await setSetting("i18n.default", "fr");
+  await setSetting("i18n.enabled", ["fr", "en"]);
+  assert.deepEqual((await Topics.collect(reader, "core.user", { locale: "en" }))[0].roles, ["Propriétaire"], "the language of the call does not change the answer");
   assert.deepEqual((await Topics.collect(reader, "core.user", { locale: "fr" }))[0].roles, ["Propriétaire"]);
-  assert.deepEqual((await Topics.collect(reader, "core.user", { locale: "en" }))[0].roles, ["Owner"]);
 });
 
 test("core.user: the module reads it through ctx.api.topics.collect like any topic, and `limit` bounds the list", async () => {

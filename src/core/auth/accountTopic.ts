@@ -23,7 +23,7 @@ export const ACCOUNT_SCHEMA: TopicField[] = [
   { key: "email", type: "string", required: true },
   /** The level of the account: `owner`, `coordinator`, `admin`, `editor` or `none` (a person who only has custom roles). Not translated: safe to compare. */
   { key: "level", type: "string" },
-  /** Names of ALL the roles of the account, in the language asked for (the predefined ones are translated, a custom role has the name given by the owner). */
+  /** Names of ALL the roles of the account, in the MAIN language of the site whoever asks (the predefined ones are translated, a custom role has the name given by the owner): the same text for every caller, so a module can compare it. */
   { key: "roles", type: "string[]" },
   { key: "createdAt", type: "datetime" },
   { key: "updatedAt", type: "datetime" },
@@ -73,10 +73,10 @@ export function accountItem(row: AccountRow, systemName: (key: string) => string
 }
 
 /** The accounts, oldest first (so a long list is cut at the newest, never at the owner). At most `limit`. Read from the database at each call: nothing is kept. */
-export async function readAccounts({ locale, limit }: { locale: string; limit: number }): Promise<Record<string, unknown>[]> {
+export async function readAccounts({ limit }: { limit: number }): Promise<Record<string, unknown>[]> {
   const [{ prisma }, { makeTranslator }, { getSiteConfig }] = await Promise.all([import("../db"), import("../i18n/dictionary"), import("../settings")]);
   const config = await getSiteConfig();
-  const t = makeTranslator(locale, config.defaultLocale);
+  const t = makeTranslator(config.defaultLocale);
   const rows = (await prisma.user.findMany({ select: ACCOUNT_SELECT, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: limit })) as AccountRow[];
   return rows.map((row) => accountItem(row, (key) => t(`role.${key}`)));
 }
