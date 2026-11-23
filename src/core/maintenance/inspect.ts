@@ -132,15 +132,26 @@ async function instancesInError(): Promise<SetAside[]> {
   return out;
 }
 
+/** The automatic backup, for an assistant: words and numbers only. There is no tool to change it (switching on, the recipient and the passphrase are for a person in Admin > Backup). */
+async function autoBackupReport(): Promise<{ state: string; enabled: boolean; frequency: string; recipient: string | null; maxMb: number; reason: string | null; lastResult: { at: string; ok: boolean; attached: boolean; sizeBytes: number | null; reason: string | null } | null; nextAt: string | null } | null> {
+  try {
+    const { autoBackupStatus } = await import("@/core/backup/auto/view");
+    const s = await autoBackupStatus();
+    return { state: s.state, enabled: s.enabled, frequency: s.frequency, recipient: s.recipient, maxMb: s.maxMb, reason: s.reason, lastResult: s.last, nextAt: s.nextAt };
+  } catch { return null; }
+}
+
 export async function health() {
   const setAside = instancesInError();
-  const [database, backup, errors, instances, storage] = await Promise.all([checkDatabase(), lastBackup(), setAside.then((i) => recentErrors(i)), setAside, storageInfo({ waitMs: 1500 }).catch(() => null)]);
+  const [database, backup, errors, instances, storage, auto] = await Promise.all([checkDatabase(), lastBackup(), setAside.then((i) => recentErrors(i)), setAside, storageInfo({ waitMs: 1500 }).catch(() => null), autoBackupReport()]);
   return {
     disk: diskSpace() ?? { unknown: true },
     /** What the site itself takes, by category (same numbers as the admin dashboard card); no file paths. */
     storage: storage ? storageForTool(storage) : null,
     database,
     lastBackup: backup,
+    /** Automatic backup by e-mail: read-only. State, frequency, last result and a masked recipient; never the passphrase, never an address in full. */
+    autoBackup: auto,
     instancesSetAside: instances.length,
     recentErrors: errors,
     updateRunning: updateRunning(),
@@ -347,6 +358,7 @@ export async function diagnose() {
     if ("level" in h.disk && h.disk.level !== "ok") add({ severity: h.disk.level === "critical" ? "critical" : "warning", problem: `Disk space is ${h.disk.level === "critical" ? "almost exhausted" : "running low"} (${Math.round(h.disk.freeBytes / 1048576)} MB free, ${h.disk.freePercent}%).`, probableCause: "uploads, old backups or logs are filling the disk", proposedAction: "Tell the owner: files must be cleaned on the server (you cannot delete files).", tool: null, needsHuman: true });
     if (!h.lastBackup.at) add({ severity: "warning", problem: "No backup has ever been made.", probableCause: "backups are manual", proposedAction: "Make a server-side copy of the database now.", tool: "maintenance_backup_run", needsHuman: false });
     else if (!h.lastBackup.recent) add({ severity: "warning", problem: `The last backup is old (${h.lastBackup.at.slice(0, 10)}).`, probableCause: "backups are manual", proposedAction: "Make a fresh copy of the database before any update.", tool: "maintenance_backup_run", needsHuman: false });
+    if (h.autoBackup?.enabled && h.autoBackup.state === "degraded") add({ severity: "warning", problem: `The automatic backup by e-mail is degraded (${(h.autoBackup.reason ?? "unknown").replace(/_/g, " ")}).`, probableCause: "the last run failed or the e-mail settings changed", proposedAction: "Tell the owner: Admin > Backup shows the reason and what to do. You cannot change this feature.", tool: null, needsHuman: true });
     if (h.updateRunning) add({ severity: "info", problem: "A core update is running.", probableCause: "an update was started recently", proposedAction: "Wait a few minutes, then call maintenance_status again. Do not start anything else meanwhile.", tool: "maintenance_status", needsHuman: false });
   }
   const state = readUpdateState(dataDir());

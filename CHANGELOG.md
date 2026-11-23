@@ -13,6 +13,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Les extensions peuvent connaître les personnes qui se connectent au site.** Une extension qui le demande reçoit leur nom, leur e-mail et leur rôle, rien d'autre : jamais de mot de passe, de clé d'accès ni de code de secours. Rien n'est affiché sur le site public, et une extension qui ne le demande pas ne voit rien.
 - **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
+- **Une sauvegarde chiffrée peut vous être envoyée par e-mail.** Dans *Sauvegarde*, un interrupteur l'active, chaque semaine par défaut. Le fichier est chiffré avec une phrase secrète montrée une seule fois : gardez-la, sans elle il ne s'ouvre pas.
+- **(English) A backup can be e-mailed to you.** In *Backup*, a switch turns it on, every week by default. The file is encrypted with a passphrase shown only once: keep it, without it the file cannot be opened.
 
 ### Corrections
 
@@ -23,6 +25,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Sauvegarde automatique par e-mail (`src/core/backup/auto/`) : horaire pur, phrase secrète scellée (`seal.ts`), 5 copies dans `data/backups/auto/`, envoi par `sendCoreMailWithAttachment` (cœur seulement), état en lecture seule dans `maintenance_health`. Réglages `autobackup.*` hors sauvegardes. Voir [docs/BACKUP.md](docs/BACKUP.md).
+- **(English)** Automatic backup by e-mail (`src/core/backup/auto/`): pure schedule, sealed passphrase (`seal.ts`), 5 copies in `data/backups/auto/`, sent with `sendCoreMailWithAttachment` (core only), read-only state in `maintenance_health`. `autobackup.*` settings are not in backups. See [docs/BACKUP.md](docs/BACKUP.md).
 - `core/auth/accountTopic.ts` : sujet `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), fourni par le cœur seul (`OwnTopic` dans `services/topics.ts`). Lu par un module qui le déclare dans `consumes` ET déclare la permission `topics` ; aucun module ne peut le fournir.
 - **(English)** `core/auth/accountTopic.ts`: topic `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), provided by the core alone (`OwnTopic` in `services/topics.ts`). Read by a module that declares it in `consumes` AND the `topics` permission; no module can provide it.
 - La base est lue avec `ACCOUNT_SELECT` (colonnes nommées), chaque élément est construit champ par champ, et `tests/core/account-topic.test.mjs` échoue si une colonne est ajoutée à `User` sans décision. Cœur plus ancien : liste vide (`docs/MODULES.md`).

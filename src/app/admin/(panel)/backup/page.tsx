@@ -5,12 +5,19 @@ import { BackupForm } from "@/components/admin/BackupForm";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { RESTORE_KEYS } from "@/components/admin/restoreKeys";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { AutoBackupPanel, type AutoPanelView } from "@/components/admin/AutoBackupPanel";
+import { SETTINGS_HREF } from "@/core/adminLinks";
+import { readConfig } from "@/core/backup/auto/config";
+import { formatBytes } from "@/core/backup/auto/message";
+import { autoBackupStatus, recipientForm } from "@/core/backup/auto/view";
+import { siteTimezone } from "@/core/siteTime";
 
 export const dynamic = "force-dynamic";
 
 export default async function BackupPage() {
-  const { t, advanced, user } = await adminCtx({ right: "core:backup" });
+  const { t, advanced, user, locale } = await adminCtx({ right: "core:backup" });
   const labels = Object.fromEntries(RESTORE_KEYS.map((k) => [k, t(`backup.${k}`)]));
+  const auto = await autoPanel(t, locale);
   return (
     <div className="space-y-8">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="backup" />
@@ -28,9 +35,44 @@ export default async function BackupPage() {
         )}
       </Panel>
 
+      <Panel title={t("autobackup.title")} help={t("autobackup.help")} testid="autobackup-panel">
+        <AutoBackupPanel view={auto} labels={Object.fromEntries(AUTO_LABELS.map((k) => [k, t(`autobackup.${k}`)]))} />
+      </Panel>
+
       <Panel title={t("backup.restoreTitle")} help={t("backup.restoreHelp")} tone="danger">
         <RestorePanel labels={labels} />
       </Panel>
     </div>
   );
+}
+
+const AUTO_LABELS = [
+  "state.configured", "state.degraded", "state.notConfigured", "switchLabel", "on", "off", "failed", "needMail", "openMail", "frequency", "frequency.daily", "frequency.weekly", "frequency.monthly", "edit",
+  "now", "nowWorking", "more", "saveOptions", "recipient", "recipient.owner", "recipient.user", "recipient.address", "recipient.account", "recipient.typed", "recipient.example", "limit", "limitHint",
+  "renew", "renewWorking", "renewConfirm", "secretTitle", "secretTitleNew", "secretKeep", "secretOnce", "secretRegenerate", "copy", "copied", "secretDone",
+] as const;
+
+type T = Awaited<ReturnType<typeof adminCtx>>["t"];
+
+/** What the panel shows, in words: the state, the last result, the next run, the recipient (masked), what to do when it is degraded. Never a secret. */
+async function autoPanel(t: T, locale: string): Promise<AutoPanelView> {
+  const [status, config, tz] = [await autoBackupStatus(), await readConfig(), await siteTimezone()];
+  const when = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short", timeZone: tz }).format(new Date(iso));
+  const day = (iso: string) => new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeZone: tz }).format(new Date(iso));
+  const recipient = await recipientForm(config);
+  const last = status.last;
+  const lastLine = !last ? t("autobackup.last.none")
+    : !last.ok ? t("autobackup.last.failed", { date: when(last.at) })
+    : t(last.attached ? "autobackup.last.ok" : "autobackup.last.tooBig", { date: when(last.at), size: formatBytes(last.sizeBytes ?? 0, t) });
+  return {
+    enabled: status.enabled, state: status.state, mailConfigured: status.mailConfigured, mailHref: `${SETTINGS_HREF}#mail`,
+    frequency: status.frequency, maxMb: status.maxMb,
+    recipientSummary: t("autobackup.recipientLine", { to: status.recipient ?? "—" }),
+    recipient: { kind: recipient.kind, userId: recipient.userId, address: recipient.address, accounts: recipient.accounts.map((a) => ({ id: a.id, label: `${a.name} (${a.masked})` })) },
+    problem: status.reason ? { reason: t(`autobackup.reason.${status.reason}`), fix: t(`autobackup.fix.${status.reason}`), toMailSettings: status.reason.startsWith("mail_") } : null,
+    lastLine,
+    nextLine: status.nextAt ? t("autobackup.next", { date: day(status.nextAt) }) : "",
+    download: status.kept ? { href: "/api/admin/backup/auto", label: t("autobackup.download", { date: when(new Date(status.kept.at).toISOString()), size: formatBytes(status.kept.bytes, t) }) } : null,
+    moreSummary: t("autobackup.moreSummary", { max: status.maxMb, unit: t("autobackup.unit.mb") }),
+  };
 }
