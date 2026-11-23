@@ -4,7 +4,7 @@
 //     (`{...PLAIN_INPUT}`, `fieldHints(`, `MANAGER_IGNORE`) nor a deliberate credential `autoComplete` token (username, email, name, passwords, one-time-code, webauthn);
 //  2. `TextField` stops applying the hints by default, or the hints lose one of the four managers;
 //  3. the access creator (McpTokenCreator) is named or typed like an identity field, loses its hints, or stops guarding against a second submit.
-// New offenders fail: there is no baseline. The only exclusion is the appearance pages (another change), listed with its reason.
+// New offenders fail: there is no baseline. No exclusion.
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
@@ -14,7 +14,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 
 const ROOTS = ["src/app/admin", "src/components/admin"];
 /** Excluded folders, with the reason. */
-const EXCLUDED = new Map([["(panel)/appearance", "being reworked in another change; its inputs are handled there"]]);
+const EXCLUDED = new Map([]);
 const NON_TEXT = /^(checkbox|radio|hidden|file|range|color|submit|button|number|date|time|datetime-local|password)$/;
 const CREDENTIAL = /autoComplete="(username|email|name|current-password|new-password|one-time-code|webauthn)"/;
 const HINTED = /PLAIN_INPUT|fieldHints\(|MANAGER_IGNORE/;
