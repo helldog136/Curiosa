@@ -24,7 +24,7 @@ import { checkFieldInput, checkMultiInput, resolveDefault, shouldStore } from "@
 import { localized } from "@/core/modules/types";
 import { getModule } from "@/core/modules/registry";
 import { forgetChoices, validateChoices, type ChoiceField } from "@/core/modules/choice";
-import { getSources, providersOf, setSources } from "@/core/services/topics";
+import { getSources, isOwnTopic, providersOf, setSources } from "@/core/services/topics";
 import { audit } from "@/core/permissions";
 import { isSocialProfileField, previewSocialButton } from "@/core/socialCheck";
 import { deleteSetting, getSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
@@ -360,7 +360,8 @@ export async function saveSources(_prev: ActionState, formData: FormData): Promi
   const mod = instance ? await getModule(instance.moduleId) : null;
   if (!instance || !mod) return { error: t("error.generic") };
 
-  for (const [i, decl] of (mod.manifest.consumes ?? []).entries()) {
+  // Same list, same order as the form (a topic the core provides alone has no field).
+  for (const [i, decl] of (mod.manifest.consumes ?? []).filter((d) => !isOwnTopic(d.topic)).entries()) {
     const available = (await providersOf(decl.topic)).map((p) => p.instance.key);
     const chosen = formData.getAll(`sources_${i}`).map(String).filter((k) => available.includes(k));
     const adv = formData.get("__adv") === "1";
