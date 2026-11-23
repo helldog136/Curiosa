@@ -159,7 +159,7 @@ function gitArgs(args: string[], hardened = false, legacy = false): string[] {
  */
 const versionMemo = new Map<string, boolean>();
 async function envConfigWorks(): Promise<boolean> {
-  const key = process.env.PATH ?? "";
+  const { PATH: key = "" } = process.env;   // keyed by PATH: the git that runs is the one found there
   const known = versionMemo.get(key);
   if (known !== undefined) return known;
   let works = true;
