@@ -33,7 +33,7 @@ for (const locale of ["fr", "en"]) {
     assert.match(html, /<input[^>]*type="file"[^>]*accept="[^"]*\.zip/);
     assert.ok(new RegExp(`<label[^>]*for="skinFile"[^>]*>${esc(t("appearance.file.choose"))}</label>`).test(html), "a labelled button for the file input");
     assert.equal(count(html, /<input[^>]*type="(text|url|checkbox|password)"/g), 0, "0 fields, 0 tick boxes");
-    assert.ok(!html.includes(esc(t("appearance.personal.check"))), "no separate Check button");
+    assert.ok(!html.includes(esc(t("appearance.address.check"))), "no separate Check button");
     assert.ok(html.includes(esc(t("appearance.file.help"))), "example under the drop zone (R11)");
   });
 
@@ -44,8 +44,7 @@ for (const locale of ["fr", "en"]) {
     assert.ok(html.includes(esc(t("appearance.file.cancel"))));
     assert.ok(html.includes('data-testid="upload-trust"') && html.includes(esc(t("appearance.file.trust"))));
     assert.equal(count(html, /type="checkbox"/g), 0, "no blocking tick");
-    assert.ok(!html.includes(esc(t("appearance.personal.understood"))));
-    assert.equal(count(html, /btn-primary|bg-accent/g) >= 1, true);
+        assert.equal(count(html, /btn-primary|bg-accent/g) >= 1, true);
     assert.ok(!html.includes("<label") || !html.includes('for="skinFile"'), "the drop zone is gone while the skin waits");
   });
 

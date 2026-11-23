@@ -15,13 +15,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Overlay skins can ship their own font.** A skin can bring up to four fonts (woff2 files): your alerts and goals look the same everywhere, even on a computer without that font. If a font does not load, the overlay is still shown with a fallback font.
 - **Un skin d'overlay peut dire quel skin de site il accompagne.** Dans la galerie, un badge « Assorti à votre skin de site » apparaît quand le skin de site actif est le bon. Quand vous changez de skin de site, un bouton propose le skin d'overlay assorti ; rien n'est appliqué sans votre clic.
 - **(English) An overlay skin can name the site skin it goes with.** In the gallery, a "Matches your site skin" badge appears when the active site skin is the right one. When you change your site skin, a button offers the matching overlay skin; nothing is applied without your click.
-
-### Pour les développeurs
-
-- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : polices woff2 déclarées dans `assets`, `@font-face` écrit par le cœur (`overlays/skinFonts.ts`), listes de polices vérifiées, chargeur dans la page d'overlay. Contrats 2 à 5 inchangés octet pour octet. Voir `docs/OVERLAY-SKINS.md`.
-- `twinOf` (manifeste et catalogue, sans changement de contrat) : logique `overlays/twin.ts`, offre unique `overlays/twinOffer.ts`.
-- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): woff2 fonts declared in `assets`, `@font-face` written by the core (`overlays/skinFonts.ts`), checked font lists, a loader in the overlay page. Contracts 2 to 5 are byte-identical. See `docs/OVERLAY-SKINS.md`.
-- **(English)** `twinOf` (manifest and catalogue, no contract change): logic in `overlays/twin.ts`, one-time offer in `overlays/twinOffer.ts`.
+- **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, vous voyez ce que le skin apporte, puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
+- **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it, see what the skin brings, then press one button, "Add this skin". No more tick boxes.
+- **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin et si l'accès est configuré ; un bouton et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer). Chaque action s'ouvre dans une fenêtre.
+- **(English) Added skins are in one table with a search.** Each row says where the skin comes from and whether access is configured; one button and a "..." menu (edit access, go back to the previous version, remove). Each action opens in a window.
+- **Les extensions peuvent connaître les personnes qui se connectent au site.** Une extension qui le demande reçoit leur nom, leur e-mail et leur rôle, rien d'autre : jamais de mot de passe, de clé d'accès ni de code de secours. Rien n'est affiché sur le site public, et une extension qui ne le demande pas ne voit rien.
+- **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
 
 ### Corrections
 
@@ -32,8 +31,18 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` refaits ; nouveaux `AddSkin`, `SkinAdded` ; `Segmented` accepte `value` et `onChange` ; `AccessSummary` accepte `compact` (« Retirer l'accès » dans la fenêtre). `InspectView` porte `skinId`. Le serveur exige toujours la confirmation (`understood`) : l'interface l'envoie avec le clic sur « Ajouter ce skin », comme pour l'ajout depuis un fichier.
+- **(English)** `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` rebuilt; new `AddSkin`, `SkinAdded`; `Segmented` takes `value` and `onChange`; `AccessSummary` takes `compact` ("Remove access" inside the window). `InspectView` carries `skinId`. The server still demands the confirmation (`understood`): the screen sends it with the click on "Add this skin", as for adding from a file.
+- `core/auth/accountTopic.ts` : sujet `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), fourni par le cœur seul (`OwnTopic` dans `services/topics.ts`). Lu par un module qui le déclare dans `consumes` ET déclare la permission `topics` ; aucun module ne peut le fournir.
+- **(English)** `core/auth/accountTopic.ts`: topic `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), provided by the core alone (`OwnTopic` in `services/topics.ts`). Read by a module that declares it in `consumes` AND the `topics` permission; no module can provide it.
+- La base est lue avec `ACCOUNT_SELECT` (colonnes nommées), chaque élément est construit champ par champ, et `tests/core/account-topic.test.mjs` échoue si une colonne est ajoutée à `User` sans décision. Cœur plus ancien : liste vide (`docs/MODULES.md`).
+- **(English)** The database is read with `ACCOUNT_SELECT` (named columns), each item is built field by field, and `tests/core/account-topic.test.mjs` fails if a column is added to `User` without a decision. Older core: empty list (`docs/MODULES.md`).
 - `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
 - **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
+- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : polices woff2 déclarées dans `assets`, `@font-face` écrit par le cœur (`overlays/skinFonts.ts`), listes de polices vérifiées, chargeur dans la page d'overlay. Contrats 2 à 5 inchangés octet pour octet. Voir `docs/OVERLAY-SKINS.md`.
+- `twinOf` (manifeste et catalogue, sans changement de contrat) : logique `overlays/twin.ts`, offre unique `overlays/twinOffer.ts`.
+- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): woff2 fonts declared in `assets`, `@font-face` written by the core (`overlays/skinFonts.ts`), checked font lists, a loader in the overlay page. Contracts 2 to 5 are byte-identical. See `docs/OVERLAY-SKINS.md`.
+- **(English)** `twinOf` (manifest and catalogue, no contract change): logic in `overlays/twin.ts`, one-time offer in `overlays/twinOffer.ts`.
 
 ## 0.46.1 — 2026-11-20
 

@@ -6,6 +6,7 @@ import { FieldErrorText } from "@/components/admin/FieldErrors";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import { useAL } from "./AppearanceLabels";
+import { SkinAdded } from "./SkinAdded";
 import { addUploadedSkinAction, cancelUploadAction, checkSkinFileAction, chooseSkinAction, previewStagedAction, type UploadView } from "./actions";
 
 type Ready = Extract<UploadView, { ok: true }>;
@@ -16,7 +17,7 @@ const MAX_BYTES = 4 * 1024 * 1024;
  * sur le vrai site (rien n'est enregistré), « Ajouter ce skin », puis « Utiliser ce skin » ou « Garder tel quel ». Aucune case à cocher : un skin ne change que l'apparence
  * et n'exécute rien ; la phrase à côté du bouton dit qui en est responsable, et le clic sur le bouton est la confirmation. Le fichier .zip n'est jamais gardé.
  */
-export function UploadSkin({ initial }: { /** The state the block starts in (render tests and screenshots). */ initial?: { view?: Ready; error?: string; added?: { id: string; name: string } } }) {
+export function UploadSkin({ initial, bare = false }: { /** Inside "Add a skin" (the card and its way choice are there): no card of its own. */ bare?: boolean; /** The state the block starts in (render tests and screenshots). */ initial?: { view?: Ready; error?: string; added?: { id: string; name: string } } }) {
   const al = useAL();
   const router = useRouter();
   const [view, setView] = useState<Ready | null>(initial?.view ?? null);
@@ -70,10 +71,12 @@ export function UploadSkin({ initial }: { /** The state the block starts in (ren
   });
 
   return (
-    <section className={`${ui.card} space-y-4`} data-testid="upload-skin" aria-labelledby="upload-skin-title">
+    <section className={bare ? "space-y-4" : `${ui.card} space-y-4`} data-testid="upload-skin" aria-labelledby="upload-skin-title">
       <div>
-        <h3 id="upload-skin-title" className="font-semibold">{al("appearance.file.title")}</h3>
-        <p className={ui.help}>{al("appearance.file.intro")}</p>
+        {bare ? <p id="upload-skin-title" className="text-sm text-muted">{al("appearance.file.intro")}</p> : <>
+          <h3 id="upload-skin-title" className="font-semibold">{al("appearance.file.title")}</h3>
+          <p className={ui.help}>{al("appearance.file.intro")}</p>
+        </>}
       </div>
 
       {!view && !added && (
@@ -120,13 +123,7 @@ export function UploadSkin({ initial }: { /** The state the block starts in (ren
         </div>
       )}
 
-      {added && (
-        <div className="flex flex-wrap items-center gap-3" data-testid="upload-added">
-          <p role="status" className="mr-auto text-sm font-medium text-emerald-700">{al("appearance.file.added", { name: added.name })}</p>
-          <PendingButton type="button" variant="primary" pending={using} pendingLabel={al("appearance.file.using")} onClick={use} testid="upload-use">{al("appearance.file.use")}</PendingButton>
-          <button type="button" className={`${ui.btn} min-h-11`} onClick={clear} disabled={using}>{al("appearance.file.keep")}</button>
-        </div>
-      )}
+      {added && <SkinAdded name={added.name} using={using} onUse={use} onKeep={clear} />}
       {done && <p role="status" className="text-sm font-medium text-emerald-700">{done}</p>}
     </section>
   );

@@ -1708,17 +1708,18 @@ par des personnes différentes se retrouvent sur les mêmes noms ; rien ne l'imp
 mais deux modules ne partagent un sujet ou une rubrique que s'ils s'écrivent pareil. Les **libellés** montrés aux humains,
 eux, sont traduits comme le reste.
 
-**Le registre des sujets n'est pas ici.** Le cœur ne documente que les trois sujets **qu'il lit lui-même** ; tous les autres
+**Le registre des sujets n'est pas ici.** Le cœur ne documente que les sujets **qu'il lit ou qu'il fournit lui-même** ; tous les autres
 sujets (`planning.slot`, `map.place`, `ha.state`…) sont une affaire entre modules et se déclarent dans le registre du dépôt qui
 les publie : pour le catalogue officiel, `docs/TOPICS.md` du dépôt `curiosa-extras`. Publier un nouveau sujet entre modules ne
 demande donc **jamais** une nouvelle version du cœur. Un dépôt tiers de modules tient son propre registre (voir
 `docs/CREATE-A-MODULE.md`, « Le registre des sujets de votre dépôt »).
 
-Sujets lus par le cœur :
+Sujets lus ou fournis par le cœur :
 
 | Sujet | Fourni par | Rôle |
 |---|---|---|
 | `core.entry` | le cœur | entrées publiées de toute instance à contenu |
+| `core.user` | le cœur, seul | les comptes de connexion (cœur 0.47.0) : `id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`, rien d'autre (voir « Topic `core.user` : les comptes de connexion ») |
 | `feed.item` | tout module | éléments proposés au flux RSS (voir plus bas) |
 | `social.link` | tout module « réseau social » | le bouton d'un réseau (`label`, `url`, `icon`, et facultativement `rel`, `referrerPolicy`, `target`) que le cœur affiche dans l'en-tête (voir « Réseaux sociaux ») |
 
@@ -1803,6 +1804,37 @@ const events = await ctx.api.topics.collect("calendar.event", { from: "2026-10-1
 
 Pour qu'un module tiers alimente un consommateur existant, il lui suffit de déclarer
 `provides: [{ "topic": "…" }]` et d'implémenter `exports` — sans rien savoir du consommateur.
+
+### Topic `core.user`: the accounts that can log in (core 0.47.0)
+
+A module sometimes needs to know **who the people of the site are** (the owner and the collaborators with roles): for example the address book keeps one card for each of them. A module never reads the database. The core tells it, through the normal topics path, and **only through a closed list of fields**.
+
+```jsonc
+// module.json of the CONSUMER (permission "topics" is REQUIRED for this topic)
+"permissions": ["topics"],
+"consumes": [{ "topic": "core.user", "label": { "en": "Accounts of the site" } }]
+```
+
+```js
+const accounts = await ctx.api.topics.collect("core.user", { limit: 200 });
+// [{ id, name, email, level, roles, createdAt, updatedAt, source }]
+```
+
+| Field | Content |
+|---|---|
+| `id` | the stable key of the account. It never changes and is never reused: link to it, never to the e-mail. |
+| `name` | the display name |
+| `email` | the sign-in e-mail (personal data: never publish it, never put it in a public route, a section, a slot or an overlay) |
+| `level` | `owner`, `coordinator`, `admin`, `editor` or `none` (only custom roles). Not translated: compare it. |
+| `roles` | the names of all the roles of the account, in the main language of the site whoever asks (predefined roles translated, custom roles as named by the owner) |
+| `createdAt`, `updatedAt` | ISO 8601 dates (`updatedAt` also moves for changes unrelated to the profile: compare the fields, not the date) |
+
+**What is never given**: password hash, passkeys, recovery codes, double-verification secrets, session counters, trusted addresses, sign-in locks, interface preferences, assistant access. The core reads only the columns above (`ACCOUNT_SELECT`) and builds each item field by field; a test fails when a column is added to the account table without a decision.
+
+- **Who can read it**: only a module that **declares** `core.user` in `consumes` **and** the `topics` permission (otherwise `collect` throws). No module can provide this topic (a `provides` of `core.user` is never called), and no « Sources » choice is shown for it.
+- **Pull, nothing copied by the core**: the answer is the current state at each call (oldest account first, 200 at most; a list as long as `limit` may be cut). The core sends no event when an account changes: read it when you need it (opening your admin page, a `tasks` entry).
+- **Older core** (before 0.47.0): the topic does not exist and `collect` answers an empty list, exactly like a topic nobody provides. A site always has at least one account, so **an empty answer means « the core does not know this topic », never « there is nobody »: do nothing, and never treat the absence of an account as a deletion** unless the list is not empty. No `minCore` is needed for a module that works without it.
+- A read error gives an empty list too (logged); the module keeps what it knows.
 
 ### Références entre modules
 
