@@ -1,112 +1,129 @@
-# Sauvegarde et restauration
+# Backup and restore
 
-Une sauvegarde est **un seul fichier**, en un clic depuis l'admin (*Sauvegarde*, propriétaire ou coordination technique : droit `core:backup`). Elle contient toutes vos
-données — pas le code du framework :
+A backup is **one file**, made in one click from the admin area (*Backup*, owner or technical coordinator: right `core:backup`). It holds all your data, not the framework code:
 
-| Inclus | Pas inclus |
+| Included | Not included |
 |---|---|
-| comptes (mots de passe **hachés**), réglages (secrets compris : mot de passe e-mail, adresses privées…) ; la clé RAWG et vos corrections de jaquettes sont dans les données du module « Jaquettes de jeux ». Une sauvegarde d'avant la 0.3.0 les a encore dans les réglages du cœur : la restauration les confie au module (voir « Anciennes sauvegardes ») | jetons d'API (à recréer) |
-| instances de modules, entrées (toutes langues, brouillons compris), redirections | journal d'audit, liste « Jaquettes à vérifier » (elle se remplit seule) |
-| données de **chaque module installé** (leur stockage, leurs réglages) | le code du framework et des modules (réinstallé depuis le catalogue) |
-| images et fichiers envoyés | |
-| la liste des modules installés (identifiant, version, dépôt, activé ou non) | |
-| les **polices envoyées** (fichiers `.woff2`, dossier `fonts/` de l'archive) et le choix des polices (réglages) | la bibliothèque de polices livrée avec le cœur (elle est dans l'installation, pas dans vos données) |
-| la liste des **skins** installés (dépôt, étiquette, version) et le skin choisi, avec vos retouches d'apparence (ce sont des réglages) | les fichiers des skins (réinstallés depuis leur dépôt, comme les modules) |
+| accounts (passwords **hashed**), settings (secrets included: the e-mail password, private addresses…); the RAWG key and your cover fixes are in the data of the "Game covers" module. A backup made before 0.3.0 still has them in the core settings: the restore hands them to the module (see "Old backups") | API tokens (to be created again) |
+| module instances, entries (all languages, drafts included), redirects | audit log, the "Covers to check" list (it fills by itself) |
+| the data of **each installed module** (their storage, their settings) | the framework and module code (reinstalled from the catalogue) |
+| uploaded images and files | |
+| the list of installed modules (identifier, version, repository, on or off) | |
+| the **uploaded fonts** (`.woff2` files, `fonts/` folder of the archive) and the choice of fonts (settings) | the font library shipped with the core (it is in the installation, not in your data) |
+| the list of installed **skins** (repository, label, version) and the chosen skin, with your appearance changes (these are settings) | the skin files (reinstalled from their repository, like modules) |
 
-Le **cœur** fait la sauvegarde ; il sait aussi aller chercher ce que les modules ont stocké, sans que ceux-ci aient à coder quoi que ce soit.
-Un module peut en plus ajouter ses propres fichiers lisibles (un CSV de ses données, par exemple) avec `backup.readable`
-(voir [MODULES.md](MODULES.md)).
+The **core** makes the backup; it also knows how to fetch what modules stored, without any code on their side.
+A module can also add its own readable files (a CSV of its data, for example) with `backup.readable` (see [MODULES.md](MODULES.md)).
 
-## Lisible sans le framework — et chiffrée
+## Readable without the framework, and encrypted
 
-Le fichier téléchargé se nomme `backup-<site>-<date>.tar.gz.enc`. Il est **chiffré par le mot de passe choisi au moment de la sauvegarde**
-(il n'est enregistré nulle part ; sans lui, rien n'est récupérable). Le chiffrement est le **format standard d'OpenSSL** : aucun
-logiciel du framework n'est nécessaire pour l'ouvrir, même s'il a disparu.
-(La commande ci-dessous est aussi affichée dans la page *Sauvegarde*, en mode avancé.)
+The downloaded file is named `backup-<site>-<date>.tar.gz.enc`. It is **encrypted with the password chosen when the backup is made** (it is stored nowhere; without it nothing can be recovered). The encryption is the **standard OpenSSL format**: no framework software is needed to open it, even if the framework is gone. (The command below is also shown on the *Backup* page, in advanced mode.)
 
 ```bash
-openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -in backup-mon-site-2026-10-07.tar.gz.enc -out backup.tar.gz
+openssl enc -d -aes-256-cbc -pbkdf2 -iter 600000 -md sha256 -in backup-my-site-2026-10-07.tar.gz.enc -out backup.tar.gz
 tar xzf backup.tar.gz
 ```
 
-(OpenSSL est installé sur Linux et macOS ; sous Windows : Git for Windows ou WSL le fournissent.) Une fois extrait :
+(OpenSSL is installed on Linux and macOS; on Windows, Git for Windows or WSL provide it.) Once extracted:
 
 ```
-README.txt          mode d'emploi (français et anglais) — il est dans l'archive, avec vos données
-backup.json         inventaire : version, date, modules, skins (facultatif), empreinte SHA-256 de chaque fichier
-readable/           VOS DONNÉES MISES EN FORME POUR UN HUMAIN — commencez ici
-  site.txt            résumé : nom du site, langues, modules, compteurs, réglages (secrets masqués)
-  <instance>/*.md     une entrée par fichier Markdown et par langue, avec un en-tête (titre, statut, dates, étiquettes, lien, code…)
-  modules/<instance>/ les données de chaque module (JSON ; CSV et autres fichiers que le module fournit)
-data/               les mêmes données, brutes, en JSON : c'est ce que la restauration relit
-                    (dont retired-instances.json : les données GARDÉES de modules ou d'instances retirés, inertes ; absent des sauvegardes d'avant la 0.1.20)
-                    (dont upload-files.json : qui possède quel fichier envoyé, pour les modules qui peuvent les supprimer, 0.2.13 ; absent avant : aucun fichier n'a de propriétaire ;
-                     overlay-pages.json : les pages d'overlay avec leurs éléments, leur style et leur adresse secrète, 0.5.0 ; absent avant : aucune page. Le mode test, volatil, n'y est pas.
-                     La sauvegarde étant chiffrée, l'adresse secrète y est écrite pour que les adresses collées dans OBS fonctionnent encore après une restauration)
-                    (dont roles.json et user-roles.json : les rôles et qui les a ; absents avant la 0.2.0 : la restauration recrée alors les rôles
-                     prédéfinis et donne à chacun celui de son niveau `role` dans users.json)
-uploads/            images et fichiers envoyés
-fonts/              polices envoyées (.woff2) ; absent s'il n'y en a pas (docs/POLICES.md)
+README.txt          instructions (French and English): they are in the archive, with your data
+backup.json         inventory: version, date, modules, skins (optional), SHA-256 fingerprint of each file
+readable/           YOUR DATA FORMATTED FOR A HUMAN: start here
+  site.txt            summary: site name, languages, modules, counters, settings (secrets masked)
+  <instance>/*.md     one entry per Markdown file and per language, with a header (title, status, dates, tags, link, code…)
+  modules/<instance>/ the data of each module (JSON; CSV and other files the module provides)
+data/               the same data, raw, as JSON: this is what the restore reads
+                    (including retired-instances.json: the KEPT data of removed modules or instances, inert; absent before 0.1.20)
+                    (including upload-files.json: who owns which uploaded file, for modules that can delete them, 0.2.13; absent before: no file has an owner;
+                     overlay-pages.json: the overlay pages with their elements, style and secret address, 0.5.0; absent before: no page. Test mode, which is volatile, is not in it.
+                     The backup being encrypted, the secret address is written there so that the addresses pasted in OBS still work after a restore)
+                    (including roles.json and user-roles.json: the roles and who has them; absent before 0.2.0: the restore then recreates the
+                     predefined roles and gives each person the one of their `role` level in users.json)
+uploads/            uploaded images and files
+fonts/              uploaded fonts (.woff2); absent when there are none (docs/POLICES.md)
 ```
 
-Tout est du **texte** (JSON, Markdown, CSV), sauf les images. Pour vérifier l'intégrité :
-`sha256sum uploads/* data/*.json …` et comparer avec `backup.json`.
+Everything is **text** (JSON, Markdown, CSV), except the images. To check integrity: `sha256sum uploads/* data/*.json …` and compare with `backup.json`.
 
-### Format technique (pour qui veut écrire son propre lecteur)
+### Technical format (for whoever writes their own reader)
 
-1. Fichier = `Salted__` (8 octets) + sel (8 octets) + chiffré AES-256-CBC (bourrage PKCS#7).
-2. Clé (32 octets) et vecteur (16 octets) = `PBKDF2-HMAC-SHA256(mot de passe UTF-8, sel, 600000 itérations)` → 48 octets, découpés dans cet ordre
-   (c'est exactement ce que fait `openssl enc -pbkdf2`).
-3. Contenu déchiffré = archive `tar.gz` (ustar), chemins relatifs UTF-8, sans `..`.
-   (Le serveur écrit et lit cette archive sans bloquer ses autres requêtes ; le format, lui, n'a pas changé : une sauvegarde faite avant se restaure, et celle d'aujourd'hui se lit avec `openssl`.)
-4. `backup.json` : `{ format: "curiosa-backup", formatVersion: 1, createdAt, frameworkVersion, site, counts, modules[], files[{path, sha256, bytes}] }`.
+1. File = `Salted__` (8 bytes) + salt (8 bytes) + AES-256-CBC ciphertext (PKCS#7 padding).
+2. Key (32 bytes) and IV (16 bytes) = `PBKDF2-HMAC-SHA256(UTF-8 password, salt, 600000 iterations)` → 48 bytes, split in that order (this is exactly what `openssl enc -pbkdf2` does).
+3. Decrypted content = a `tar.gz` archive (ustar), UTF-8 relative paths, no `..`. (The server writes and reads this archive without blocking its other requests; the format itself has not changed: an earlier backup restores, and today's reads with `openssl`.)
+4. `backup.json`: `{ format: "curiosa-backup", formatVersion: 1, createdAt, frameworkVersion, site, counts, modules[], files[{path, sha256, bytes}] }`.
 
-## Restaurer
+## Automatic backup by e-mail
 
-*Sauvegarde › Restaurer une sauvegarde* (encadré rouge : la restauration **remplace** les données actuelles) : choisissez le fichier, saisissez le mot de passe, puis **vérifiez l'aperçu** avant de confirmer.
+*Backup > Backup by e-mail* sends the site administrator an encrypted backup on a schedule. It is off until someone switches it on.
 
-- Le fichier est **vérifié avant tout** : mot de passe, format, version, empreinte de chaque fichier (une sauvegarde modifiée ou incomplète
-  est refusée), présence d'une personne propriétaire (une restauration ne doit jamais vous enfermer dehors).
-- Les **modules sont réinstallés depuis le catalogue** (dépôts du catalogue). Un module **personnel**
-  (dépôt non vérifié) n'est réinstallé que si vous le **confirmez, module par module** ; sinon ses données sont gardées mais le module reste à réinstaller.
-- La restauration **remplace** les données actuelles, en une seule transaction : tout ou rien. Un cliché complet (base, images, polices, extensions) est gardé avant dans
-  `data/backups/pre-restore-<heure>/` (les 3 derniers).
-- Les enregistrements de modules portent leur **clé** (`key`, facultative). Une sauvegarde plus ancienne, sans clé, se restaure telle quelle (clé vide). Le compteur de génération du stockage de chaque instance augmente (les modules reconstruisent leurs index en mémoire).
-- Avant une **mise à jour groupée de modules**, une copie unique `data/backups/pre-bulk-update-<date>-<ts>.db` est prise (une seule gardée, jamais effacée par la rotation des autres copies).
-- Les identifiants sont conservés : les sessions, les liens entre entrées, redirections et données de modules restent valides.
-- Les modules installés ici mais absents de la sauvegarde restent installés (sans leurs instances).
-- **Dépendances entre modules** ([MODULES.md › Dépendances](MODULES.md)) : les modules sont réinstallés **dans l'ordre des dépendances** (fournisseurs d'abord), puis les besoins de chaque module **actif** restauré sont vérifiés. Un fournisseur absent de la sauvegarde mais disponible (livré, catalogue) est installé avec son instance par défaut ; le bilan le mentionne. Si aucun n'est disponible, le module est restauré **avec ses données**, dans l'état « activé » de la sauvegarde, et l'**aperçu comme le bilan** disent « il manque : … » : la restauration n'est jamais interrompue et aucune donnée n'est perdue.
+**What is sent.** The same file as the manual backup: `backup-<site>-<date>.tar.gz.enc`, the format above, restorable with the usual restore and readable with the OpenSSL command. It is **never sent unencrypted**: the backup holds hashed passwords, every setting including secrets, and personal data, and e-mail is not a safe channel.
 
-**Sur un serveur neuf** : installez le framework ([INSTALL.md](INSTALL.md)) et ouvrez le site. Le **premier écran de l'assistant propose
-« J'ai déjà une sauvegarde : la restaurer »** : même procédure (fichier, mot de passe, aperçu, confirmation des modules personnels), sans créer
-de compte provisoire. Si `SETUP_TOKEN` est défini, le même jeton est demandé. Ce chemin n'existe que **tant qu'aucun compte n'existe** :
-un site en service ne peut se restaurer que depuis l'admin, par la personne propriétaire ou la coordination technique (droit `core:backup`). Reconnectez-vous ensuite avec un compte de la sauvegarde.
+**The passphrase.** A scheduled run has nobody to type a password, so when the feature is switched on the core **generates a passphrase** (25 random symbols from the system random generator, in five groups, about 125 bits) and shows it **once**, with a copy button. The server keeps it **only sealed** (AES-256-GCM, key derived from the site secret `AUTH_SECRET` or `data/auth-secret`: the same mechanism as the access code of a private repository). It is never written in an e-mail, a log, an audit row, a file name, a page, a diagnostic or an assistant (MCP) answer, and nobody can read it again. The manual backup keeps asking for its own password.
 
-- **Fichiers supprimés par un module** (permission `files`, 0.2.13) : une sauvegarde est une photographie. Restaurer remet les fichiers qu'elle contient (supprimés depuis ou non) avec leur propriétaire et les données des modules de la même date : tout reste cohérent, la suppression ne casse jamais une restauration. Un fichier supprimé après la sauvegarde n'est plus dans les sauvegardes suivantes ; les anciennes sauvegardes le gardent tant que vous les gardez.
+- **Lose the passphrase and the e-mailed backups cannot be opened**: there is no recovery, by design. Keep it in a password manager or on paper.
+- *More options > Create a new passphrase* makes a new one for the next backups. The files already e-mailed **keep the old passphrase**: keep it too.
+- Switching the feature off **deletes the sealed passphrase** and stops the schedule. Switching it on again makes a new one.
+- The passphrase and the feature settings are **not part of a backup** (they describe this server). After a restore the feature is off; switch it on again.
 
-## Anciennes sauvegardes
+**Recipient.** By default the owner account's address. *More options* lets you choose another administrator account or type one address. The page shows it masked (`c***@example.org`).
 
-Un fichier de sauvegarde n'a pas de date de péremption : **toute** sauvegarde d'une version plus ancienne se restaure (une version plus récente que le site est refusée, avant que quoi que ce soit soit installé). Le réseau sert à retrouver les extensions.
-Le principe est « au mieux » : ce qui marche est restauré, ce qui ne peut pas être converti est **mis de côté**, et le bilan dit en clair quoi, avec le **chemin exact** du fichier lisible (voir plus haut) où se trouvent les données. Vous finissez à la main ; rien d'autre n'est bloqué.
+**Frequency.** Every day, every week (default, Sunday) or every month (the 1st), at **03:MM on the site clock** (`site.timezone`, else the server's), where MM (0 to 59) comes from a hash of the site name so that sites do not all start together. The schedule survives a restart: if the server was off at the due time, **one** backup runs shortly after the next start (never one per missed slot). A run is due only for a slot later than the moment the feature was switched on. *Send a backup now* uses the same code as the schedule.
 
-1. **Le plan** (aperçu, avant d'écrire quoi que ce soit) : version de la sauvegarde, conversions du cœur qui vont tourner, chemin de chaque extension dont les données sont trop anciennes.
-2. **Conversions du cœur**, fonctions pures sur les données lues (`src/core/backup/conversion/coreConversions.ts`) : éléments « éteints » d'avant la 0.1.20 (mis de côté avec leurs données, comme la migration `20261118090000_drop_enabled_columns`), menu d'avant la 0.2.6 figé dans `nav.menu`, place des overlays d'avant la 0.2.6, reprise RAWG d'avant la 0.3.0 (code, corrections et liste confiés au module « Jaquettes de jeux », installé s'il manque, une fois ses données en place ; l'ancien réglage reste où il est).
-3. **Extensions** : si les données sont au niveau du plancher (`dataFloor`) de la version du catalogue ou au-dessus, la version du catalogue les convertit. Sinon, la restauration installe la version qui les convertit encore (le « pont » : la **dernière** version du dépôt dont le plancher accepte ces données, voir [MIGRATIONS.md](MIGRATIONS.md)), laisse convertir, recommence depuis la version de données obtenue, puis passe à la version du catalogue. Une étape impossible est signalée avec le dossier `readable/modules/<instance>/`.
-4. **Copie de travail** : les données converties sont écrites dans une copie de la base et vérifiées (compte propriétaire, nombres de lignes, fichiers revendiqués présents, éléments stockés lisibles). Un problème arrête tout ici : le site n'a pas été touché.
-5. **Échange** : un cliché complet est déjà pris. Les dossiers d'images et de polices sont posés d'un coup (renommage ; remplacement fichier par fichier sur un volume monté), puis la base est remplacée en **une** transaction qui revérifie les nombres avant de valider. Si elle échoue, les dossiers reviennent du cliché et les extensions installées pour l'occasion sont retirées.
-6. **Après** : chaque extension convertit ses données avec le code de sa version ; aucune erreur n'est avalée, toutes sont dans le bilan (« Converti », « Mis de côté », « Non fait »).
+**Size.** The attachment limit is 20 MB by default (1 to 25 MB, *More options*). Many mail providers refuse a whole message above about 25 MB, and the attachment grows by a third when encoded, so a provider that refuses a file under the limit shows as "the mail server did not accept the message": lower the limit. Over the limit the e-mail is sent **without the attachment**, says it was too big and that the backup is **kept on the server**; the page then shows *Download the latest kept copy*. A backup is never split or truncated. A backup over the limit with no room on the disk to keep it is a failure, not a notice.
 
-Les fixtures de test par époque (0.1, 0.2, 0.6, 0.31, 0.38) sont de vraies sauvegardes écrites par le code de chaque étiquette publiée, avec des données de démonstration : `tests/fixtures/backup-eras/generate.mjs`. Un test (`tests/core/backup-conversion-coverage.test.mjs`) échoue si une conversion du registre de migrations ou une migration qui déplace des données n'a ni fonction de conversion ni refus explicite.
+**Copies on the server.** Each automatic run keeps the file that was e-mailed in `data/backups/auto/`: the **5 most recent**, counted on their own. The other copies in `data/backups/` have their own rules and never count against them: database copies of the maintenance tools (`maintenance-<time>.db`, 5), copies before a restore (`pre-restore-*`, 3), the one copy before a bulk update. The manual backup is a download and keeps no copy.
 
-## Bon à savoir
+**Results and failures.** Each run records its time, size, whether it was sent and attached, and a reason in plain words. A failed scheduled run is retried with growing waits (15 minutes, 1 hour, 4 hours); after the fourth failure the next slot is awaited. The feature never stops the site. States are the usual three: **Configured**, **Degraded** (last run failed, the mail settings are gone, the passphrase cannot be opened here, or the last backup was too big to attach: with the reason and what to do) and **Not configured**. The audit log gets one row per run (`autobackup.sent` or `autobackup.failed`) with a word as cause, never a server message, an address or a secret; switching on, off, changing options and creating a new passphrase are logged too. The feature cannot be switched on while no e-mail is set up: the page links to the mail settings.
 
-- La sauvegarde contient des **secrets** et les empreintes des mots de passe : gardez le fichier **et** son mot de passe en lieu sûr, séparément.
-- Faites-en régulièrement et **essayez** de relire une sauvegarde de temps en temps : c'est la seule façon d'être sûr qu'elle sert.
-- Pas de sauvegarde automatique pour l'instant ; la restauration d'une sauvegarde créée par une version **plus récente** du framework est refusée (mettez-le à jour d'abord) ; celle d'une version plus ancienne est convertie (voir ci-dessus).
+**Assistants (MCP).** The maintenance report (`maintenance_health`, `maintenance_diagnose`) shows the state, frequency, last result, size limit and the masked recipient: read-only. No tool can switch it on, change the recipient or read the passphrase.
 
-## Skins (apparence)
+**The e-mail.** In the admin language: subject with the site name and date, what is attached with its size, "this file is encrypted; open it with the passphrase you kept when you switched the feature on", how to restore, where to turn it off. No personal data.
 
-Les réglages d'apparence (`theme.*`, `header.layout`) et ceux des skins (`skin.active`, `skin.installed`, `skin.options`) sont des réglages comme les autres : ils sont dans la sauvegarde et restaurés tels quels. Une sauvegarde faite avant les skins n'en contient aucun : le site s'affiche avec le skin de base, à l'identique. Les **fichiers** d'un skin installé ne sont pas dans la sauvegarde : ils sont réinstallés depuis leur dépôt. Tant qu'ils manquent, le skin de base s'applique, rien n'est perdu et `skin.active` est gardé : le skin se réactive dès qu'il est de nouveau installé.
+**Restoring from an e-mailed file.** Save the attachment, then *Backup > Restore a backup*, choose the file, type the passphrase, check the preview and confirm (see "Restore"). Without the framework, use the OpenSSL command with the passphrase.
+
+**What an attacker can do.** With the mailbox: they hold encrypted files and the passphrase is nowhere in them, so nothing opens without it (125 bits, derived with 600000 PBKDF2 iterations). With the server (files and database): they can read the site anyway; the sealed passphrase opens with the site secret on that server, so the stored files are no further protected from someone who has it. With the mailbox **and** the passphrase kept by the owner: everything in the backup. Residual risks: a lost passphrase; a mailbox that also holds the passphrase; a recipient address typed wrongly (check the masked summary). Keep the passphrase somewhere other than that mailbox.
+
+## Restore
+
+*Backup > Restore a backup* (red box: the restore **replaces** the current data): choose the file, type the password, then **check the preview** before confirming.
+
+- The file is **checked before anything else**: password, format, version, fingerprint of each file (a modified or incomplete backup is refused), presence of an owner (a restore must never lock you out).
+- **Modules are reinstalled from the catalogue** (catalogue repositories). A **personal** module (unverified repository) is only reinstalled if you **confirm it, module by module**; otherwise its data is kept but the module stays to be reinstalled.
+- The restore **replaces** the current data, in one transaction: all or nothing. A complete snapshot (database, images, fonts, extensions) is kept first in `data/backups/pre-restore-<time>/` (the last 3).
+- Module records carry their **key** (`key`, optional). An older backup without keys restores as it is (empty key). The storage generation counter of each instance goes up (modules rebuild their in-memory indexes).
+- Before a **bulk module update**, a single copy `data/backups/pre-bulk-update-<date>-<ts>.db` is taken (only one kept, never erased by the rotation of the other copies).
+- Identifiers are kept: sessions, links between entries, redirects and module data stay valid.
+- Modules installed here but absent from the backup stay installed (without their instances).
+- **Dependencies between modules** ([MODULES.md > Dependencies](MODULES.md)): modules are reinstalled **in dependency order** (providers first), then the needs of each restored **active** module are checked. A provider absent from the backup but available (shipped, catalogue) is installed with its default instance; the report mentions it. If none is available, the module is restored **with its data**, in the "on" state of the backup, and **both the preview and the report** say "missing: …": the restore is never interrupted and no data is lost.
+
+**On a new server**: install the framework ([INSTALL.md](INSTALL.md)) and open the site. The **first screen of the wizard offers "I already have a backup: restore it"**: same procedure (file, password, preview, confirmation of personal modules), without creating a temporary account. If `SETUP_TOKEN` is set, the same token is asked. This path exists **only while no account exists**: a live site can only be restored from the admin area, by the owner or the technical coordination (right `core:backup`). Sign in again afterwards with an account from the backup.
+
+- **Files deleted by a module** (permission `files`, 0.2.13): a backup is a photograph. Restoring puts back the files it contains (deleted since or not) with their owner and the module data of the same date: everything stays consistent, a deletion never breaks a restore. A file deleted after the backup is no longer in the following backups; older backups keep it as long as you keep them.
+
+## Old backups
+
+A backup file has no expiry date: **any** backup of an older version restores (a version newer than the site is refused, before anything is installed). The network is used to find extensions. The principle is "best effort": what works is restored, what cannot be converted is **set aside**, and the report says plainly what, with the **exact path** of the readable file (see above) where the data is. You finish by hand; nothing else is blocked.
+
+1. **The plan** (preview, before anything is written): version of the backup, core conversions that will run, path of each extension whose data is too old.
+2. **Core conversions**, pure functions on the data read (`src/core/backup/conversion/coreConversions.ts`): "switched off" items from before 0.1.20 (set aside with their data, like the migration `20261118090000_drop_enabled_columns`), menu from before 0.2.6 frozen in `nav.menu`, overlay placement from before 0.2.6, RAWG takeover from before 0.3.0 (code, fixes and list handed to the "Game covers" module, installed if missing, once its data is in place; the old setting stays where it is).
+3. **Extensions**: if the data is at the floor (`dataFloor`) of the catalogue version or above, the catalogue version converts it. Otherwise the restore installs the version that still converts it (the "bridge": the **last** version of the repository whose floor accepts this data, see [MIGRATIONS.md](MIGRATIONS.md)), lets it convert, starts again from the data version obtained, then moves to the catalogue version. An impossible step is reported with the folder `readable/modules/<instance>/`.
+4. **Working copy**: the converted data is written to a copy of the database and checked (owner account, row counts, claimed files present, stored items readable). A problem stops everything here: the site was not touched.
+5. **Swap**: a complete snapshot is already taken. The image and font folders are put in place at once (rename; file by file on a mounted volume), then the database is replaced in **one** transaction that checks the counts again before committing. If it fails, the folders come back from the snapshot and the extensions installed for the occasion are removed.
+6. **After**: each extension converts its data with the code of its version; no error is swallowed, all are in the report ("Converted", "Set aside", "Not done").
+
+The per-era test fixtures (0.1, 0.2, 0.6, 0.31, 0.38) are real backups written by the code of each published tag, with demo data: `tests/fixtures/backup-eras/generate.mjs`. A test (`tests/core/backup-conversion-coverage.test.mjs`) fails if a conversion of the migration registry, or a migration that moves data, has neither a conversion function nor an explicit refusal.
+
+## Good to know
+
+- The backup holds **secrets** and password fingerprints: keep the file **and** its password somewhere safe, separately.
+- Make backups regularly and **try** reading one from time to time: it is the only way to be sure it works.
+- Restoring a backup created by a **newer** version of the framework is refused (update it first); one from an older version is converted (see above).
+- An automatic backup by e-mail exists (see above); it does not replace trying a restore from time to time.
+
+## Skins (appearance)
+
+Appearance settings (`theme.*`, `header.layout`) and skin settings (`skin.active`, `skin.installed`, `skin.options`) are settings like the others: they are in the backup and restored as they are. A backup made before skins has none: the site shows with the base skin, unchanged. The **files** of an installed skin are not in the backup: they are reinstalled from their repository. While they are missing, the base skin applies, nothing is lost and `skin.active` is kept: the skin turns on again as soon as it is installed again.
 
 ## Private repositories (core 0.42.0)
 

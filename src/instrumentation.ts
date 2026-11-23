@@ -57,6 +57,9 @@ export async function register() {
   startUpdateScheduler();
   const { startTaskScheduler } = await import("@/core/services/scheduler");
   startTaskScheduler();
+  // Automatic backup by e-mail (src/core/backup/auto): looks for a slot that is due (also a missed one, once), nothing when the feature is off.
+  const { startAutoBackupScheduler } = await import("@/core/backup/auto/scheduler");
+  startAutoBackupScheduler();
   // Warm the caches an AI maintenance call would otherwise pay for after a restart (a few seconds after the start, only when the site has an AI access).
   const { scheduleMaintenanceWarmup } = await import("@/core/maintenance/warmup");
   scheduleMaintenanceWarmup();

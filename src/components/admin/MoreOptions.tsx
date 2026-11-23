@@ -6,7 +6,9 @@ import { ui } from "./ui";
  * (`defaultOpen`) ou quand un champ y est en erreur (le cœur ouvre les <details> avant de donner le focus). Un <details> natif : clavier, toucher et lecteur
  * d'écran sans rien de plus, et le contenu reste dans le formulaire (les champs repliés partent avec lui).
  */
-export function MoreOptions({ title, summary, count, defaultOpen, children, className = "" }: {
+export function MoreOptions({ title, summary, count, defaultOpen, children, className = "", id }: {
+  /** An address for a link that opens the group (`#id`). */
+  id?: string;
   title: string;
   /** Ce qui est réglé là-dedans, en une ligne (vide : rien de réglé). */
   summary?: string;
@@ -17,7 +19,7 @@ export function MoreOptions({ title, summary, count, defaultOpen, children, clas
   className?: string;
 }) {
   return (
-    <details open={defaultOpen || undefined} data-more-options="" className={`group rounded-2xl border border-line bg-bg/40 ${className}`}>
+    <details id={id} open={defaultOpen || undefined} data-more-options="" className={`group rounded-2xl border border-line bg-bg/40 ${className}`}>
       <summary className="flex min-h-11 cursor-pointer list-none items-center gap-3 rounded-2xl px-4 py-2 text-[15px] font-medium focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent [&::-webkit-details-marker]:hidden">
         <span aria-hidden="true" className="inline-block text-xs text-muted transition-transform group-open:rotate-90">▶</span>
         <span className="shrink-0">{title}</span>

@@ -21,6 +21,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Added skins are in one table with a search.** Each row says where the skin comes from and whether access is configured; one button and a "..." menu (edit access, go back to the previous version, remove). Each action opens in a window.
 - **Les extensions peuvent connaître les personnes qui se connectent au site.** Une extension qui le demande reçoit leur nom, leur e-mail et leur rôle, rien d'autre : jamais de mot de passe, de clé d'accès ni de code de secours. Rien n'est affiché sur le site public, et une extension qui ne le demande pas ne voit rien.
 - **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
+- **Une sauvegarde chiffrée peut vous être envoyée par e-mail.** Dans *Sauvegarde*, un interrupteur l'active, chaque semaine par défaut. Le fichier est chiffré avec une phrase secrète montrée une seule fois : gardez-la, sans elle il ne s'ouvre pas.
+- **(English) A backup can be e-mailed to you.** In *Backup*, a switch turns it on, every week by default. The file is encrypted with a passphrase shown only once: keep it, without it the file cannot be opened.
 
 ### Corrections
 
@@ -35,6 +37,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Sauvegarde automatique par e-mail (`src/core/backup/auto/`) : horaire pur, phrase secrète scellée (`seal.ts`), 5 copies dans `data/backups/auto/`, envoi par `sendCoreMailWithAttachment` (cœur seulement), état en lecture seule dans `maintenance_health`. Réglages `autobackup.*` hors sauvegardes. Voir [docs/BACKUP.md](docs/BACKUP.md).
+- **(English)** Automatic backup by e-mail (`src/core/backup/auto/`): pure schedule, sealed passphrase (`seal.ts`), 5 copies in `data/backups/auto/`, sent with `sendCoreMailWithAttachment` (core only), read-only state in `maintenance_health`. `autobackup.*` settings are not in backups. See [docs/BACKUP.md](docs/BACKUP.md).
 - `components/admin/managerHints.ts` : `PLAIN_INPUT` (`autoComplete="off"` et les indices des gestionnaires) sur tout `<input>` de texte qui n'est pas un identifiant ; `TextField` l'applique par défaut. `tests/core/admin-input-hints.test.mjs` échoue sur un nouvel `<input>` sans lui.
 - **(English)** `components/admin/managerHints.ts`: `PLAIN_INPUT` (`autoComplete="off"` and the managers' hints) on every text input that is not a login; `TextField` applies it by default. `tests/core/admin-input-hints.test.mjs` fails on a new `<input>` without it.
 - `McpTokenCreator` : champ nommé `accessLabel` (l'action lit encore `name`), indices sur le `<form>`, `createGate` (`singleFlight.ts`) pour ignorer un second envoi pendant le premier, bloc créé extrait en `CreatedAccess`. `submitKeepingValues` retombe sur `new FormData(form)` si l'expéditeur n'est pas un bouton du formulaire.
