@@ -18,9 +18,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : `assets` de type `font` (woff2, `family`, `weight`, `style`), limites des polices de skin de site, validation d'octets (`checkWoff2`), `@font-face` écrit par le cœur (`overlays/skinFonts.ts`, familles `ov-<skin>-<famille>`, `font-display: fallback`), listes de polices vérifiées (famille déclarée ou police système connue, famille générique en dernier), chargeur `FontFace` dans la page d'overlay (CSP de la page inchangée). Les contrats 2 à 5 sont inchangés octet pour octet (`tests/core/overlay-skins-regression.test.mjs`). Nouveaux codes : `overlay-contract-v6`, `overlay-font-mincore`, `overlay-font-family-missing`, `overlay-font-invalid`, `overlay-font-undeclared`, `overlay-font-fallback`.
-- `twinOf` (manifeste et catalogue, sans changement de contrat), codes `twin-overlay-only` et `twin-self`, logique pure `overlays/twin.ts`, offre à usage unique `overlays/twinOffer.ts`.
-- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): `font` assets (woff2, `family`, `weight`, `style`), the site skin font limits, byte validation (`checkWoff2`), `@font-face` written by the core (`overlays/skinFonts.ts`, `ov-<skin>-<family>` names, `font-display: fallback`), checked font lists (declared family or known system font, generic family last), a `FontFace` loader in the overlay page (page CSP unchanged). Contracts 2 to 5 are byte-identical (`tests/core/overlay-skins-regression.test.mjs`). `twinOf` (manifest and catalogue, no contract change), pure logic `overlays/twin.ts`, one-time offer `overlays/twinOffer.ts`. See `docs/OVERLAY-SKINS.md`.
+- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : polices woff2 déclarées dans `assets`, `@font-face` écrit par le cœur (`overlays/skinFonts.ts`), listes de polices vérifiées, chargeur dans la page d'overlay. Contrats 2 à 5 inchangés octet pour octet. Voir `docs/OVERLAY-SKINS.md`.
+- `twinOf` (manifeste et catalogue, sans changement de contrat) : logique `overlays/twin.ts`, offre unique `overlays/twinOffer.ts`.
+- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): woff2 fonts declared in `assets`, `@font-face` written by the core (`overlays/skinFonts.ts`), checked font lists, a loader in the overlay page. Contracts 2 to 5 are byte-identical. See `docs/OVERLAY-SKINS.md`.
+- **(English)** `twinOf` (manifest and catalogue, no contract change): logic in `overlays/twin.ts`, one-time offer in `overlays/twinOffer.ts`.
 
 ### Corrections
 

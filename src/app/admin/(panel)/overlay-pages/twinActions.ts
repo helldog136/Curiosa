@@ -1,5 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { ADMIN_HREF } from "@/core/adminLinks";
 import { adminCtx } from "@/core/admin";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { updateLook } from "@/core/overlays/lookService";
@@ -37,5 +38,5 @@ export async function applyMatchingOverlaySkinAction(skin: string, _prev: Action
 export async function dismissTwinOfferAction(): Promise<void> {
   await adminCtx(OVERLAY_NEED);
   await clearTwinOffer();
-  revalidatePath("/admin", "layout");
+  revalidatePath(ADMIN_HREF, "layout");
 }
