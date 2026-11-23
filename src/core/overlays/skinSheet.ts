@@ -3,6 +3,7 @@ import { composite, contrastRatio } from "../skins/readability";
 import { KEYFRAMES } from "./skinPresets";
 import { OV_TOKEN_DEFS } from "./skinTokens";
 import { motionCss } from "../animate/spec";
+import { fontFaceCss, type OverlayFont } from "./skinFonts";
 
 /**
  * COMPILES AN OVERLAY SKIN INTO THE SHEET THE OVERLAY PAGE INJECTS INTO EACH ELEMENT (core 0.8.0). Pure.
@@ -28,7 +29,7 @@ export const ANIM_CSS: Record<string, string> = {
   glow: "@keyframes ov-glow{from{opacity:.94}to{opacity:1}}",
 };
 
-export type SkinPayload = { id: string; version: string; css: string; /** (0.21.0) The colours the appearance kit takes from this skin (derived when the skin does not set them). */ colors?: SkinColors };
+export type SkinPayload = { id: string; version: string; css: string; /** (0.47.0) The fonts the skin embarks (contract 6): their `@font-face` rules are the first rules of `css`; the page also hands them to the loader (render.ts). Absent when the skin has none. */ fonts?: OverlayFont[]; /** (0.21.0) The colours the appearance kit takes from this skin (derived when the skin does not set them). */ colors?: SkinColors };
 
 // ── (0.21.0) The skin's colours for the appearance kit, and the site's retouches of a skin ─────────────────────────────────────────────────────
 /** All #rrggbb: what an element's "the skin's colour" means. */
@@ -96,13 +97,13 @@ export function solidSurface(surface: string, fg: string | undefined): string {
   return hex(composite(c, light ? BLACK : WHITE));
 }
 
-export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean; /** (0.21.0) The site's retouches, written over the skin's tokens and before its rules. */ tweaks?: SkinTweaks }): SkinPayload {
+export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** (0.47.0) The skin's fonts (skinFonts.ts `overlayFonts`): their `@font-face` rules come first in the sheet. */ fonts?: readonly OverlayFont[]; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean; /** (0.21.0) The site's retouches, written over the skin's tokens and before its rules. */ tweaks?: SkinTweaks }): SkinPayload {
   const { id } = input;
   const base = input.opaque && input.tokens["--ov-surface"] ? { ...input.tokens, "--ov-surface": solidSurface(input.tokens["--ov-surface"], input.tokens["--ov-fg"]) } : input.tokens;
   const tweaked = input.tweaks && Object.keys(input.tweaks).length ? tweakTokens(base, input.tweaks) : null;
   const tokens: Readonly<Record<string, string>> = tweaked ? { ...base, ...tweaked } : base;
   const has = (n: string) => typeof tokens[n] === "string" && tokens[n] !== "";
-  const out: string[] = [];
+  const out: string[] = input.fonts?.length ? input.fonts.map(fontFaceCss) : [];
   const known = OV_TOKEN_DEFS.filter((d) => has(d.name));
   out.push(`${root(id)}{${known.map((d) => `${d.name}:${d.name === "--ov-anim" ? tokens[d.name] : tokens[d.name]}!important`).join(";")}}`);
   const rule = (selector: string, decls: string[]) => { if (decls.length) out.push(`${selector}{${decls.join(";")}}`); };
@@ -143,7 +144,7 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) { out.push(frames); motion = true; }
   if (motion) out.push(`@media (prefers-reduced-motion:reduce){html[data-ov-skin="${id}"] *,html[data-ov-skin="${id}"] *::before,html[data-ov-skin="${id}"] *::after{animation:none!important;transition:none!important}}`);
   const colors = skinColors(tokens);
-  return { id, version: input.version, css: out.filter(Boolean).join("\n"), ...(colors ? { colors } : {}) };
+  return { id, version: input.version, css: out.filter(Boolean).join("\n"), ...(input.fonts?.length ? { fonts: [...input.fonts] } : {}), ...(colors ? { colors } : {}) };
 }
 
 export type TokenIssue = { code: "missing" | "contrast" | "no-shadow"; token?: string; ratio?: number; pair?: string };

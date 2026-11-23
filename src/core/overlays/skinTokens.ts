@@ -1,4 +1,5 @@
 import { parseColor } from "../skins/colorParse";
+import { mapFontStack, type FontCtx } from "./skinFonts";
 
 /**
  * EXTENDED `--ov-*` TOKEN VOCABULARY (core 0.8.0), used by overlay skins (docs/OVERLAY-SKINS.md).
@@ -59,7 +60,7 @@ export const OV_ANIM_PRESETS = ["none", "fade", "rise", "pop", "glow"] as const;
 export const OV_TRANSFORMS = ["none", "uppercase", "lowercase", "capitalize"] as const;
 export const MAX_TOKEN_VALUE = 240;
 
-export type TokenCheck = { ok: true; value: string } | { ok: false; code: "unknown" | "value"; type?: OvTokenType };
+export type TokenCheck = { ok: true; value: string } | { ok: false; code: "unknown" | "value"; type?: OvTokenType; /** (0.47.0) Why a font list of a contract-6 skin is refused. */ reason?: "shape" | "fallback" | "undeclared"; family?: string };
 const bad = (type: OvTokenType): TokenCheck => ({ ok: false, code: "value", type });
 
 const GENERIC_FONTS = ["serif", "sans-serif", "monospace", "cursive", "fantasy", "system-ui", "ui-serif", "ui-sans-serif", "ui-monospace", "ui-rounded"];
@@ -151,8 +152,12 @@ function checkGradient(v: string): string | null {
   return colors >= 2 ? v.replace(/\s+/g, " ") : null;
 }
 
-/** Checks one token value of a skin. The returned value is the one to write (trimmed, normalised for fonts). */
-export function checkToken(name: string, raw: unknown): TokenCheck {
+/**
+ * Checks one token value of a skin. The returned value is the one to write (trimmed, normalised for fonts).
+ * `fonts` (core 0.47.0, skins of contract 6 only): the families the skin declares; a font list then names a declared family (rewritten to its scoped name) or a known
+ * system font, and always ends with a generic family. Without it the rules are exactly those of contracts 2 to 5.
+ */
+export function checkToken(name: string, raw: unknown, fonts?: FontCtx): TokenCheck {
   const def = OV_TOKEN_BY_NAME.get(name);
   if (!def) return { ok: false, code: "unknown" };
   if (typeof raw !== "string") return bad(def.type);
@@ -165,7 +170,10 @@ export function checkToken(name: string, raw: unknown): TokenCheck {
       if (px === null || px < (def.min ?? -Infinity) || px > (def.max ?? Infinity)) return bad("length");
       return { ok: true, value: v };
     }
-    case "font": { const f = checkFont(v); return f ? { ok: true, value: f } : bad("font"); }
+    case "font": {
+      if (fonts) { const m = mapFontStack(v, fonts); return m.ok ? { ok: true, value: m.value } : { ok: false, code: "value", type: "font", reason: m.reason, ...(m.family ? { family: m.family } : {}) }; }
+      const f = checkFont(v); return f ? { ok: true, value: f } : bad("font");
+    }
     case "weight": return /^([1-9]00|normal|bold)$/.test(v) ? { ok: true, value: v } : bad("weight");
     case "shadow": { const s = checkShadow(v, name === "--ov-text-shadow"); return s ? { ok: true, value: s } : bad("shadow"); }
     case "gradient": { const g = checkGradient(v); return g ? { ok: true, value: g } : bad("gradient"); }

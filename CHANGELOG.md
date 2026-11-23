@@ -9,6 +9,19 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Les skins d'overlay peuvent avoir leur propre police.** Un skin peut embarquer jusqu'à quatre polices (fichiers woff2) : vos alertes et vos objectifs gardent la même allure partout, même sur un ordinateur qui n'a pas la police. Si une police ne se charge pas, l'overlay s'affiche quand même avec une police de remplacement.
+- **(English) Overlay skins can ship their own font.** A skin can bring up to four fonts (woff2 files): your alerts and goals look the same everywhere, even on a computer without that font. If a font does not load, the overlay is still shown with a fallback font.
+- **Un skin d'overlay peut dire quel skin de site il accompagne.** Dans la galerie, un badge « Assorti à votre skin de site » apparaît quand le skin de site actif est le bon. Quand vous changez de skin de site, un bouton propose le skin d'overlay assorti ; rien n'est appliqué sans votre clic.
+- **(English) An overlay skin can name the site skin it goes with.** In the gallery, a "Matches your site skin" badge appears when the active site skin is the right one. When you change your site skin, a button offers the matching overlay skin; nothing is applied without your click.
+
+### Pour les développeurs
+
+- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : `assets` de type `font` (woff2, `family`, `weight`, `style`), limites des polices de skin de site, validation d'octets (`checkWoff2`), `@font-face` écrit par le cœur (`overlays/skinFonts.ts`, familles `ov-<skin>-<famille>`, `font-display: fallback`), listes de polices vérifiées (famille déclarée ou police système connue, famille générique en dernier), chargeur `FontFace` dans la page d'overlay (CSP de la page inchangée). Les contrats 2 à 5 sont inchangés octet pour octet (`tests/core/overlay-skins-regression.test.mjs`). Nouveaux codes : `overlay-contract-v6`, `overlay-font-mincore`, `overlay-font-family-missing`, `overlay-font-invalid`, `overlay-font-undeclared`, `overlay-font-fallback`.
+- `twinOf` (manifeste et catalogue, sans changement de contrat), codes `twin-overlay-only` et `twin-self`, logique pure `overlays/twin.ts`, offre à usage unique `overlays/twinOffer.ts`.
+- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): `font` assets (woff2, `family`, `weight`, `style`), the site skin font limits, byte validation (`checkWoff2`), `@font-face` written by the core (`overlays/skinFonts.ts`, `ov-<skin>-<family>` names, `font-display: fallback`), checked font lists (declared family or known system font, generic family last), a `FontFace` loader in the overlay page (page CSP unchanged). Contracts 2 to 5 are byte-identical (`tests/core/overlay-skins-regression.test.mjs`). `twinOf` (manifest and catalogue, no contract change), pure logic `overlays/twin.ts`, one-time offer `overlays/twinOffer.ts`. See `docs/OVERLAY-SKINS.md`.
+
 ### Corrections
 
 - **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.

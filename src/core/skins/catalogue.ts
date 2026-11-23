@@ -42,6 +42,8 @@ export type SkinCatalogueEntry = {
   modes: ("light" | "dark")[];
   /** Cœur minimal annoncé (`requires.core`). */
   requires?: { core: string };
+  /** (core 0.47.0) Overlay skins: the id of the site skin this one is the twin of. Information only (a skin id, anything else is ignored). */
+  twinOf?: string;
   /** (core 0.9.0) Optional animated preview of an overlay skin (`skins/<id>/previews/*-anim.webp`), played by the gallery when allowed. */
   previewAnim?: string;
   /** Chemin de l'image d'aperçu dans le dépôt (le site ne la charge jamais depuis GitHub : voir `inspect`). */
@@ -88,6 +90,7 @@ export function sanitizeSkinEntries(json: unknown, coreVersion: string, origin: 
       id: i.id, kind, name: text(i.name, i.id, 40), description: text(i.description, "", 200), repo: r.repo.url, subdir, ref,
       version: typeof i.version === "string" && /^\d+\.\d+\.\d+$/.test(i.version) ? i.version : undefined,
       skinContract: contract, author: str(i.author, 120), icon: str(i.icon, 8),
+      ...(kind === "overlay" && typeof i.twinOf === "string" && SKIN_ID_RE.test(i.twinOf) && i.twinOf !== "basic" && i.twinOf !== i.id ? { twinOf: i.twinOf } : {}),
       tags: Array.isArray(i.tags) ? i.tags.filter((t: unknown): t is string => typeof t === "string" && TAG_VOCABULARY.includes(t)).slice(0, 6) : [],
       modes, requires: core ? { core } : undefined,
       previewAnim: typeof i.previewAnim === "string" && /^[\w./-]{1,150}-anim\.webp$/.test(i.previewAnim) && !i.previewAnim.includes("..") ? i.previewAnim : undefined,

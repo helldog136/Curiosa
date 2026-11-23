@@ -4,6 +4,7 @@ import type { OverlayPageData } from "./model";
 import { OV_PARTS, ownerSurfaceCss, tokensCss } from "./tokens";
 import type { LoadedPayload } from "./skinLoad";
 import { appliedLook, lookCss } from "./appearance";
+import type { OverlayFont } from "./skinFonts";
 
 /**
  * PAGE PUBLIQUE d'une page d'overlay (`/overlays/page/<secret>`), fabriquée ici en texte : une page nue, transparente, sans le moindre habillage du site, sans cookie,
@@ -91,6 +92,27 @@ export const animPollScript = (base: string): string => base
   .replace('f.style.opacity="1"}\nfunction applyAll', 'if(window.__ovAnim)window.__ovAnim(f,S);f.style.opacity="1"}\nfunction applyAll')
   .replace('swap({key:k,id:s.skin.id||"",css:s.skin.css||""})', 'swap({key:k,id:s.skin.id||"",css:s.skin.css||"",anim:s.skin.anim||null})');
 
+/**
+ * (0.47.0) Fonts of overlay skins of contract 6. The `@font-face` rules the core wrote travel in the skin's sheet (skinFonts.ts); this script makes sure the fonts are THERE
+ * before the first alert: the top page fetches each font once (its own policy already allows `connect-src 'self'`; no new origin, no `font-src`), then hands the bytes to
+ * each frame that wears the skin as a `FontFace` made from the bytes (no address to fetch, so a strict policy of an element page, which blocks `font-src`, cannot refuse it),
+ * and the frame stays hidden until the faces are loaded, 2.5 s at most. A font that does not load (file missing, policy, old browser) changes nothing else: the frame is
+ * shown with the fallback list the skin was required to give. Emitted only when a skin worn now has fonts, or when a context may bring one: other pages are unchanged byte for byte.
+ */
+const FONTS_SCRIPT = `var FB={},FF=new WeakMap(),af=applyFrame;
+function fbuf(u){return FB[u]||(FB[u]=fetch(u,{credentials:"omit",referrerPolicy:"no-referrer"}).then(function(r){return r.ok?r.arrayBuffer():null}).catch(function(){return null}))}
+function fskin(f){var X=f.getAttribute("data-eskin");return X===null?S:(C.es&&C.es[+X]||{})}
+function fload(f,Q){var w,d,ls=Q&&Q.fonts||[];try{w=f.contentWindow;d=f.contentDocument}catch(e){}
+if(!ls.length||!w||!d||!w.FontFace||!d.fonts)return Promise.resolve();
+var old=FF.get(f)||[],mine=[];old.forEach(function(x){try{d.fonts.delete(x)}catch(e){}});FF.set(f,mine);
+return Promise.all(ls.map(function(ft){return fbuf(ft.url).then(function(b){if(!b)return;var ff=new w.FontFace(ft.family,new w.Uint8Array(b.slice(0)),{weight:ft.weight,style:ft.style,display:"fallback"});mine.push(ff);d.fonts.add(ff);return ff.load()}).catch(function(){})}))}
+applyFrame=function(f){af(f);var Q=fskin(f);if(f.getAttribute("data-follows")!=="1"||!Q||!Q.fonts||!Q.fonts.length)return;var show=function(){f.style.opacity="1"};f.style.opacity="0";Promise.race([fload(f,Q),new Promise(function(r){setTimeout(r,2500)})]).then(show,show)};
+[S].concat(C.es||[]).forEach(function(Q){((Q&&Q.fonts)||[]).forEach(function(ft){fbuf(ft.url)})});
+`;
+export const fontsPollScript = (base: string): string => base
+  .replace('(function(){var f=document.querySelectorAll("iframe[data-follows]");for', FONTS_SCRIPT + '(function(){var f=document.querySelectorAll("iframe[data-follows]");for')
+  .replace('css:s.skin.css||""', 'css:s.skin.css||"",fonts:s.skin.fonts||null');
+
 /** (0.11.0) Opaque background: adopts the solid panel colour into each element that follows the style (only on an opaque page, so other pages are unchanged byte for byte). A skin brings its own solid colour instead. */
 const OWNER_SCRIPT = (css: string): string => `(function(){var css=${JSON.stringify(css).replace(/</g, "\\u003c")},SH=new WeakMap();function ap(f){try{var d=f.contentDocument,w=f.contentWindow;if(!d||!w||!d.documentElement||!w.CSSStyleSheet||d.adoptedStyleSheets===undefined)return;var old=SH.get(f),ns=new w.CSSStyleSheet();ns.replaceSync(css);d.adoptedStyleSheets=d.adoptedStyleSheets.filter(function(x){return x!==old}).concat([ns]);SH.set(f,ns);d.documentElement.setAttribute("data-ov-owner","1")}catch(e){}}
 var f=document.querySelectorAll("iframe[data-follows]");for(var i=0;i<f.length;i++){(function(fr){fr.addEventListener("load",function(){ap(fr)});try{if(fr.contentDocument&&fr.contentDocument.readyState==="complete"&&fr.contentDocument.location.href!=="about:blank")ap(fr)}catch(e){}})(f[i])}})();`;
@@ -131,7 +153,7 @@ export function renderPage(i: RenderInput): string {
   const { page, t } = i;
   const left = i.test && page.testUntil ? Math.max(0, page.testUntil - i.now) : 0;
   // (0.21.0) Skins of single elements: one entry per distinct choice ("" = no skin), only for elements that follow the style.
-  const es: { id: string; css: string; anim?: Record<string, unknown> }[] = [];
+  const es: { id: string; css: string; anim?: Record<string, unknown>; fonts?: OverlayFont[] }[] = [];
   const esIndex = new Map<string, number>();
   /** undefined: the page's skin (also for a skin that was not loaded); null: no skin; else the loaded skin (null payload: it does not work, so no skin). */
   const chosen = (e: ResolvedElement["el"]): LoadedPayload | null | undefined => e.skin === undefined ? undefined : e.skin === null ? null : i.elementSkins?.has(e.skin) ? i.elementSkins.get(e.skin) ?? null : undefined;
@@ -139,15 +161,18 @@ export function renderPage(i: RenderInput): string {
     if (r.status !== "ok" || !r.follows || chosen(r.el) === undefined) return -1;
     const k = r.el.skin ?? "";
     let n = esIndex.get(k);
-    if (n === undefined) { const p = k ? i.elementSkins?.get(k) ?? null : null; n = es.push({ id: p?.id ?? "", css: p?.css ?? "", ...(p?.anim ? { anim: p.anim } : {}) }) - 1; esIndex.set(k, n); }
+    if (n === undefined) { const p = k ? i.elementSkins?.get(k) ?? null : null; n = es.push({ id: p?.id ?? "", css: p?.css ?? "", ...(p?.anim ? { anim: p.anim } : {}), ...(p?.fonts ? { fonts: p.fonts } : {}) }) - 1; esIndex.set(k, n); }
     return n;
   };
   const ownSkins = page.active ? i.elements.map(ownSkin) : [];
-  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css, ...(i.skin.anim ? { anim: i.skin.anim } : {}) } : null, ...(es.length ? { es } : {}) };
+  const cfg = { rev: page.rev, active: page.active, state: i.stateUrl, fit: !!i.fit, w: page.width, h: page.height, test: i.test, left, ctx: !!i.contextual, skin: i.skin ? { key: i.skin.key, id: i.skin.id, css: i.skin.css, ...(i.skin.anim ? { anim: i.skin.anim } : {}), ...(i.skin.fonts ? { fonts: i.skin.fonts } : {}) } : null, ...(es.length ? { es } : {}) };
   // (0.30.0) the animation hand-off, only when a recipe is worn now or a context may bring one
   const anim = page.active && (!!i.skin?.anim || es.some((e) => !!e.anim) || !!i.contextual);
+  // (0.47.0) the fonts of the skins worn now (or a context that may bring a skin with fonts): the loader above
+  const fontsOn = page.active && (!!i.skin?.fonts || es.some((e) => !!e.fonts) || !!i.contextual);
+  const poll = anim ? ANIM_SCRIPT + animPollScript(pollScript(es.length > 0)) : pollScript(es.length > 0);
   const head = (title: string) => `<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><meta name="referrer" content="no-referrer"><title>${esc(title)}</title>`;
-  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${anim ? ANIM_SCRIPT + animPollScript(pollScript(es.length > 0)) : pollScript(es.length > 0)}</script>`;
+  const script = `<script nonce="${i.nonce}">window.__ov=${jsonForScript(cfg)};${fontsOn ? fontsPollScript(poll) : poll}</script>`;
   if (!page.active) {
     return `<!doctype html><html lang="${esc(i.lang)}" data-ov-region="page"><head>${head(page.name)}<style nonce="${i.nonce}">${BASE_CSS}${tokensCss(page.style)}</style></head><body data-ov-part="page">${i.test ? `<div class="off" data-ov-part="empty">${esc(t("overlay.page.disabled"))}</div>` : ""}${script}</body></html>`;
   }

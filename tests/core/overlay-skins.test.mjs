@@ -137,7 +137,7 @@ test("dossier d'un skin d'overlay : accepté, jetons dans common, feuille rééc
   assert.equal(v.manifest.kind, "overlay"); assert.equal(v.tokens.common["--ov-accent"], "#e8a23b"); assert.match(v.css, /html\[data-ov-skin="epic"\]/);
   const refused = (over, code) => { const r = check(skinFolder("epic", over)); assert.equal(r.ok, false, code); assert.ok(r.issues.some((i) => i.code === code), `${code} in ${r.issues.map((i) => i.code)}`); assert.deepEqual(r.installFiles, []); };
   refused({ manifest: { skinContract: 1 } }, "overlay-contract");
-  refused({ manifest: { assets: [{ file: "fonts/a.woff2", kind: "font" }] } }, "overlay-no-assets");
+  refused({ manifest: { assets: [{ file: "fonts/a.woff2", kind: "font" }] } }, "overlay-contract-v6");
   refused({ tokens: { tokens: { ...GOOD, "--sk-radius-card": "4px" } } }, "overlay-token-unknown");
   refused({ tokens: { tokens: { ...GOOD, "--ov-radius": "5000px" } } }, "overlay-token-value");
   refused({ tokens: { tokens: { ...GOOD, "--ov-fg": "#999999", "--ov-surface": "#aaaaaa" } } }, "overlay-contrast");
@@ -445,6 +445,6 @@ test("contrat 3 : un skin qui utilise le vocabulaire du contrat 3 doit l'annonce
   const r3 = check(skinFolder("epic", { css, manifest: { skinContract: 3, minCore: "0.8.0" } }));
   assert.equal(r3.ok, true, JSON.stringify(r3.issues.map((i) => i.code)));
   // (0.40.0) contract 5 is the scene contract of overlay skins: the next one is "newer"
-  const future = check(skinFolder("epic", { manifest: { skinContract: 6 } }));
+  const future = check(skinFolder("epic", { manifest: { skinContract: 7 } }));
   assert.ok(future.issues.some((i) => i.code === "manifest-contract-newer"));
 });
