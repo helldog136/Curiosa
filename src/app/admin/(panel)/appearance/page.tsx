@@ -22,11 +22,14 @@ import { listCatalogue } from "@/core/skins/service";
 import { AppearanceLabelsProvider } from "./AppearanceLabels";
 import { CatalogueCard, type CatalogueCardModel } from "./CatalogueCard";
 import { ColorSection } from "./ColorSection";
-import { ManageSkin, type ManagedSkin } from "./ManageSkin";
+import { SkinActions, type ManagedSkin } from "./ManageSkin";
+import { Badge } from "@/components/admin/Badge";
+import { LiveSearch } from "@/components/admin/LiveSearch";
+import { RowTable, type TableRow } from "@/components/admin/RowTable";
+import type { BadgeTone } from "@/core/blocks";
 import { accessState } from "@/core/gitAccess";
 import { readRows } from "@/core/skins/registry";
-import { PersonalRepo } from "./PersonalRepo";
-import { UploadSkin } from "./UploadSkin";
+import { AddSkin } from "./AddSkin";
 import { sweepStagedFiles } from "@/core/skins/uploadService";
 import { SkinCards, SwatchTile } from "./SkinCards";
 import { FontPickers } from "./FontPickers";
@@ -79,6 +82,10 @@ async function Catalogue({ locale, canInstall }: { locale: "fr" | "en"; canInsta
   );
 }
 
+const ORIGIN_TONE: Record<"catalogue" | "address" | "file", BadgeTone> = { catalogue: "info", address: "accent", file: "neutral" };
+/** Where an added skin comes from: the catalogue, an address (repository) or a file. */
+const originOf = (m: ManagedSkin): "catalogue" | "address" | "file" => (m.upload ? "file" : m.source === "personal" ? "address" : "catalogue");
+
 const FLASH = { updated: "appearance.updatedOk", reverted: "appearance.revertedOk", removed: "appearance.removedOk", removedActive: "appearance.removedActive" } as const;
 
 export default async function AppearancePage({ searchParams }: { searchParams?: Promise<{ done?: string; v?: string }> }) {
@@ -127,7 +134,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
   const managed: ManagedSkin[] = await Promise.all(view.cards.filter((c) => c.source !== "basic").map(async (c) => {
     const repo = repos.get(c.id);
     const access = c.source === "personal" && repo ? await accessState(repo) : undefined;   // no address for a skin added from a file: nothing to look up
-    return { id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, updateKnown: false, status: c.status, pictures: pictureCounts[c.id] ?? 0, ...(uploads.has(c.id) ? { upload: uploads.get(c.id)! } : {}), ...(repo && access && access.state !== "none" ? { repo, access } : {}) };
+    return { id: c.id, name: c.name[locale], version: c.version, source: c.source as "catalogue" | "personal", active: c.active, previousVersion: c.previousVersion, status: c.status, pictures: pictureCounts[c.id] ?? 0, ...(uploads.has(c.id) ? { upload: uploads.get(c.id)! } : {}), ...(repo && access && access.state !== "none" ? { repo, access } : {}) };
   }));
 
   return (
@@ -188,8 +195,7 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
           <Suspense fallback={<p role="status" className={ui.help}>{t("appearance.catalogue.loading")}</p>}>
             <Catalogue locale={locale} canInstall={isOwner} />
           </Suspense>
-          {isOwner && <UploadSkin />}
-          {isOwner && <PersonalRepo locale={locale} />}
+          {isOwner && <AddSkin locale={locale} />}
         </section>
 
         <section aria-labelledby="touch-title" className="space-y-4" data-testid="retouches">
@@ -315,8 +321,41 @@ export default async function AppearancePage({ searchParams }: { searchParams?: 
         {isOwner && managed.length > 0 && (
           <section aria-labelledby="manage-title" className="space-y-3" data-testid="manage-skins">
             <h2 id="manage-title" className="text-lg font-semibold">{t("appearance.manage.title")}</h2>
-            <p className={ui.help}>{t("appearance.manage.help")}</p>
-            <div className="space-y-2">{managed.map((m) => <ManageSkin key={m.id} skin={m} />)}</div>
+            <LiveSearch scope="skins" placeholder={t("appearance.manage.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")} />
+            <RowTable scope="skins" actionsLabel={t("appearance.manage.actions")} testid="skins-table"
+              columns={[{ key: "skin", label: t("appearance.manage.col.skin"), width: "w-[38%]" }, { key: "origin", label: t("appearance.manage.col.origin"), width: "w-[18%]" }, { key: "access", label: t("appearance.manage.col.access"), width: "w-[20%]", optional: true }]}
+              rows={managed.map((m): TableRow => {
+                const origin = originOf(m);
+                const state = m.repo && m.access && m.access.state !== "none" ? m.access.state : null;
+                const originLabel = t(`appearance.origin.${origin}`);
+                const accessLabel = state === "configured" ? t("connection.state.configured") : state ? t("connection.state.degraded") : "";
+                return {
+                  key: m.id, testid: `skin-row-${m.id}`,
+                  search: [m.name, m.version, originLabel, accessLabel, m.active && t("appearance.current")],
+                  cells: {
+                    skin: (
+                      <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 sm:flex-nowrap">
+                        <span className="min-w-0 truncate font-medium" title={m.name}>{m.name}</span>
+                        <span className="shrink-0 text-muted">{m.version}</span>
+                        {m.active && <Badge tone="ok">{t("appearance.current")}</Badge>}
+                      </div>
+                    ),
+                    origin: (
+                      <span className="inline-flex items-center gap-1">
+                        <Badge tone={ORIGIN_TONE[origin]}>{originLabel}</Badge>
+                        {m.upload && <HelpTip always help={`${t("appearance.file.update")} ${t("appearance.file.provenance", { date: m.upload.date, print: m.upload.print })}`} name={originLabel} />}
+                      </span>
+                    ),
+                    access: state ? (
+                      <span className="inline-flex items-center gap-1">
+                        <Badge tone={state === "configured" ? "ok" : "warn"}>{accessLabel}</Badge>
+                        {state === "reenter" && <HelpTip always help={t("access.reenter.why")} name={accessLabel} />}
+                      </span>
+                    ) : null,
+                  },
+                  actions: <SkinActions skin={m} />,
+                };
+              })} />
           </section>
         )}
 
