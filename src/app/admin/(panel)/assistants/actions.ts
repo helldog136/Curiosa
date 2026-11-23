@@ -6,13 +6,13 @@ import { listMcpToolCatalogue } from "@/core/platform";
 import { defaultFor, MAINTENANCE_PROFILE, setGrant, withinCeiling, type Grants } from "@/core/services/mcp/access";
 import { applyGrantChanges, type GrantRejection } from "@/core/services/mcp/grantChanges";
 import { createAccess } from "@/core/mcpAccess";
-import { findTokenId, getTokenGrants, revokeToken, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
+import { findTokenId, getTokenGrants, saveTokenGrants, setUrlAccess, type TokenScope } from "@/core/services/mcp/tokens";
 import { audit } from "@/core/permissions";
 import { setApprovalMode, setNotifyMode } from "@/core/maintenance/settings";
-import { expirePendingOfToken } from "@/core/maintenance/requests";
 import { setSetting } from "@/core/settings";
 import { prisma } from "@/core/db";
-import { setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
+import { getPersonalPolicy, setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
+import { revokeAccess } from "@/core/personalAi/revoke";
 import { pausePersonalAccessById, revokePersonalAccessById } from "@/core/personalAi/service";
 import { actorMayGiveTo, assignOwner, mayOwnAccess } from "@/core/personalAi/owners";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
@@ -48,7 +48,8 @@ export async function createTokenAction(_prev: CreateTokenState, formData: FormD
   if (maintenance) {
     const id = await findTokenId(token);
     // Validation humaine par défaut ; l'exécution directe doit être choisie explicitement.
-    if (id && formData.get("approval") === "direct") { await setApprovalMode(id, "direct"); await audit(user.email, "mcp.maintenance.mode", `${name}: direct`); }
+    // A new access is never a legacy one: "direct" is stored only if the site allows it now (same rule as setApprovalAction), so a later switch of the policy cannot make it effective unasked.
+    if (id && formData.get("approval") === "direct" && (await getPersonalPolicy()).allowDirect) { await setApprovalMode(id, "direct"); await audit(user.email, "mcp.maintenance.mode", `${name}: direct`); }
     const notify = formData.get("notify") === "email" ? "email" : "admin";
     await setNotifyMode(notify);
     await audit(user.email, "mcp.maintenance.notify", notify);
@@ -74,8 +75,7 @@ export async function setUrlAccessAction(tokenId: string, enabled: boolean): Pro
 
 export async function revokeTokenAction(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
-  await revokeToken(id);
-  await expirePendingOfToken(id); // its pending requests never run
+  await revokeAccess(id);
   await audit(user.email, "mcp.token.revoke", id);
   revalidatePath(ASSISTANTS_HREF);
   revalidatePath(TEAM_HREF);

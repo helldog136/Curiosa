@@ -5,10 +5,10 @@ import { applyProfile, type AccessProfile } from "@/core/services/mcp/profiles";
 import { MAINTENANCE_PROFILE } from "@/core/services/mcp/access";
 import { isGranted, parseGrants, withinCeiling, type Grants } from "@/core/services/mcp/access";
 import { ownerCeilingAllows } from "@/core/services/mcp/ownerCeiling";
-import { createToken, findTokenId, revokeToken, saveTokenGrants, saveTokenLevel } from "@/core/services/mcp/tokens";
+import { createToken, findTokenId, saveTokenGrants, saveTokenLevel } from "@/core/services/mcp/tokens";
 import { setApprovalMode } from "@/core/maintenance/settings";
-import { expirePendingOfToken } from "@/core/maintenance/requests";
 import { resolvePersonalOwner } from "./owner";
+import { revokeAccess } from "./revoke";
 import { getPersonalPolicy } from "./policy";
 
 /**
@@ -132,8 +132,7 @@ export async function revokeOwnPersonalAccess(userId: string, tokenId: string): 
   const user = await prisma.user.findUnique({ where: { id: String(userId ?? "") }, select: { id: true, email: true } });
   const row = user ? await ownAccess(user.id, tokenId) : null;
   if (!user || !row) return { ok: false, reason: "missing" };
-  await revokeToken(row.id);
-  await expirePendingOfToken(row.id);
+  await revokeAccess(row.id);
   await journal(user.email, "mcp.personal.revoke", row.name);
   return { ok: true };
 }
@@ -239,8 +238,7 @@ export async function pausePersonalAccessById(tokenId: string, actorEmail: strin
 export async function revokePersonalAccessById(tokenId: string, actorEmail: string): Promise<boolean> {
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId ?? "") } });
   if (!row || !row.ownerId || row.revokedAt) return false;
-  await revokeToken(row.id);
-  await expirePendingOfToken(row.id);
+  await revokeAccess(row.id);
   await journal(actorEmail, "mcp.personal.revoke", row.name);
   return true;
 }

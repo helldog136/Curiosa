@@ -74,11 +74,11 @@ test("single account: every access without an owner goes to it, with the coarse 
 });
 
 test("several accounts, no account, or an owner that does not exist: nothing is assigned and nothing breaks", async () => {
-  assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 0, marked: 0, skipped: "accounts" }, "no account at all");
   const token = await T.createToken("Claude", "read", "o");
+  assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 0, marked: 1, skipped: "accounts" }, "no account at all: marked, nothing to assign to");
   await mk("etoile_nord", "owner");
   await mk("lune_douce", "admin");
-  assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 0, marked: 1, skipped: "accounts" }, "an owner and a pending invitation are two accounts: the coordinator chooses");
+  assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 0, marked: 0, skipped: "accounts" }, "an owner and a pending invitation are two accounts: the coordinator chooses");
   assert.equal((await db.prisma.apiToken.findFirst()).ownerId, null);
   assert.equal((await rpc(token, "tools/list")).status, 200, "an access without an owner keeps working as before");
   // an access whose owner row does not exist (a restored site) is not adopted by the migration either
@@ -203,19 +203,19 @@ test("assigning an owner: only a person who may own one; an unowned access becom
   const code = await T.createToken("Claude", "read", "o");
   const id = await T.findTokenId(code);
   await LEG.assignLegacyOwners(); // start-up: an access with no owner predates the owners and is marked (several accounts: nothing is assigned)
-  assert.deepEqual(await OW.assignOwner(id, editor.id, owner.email), { ok: false, reason: "owner_not_allowed" });
-  assert.deepEqual(await OW.assignOwner(id, "nobody", owner.email), { ok: false, reason: "owner_missing" });
-  assert.deepEqual(await OW.assignOwner("nothing", admin.id, owner.email), { ok: false, reason: "access_missing" });
+  assert.deepEqual(await OW.assignOwner(id, editor.id, owner.email, owner.id), { ok: false, reason: "owner_not_allowed" });
+  assert.deepEqual(await OW.assignOwner(id, "nobody", owner.email, owner.id), { ok: false, reason: "owner_missing" });
+  assert.deepEqual(await OW.assignOwner("nothing", admin.id, owner.email, owner.id), { ok: false, reason: "access_missing" });
   assert.deepEqual((await OW.eligibleOwners()).map((o) => o.email), ["etoile_nord@example.org", "camille@example.org"]);
   await POL.setPersonOverride(editor.id, "allow");
   assert.equal((await OW.eligibleOwners()).length, 3);
   await POL.setPersonOverride(editor.id, "deny");
-  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email), { ok: true, changed: true });
+  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email, owner.id), { ok: true, changed: true });
   const row = await db.prisma.apiToken.findUnique({ where: { id } });
   assert.deepEqual([row.ownerId, row.coarseCeiling], [admin.id, true]);
-  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email), { ok: true, changed: false });
+  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email, owner.id), { ok: true, changed: false });
   // reassigning never changes the kind of ceiling
-  assert.deepEqual(await OW.assignOwner(id, owner.id, owner.email), { ok: true, changed: true });
+  assert.deepEqual(await OW.assignOwner(id, owner.id, owner.email, owner.id), { ok: true, changed: true });
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id } })).coarseCeiling, true);
   const rows = await audits("mcp.personal.assign");
   assert.equal(rows.length, 2);
@@ -225,8 +225,8 @@ test("assigning an owner: only a person who may own one; an unowned access becom
   assert.equal((await OW.accessesWithoutOwner()).length, 0);
   // in bulk: refused for a person who may not own, otherwise every unowned access
   await T.createToken("A", "read", "o"); await T.createToken("B", "read", "o");
-  assert.deepEqual(await OW.assignAllWithoutOwner(editor.id, owner.email), { ok: false, changed: 0, reason: "owner_not_allowed" });
-  assert.deepEqual(await OW.assignAllWithoutOwner(admin.id, owner.email), { ok: true, changed: 2 });
+  assert.deepEqual(await OW.assignAllWithoutOwner(editor.id, owner.email, owner.id), { ok: false, changed: 0, reason: "owner_not_allowed" });
+  assert.deepEqual(await OW.assignAllWithoutOwner(admin.id, owner.email, owner.id), { ok: true, changed: 2 });
   assert.equal(await OW.countOwned(admin.id), 2);
 });
 
@@ -257,7 +257,7 @@ test("the owner of a deleted account no longer exists: the access says 'No owner
   await db.prisma.$executeRawUnsafe(`DELETE FROM "User" WHERE "id" = '${admin.id}'`);
   assert.equal((await rpc(made.code, "tools/list")).status, 401);
   assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => r.name), ["Claude"]);
-  assert.equal((await OW.assignOwner(made.id, owner.id, owner.email)).ok, true);
+  assert.equal((await OW.assignOwner(made.id, owner.id, owner.email, owner.id)).ok, true);
   assert.equal((await rpc(made.code, "tools/list")).status, 200);
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id: made.id } })).coarseCeiling, false, "a newer access that lost its owner stays fail-closed (B1)");
   assert.equal(await FP.setFullPowers(made.id, true), false, "and never holds full powers");
@@ -346,7 +346,7 @@ test("B1: an access created after the feature that lost its owner stays fail-clo
   // low-level creation without an owner after the feature (never done by a screen): it is NOT marked by an assignment
   const fresh = await T.createToken("Fresh", "write", "o");
   const freshId = await T.findTokenId(fresh);
-  assert.equal((await OW.assignOwner(freshId, admin.id, owner.email)).ok, true);
+  assert.equal((await OW.assignOwner(freshId, admin.id, owner.email, owner.id)).ok, true);
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id: freshId } })).coarseCeiling, false);
   assert.equal(await FP.setFullPowers(freshId, true), false, "no full powers for a fail-closed access");
   // a legacy access (no owner at start-up) is marked by start-up and keeps the mark through every reassignment
@@ -354,8 +354,8 @@ test("B1: an access created after the feature that lost its owner stays fail-clo
   const oldId = await T.findTokenId(old);
   assert.equal((await LEG.assignLegacyOwners()).marked, 1);
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id: oldId } })).coarseCeiling, true);
-  await OW.assignOwner(oldId, admin.id, owner.email);
-  await OW.assignOwner(oldId, owner.id, owner.email);
+  await OW.assignOwner(oldId, admin.id, owner.email, owner.id);
+  await OW.assignOwner(oldId, owner.id, owner.email, owner.id);
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id: oldId } })).coarseCeiling, true);
   assert.ok(!/coarseCeiling/.test(fs.readFileSync("src/core/personalAi/owners.ts", "utf8").replace(/\/\*[\s\S]*?\*\/|\/\/.*$/gm, "")), "assignOwner never writes the marker");
 });
@@ -392,8 +392,10 @@ test("B4 and I7: removing an access expires the pending requests of THAT access 
   assert.equal(await (await import("@/core/personalAi/service")).revokePersonalAccessById(a.id, owner.email), true);
   assert.deepEqual(await pending(), ["B"], "the other access of the same person keeps its requests");
   // the By-person "Remove" and the sheet use revokeTokenAction: it expires them too
-  const action = fs.readFileSync("src/app/admin/(panel)/assistants/actions.ts", "utf8");
-  assert.match(action.slice(action.indexOf("export async function revokeTokenAction")).slice(0, 400), /expirePendingOfToken\(id\)/);
+  // every revoke path goes through revokeToken, which expires them (the sheet, the By-person table, a deleted user)
+  const walk = (d) => fs.readdirSync(d, { withFileTypes: true }).flatMap((e) => (e.isDirectory() ? walk(path.join(d, e.name)) : [path.join(d, e.name)]));
+  const callers = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && /\brevokeToken\(/.test(fs.readFileSync(f, "utf8"))).map((f) => f.split(path.sep).join("/")).sort();
+  assert.deepEqual(callers, ["src/core/personalAi/revoke.ts", "src/core/services/mcp/tokens.ts"], "only revokeAccess calls revokeToken");
   assert.equal(await RQ.expirePendingOfToken(b.id), 1);
   assert.deepEqual(await pending(), []);
   assert.deepEqual(await PA.revokeOwnPersonalAccess(owner.id, b.id), { ok: true });
@@ -540,4 +542,89 @@ test("N1, N5, N6, N7: unique field ids per person; the owner is journalled by e-
   assert.ok(!html.includes('<select') && html.includes("Look only"), "the current level is shown read-only");
   const withLevels = renderToStaticMarkup(React.createElement(MyAccesses, { rows, levels: [{ value: "read", label: "Look only" }], canCreate: false, create: noop, pause: noop, resume: noop, remove: noop, setLevel: noop, labels: lab }));
   assert.ok(withLevels.includes("A different level replaces"), "the tip says a level replaces custom rights");
+});
+
+/* ───────────── Second review ───────────── */
+
+test("NEW-1: the marking is ONE-TIME and only for rows that existed at the first start-up; the flag is set only after a successful run", async () => {
+  const owner = await mk("etoile_nord", "owner");
+  await mk("lune_douce", "admin"); // two accounts: nothing is assigned, only marked
+  const old = await T.createToken("Old", "write", "o");
+  const oldId = await T.findTokenId(old);
+  const flag = (k) => db.prisma.setting.findUnique({ where: { key_locale: { key: k, locale: "" } } });
+  // (3) a run that throws leaves the flag unset, and the retry keeps the same cut-off
+  const real = db.prisma.apiToken.updateMany;
+  db.prisma.apiToken.updateMany = async () => { throw new Error("boom"); };
+  await assert.rejects(LEG.assignLegacyOwners(), /boom/);
+  db.prisma.apiToken.updateMany = real;
+  assert.equal(await flag(LEG.LEGACY_MARKED_KEY), null, "no flag after a failed run");
+  const cutoff = JSON.parse((await flag(LEG.LEGACY_CUTOFF_KEY)).value);
+  // a row created between the crash and the retry is not marked (it is after the cut-off)
+  await new Promise((r) => setTimeout(r, 15));
+  const between = await T.createToken("Between", "write", "o");
+  const betweenId = await T.findTokenId(between);
+  // (1) the first successful start-up marks the pre-existing ownerless row
+  assert.equal((await LEG.assignLegacyOwners()).marked, 1);
+  assert.equal(JSON.parse((await flag(LEG.LEGACY_CUTOFF_KEY)).value), cutoff);
+  const marked = async (id) => (await db.prisma.apiToken.findUnique({ where: { id } })).coarseCeiling;
+  assert.equal(await marked(oldId), true);
+  assert.equal(await marked(betweenId), false);
+  assert.ok(await flag(LEG.LEGACY_MARKED_KEY));
+  // (2) an ownerless access created after the first run is NOT marked at the next start-up, and keeps failing closed once owned
+  const later = await T.createToken("Later", "write", "o");
+  const laterId = await T.findTokenId(later);
+  // (4) idempotent
+  assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 0, marked: 0, skipped: "accounts" });
+  assert.equal(await marked(laterId), false);
+  await OW.assignOwner(laterId, owner.id, owner.email, owner.id);
+  assert.equal(await marked(laterId), false);
+  assert.equal(await FP.setFullPowers(laterId, true), false, "no full powers, no fallback");
+});
+
+test("NEW-1: the single-account step only gives MARKED accesses; an unmarked ownerless one stays ownerless", async () => {
+  const only = await mk("etoile_nord", "owner");
+  await T.createToken("Old", "read", "o");
+  assert.equal((await LEG.assignLegacyOwners()).assigned, 1);
+  const stray = await T.createToken("Stray", "read", "o");
+  assert.equal((await LEG.assignLegacyOwners()).assigned, 0);
+  assert.equal((await db.prisma.apiToken.findUnique({ where: { id: await T.findTokenId(stray) } })).ownerId, null);
+  assert.equal((await db.prisma.apiToken.findMany({ where: { ownerId: only.id } })).length, 1);
+});
+
+test("NEW-1: the rollback recipe of the docs touches only marked rows, and the docs say what stays at the sunset", async () => {
+  const only = await mk("etoile_nord", "owner");
+  await T.createToken("Old", "read", "o");
+  await LEG.assignLegacyOwners();
+  const fresh = await PA.createPersonalAccess(only.id, { password: PASSWORD, name: "New" });
+  await db.prisma.$executeRawUnsafe(`UPDATE "ApiToken" SET "ownerId" = NULL, "pausedAt" = NULL WHERE "coarseCeiling" = 1`);
+  const rows = await db.prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } });
+  assert.deepEqual(rows.map((r) => [r.name, r.ownerId === null]), [["Old", true], ["New", false]], "only the migrated row goes back");
+  const doc = fs.readFileSync("docs/PERSONAL-AI.md", "utf8");
+  assert.ok(doc.includes('UPDATE ApiToken SET ownerId = NULL, pausedAt = NULL WHERE coarseCeiling = 1;'));
+  assert.match(doc, /coarseCeiling` column stays/i);
+  void fresh;
+});
+
+test("NEW-2: deleting a user expires the pending requests of each of their accesses, and only theirs", async () => {
+  const RQ = await import("@/core/maintenance/requests");
+  const { deleteMember } = await import("@/core/auth/members");
+  const boss = await mk("etoile_nord", "owner");
+  const gone = await mk("camille", "admin");
+  const plan = { module: "m1", from: "1.0.0", to: "1.0.1" };
+  const a = await PA.createPersonalAccess(gone.id, { password: PASSWORD, name: "A", level: "maintenance" });
+  const b = await PA.createPersonalAccess(gone.id, { password: PASSWORD, name: "B", level: "maintenance" });
+  const c = await PA.createPersonalAccess(boss.id, { password: PASSWORD, name: "C", level: "maintenance" });
+  for (const [x, who] of [[a, gone], [b, gone], [c, boss]]) await RQ.createRequest({ action: "module_update", plan, tokenId: x.id, tokenName: x.name, ownerId: who.id });
+  const pending = async () => (await RQ.listRequests()).filter((r) => r.status === "pending").map((r) => r.tokenName).sort();
+  assert.deepEqual(await pending(), ["A", "B", "C"]);
+  assert.deepEqual(await deleteMember(boss.id, gone.id), { ok: true });
+  assert.deepEqual(await pending(), ["C"]);
+});
+
+test("NIT-1 and NIT-2: the actor is required to assign; a new maintenance access does not store 'direct' unless the site allows it", () => {
+  const owners = fs.readFileSync("src/core/personalAi/owners.ts", "utf8");
+  assert.match(owners, /actorEmail: string, actorId: string\): Promise<AssignResult>/);
+  assert.match(owners, /actorEmail: string, actorId: string\): Promise<\{ ok: boolean; changed: number/);
+  const action = fs.readFileSync("src/app/admin/(panel)/assistants/actions.ts", "utf8");
+  assert.match(action, /formData\.get\("approval"\) === "direct" && \(await getPersonalPolicy\(\)\)\.allowDirect/);
 });

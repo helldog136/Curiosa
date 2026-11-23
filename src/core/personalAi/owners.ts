@@ -64,12 +64,12 @@ export async function accessesWithoutOwner() {
  * Gives an access to a person. The access keeps its ceiling kind as it is (an access that predates the owners is already marked coarse, see legacyOwners.ts and ownerCeiling.ts;
  * a newer one stays fail-closed, even if its owner was lost). The target must be allowed to own an access.
  */
-export async function assignOwner(tokenId: string, ownerId: string, actorEmail: string, actorId?: string): Promise<AssignResult> {
+export async function assignOwner(tokenId: string, ownerId: string, actorEmail: string, actorId: string): Promise<AssignResult> {
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId ?? "") } });
   if (!row || row.revokedAt) return { ok: false, reason: "access_missing" };
   const target = await prisma.user.findUnique({ where: { id: String(ownerId ?? "") }, select: { id: true, email: true } });
   if (!target) return { ok: false, reason: "owner_missing" };
-  if (!(await mayOwnAccess(target.id)) || (actorId !== undefined && !(await actorMayGiveTo(actorId, target.id)))) return { ok: false, reason: "owner_not_allowed" };
+  if (!(await mayOwnAccess(target.id)) || !(await actorMayGiveTo(actorId, target.id))) return { ok: false, reason: "owner_not_allowed" };
   if (row.ownerId === target.id) return { ok: true, changed: false };
   // The ceiling kind (`coarseCeiling`) is NEVER changed here: it marks an access that predates the owners (written only by legacyOwners.ts), so an access that lost its owner stays fail-closed.
   await prisma.apiToken.update({ where: { id: row.id }, data: { ownerId: target.id } });
@@ -78,9 +78,9 @@ export async function assignOwner(tokenId: string, ownerId: string, actorEmail: 
 }
 
 /** The same owner for every access that has none. Returns the names that changed and the ones refused (none when the person is allowed). */
-export async function assignAllWithoutOwner(ownerId: string, actorEmail: string, actorId?: string): Promise<{ ok: boolean; changed: number; reason?: AssignFailure }> {
+export async function assignAllWithoutOwner(ownerId: string, actorEmail: string, actorId: string): Promise<{ ok: boolean; changed: number; reason?: AssignFailure }> {
   if (!(await prisma.user.findUnique({ where: { id: String(ownerId ?? "") }, select: { id: true } }))) return { ok: false, changed: 0, reason: "owner_missing" };
-  if (!(await mayOwnAccess(ownerId)) || (actorId !== undefined && !(await actorMayGiveTo(actorId, ownerId)))) return { ok: false, changed: 0, reason: "owner_not_allowed" };
+  if (!(await mayOwnAccess(ownerId)) || !(await actorMayGiveTo(actorId, ownerId))) return { ok: false, changed: 0, reason: "owner_not_allowed" };
   let changed = 0;
   for (const row of await accessesWithoutOwner()) if ((await assignOwner(row.id, ownerId, actorEmail, actorId)).ok) changed++;
   return { ok: true, changed };
