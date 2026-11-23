@@ -30,7 +30,8 @@ export async function setMcpEnabled(enabled: boolean): Promise<void> {
 
 export async function createTokenAction(_prev: CreateTokenState, formData: FormData): Promise<CreateTokenState> {
   const { user, t } = await adminCtx({ right: "core:mcp.tokens" });
-  const name = String(formData.get("name") ?? "").trim();
+  // `accessLabel`: not `name`, which password managers read as the person's own name (the old field name is still accepted).
+  const name = String(formData.get("accessLabel") ?? formData.get("name") ?? "").trim();
   const maintenance = formData.get("profile") === "maintenance";
   // Profil « Maintenance » : le plafond est « écriture » (sinon on ne pourrait jamais accorder une action sans risque), mais SEULS les outils de maintenance
   // sont proposés, et seule la lecture est active ; le reste se coche plus tard, action par action (voir access.ts, MAINTENANCE_PROFILE).

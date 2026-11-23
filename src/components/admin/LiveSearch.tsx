@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { foldText, queryWords } from "@/core/adminkit/search";
@@ -26,7 +27,7 @@ export function SearchField({ value, onChange, onClear, placeholder, clearLabel,
     <div className="relative">
       <span aria-hidden="true" className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-muted">🔍</span>
       <input ref={inputRef} type="search" value={value} onChange={(e) => onChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Escape" && value) { e.preventDefault(); onClear(); } }}
-        placeholder={placeholder} aria-label={placeholder} autoComplete="off" spellCheck={false} data-testid="live-search" aria-busy={busy || undefined}
+        placeholder={placeholder} aria-label={placeholder} {...PLAIN_INPUT} spellCheck={false} data-testid="live-search" aria-busy={busy || undefined}
         className={`${ui.input} min-h-11 rounded-full py-3 pl-11 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-cancel-button]:appearance-none ${value && !hideClear ? "pr-28" : "pr-4"}`} />
       {value && !hideClear && <button type="button" onClick={onClear} className="absolute right-2 top-1/2 min-h-9 -translate-y-1/2 rounded-full px-3 text-sm text-muted hover:text-fg">{clearLabel}</button>}
     </div>

@@ -1,3 +1,4 @@
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { HostedSections } from "@/components/admin/HostedSections";
 import { plainQuery } from "@/core/modules/coreSections";
 import Link from "next/link";
@@ -80,7 +81,7 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
                     <form action={renamePageAction.bind(null, p.id)} className="flex flex-wrap items-end gap-3">
                       <div className="min-w-56 flex-1">
                         <label htmlFor={`rename-${p.id}`} className={ui.label}>{t("ovp.renameLabel")}</label>
-                        <input id={`rename-${p.id}`} name="name" defaultValue={p.name} maxLength={60} required className={ui.input} />
+                        <input {...PLAIN_INPUT} id={`rename-${p.id}`} name="name" defaultValue={p.name} maxLength={60} required className={ui.input} />
                       </div>
                       <PendingButton variant="btn">{t("ovp.rename")}</PendingButton>
                     </form>

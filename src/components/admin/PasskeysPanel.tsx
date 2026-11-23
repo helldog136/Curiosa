@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { HelpTip } from "./HelpTip";
 import { useState, useSyncExternalStore, useTransition } from "react";
 import { ui } from "./ui";
@@ -72,7 +73,7 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
       {mode === "add" && (
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) add(); }}>
           {username && <UsernameHint value={username} />}
-          <input value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" autoComplete="off" placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
+          <input value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" {...PLAIN_INPUT} placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
           <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
           <div className="flex gap-3">
             <PendingButton type="submit" variant="primary" pending={pending} disabled={!password} data-testid="passkey-add-confirm">{labels.add}</PendingButton>

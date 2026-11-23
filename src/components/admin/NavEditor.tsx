@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useRef, useState } from "react";
 import { ui } from "./ui";
 import { HelpTip } from "./HelpTip";
@@ -135,7 +136,7 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
     return locales.length <= 1 ? (
       <label className="block text-sm">
         <span className={ui.label}>{title}</span>
-        <input value={value[first] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [first]: e.target.value })} {...err.props} className={`${ui.input} ${err.className}`} />
+        <input {...PLAIN_INPUT} value={value[first] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [first]: e.target.value })} {...err.props} className={`${ui.input} ${err.className}`} />
         <FieldErrorText id={err.id} message={err.message} />
       </label>
     ) : (
@@ -145,7 +146,7 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
           {locales.map((l) => (
             <label key={l.code} className="block text-sm">
               <span className="mb-1 block text-xs text-muted">{l.name}</span>
-              <input value={value[l.code] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} {...(l.code === first ? err.props : {})} className={`${ui.input} ${l.code === first ? err.className : ""}`} />
+              <input {...PLAIN_INPUT} value={value[l.code] ?? ""} placeholder={placeholder} onChange={(e) => onChange({ ...value, [l.code]: e.target.value })} {...(l.code === first ? err.props : {})} className={`${ui.input} ${l.code === first ? err.className : ""}`} />
             </label>
           ))}
         </div>
@@ -164,7 +165,7 @@ export function NavEditor({ locales, initial, notInMenu, advanced, limits, strin
           {labelFields(strings.label ?? "", node.label, (label) => patch({ label }), path)}
           <label className="block text-sm">
             <span className={ui.label}>{strings.href}</span>
-            <input value={node.href ?? ""} onChange={(e) => patch({ href: e.target.value })} placeholder={strings.hrefPlaceholder} id={`${hrefPath}-href`} {...hrefError.props} className={`${ui.input} ${hrefError.className}`} />
+            <input {...PLAIN_INPUT} value={node.href ?? ""} onChange={(e) => patch({ href: e.target.value })} placeholder={strings.hrefPlaceholder} id={`${hrefPath}-href`} {...hrefError.props} className={`${ui.input} ${hrefError.className}`} />
             <FieldErrorText id={hrefError.id} message={hrefError.message} />
             <span className={`${ui.help} mt-1 block`}>{strings.hrefHelp}</span>
           </label>

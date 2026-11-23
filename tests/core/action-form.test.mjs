@@ -22,7 +22,7 @@ test("formulaires admin : la confirmation reste demandée, les mots de passe son
     assert.match(page, /<ActionForm action=\{create\w+\}[^>]*\breset\b/, f);
   }
   // Création d'un jeton : le formulaire est remonté (donc vidé) après chaque création, le jeton affiché reste à l'écran.
-  assert.match(fs.readFileSync("src/components/admin/McpTokenCreator.tsx", "utf8"), /<form onSubmit=\{submitKeepingValues\(run\)\} key=\{created\?\.token/);
+  assert.match(fs.readFileSync("src/components/admin/McpTokenCreator.tsx", "utf8"), /<form onSubmit=\{submitKeepingValues\(submit\)\} key=\{created\?\.token/);
   for (const f of ["settings/page.tsx", "navigation/page.tsx", "home/page.tsx", "instances/[id]/page.tsx"])
     assert.ok(!/<ActionForm[^>]*\breset\b/.test(fs.readFileSync(`src/app/admin/(panel)/${f}`, "utf8")), `${f} : un formulaire de réglages ne se vide jamais`);
 });

@@ -6,6 +6,8 @@ import { OVERLAY_NEED } from "@/core/overlays/access";
 import { listContexts, type AvailableContext } from "@/core/overlays/context";
 import { searchText } from "@/core/adminkit/search";
 import { listOverlaySkins } from "@/core/overlays/skinLoad";
+import { twinBadge } from "@/core/overlays/twin";
+import { siteSkinsForTwins } from "@/core/overlays/twinState";
 import { getPage } from "@/core/overlays/store";
 import { listCatalogue } from "@/core/skins/service";
 import { Badge } from "@/components/admin/Badge";
@@ -34,7 +36,7 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
   const q = await searchParams;
   const page = await getPage(id);
   if (!page) notFound();
-  const [skins, contexts] = await Promise.all([listOverlaySkins(), listContexts(locale, config.defaultLocale)]);
+  const [skins, contexts, site] = await Promise.all([listOverlaySkins(), listContexts(locale, config.defaultLocale), siteSkinsForTwins(locale).catch(() => ({ names: new Map<string, string>(), active: "" }))]);
   const usable = skins.filter((s) => s.status === "ok");
   const name = (s: { name: { fr: string; en: string } }) => (locale === "fr" ? s.name.fr : s.name.en);
   const desc = (s: { description: { fr: string; en: string } }) => (locale === "fr" ? s.description.fr : s.description.en);
@@ -68,13 +70,15 @@ export default async function OverlayPageSkin({ params, searchParams }: { params
       <Panel title={t("ovp.skin.gallery")} help={t("ovp.skin.galleryHelp")} testid="skin-gallery">
         <div className="mb-3"><AnimationsToggle pauseLabel={t("ovp.skin.animPause")} playLabel={t("ovp.skin.animPlay")} reducedNote={t("ovp.skin.animReduced")} /></div>
         <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[{ id: "", label: t("ovp.skin.common"), text: t("ovp.skin.commonHelp") }, ...usable.map((s) => ({ id: s.id, label: name(s), text: desc(s) }))].map((s) => {
+          {[{ id: "", label: t("ovp.skin.common"), text: t("ovp.skin.commonHelp") }, ...usable.map((s) => ({ id: s.id, label: name(s), text: desc(s), twinOf: s.twinOf }))].map((s) => {
             const on = (look.skin ?? "") === s.id;
+            const twin = twinBadge("twinOf" in s ? s.twinOf : undefined, site.active, site.names);
             return (
               <li key={s.id || "common"} className={`min-w-0 space-y-3 rounded-2xl border p-3 ${on ? "border-accent" : "border-line"}`} data-testid="skin-card" data-card={s.id || "common"}>
                 <ScaledFrame src={`${overlaySkinSampleHref(s.id || "common")}?lang=${locale}`} title={t("ovp.skin.sampleOf", { name: s.label })} />
                 <div className="min-w-0">
-                  <p className="flex flex-wrap items-center gap-2 font-medium">{s.label}{on && <Badge tone="ok">{t("ovp.skin.inUse")}</Badge>}</p>
+                  <p className="flex flex-wrap items-center gap-2 font-medium">{s.label}{on && <Badge tone="ok">{t("ovp.skin.inUse")}</Badge>}{twin?.kind === "match" && <Badge tone="ok">{t("ovp.skin.twinMatch")}</Badge>}</p>
+                  {twin?.kind === "twin" && <p className="truncate text-xs text-muted" title={t("ovp.skin.twinOf", { name: twin.name })}>{t("ovp.skin.twinOf", { name: twin.name })}</p>}
                   <p className="truncate text-sm text-muted" title={s.text}>{s.text}</p>
                 </div>
                 {!on && <form action={setPageSkinAction.bind(null, id, s.id)}><PendingButton variant="btn">{s.id ? t("ovp.skin.use") : t("ovp.skin.useCommon")}</PendingButton></form>}

@@ -40,7 +40,7 @@ export async function stateResponse(page: OverlayPageData, now = Date.now(), kno
   // The skin now: key always, the sheet only when it differs from the one the page already wears (it switches after seeing the same key twice).
   const wears = page.active && (page.look.skin || page.look.byContext.enabled) ? (await skinForPage(page.look, now, page.style.background === "opaque")).payload : null;
   // (0.30.0) the animation recipe travels with the sheet (the page hands it to the animated elements when it switches)
-  const skin = wears ? { key: wears.key, id: wears.id, ...(wears.key !== knownSkin ? { css: wears.css, ...(wears.anim ? { anim: wears.anim } : {}) } : {}) } : { key: "" };
+  const skin = wears ? { key: wears.key, id: wears.id, ...(wears.key !== knownSkin ? { css: wears.css, ...(wears.anim ? { anim: wears.anim } : {}), ...(wears.fonts ? { fonts: wears.fonts } : {}) } : {}) } : { key: "" };
   return new Response(JSON.stringify({ rev: page.rev, active: page.active, test, until: test ? page.testUntil : null, now, skin }), {
     status: 200, headers: { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store, max-age=0", "Referrer-Policy": "no-referrer", "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff" },
   });

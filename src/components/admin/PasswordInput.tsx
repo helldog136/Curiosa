@@ -4,8 +4,10 @@ import { useState, type InputHTMLAttributes } from "react";
 import { ui } from "./ui";
 import { useProgressText } from "./ProgressLabels";
 
-/** Ce que les gestionnaires de mots de passe (1Password, Bitwarden, Dashlane, LastPass, Chrome, Safari) comprennent pour « ne me proposez rien ici ». */
-export const MANAGER_IGNORE = { "data-1p-ignore": true, "data-lpignore": "true", "data-bwignore": "true", "data-form-type": "other" } as const;
+import { MANAGER_IGNORE } from "./managerHints";
+
+/** Ce que les gestionnaires de mots de passe (1Password, Bitwarden, Dashlane, LastPass, Chrome, Safari) comprennent pour « ne me proposez rien ici » (défini dans managerHints.ts). */
+export { MANAGER_IGNORE };
 
 type Props = Omit<InputHTMLAttributes<HTMLInputElement>, "type" | "autoComplete"> & {
   /** `new-password` : créer ou changer un mot de passe (les gestionnaires proposent d'en générer un). `current-password` : se connecter ou confirmer qui l'on est. Jamais `off`. */

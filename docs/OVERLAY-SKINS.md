@@ -33,7 +33,7 @@ Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in
 ```
 
 - `skinContract: 2` is required (an older core refuses the skin as "contract newer" instead of misreading it). `modes` does not apply to an overlay skin.
-- The folder rules, licences (texte libre, jamais jugé par le cœur), previews (at least one `.webp`, 150 KB at most) and fingerprint are the ones of site skins. **No fonts and no images**: overlay skins use system fonts and CSS gradients.
+- The folder rules, licences (texte libre, jamais jugé par le cœur), previews (at least one `.webp`, 150 KB at most) and fingerprint are the ones of site skins. **Images** only through a `scene` (contract 5, see OVERLAY-ANIMATIONS.md). **Fonts** only with contract 6 (see "Fonts" below); without them overlay skins use system fonts and CSS gradients.
 - Install: the same pipeline as site skins (`https://github.com/<owner>/curiosa-skins#<id>/v<version>:skins/<id>`, the catalogue, personal repositories with confirmation). The registry row carries `kind: "overlay"`. The Appearance page lists only site skins; the overlay skin tab lists only overlay skins.
 - Previews: `previews/overlay-640.webp` (still, 150 KB at most) and optionally `previews/overlay-anim.webp` (a looping animated webp of the same scene, 640 x 360, 450 KB at most; the catalogue entry names it in `previewAnim`). The catalogue shows the animated one when the card is on screen and the animation budget allows, and falls back to the still one; both are read once from the repository, checked on their bytes, kept on the site and served by the site itself.
 - Catalogue: official overlay skins are listed in `catalogue/overlay-skins.json` of the skins repository (same entry format as `catalogue/index.json`), a separate file so that older cores never see them.
@@ -176,3 +176,33 @@ Overlays are watched like TV. Two settings of the **page owner** sit above every
 - **Background: Opaque** (next to Transparent and Semi-transparent). The skin keeps its colours, its `--ov-surface` becomes solid (the same colour with alpha 1; if that would make the text less readable, the colour it was checked over: black under light text, white under dark text), so the text contrast of the skin is kept (4.5:1 minimum, see the contrast checks). Without a skin, the core sets the solid panel colour itself (`#14171c` under light text, `#f7f7f5` under dark text). A rule of your sheet that sets its own `background-color` on a part is a decoration of that part and stays; the panel token is what the owner's choice changes.
 
 **Guidance for skins.** On a 1920x1080 canvas nothing should be below 24 px and body text should be 28 to 32 px or more; use strong contrast and no hairline weights (`--ov-weight` 400 or more for body). A `font-size` below 100 % (or 1em) in a rule makes text smaller than the element chose: the check reports a **warning** (`overlay-text-small`), not an error, so published skins keep working; avoid it.
+
+## Fonts (core 0.47.0, skin contract 6)
+
+An overlay skin may ship up to four **woff2** fonts. The skin never writes `@font-face` or `url()`: it declares the files and the core writes the rules.
+
+```json
+{
+  "skinContract": 6, "kind": "overlay", "minCore": "0.47.0",
+  "assets": [
+    { "file": "fonts/fredoka.woff2", "kind": "font", "family": "Fredoka", "weight": "400", "style": "normal",
+      "license": "SIL Open Font License 1.1", "author": "The Fredoka Project Authors", "source": "https://example.invalid/fredoka" }
+  ]
+}
+```
+
+- **Contract and core**: a skin with a font declares `skinContract: 6` (`overlay-contract-v6`) and `minCore` of at least `0.47.0` (`overlay-font-mincore`). An older core refuses it cleanly as "contract newer". Contracts 2 to 5 behave byte for byte as before (a regression test pins the compiled sheet and the rendered page of each).
+- **Files**: `fonts/<name>.woff2` only (lower case, `[a-z0-9._-]`); ttf, otf, woff, eot and svg are refused (`asset-bad-path`). The bytes are checked: `wOF2` signature, a sane header and a length that matches the file (`asset-signature`, `overlay-font-invalid`). Limits, the same as site skin fonts: 4 files, 150 KB each, 400 KB together, inside the 2 MB / 60 files of a skin. Fonts are part of the fingerprint.
+- **`family`** (required, `[A-Za-z0-9 _-]`, 41 characters at most), `weight` (`100`..`900`, a range such as `300 500`, `normal`, `bold`; default `400`) and `style` (`normal` or `italic`). `license`, `author` and `source` are free text for the credits: the core never judges a licence and never copies them into a sheet.
+- **Using the font**: name the declared family in `--ov-font`, `--ov-font-heading` or `font-family`, **then a generic family last**: `"Fredoka", Georgia, serif`. Allowed in a list: a declared family, a system font from the core's list (Georgia, Arial, Segoe UI, ...) or a generic family, 2 to 7 entries. Any other name is refused (`overlay-font-undeclared`), and a list that does not end with a generic family too (`overlay-font-fallback`). Contracts 2 to 5 keep their older, looser rule.
+- **Scoped names**: the core rewrites each declared family to `ov-<skin id>-<family in lower case with dashes>` (`ov-emma-skin-fredoka`), so two skins never share a family and a skin cannot restyle the text of another. `@font-face`, `@import` and `url()` stay refused in `skin.css` and in the tokens.
+- **The rule the core writes**: `@font-face{font-family:"ov-...";src:url("/skins/<id>/<version>/fonts/<file>.woff2") format("woff2");font-weight:W;font-style:S;font-display:fallback}`, escaped by the same encoder as every other string. `font-display: fallback`: invisible for 100 ms at most, then the fallback stack; a late font never makes a live alert jump after the first seconds.
+- **Loading**: the overlay page fetches the font bytes itself (`connect-src 'self'`, unchanged) and hands them to each element frame as a `FontFace`, so an element page with a strict policy (`default-src 'none'`) needs no `font-src`. The frame stays hidden until its sheet and fonts are ready, for 2.5 s at most: if a font cannot be fetched, the frame is shown with the fallback stack and nothing shows an error. The page policy is unchanged (`font-src 'none'`); the gallery sample page gets the fonts as `data:` addresses and `font-src data:` only when it has any.
+- **Check**: `npm run skin:check -- <folder> --core-version 0.47.0`.
+
+## `twinOf`: a twin of a site skin (core 0.47.0)
+
+An overlay skin may name the **site skin** it was drawn to go with: `"twinOf": "<site skin id>"` in `skin.json`, and the same field in its entry of `catalogue/overlay-skins.json`. It is metadata only: no contract change, an older core ignores it (unknown keys are warnings), and it is refused only on a site skin (`twin-overlay-only`) or when it names the skin itself or `basic` (`twin-self`).
+
+- The overlay skin gallery shows a badge "Matches your site skin" **only** when the active site skin is the twin, and a quiet line "Twin of <name>" when the twin is installed but not active. Nothing otherwise.
+- After the person changes their site skin, and only if an installed overlay skin is a twin of the new one and some overlay page does not wear it, the administration offers one button "Use the matching overlay skin" (6 hours, or "Not now"). It is **never applied on its own**.

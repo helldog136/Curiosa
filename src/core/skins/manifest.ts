@@ -71,6 +71,11 @@ export const skinManifestSchema = z.object({
   animation: z.string().min(1).max(100).optional(),
   /** (core 0.40.0, overlay skins of contract 5) The scene file (docs/OVERLAY-ANIMATIONS.md "Scenes"): the skin's own pictures placed on the abstract bar, checked by animate/scene.ts. */
   scene: z.string().min(1).max(100).optional(),
+  /**
+   * (core 0.47.0, overlay skins) The id of the SITE skin this overlay skin is the twin of: metadata only (a badge in the gallery, an offer when the site skin changes), never a
+   * dependency. No contract change: an older core ignores the key (an unknown key is a warning there, never an error).
+   */
+  twinOf: z.string().regex(SKIN_ID_RE).optional(),
   previews: z.array(preview).max(40).optional(),
   assets: z.array(asset).max(200).optional(),
   defaults: z.object({

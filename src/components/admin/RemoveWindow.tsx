@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useId, useState, useTransition } from "react";
 import { ModalWindow } from "./ModalWindow";
 import { PendingButton } from "./PendingButton";
@@ -105,7 +106,7 @@ export function RemoveWindow({ labels, name, keep, erase }: { labels: RemoveWind
             ) : (
               <div>
                 <label htmlFor={`${radioName}-name`} className={ui.label}>{labels.typeName}</label>
-                <input id={`${radioName}-name`} type="text" value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" autoCapitalize="off" spellCheck={false}
+                <input id={`${radioName}-name`} type="text" value={typed} onChange={(e) => setTyped(e.target.value)} {...PLAIN_INPUT} autoCapitalize="off" spellCheck={false}
                   onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }} data-testid="remove-typed" aria-describedby={`${radioName}-ex`} className={ui.input} />
                 <p id={`${radioName}-ex`} className={ui.help}>{labels.example}</p>
               </div>

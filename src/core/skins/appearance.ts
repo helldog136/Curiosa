@@ -14,6 +14,7 @@
  *    sur basic (un site sans skin) les écritures sont EXACTEMENT celles d'avant les skins ;
  *  - une retouche illisible est enregistrée quand même (avertissement seulement) : c'est le rendu qui la corrige (§7.3).
  */
+import { armTwinOffer } from "../overlays/twinOffer";
 import { prisma } from "../db";
 import { audit } from "../permissions";
 import { deleteSetting, setSetting } from "../settings";
@@ -115,6 +116,7 @@ export async function chooseSkin(id: string, opts: { actor?: string } = {}): Pro
   await clearRetouches();
   invalidateSkinCache();
   await audit(opts.actor ?? "system", "skin.activate", id);
+  await armTwinOffer(id);   // (0.47.0) the administration offers the matching overlay skin, once, if there is one (overlays/twinOffer.ts); nothing is applied here
   return { ok: true, changed: true, keptSnapshot: true };
 }
 

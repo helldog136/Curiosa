@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { searchHref } from "@/core/adminLinks";
@@ -126,7 +127,7 @@ export function SettingsSearch({ variant, labels, endpoint, contentEndpoint, ini
     <div className="relative">
       <span aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-muted">🔍</span>
       <input ref={input} type="search" value={query} role={page ? undefined : "combobox"} aria-expanded={page ? undefined : open && asking} aria-controls={page ? undefined : listId} aria-autocomplete={page ? undefined : "list"}
-        aria-activedescendant={!page && active >= 0 ? `${listId}-${active}` : undefined} aria-label={labels.label} placeholder={labels.placeholder} autoComplete="off" data-testid={page ? "settings-search-page" : "settings-search"}
+        aria-activedescendant={!page && active >= 0 ? `${listId}-${active}` : undefined} aria-label={labels.label} placeholder={labels.placeholder} {...PLAIN_INPUT} data-testid={page ? "settings-search-page" : "settings-search"}
         onFocus={() => { void load(); setOpen(true); }} onBlur={() => { setTimeout(() => setOpen(false), 150); }} onKeyDown={onKey}
         onChange={(e) => { setQuery(e.target.value); setActive(-1); setOpen(true); }}
         className={`w-full rounded-full border border-line bg-bg py-2.5 pl-9 pr-10 text-[15px] [&::-webkit-search-cancel-button]:hidden outline-none transition-colors focus:border-accent ${page ? "min-h-12 text-base" : "min-h-11"}`} />
