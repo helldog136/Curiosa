@@ -9,6 +9,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Les extensions peuvent connaître les personnes qui se connectent au site.** Une extension qui le demande reçoit leur nom, leur e-mail et leur rôle, rien d'autre : jamais de mot de passe, de clé d'accès ni de code de secours. Rien n'est affiché sur le site public, et une extension qui ne le demande pas ne voit rien.
+- **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
+
 ### Corrections
 
 - **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.
@@ -18,6 +23,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- `core/auth/accountTopic.ts` : sujet `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), fourni par le cœur seul (`OwnTopic` dans `services/topics.ts`). Lu par un module qui le déclare dans `consumes` ET déclare la permission `topics` ; aucun module ne peut le fournir.
+- **(English)** `core/auth/accountTopic.ts`: topic `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), provided by the core alone (`OwnTopic` in `services/topics.ts`). Read by a module that declares it in `consumes` AND the `topics` permission; no module can provide it.
+- La base est lue avec `ACCOUNT_SELECT` (colonnes nommées), chaque élément est construit champ par champ, et `tests/core/account-topic.test.mjs` échoue si une colonne est ajoutée à `User` sans décision. Cœur plus ancien : liste vide (`docs/MODULES.md`).
+- **(English)** The database is read with `ACCOUNT_SELECT` (named columns), each item is built field by field, and `tests/core/account-topic.test.mjs` fails if a column is added to `User` without a decision. Older core: empty list (`docs/MODULES.md`).
 - `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
 - **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
 
