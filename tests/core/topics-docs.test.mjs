@@ -8,11 +8,11 @@ const { FEED_ITEM_TOPIC } = await import("@/core/feeds");
 const doc = (p) => fs.readFileSync(new URL(`../../${p}`, import.meta.url), "utf8");
 const reference = doc("docs/MODULES.md");
 
-test("MODULES.md documente les trois sujets lus par le cœur, et seulement eux, et renvoie au registre", () => {
+test("MODULES.md documente les sujets lus ou fournis par le cœur, et seulement eux, et renvoie au registre", () => {
   const section = reference.slice(reference.indexOf("## Échanger des informations entre modules : les sujets"), reference.indexOf("```jsonc\n// module.json du CONSOMMATEUR"));
   assert.ok(section.length > 200, "section des sujets introuvable");
   const rows = [...section.matchAll(/^\| `([a-z]+(?:\.[a-z]+)+)` \|/gm)].map((m) => m[1]);
-  assert.deepEqual(rows.sort(), ["core.entry", "feed.item", "social.link"], "le tableau ne liste que les sujets que le cœur lit");
+  assert.deepEqual(rows.sort(), ["core.entry", "core.user", "feed.item", "social.link"], "le tableau ne liste que les sujets que le cœur lit ou fournit");
   assert.equal(SOCIAL_TOPIC, "social.link");
   assert.equal(FEED_ITEM_TOPIC, "feed.item");
   assert.match(section, /docs\/TOPICS\.md/, "renvoi vers le registre du dépôt des modules");

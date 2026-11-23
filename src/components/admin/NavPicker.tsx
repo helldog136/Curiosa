@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useId, useRef, useState } from "react";
 import { searchMenu } from "@/app/admin/(panel)/navigation/searchActions";
 import type { CatalogGroup, CatalogItem, CatalogPage } from "@/core/menuCatalog";
@@ -77,7 +78,7 @@ export function NavPicker({ strings, inMenu, onAdd, onClose, full }: { strings: 
       <p id={`${base}-title`} className="font-semibold">{strings.pickPage}</p>
       <div>
         <label htmlFor={`${base}-q`} className={ui.label}>{strings.searchLabel}</label>
-        <input ref={input} id={`${base}-q`} type="search" value={q} onChange={(e) => onType(e.target.value)} placeholder={strings.searchPlaceholder} autoComplete="off" maxLength={80}
+        <input ref={input} id={`${base}-q`} type="search" value={q} onChange={(e) => onType(e.target.value)} placeholder={strings.searchPlaceholder} {...PLAIN_INPUT} maxLength={80}
           aria-describedby={`${base}-help`} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); clearTimeout(timer.current); start(q); } }} className={ui.input} />
         <p id={`${base}-help`} className={ui.help}>{strings.searchHelp}</p>
       </div>

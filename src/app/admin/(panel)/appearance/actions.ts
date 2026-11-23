@@ -109,6 +109,7 @@ export async function installFromCatalogueAction(_prev: ActionState, fd: FormDat
 export type InspectView = {
   ok: true; mode: "summary" | "candidates";
   url: string; origin: "official" | "extra" | "personal"; compatible: boolean; needsCore?: string; alreadyInstalled?: string; installable: boolean;
+  /** The skin's own id (the `id` of its skin.json), to put it in place once it is added. */ skinId?: string;
   name?: { fr: string; en: string }; description?: { fr: string; en: string }; version?: string; author?: string; license?: string; modes?: string[]; sizeKb?: number;
   assets?: { file: string; kind: string; license?: string; author?: string }[];
   readme?: string | null; licenseText?: string | null;
@@ -128,7 +129,7 @@ export async function inspectSkinAction(url: string, code?: string): Promise<Ins
   // (0.42.0) An access code pasted with the address is tried against the repository and stored sealed ONLY if it works; it is never sent back.
   if (parsed.ok && code && code.trim()) {
     const saved = await saveAccessCode(parsed.repo.url, String(code).slice(0, 400), user.email);
-    if (!saved.ok) return { ok: false, error: t(`access.error.${saved.error}`), field: "code", needsCode: saved.error !== "address", access: await accessState(parsed.repo.url) };
+    if (!saved.ok) return { ok: false, error: t(`access.error.${saved.error}`, saved.address ? { address: saved.address } : undefined), field: "code", needsCode: saved.error !== "address", access: await accessState(parsed.repo.url) };
   }
   const access = parsed.ok ? await accessState(parsed.repo.url) : undefined;
   const r = await skins.inspect(address);
@@ -139,7 +140,7 @@ export async function inspectSkinAction(url: string, code?: string): Promise<Ins
   const s = r.summary;
   return {
     ok: true, mode: "summary", url, origin: r.origin, compatible: r.compatible, needsCore: r.needsCore, alreadyInstalled: r.alreadyInstalled?.version, installable: r.installable,
-    name: s.name, description: s.description, version: s.version, author: s.author?.name, license: s.license, modes: s.modes, sizeKb: Math.ceil(s.sizeBytes / 1024),
+    skinId: s.id, name: s.name, description: s.description, version: s.version, author: s.author?.name, license: s.license, modes: s.modes, sizeKb: Math.ceil(s.sizeBytes / 1024),
     assets: s.assets.map((a) => ({ file: a.file, kind: a.kind, license: a.license, author: a.author })),
     readme: s.readme, licenseText: s.licenseText,
     previews: s.previews.map((p) => ({ alt: text(p.alt), dataUrl: p.dataUrl, mode: p.mode })),

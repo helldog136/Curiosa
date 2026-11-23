@@ -23,8 +23,15 @@ export const OVERLAY_SKIN_CONTRACT_V4 = 4;
  * placed on the abstract bar. Only a skin that declares it may carry images; older cores refuse it cleanly ("contract newer").
  */
 export const OVERLAY_SKIN_CONTRACT_V5 = 5;
+/**
+ * (core 0.47.0) Contract of overlay skins that EMBARK FONTS (`assets` of kind `font` in skin.json, docs/OVERLAY-SKINS.md "Fonts"): woff2 only, declared with a `family`; the core
+ * writes the `@font-face` rules, the skin only names its families in `--ov-font` / `font-family`. Older cores refuse such a skin cleanly ("contract newer").
+ */
+export const OVERLAY_SKIN_CONTRACT_V6 = 6;
+/** (core 0.47.0) The core that introduces contract 6: a skin that embarks fonts must ask for at least this `minCore`. */
+export const OVERLAY_FONTS_MIN_CORE = "0.47.0";
 /** The highest contract this core understands for a skin of this kind. */
-export const maxSkinContract = (kind: unknown): number => (kind === "overlay" ? OVERLAY_SKIN_CONTRACT_V5 : SKIN_CONTRACT);
+export const maxSkinContract = (kind: unknown): number => (kind === "overlay" ? OVERLAY_SKIN_CONTRACT_V6 : SKIN_CONTRACT);
 
 /**
  * Longest `license` text a skin manifest may carry (skin and assets). The licence is FREE TEXT shown to the owner as information only: the core never validates it

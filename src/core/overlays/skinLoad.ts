@@ -2,18 +2,20 @@ import { installed, loadInstalledSkin } from "../skins/service";
 import { readRows } from "../skins/registry";
 import crypto from "node:crypto";
 import { compileSkin, type SkinPayload, type SkinTweaks } from "./skinSheet";
+import { overlayFonts } from "./skinFonts";
 import { pickSkin, type PageLook } from "./look";
 import { readContextValue, type ContextValue } from "./context";
 
 /** Installed overlay skins and the sheet of one of them (core 0.8.0). Anything wrong (missing, altered, not an overlay skin) gives null: the common style applies. */
 export type OverlaySkinInfo = {
   id: string; version: string; name: { fr: string; en: string }; description: { fr: string; en: string }; tags: string[]; author?: string;
+  /** (0.47.0) The id of the site skin this overlay skin is the twin of (skin.json `twinOf`), when it declares one. */ twinOf?: string;
   status: "ok" | "missing" | "modified" | "invalid"; previews: { file: string; alt: { fr: string; en: string } }[];
 };
 
 export async function listOverlaySkins(): Promise<OverlaySkinInfo[]> {
   return (await installed()).filter((s) => s.kind === "overlay").map((s) => ({
-    id: s.id, version: s.version, name: s.name, description: s.description, tags: s.tags, author: s.author, status: s.status,
+    id: s.id, version: s.version, name: s.name, description: s.description, tags: s.tags, author: s.author, ...(s.twinOf ? { twinOf: s.twinOf } : {}), status: s.status,
     previews: s.previews.map((p) => ({ file: p.file, alt: p.alt })),
   }));
 }
@@ -30,7 +32,8 @@ export async function skinPayload(id: string | null, opaque = false, tweaks?: Sk
   const loaded = await loadInstalledSkin(id);
   if (!loaded.ok || loaded.manifest.kind !== "overlay") return null;
   const tw = tweaks && Object.keys(tweaks).length ? tweaks : undefined;
-  const p = compileSkin({ id, version: loaded.version, tokens: loaded.tokens.common, css: loaded.css, ...(opaque ? { opaque } : {}), ...(tw ? { tweaks: tw } : {}) });
+  const fonts = overlayFonts(id, loaded.version, loaded.manifest.assets);   // (0.47.0) contract 6: the fonts the skin embarks, [] for every other skin
+  const p = compileSkin({ id, version: loaded.version, tokens: loaded.tokens.common, css: loaded.css, ...(fonts.length ? { fonts } : {}), ...(opaque ? { opaque } : {}), ...(tw ? { tweaks: tw } : {}) });
   // (0.21.0) A retouch changes the sheet, so it changes the key (the live page switches to it like to another skin).
   const tweakKey = tw ? `:t${crypto.createHash("sha256").update(JSON.stringify(tw)).digest("hex").slice(0, 10)}` : "";
   return { ...p, key: `${id}@${loaded.version}:${loaded.fingerprint.slice(0, 12)}${opaque ? ":solid" : ""}${tweakKey}`, ...(loaded.scene ? { anim: { animateContract: 3, scene: loaded.scene, base: loaded.assetBase } } : loaded.animation ? { anim: loaded.animation } : {}) };

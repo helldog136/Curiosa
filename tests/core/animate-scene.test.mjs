@@ -137,7 +137,7 @@ test("install: the images gate is lifted ONLY for a skin that declares a scene, 
   const file = (f) => ({ file: f, kind: "image", license: "CC0-1.0", licenseFile: "LICENSES/CC0.txt", author: "x", source: "y" });
   const m = JSON.parse(fs.readFileSync(`${FIX}/skin.json`, "utf8"));
   refused({ manifest: { scene: undefined } }, "overlay-no-assets");   // the same pictures without a scene: refused as before
-  refused({ manifest: { assets: [...m.assets, { file: "fonts/a.woff2", kind: "font" }] }, files: { "fonts/a.woff2": "wOF2" } }, "overlay-no-assets");
+  refused({ manifest: { assets: [...m.assets, { file: "fonts/a.woff2", kind: "font" }] }, files: { "fonts/a.woff2": "wOF2" } }, "overlay-contract-v6");
   refused({ manifest: { skinContract: 4 } }, "overlay-contract-v5");
   refused({ manifest: { assets: [...m.assets, file("images/photo.jpg")] }, files: { "images/photo.jpg": Buffer.from([0xff, 0xd8, 0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]) } }, "scene-image-type");
   refused({ manifest: { assets: [...m.assets, file("images/anim.avif")] } }, "scene-image-type");

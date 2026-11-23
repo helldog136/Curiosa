@@ -45,6 +45,14 @@ export async function register() {
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();
+  // TEMPORARY (sunset 0.49.0, src/core/personalAi/legacyOwners.ts): on a site with a single account, every access without an owner is given to that account. Idempotent, never throws.
+  try {
+    const { assignLegacyOwners } = await import("@/core/personalAi/legacyOwners");
+    const r = await assignLegacyOwners();
+    if (r.assigned) console.log(`[ai] AI accesses given to the only account: ${r.assigned}`);
+  } catch (error) {
+    console.error("[ai] owner assignment failed:", (error as Error)?.message);
+  }
   // Une mise à jour interrompue pendant le redémarrage (la tâche a été arrêtée avec l'ancien serveur) est conclue ici, sur la version qui tourne vraiment.
   try {
     const { reconcileInterruptedUpdate } = await import("@/core/updates/service");
@@ -57,6 +65,9 @@ export async function register() {
   startUpdateScheduler();
   const { startTaskScheduler } = await import("@/core/services/scheduler");
   startTaskScheduler();
+  // Automatic backup by e-mail (src/core/backup/auto): looks for a slot that is due (also a missed one, once), nothing when the feature is off.
+  const { startAutoBackupScheduler } = await import("@/core/backup/auto/scheduler");
+  startAutoBackupScheduler();
   // Warm the caches an AI maintenance call would otherwise pay for after a restart (a few seconds after the start, only when the site has an AI access).
   const { scheduleMaintenanceWarmup } = await import("@/core/maintenance/warmup");
   scheduleMaintenanceWarmup();

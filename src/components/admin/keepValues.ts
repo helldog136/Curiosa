@@ -12,7 +12,9 @@ export function submitKeepingValues(run: (data: FormData) => void) {
     e.preventDefault();
     const form = e.currentTarget;
     const submitter = (e.nativeEvent as SubmitEvent).submitter ?? undefined;
-    const data = new FormData(form, submitter as HTMLElement | undefined);
+    // `new FormData(form, submitter)` throws when the submitter is not a submit button of this form (an event re-dispatched by an extension): never lose the submit for that.
+    let data: FormData;
+    try { data = new FormData(form, submitter as HTMLElement | undefined); } catch { data = new FormData(form); }
     startTransition(() => run(data));
   };
 }

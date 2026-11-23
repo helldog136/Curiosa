@@ -6,10 +6,30 @@
 import { audit } from "./permissions";
 import { accessState, accessTarget, checkCodeFormat, removeAccess, storeAccess, type AccessState } from "./gitAccess";
 import { gitCheckAccess } from "./modules/installer";
-import { isGitAccessError } from "./gitAccess";
+import { failureOf } from "./gitAccess";
+import type { GitFailureKind } from "./gitFailure";
 
-/** `error` is a translation key under `access.error.*`. */
-export type SaveAccessResult = { ok: true; repo: string } | { ok: false; error: "empty" | "broad" | "format" | "address" | "refused" | "unreachable" };
+/**
+ * `error` is a translation key under `access.error.*`. One cause per key (core 0.47.0): the owner reads what to change. `address` (of "redirectTo") is the only
+ * variable of a message, and only a plain repository address that passed `accessTarget`.
+ */
+export type SaveAccessError = "empty" | "broad" | "format" | "address" | "notFound" | "rejected" | "tooOld" | "unreachable" | "redirect" | "redirectTo" | "unknown";
+export type SaveAccessResult = { ok: true; repo: string } | { ok: false; error: SaveAccessError; address?: string };
+
+/** Where a renamed or moved repository now lives, read WITHOUT any code (a plain request, redirect not followed), or undefined. Shown only when it is a repository address. */
+async function movedTo(url: string): Promise<string | undefined> {
+  try {
+    const first = `${url.replace(/\/+$/, "").replace(/\.git$/, "")}/info/refs?service=git-upload-pack`;
+    const r = await fetch(first, { redirect: "manual", signal: AbortSignal.timeout(5000), headers: { "user-agent": "curiosa" } });
+    const loc = r.headers.get("location");
+    if (!loc || r.status < 300 || r.status > 399) return undefined;
+    const next = new URL(loc, first);
+    const candidate = `${next.origin}${next.pathname.replace(/\/+$/, "").replace(/\/info\/refs$/, "").replace(/\.git$/, "")}`;
+    return accessTarget(candidate) ? candidate : undefined;
+  } catch { return undefined; }
+}
+
+const KEY_OF: Record<Exclude<GitFailureKind, "redirect">, SaveAccessError> = { address: "address", notFound: "notFound", rejected: "rejected", tooOld: "tooOld", unreachable: "unreachable", unknown: "unknown" };
 
 export async function saveAccessCode(url: string, code: string, actor: string): Promise<SaveAccessResult> {
   const target = accessTarget(url);
@@ -19,7 +39,13 @@ export async function saveAccessCode(url: string, code: string, actor: string): 
   try {
     await gitCheckAccess(url, code.trim());
   } catch (error) {
-    return { ok: false, error: isGitAccessError(error) ? "refused" : "unreachable" };
+    const failure = failureOf(error);
+    // The journal gets the repository and the KIND of failure (a word), never what git printed.
+    await audit(actor, "git.access.failed", `${target.repo} ${failure.kind}`, { level: "warn" });
+    if (failure.kind !== "redirect") return { ok: false, error: KEY_OF[failure.kind] };
+    const address = (failure.location && accessTarget(failure.location) ? failure.location : undefined) ?? await movedTo(url);
+    const plain = (x: string) => x.replace(/\/+$/, "").replace(/\.git$/, "");
+    return address && plain(address) !== plain(url) ? { ok: false, error: "redirectTo", address } : { ok: false, error: "redirect" };
   }
   if (!(await storeAccess(url, code))) return { ok: false, error: "format" };
   await audit(actor, "git.access.set", target.repo);

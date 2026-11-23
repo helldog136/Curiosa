@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   COMPOSE_GALLERY_MAX, GALLERY_EXTENSIONS, GALLERY_HARD_MAX, GALLERY_KINDS, GALLERY_MARK, GALLERY_MAX_BYTES, composeRules, galleryAccept, galleryKindOf, galleryMark, galleryMax, galleryMin, readGallery, writeGallery,
@@ -377,7 +378,7 @@ export function GalleryField({ name, label, defaultValue, accept, max, min, item
                 </div>
                 <p className="truncate px-2 pt-1.5 text-[13px]" title={itemName}>{itemName}</p>
                 {itemLabel && entry.status === "ready" && (
-                  <input type="text" value={entry.label} maxLength={120} aria-label={text(labels, "gallery.captionFor", { name: itemName })} placeholder={text(labels, "gallery.caption")}
+                  <input {...PLAIN_INPUT} type="text" value={entry.label} maxLength={120} aria-label={text(labels, "gallery.captionFor", { name: itemName })} placeholder={text(labels, "gallery.caption")}
                     onChange={(e) => patch(entry.id, { label: e.target.value })}
                     onKeyDown={(e) => { if (e.key === "Enter") e.preventDefault(); }}
                     className={`${ui.input} mx-2 mt-1.5 !w-[calc(100%-1rem)] !px-2.5 !py-1.5 !text-[13px]`} />
@@ -494,7 +495,7 @@ function LibraryPicker({ id, items, taken, room, labels, onAdd, onClose }: { id:
   return (
     <div id={id} role="group" aria-label={text(labels, "gallery.library")} data-gallery-library="" className="mt-2 rounded-2xl border border-line bg-surface p-3"
       onKeyDown={(e) => { if (e.key === "Escape") { e.stopPropagation(); onClose(); } if (e.key === "Enter" && (e.target as HTMLElement).tagName === "INPUT") e.preventDefault(); }}>
-      <input ref={search} type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={text(labels, "gallery.libSearch")} placeholder={text(labels, "gallery.libSearch")} className={ui.input} />
+      <input {...PLAIN_INPUT} ref={search} type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={text(labels, "gallery.libSearch")} placeholder={text(labels, "gallery.libSearch")} className={ui.input} />
       {shown.length === 0 ? (
         <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted" role="status">{text(labels, "gallery.libNone")}<button type="button" onClick={() => setQ("")} className="inline-flex min-h-11 items-center text-accent underline-offset-2 hover:underline">{text(labels, "gallery.libClear")}</button></p>
       ) : (

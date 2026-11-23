@@ -1,3 +1,4 @@
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { can as canDo } from "@/core/auth/access";
@@ -130,12 +131,12 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
                   {mine.filter((m) => !m.nickname).map((m) => (
                     <label key={m.id} className="block text-sm">
                       <span className={ui.label}>{t("instances.nicknameExisting", { name: pickName(m, locale, config.defaultLocale) })}</span>
-                      <input name={`nickname_${m.id}`} required maxLength={40} defaultValue={pickName(m, locale, config.defaultLocale)} className={ui.input} />
+                      <input {...PLAIN_INPUT} name={`nickname_${m.id}`} required maxLength={40} defaultValue={pickName(m, locale, config.defaultLocale)} className={ui.input} />
                     </label>
                   ))}
                   <label className="block text-sm">
                     <span className={ui.label}>{t("instances.nicknameNew")}</span>
-                    <input name="nickname" required maxLength={40} placeholder={t("instances.nicknamePlaceholder")} className={ui.input} />
+                    <input {...PLAIN_INPUT} name="nickname" required maxLength={40} placeholder={t("instances.nicknamePlaceholder")} className={ui.input} />
                     <span className={ui.help}>{t("instances.nicknameHelp")}</span>
                   </label>
                 </>

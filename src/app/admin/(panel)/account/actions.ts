@@ -17,6 +17,7 @@ import { revokeSessions } from "@/core/auth/sessions";
 import { audit } from "@/core/permissions";
 import { passwordProblem } from "@/core/auth/passwordPolicy";
 import type { ActionState } from "@/components/admin/ActionForm";
+import { createPersonalAccess, pauseOwnPersonalAccess, renameOwnPersonalAccess, resumeOwnPersonalAccess, revokeOwnPersonalAccess, setOwnAccessLevel, type PersonalFailure } from "@/core/personalAi/service";
 
 export async function updateProfile(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("member", { allowUnenrolled: true });
@@ -136,4 +137,59 @@ export async function removeMyPasskey(id: string, password: string): Promise<Pas
   await audit(user.email, "user.passkey.remove");
   revalidatePath(ACCOUNT_HREF);
   return { ok: true };
+}
+
+/* ───────────── AI accesses of this person (core 0.47.0) ───────────── */
+
+
+/** What the create form gets back: the code exists only here, once. It is never read again from the database. */
+export type MyAccessState = { error?: string; errors?: { name?: string; password?: string }; created?: { name: string; token: string; byUrl: false } } | null;
+
+function failureText(t: (k: string) => string, reason: PersonalFailure): string {
+  return t(reason === "password" ? "account.wrongPassword" : reason === "limited" ? "myai.error.limited" : reason === "not_allowed" ? "myai.error.notAllowed" : "myai.error.missing");
+}
+
+/** Creates an access OWNED by the signed-in person (the owner is read from the session, never from the form). The password is asked again. */
+export async function createMyAccessAction(_prev: MyAccessState, formData: FormData): Promise<MyAccessState> {
+  const { user, t } = await adminCtx("member");
+  const name = String(formData.get("accessLabel") ?? "").trim();
+  if (!name) return { errors: { name: t("myai.error.name") } };
+  const r = await createPersonalAccess(user.id, { password: formData.get("confirmPassword"), name, level: formData.get("level") });
+  if (!r.ok) return r.reason === "password" ? { errors: { password: t("account.wrongPassword") } } : { error: failureText(t, r.reason) };
+  revalidatePath(ACCOUNT_HREF);
+  return { created: { name: r.name, token: r.code, byUrl: false } };
+}
+
+export async function pauseMyAccessAction(tokenId: string): Promise<{ ok?: string; error?: string }> {
+  const { user, t } = await adminCtx("member");
+  const r = await pauseOwnPersonalAccess(user.id, String(tokenId));
+  revalidatePath(ACCOUNT_HREF);
+  return r.ok ? {} : { error: failureText(t, r.reason) };
+}
+
+export async function resumeMyAccessAction(tokenId: string, password: string): Promise<{ ok?: boolean; error?: string }> {
+  const { user, t } = await adminCtx("member");
+  const r = await resumeOwnPersonalAccess(user.id, String(tokenId), password);
+  revalidatePath(ACCOUNT_HREF);
+  return r.ok ? { ok: true } : { error: failureText(t, r.reason) };
+}
+
+export async function removeMyAccessAction(tokenId: string): Promise<void> {
+  const { user } = await adminCtx("member");
+  await revokeOwnPersonalAccess(user.id, String(tokenId));
+  revalidatePath(ACCOUNT_HREF);
+}
+
+export async function renameMyAccessAction(tokenId: string, name: string): Promise<{ ok?: boolean; error?: string }> {
+  const { user, t } = await adminCtx("member");
+  const r = await renameOwnPersonalAccess(user.id, String(tokenId), name);
+  revalidatePath(ACCOUNT_HREF);
+  return r.ok ? { ok: true } : { error: failureText(t, r.reason) };
+}
+
+export async function setMyAccessLevelAction(tokenId: string, level: string): Promise<{ ok?: boolean; error?: string }> {
+  const { user, t } = await adminCtx("member");
+  const r = await setOwnAccessLevel(user.id, String(tokenId), level);
+  revalidatePath(ACCOUNT_HREF);
+  return r.ok ? { ok: true } : { error: failureText(t, r.reason) };
 }

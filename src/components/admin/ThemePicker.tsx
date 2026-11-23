@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useRef, useState } from "react";
 import { isHexColor, buildPalette } from "@/core/color";
 import { CUSTOM_PALETTE, THEME_PRESETS, matchPalette } from "@/core/palettes";
@@ -57,7 +58,7 @@ function OptionalColor({ label, value, derived, onChange, testid, invalid, hint,
       <div className="flex items-baseline justify-between gap-2"><span className={ui.label}>{label}</span>{action}</div>
       <div className="flex items-center gap-2">
         <input type="color" aria-label={label} value={isHexColor(value) ? value : derived} onChange={(e) => onChange(e.target.value)} className={`${ui.colorInput} !w-14 shrink-0`} />
-        <input type="text" data-testid={testid} value={value} placeholder={derived} maxLength={7} spellCheck={false} autoComplete="off"
+        <input type="text" data-testid={testid} value={value} placeholder={derived} maxLength={7} spellCheck={false} {...PLAIN_INPUT}
           aria-label={label} aria-invalid={bad || undefined}
           onChange={(e) => onChange(e.target.value.trim().toLowerCase())} className={`${ui.input} font-mono`} />
       </div>

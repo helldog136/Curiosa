@@ -14,6 +14,7 @@ import { TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getApprovalMode } from "@/core/maintenance/settings";
 import { MAINTENANCE_TOOLS } from "@/core/maintenance/tools";
 import { isUrlAccessEnabled } from "@/core/services/mcp/tokens";
+import { getPersonalPolicy } from "@/core/personalAi/policy";
 import { hasFullPowers } from "@/core/services/mcp/fullPowers";
 import { FullPowersWindow } from "@/components/admin/FullPowersWindow";
 import { HelpTip } from "@/components/admin/HelpTip";
@@ -44,7 +45,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   const { id } = await params;
   const row = await prisma.apiToken.findUnique({ where: { id } });
   // A personal AI (0.46.0) is managed by its owner, never from the sheet of an independent access.
-  if (!row || row.ownerId) notFound();
+  if (!row) notFound();
   const revoked = !!row.revokedAt;
   const writes = row.scope === "write";
   const fullPowers = !revoked && writes && (await hasFullPowers(id));
@@ -52,6 +53,9 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   const owner = isOwner(user);
   const urlOn = !revoked && (await isUrlAccessEnabled(id));
   const approval = await getApprovalMode(id);
+  // A newer personal access acts without asking only if the site policy allows it: otherwise the choice is not offered (it would do nothing).
+  const askOnly = !!row.ownerId && !row.coarseCeiling && !(await getPersonalPolicy()).allowDirect;
+  const ownedNow = !!row.ownerId;
   const slots = await remainingSlots(id);
   const levelOf = new Map(MAINTENANCE_TOOLS.map((m) => [m.name, m.level]));
 
@@ -115,7 +119,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         id: `maintenance-${level}`, group: title, title: t(`aim.level.${level}`), help: t(`aim.level.${level}.help`), risky: level === 3, tools: here.map(toGrantTool),
         header: level === 3 ? (
           <div className="space-y-3 rounded-xl border border-line bg-bg p-4 text-sm" data-testid="maintenance-approval">
-            {revoked ? <p className="text-muted">{approval === "human" ? t("aim.approval.askHelp") : t("aim.approval.actHelp")} {t("aim.approval.installNote")}</p> : <ApprovalChoice current={approval} onChange={setApprovalAction.bind(null, id)} labels={approvalLabels(t, row.name)} />}
+            {revoked || askOnly ? <p className="text-muted">{askOnly || approval === "human" ? t("aim.approval.askHelp") : t("aim.approval.actHelp")} {t("aim.approval.installNote")}</p> : <ApprovalChoice current={approval} onChange={setApprovalAction.bind(null, id)} labels={approvalLabels(t, row.name)} />}
             {advanced && token.grants[MAINTENANCE_PROFILE] === true && <p className="text-muted">{t("mcp.profile.maintenance")}</p>}
           </div>
         ) : level === 1 ? <>{reset}{optedOut}</> : undefined,
@@ -138,19 +142,19 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t(advanced ? "mcp.readCeiling" : "assistants.detail.readOnly")}</p>}
       </div>
 
-      {!revoked && (
+      {!revoked && (urlOn || !ownedNow) && (
         <section className={`${ui.card} space-y-3`} aria-label={t("mcp.url.title")} data-testid="mcp-url-access">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><span className="inline-flex items-center gap-1.5">{t("mcp.url.title")}<HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /></span> <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
             <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
-              {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
+              {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : !ownedNow && <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
             </form>
           </div>
           {urlOn && <p className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{t(advanced ? "mcp.guide.secretWarn" : "assistants.guide.warn")}</p>}
         </section>
       )}
 
-      {!revoked && (fullPowers || owner) && (
+      {!revoked && (fullPowers || (owner && row.ownerId && row.coarseCeiling)) && (
         <section className={`${ui.card} space-y-3`} aria-labelledby="fullpowers-title" data-testid="fullpowers-card">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 id="fullpowers-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold">

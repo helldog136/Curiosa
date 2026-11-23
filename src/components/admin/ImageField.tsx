@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useState } from "react";
 import { RATIOS, joinImageRef, splitImageRef, type Crop } from "@/core/imageCrop";
 import { useAdvancedMode, useCropLabels } from "./CropLabels";
@@ -61,10 +62,10 @@ export function ImageField({ name, label, defaultValue, uploadLabel, kind = "ima
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={value} alt="" title={/\.(gif|svg)$/.test(ref.path) ? c("gif") : undefined} className="max-h-14 max-w-[8rem] rounded-lg border border-line" />
-            <input id={name} aria-label={label} readOnly tabIndex={-1} value="" className="sr-only" />
+            <input {...PLAIN_INPUT} id={name} aria-label={label} readOnly tabIndex={-1} value="" className="sr-only" />
           </>
         )}
-        {!ownFile && <input id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" || kind === "audio" ? "/uploads/…" : c(advanced ? "urlPlaceholder" : "urlPlaceholderSimple")} className={`${ui.input} min-w-0 flex-1`} />}
+        {!ownFile && <input {...PLAIN_INPUT} id={name} required={required} value={ref.path} onChange={(e) => change(e.target.value)} placeholder={kind === "video" || kind === "audio" ? "/uploads/…" : c(advanced ? "urlPlaceholder" : "urlPlaceholderSimple")} className={`${ui.input} min-w-0 flex-1`} />}
         <label className={`${ui.btn} min-h-11 ${busy ? "pointer-events-none cursor-progress" : "cursor-pointer"}`} aria-busy={busy || undefined}>
           {busy ? <><Spinner />{p("sending")}</> : uploadLabel}
           <input type="file" disabled={busy} accept={kind === "audio" ? "audio/mpeg,audio/ogg,audio/wav,audio/mp4,audio/aac,.mp3,.ogg,.wav,.m4a,.aac" : kind === "video" ? "video/mp4,video/webm" : `image/png,image/jpeg,image/webp,image/gif${svg ? ",image/svg+xml" : ""}`} className="hidden" onChange={(e) => e.target.files?.[0] && upload(e.target.files[0])} />

@@ -12,6 +12,7 @@ import { previewLinkAction } from "../actions";
 import { previewDraftAction, resetCustomizationAction, saveCustomizationAction } from "./actions";
 import type { CzControl, CzGroup, CzModel } from "./model";
 import { OPTION_PREFIX, fieldName } from "./shared";
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 
 export type PreviewPageRef = { label: string; path: string };
 type Values = Record<string, unknown>;
@@ -101,7 +102,7 @@ function ColorControl({ c, value, set, signals, bothModes }: { c: CzControl; val
               <input type="color" value={HEX.test(text) ? text : "#808080"} onChange={(e) => { setText(e.target.value); set(e.target.value.toLowerCase()); }} className={`${ui.colorInput} !w-16`} />
             </label>
             <label className="text-sm"><span className="mb-1 block font-medium">{al("appearance.cz.colorCode")}</span>
-              <input type="text" value={text} maxLength={7} inputMode="text" spellCheck={false} autoComplete="off" aria-invalid={invalidText || undefined} aria-describedby={invalidText ? `${fieldName(c.id)}-bad` : undefined}
+              <input type="text" value={text} maxLength={7} inputMode="text" spellCheck={false} {...PLAIN_INPUT} aria-invalid={invalidText || undefined} aria-describedby={invalidText ? `${fieldName(c.id)}-bad` : undefined}
                 onChange={(e) => { setText(e.target.value); if (HEX.test(e.target.value)) set(e.target.value.toLowerCase()); }} className={`${ui.input} !w-32 font-mono`} />
               {invalidText && <p id={`${fieldName(c.id)}-bad`} data-field-error="" className="mt-1.5 flex items-start gap-1.5 text-sm font-medium text-red-700"><span aria-hidden="true">⚠</span><span>{al("appearance.cz.colorError")}</span></p>}
             </label>

@@ -34,7 +34,6 @@ beforeEach(async () => {
   const mk = (name, level) => db.prisma.user.create({ data: { email: `${name}@example.org`, name, passwordHash: hash, ...columnsOf(level) } });
   U = { owner: await mk("etoile_nord", "owner"), admin: await mk("camille", "admin"), admin2: await mk("lune_douce", "admin"), editor: await mk("nuage_clair", "editor") };
   await Roles.syncSystemAssignments();
-  await POL.setPersonalPolicy({ enabled: true });
 });
 after(() => db.close());
 
@@ -50,7 +49,7 @@ async function call(token, name, args = {}) {
 const make = async (user, profile = "read") => { const r = await PA.createPersonalAccess(user.id, { password: PASSWORD, profile }); assert.equal(r.ok, true, JSON.stringify(r)); return r; };
 const audits = (prefix) => db.prisma.auditLog.findMany({ where: { action: { startsWith: prefix } }, orderBy: { createdAt: "asc" } });
 
-test("creation: the password is asked again, one per person, the code is shown once and only its hash is kept", async () => {
+test("creation: the password is asked again, several per person, the code is shown once and only its hash is kept", async () => {
   assert.deepEqual(await PA.createPersonalAccess(U.admin.id, { password: "wrong" }), { ok: false, reason: "password" });
   assert.deepEqual(await PA.createPersonalAccess(U.admin.id, { password: "" }), { ok: false, reason: "password" });
   assert.deepEqual(await PA.createPersonalAccess("no-such-user", { password: PASSWORD }), { ok: false, reason: "missing" });
@@ -63,13 +62,25 @@ test("creation: the password is asked again, one per person, the code is shown o
   assert.ok(!JSON.stringify(row).includes(made.code), "the code is not stored anywhere in the row");
   assert.ok(!JSON.stringify(await db.prisma.setting.findMany()).includes(made.code));
   assert.ok(!JSON.stringify(await db.prisma.auditLog.findMany()).includes(made.code), "nor in the journal");
-  assert.equal((await PA.ownPersonalState(U.admin.id)).name, row.name);
-  assert.deepEqual(await PA.createPersonalAccess(U.admin.id, { password: PASSWORD }), { ok: false, reason: "exists" });
+  assert.equal((await PA.ownAccessStates(U.admin.id))[0].name, row.name);
+  // a person may own several accesses, each with its own level and a name that is free
+  const second = await PA.createPersonalAccess(U.admin.id, { password: PASSWORD, name: "Claude", level: "assistant" });
+  assert.equal(second.ok, true);
+  assert.equal(second.name, "Claude");
+  assert.equal((await PA.createPersonalAccess(U.admin.id, { password: PASSWORD, name: "Claude", level: "assistant" })).name, "Claude (2)");
+  assert.deepEqual((await PA.ownAccessStates(U.admin.id)).map((x) => x.level), ["read", "assistant", "assistant"]);
+  // a level above what the person can do is refused (upkeep needs the admin tier)
+  const ed = await db.prisma.user.update({ where: { id: U.editor.id }, data: { personalAi: "allow" } });
+  assert.deepEqual(await PA.createPersonalAccess(ed.id, { password: PASSWORD, level: "maintenance" }), { ok: false, reason: "not_allowed" });
+  assert.deepEqual(await PA.levelsFor(ed.id), ["read", "assistant"]);
+  assert.deepEqual(await PA.levelsFor(U.admin.id), ["read", "assistant", "maintenance"]);
   // someone else can have theirs, with a different name
   const other = await make(U.admin2);
   assert.notEqual(other.name, made.name);
   // after removal a new one may be made
-  assert.deepEqual(await PA.revokeOwnPersonalAccess(U.admin.id), { ok: true });
+  assert.deepEqual(await PA.revokeOwnPersonalAccess(U.admin.id, made.id), { ok: true });
+  assert.equal((await PA.revokeOwnPersonalAccess(U.admin2.id, second.id)).reason, "missing", "not somebody else's access");
+  assert.equal((await PA.revokeOwnPersonalAccess(U.admin.id, second.id)).ok, true);
   assert.equal((await rpc(made.code, "tools/list")).status, 401, "revoked for good");
   assert.equal((await make(U.admin)).ok, true);
 });
@@ -82,13 +93,18 @@ test("the password re-entry is limited: five wrong answers, then refused even wi
 test("one person cannot touch another person's AI: every function acts on the id it is given and nothing else", async () => {
   const mine = await make(U.admin);
   const theirs = await make(U.admin2);
-  assert.equal((await PA.pauseOwnPersonalAccess(U.owner.id)).reason, "missing", "a person without an AI has nothing to pause");
-  await PA.pauseOwnPersonalAccess(U.admin.id);
+  assert.equal((await PA.pauseOwnPersonalAccess(U.owner.id, mine.id)).reason, "missing", "nobody pauses an access they do not own");
+  assert.equal((await PA.pauseOwnPersonalAccess(U.admin2.id, mine.id)).reason, "missing");
+  assert.equal((await PA.resumeOwnPersonalAccess(U.admin2.id, mine.id, PASSWORD)).reason, "missing");
+  assert.equal((await PA.setOwnAccessLevel(U.admin2.id, mine.id, "assistant")).reason, "missing");
+  assert.equal((await PA.renameOwnPersonalAccess(U.admin2.id, mine.id, "x")).reason, "missing");
+  assert.equal((await rpc(mine.code, "tools/list")).status, 200, "none of those changed it");
+  await PA.pauseOwnPersonalAccess(U.admin.id, mine.id);
   assert.equal((await rpc(mine.code, "tools/list")).status, 403);
   assert.equal((await rpc(theirs.code, "tools/list")).status, 200);
-  assert.equal((await PA.resumeOwnPersonalAccess(U.admin.id, "wrong")).reason, "password");
+  assert.equal((await PA.resumeOwnPersonalAccess(U.admin.id, mine.id, "wrong")).reason, "password");
   assert.equal((await rpc(mine.code, "tools/list")).status, 403);
-  assert.equal((await PA.resumeOwnPersonalAccess(U.admin.id, PASSWORD)).ok, true);
+  assert.equal((await PA.resumeOwnPersonalAccess(U.admin.id, mine.id, PASSWORD)).ok, true);
   assert.equal((await rpc(mine.code, "tools/list")).status, 200);
 });
 
@@ -119,7 +135,7 @@ test("deleting a user revokes their AI first (never turned into an independent o
 
 test("approvals: the person who owns the AI decides its requests, a holder of core:mcp.tokens too, nobody else; an approval after a demotion never runs", async () => {
   const ad = await make(U.admin, "full");
-  await PA.setOwnPersonalGrants(U.admin.id, { site_settings_set: true, maintenance_request_status: true });
+  await PA.setOwnPersonalGrants(U.admin.id, ad.id, { site_settings_set: true, maintenance_request_status: true });
   const ask = async (name = "etoile") => { const r = await call(ad.code, "site_settings_set", { name: { en: name } }); assert.equal(r.value?.status, "pending_approval", JSON.stringify(r)); return r.value.requestId; };
   const id1 = await ask("Aurore");
   const stored = (await Q.listRequests()).find((r) => r.id === id1);
@@ -163,14 +179,14 @@ test("independent requests keep the old rule: only a holder of core:mcp.tokens d
 
 test("act without asking only when the policy allows it (off by default); installs and new instances always wait", async () => {
   const ad = await make(U.admin, "full");
-  await PA.setOwnPersonalGrants(U.admin.id, { site_settings_set: true });
-  assert.deepEqual(await PA.setOwnPersonalApproval(U.admin.id, "direct"), { ok: false, reason: "direct_off" });
+  await PA.setOwnPersonalGrants(U.admin.id, ad.id, { site_settings_set: true });
+  assert.deepEqual(await PA.setOwnPersonalApproval(U.admin.id, ad.id, "direct"), { ok: false, reason: "direct_off" });
   // even if the setting was written by hand, the runtime refuses to act at once
   const S = await import("@/core/maintenance/settings");
   await S.setApprovalMode(ad.id, "direct");
   assert.equal((await call(ad.code, "site_settings_set", { name: { en: "Aurore" } })).value.status, "pending_approval");
   await POL.setPersonalPolicy({ allowDirect: true });
-  assert.deepEqual(await PA.setOwnPersonalApproval(U.admin.id, "direct"), { ok: true });
+  assert.deepEqual(await PA.setOwnPersonalApproval(U.admin.id, ad.id, "direct"), { ok: true });
   const direct = await call(ad.code, "site_settings_set", { name: { en: "Aube" } });
   assert.notEqual(direct.value?.status, "pending_approval", JSON.stringify(direct));
   await POL.setPersonalPolicy({ allowDirect: false });
@@ -192,25 +208,25 @@ test("one shared hourly budget for all personal AIs, on top of the per-access li
 
 test("journal: creation, pause and resume, rights and the first refusal are written with names and counts, the actor format is kept", async () => {
   const ad = await make(U.admin);
-  await PA.setOwnPersonalGrants(U.admin.id, { maintenance_status: true });
-  await PA.pauseOwnPersonalAccess(U.admin.id);
+  await PA.setOwnPersonalGrants(U.admin.id, ad.id, { maintenance_status: true });
+  await PA.pauseOwnPersonalAccess(U.admin.id, ad.id);
   await rpc(ad.code, "tools/list");
   await rpc(ad.code, "tools/list");
-  await PA.resumeOwnPersonalAccess(U.admin.id, PASSWORD);
+  await PA.resumeOwnPersonalAccess(U.admin.id, ad.id, PASSWORD);
   const names = (await db.prisma.auditLog.findMany({ where: { action: { startsWith: "mcp.personal." } }, orderBy: { createdAt: "asc" } })).map((r) => r.action);
   assert.deepEqual(names, ["mcp.personal.create", "mcp.personal.rights", "mcp.personal.pause", "mcp.personal.inert", "mcp.personal.resume"], "the refusal is written once per transition, not per call");
   const inert = (await audits("mcp.personal.inert"))[0];
   assert.equal(inert.actor, `mcp:${ad.name}`);
   assert.equal(inert.actorKind, "assistant");
   // a tool call keeps the old actor format; the owner is resolved from the access row
-  await PA.setOwnPersonalGrants(U.admin.id, { maintenance_my_access: true });
+  await PA.setOwnPersonalGrants(U.admin.id, ad.id, { maintenance_my_access: true });
   assert.ok((await call(ad.code, "maintenance_my_access")).value);
   assert.deepEqual([...(await PA.ownersOfAssistantNames([ad.name, "unknown"])).entries()], [[ad.name, U.admin.id]]);
   const { auditLabelKey } = await import("@/core/auditLabels");
   for (const a of ["create", "revoke", "pause", "resume", "rights", "inert", "policy"]) assert.equal(auditLabelKey(`mcp.personal.${a}`), `audit.action.mcp.personal.${a}`);
 });
 
-test("migration: three additive columns, existing accesses stay independent, the migration comes after every earlier one", async () => {
+test("migration: additive columns, existing accesses keep working, the migration comes after every earlier one", async () => {
   const sql = fs.readFileSync("prisma/migrations/20261121090000_personal_ai/migration.sql", "utf8").replace(/--.*$/gm, "");
   assert.ok(!/\bDROP\b|\bRENAME\b|DELETE\s+FROM|UPDATE\s+"/i.test(sql));
   assert.match(sql, /ALTER TABLE "ApiToken" ADD COLUMN "ownerId" TEXT;/);
@@ -218,7 +234,10 @@ test("migration: three additive columns, existing accesses stay independent, the
   assert.match(sql, /CREATE INDEX "ApiToken_ownerId_idx"/);
   assert.match(sql, /ALTER TABLE "User" ADD COLUMN "personalAi" TEXT NOT NULL DEFAULT 'inherit';/);
   const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
-  assert.equal(all.at(-1), "20261121090000_personal_ai");
+  assert.equal(all.at(-1), "20261123090000_access_owner");
+  const next = fs.readFileSync("prisma/migrations/20261123090000_access_owner/migration.sql", "utf8").replace(/--.*$/gm, "");
+  assert.match(next, /ALTER TABLE "ApiToken" ADD COLUMN "coarseCeiling" BOOLEAN NOT NULL DEFAULT false;/);
+  assert.ok(!/\bDROP\b|\bRENAME\b|DELETE\s+FROM|UPDATE\s+"|NOT NULL(?! DEFAULT)/i.test(next), "additive: no rewrite, no new NOT NULL without a default");
   const frozen = Object.keys(JSON.parse(fs.readFileSync("prisma/migrations/frozen.json", "utf8")));
   assert.ok(frozen.every((f) => f < "20261121090000_personal_ai"));
   const token = await T.createToken("Independent", "read", "o");
@@ -228,16 +247,16 @@ test("migration: three additive columns, existing accesses stay independent, the
   assert.equal((await db.prisma.user.findUnique({ where: { id: U.admin.id } })).personalAi, "inherit");
 });
 
-test("the master switch and the override: only the policy functions write them, the setting is safe when absent, a setting restored from a backup cannot make the policy more open than its file", async () => {
+test("the policy and the override: only the policy functions write them, the setting is safe when absent, the old master switch is gone", async () => {
   await db.prisma.setting.deleteMany({ where: { key: POL.PERSONAL_POLICY_KEY } });
   (await import("@/core/settings")).resetSettingsCache();
-  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: false, allowDirect: false });
-  assert.deepEqual(await POL.setPersonalPolicy({ enabled: true }), { enabled: true, allowDirect: false });
+  assert.deepEqual(await POL.getPersonalPolicy(), { enabled: true, allowDirect: false });
+  assert.deepEqual(await POL.setPersonalPolicy({ enabled: false }), { enabled: true, allowDirect: false }, "the old on/off flag cannot be switched off any more");
+  assert.deepEqual(await POL.setPersonalPolicy({ allowDirect: true }), { enabled: true, allowDirect: true });
   assert.equal(await POL.setPersonOverride(U.editor.id, "bogus"), false);
   assert.equal(await POL.setPersonOverride("nobody", "allow"), false);
-  // the setting readable through the ordinary core settings API
   const { getSetting } = await import("@/core/settings");
-  assert.deepEqual(await getSetting(POL.PERSONAL_POLICY_KEY), { enabled: true, allowDirect: false });
+  assert.deepEqual(await getSetting(POL.PERSONAL_POLICY_KEY), { enabled: true, allowDirect: true });
   await setSetting(POL.PERSONAL_POLICY_KEY, { enabled: false, allowDirect: false });
-  assert.equal((await POL.getPersonalPolicy()).enabled, false);
+  assert.equal((await POL.getPersonalPolicy()).enabled, true);
 });

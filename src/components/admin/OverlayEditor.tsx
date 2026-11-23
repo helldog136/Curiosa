@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FieldErrorText, useFieldError } from "./FieldErrors";
 import { FieldLabel } from "./Field";
@@ -252,7 +253,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
         <div className="grid gap-4 md:grid-cols-2">
         <div>
           <label htmlFor="ov-name" className={ui.label}>{s("ed.name")}</label>
-          <input id="ov-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className={`${ui.input} ${nameError.className}`} {...nameError.props} />
+          <input {...PLAIN_INPUT} id="ov-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={60} className={`${ui.input} ${nameError.className}`} {...nameError.props} />
           <FieldErrorText id={nameError.id} message={nameError.message} />
         </div>
         <div>
@@ -263,9 +264,9 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           </select>
           {custom && (
             <div className="mt-2 flex items-center gap-2">
-              <input aria-label={s("ed.width")} inputMode="numeric" value={size.width} onChange={(e) => typeResolution("width", e.target.value)} className={`${ui.input} w-28`} />
+              <input {...PLAIN_INPUT} aria-label={s("ed.width")} inputMode="numeric" value={size.width} onChange={(e) => typeResolution("width", e.target.value)} className={`${ui.input} w-28`} />
               <span aria-hidden>×</span>
-              <input aria-label={s("ed.height")} inputMode="numeric" value={size.height} onChange={(e) => typeResolution("height", e.target.value)} className={`${ui.input} w-28`} />
+              <input {...PLAIN_INPUT} aria-label={s("ed.height")} inputMode="numeric" value={size.height} onChange={(e) => typeResolution("height", e.target.value)} className={`${ui.input} w-28`} />
               <span className="text-sm text-muted">px</span>
             </div>
           )}
@@ -328,7 +329,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
               {available.length === 0 && <p className="text-sm text-muted">{s("ed.noneAvailable")}</p>}
               {available.length > 0 && (
                 <div className="relative">
-                  <input type="search" value={pickQuery} onChange={(e) => setPickQuery(e.target.value)} placeholder={s("ed.pickSearch")} aria-label={s("ed.pickSearch")} autoComplete="off" data-testid="picker-search" className={`${ui.input} min-h-11`} />
+                  <input type="search" value={pickQuery} onChange={(e) => setPickQuery(e.target.value)} placeholder={s("ed.pickSearch")} aria-label={s("ed.pickSearch")} {...PLAIN_INPUT} data-testid="picker-search" className={`${ui.input} min-h-11`} />
                 </div>
               )}
               {available.length > 0 && groups.length === 0 && (
@@ -459,7 +460,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                 {(["x", "y", "w", "h"] as const).map((f) => (
                   <div key={f}>
                     <label htmlFor={`ov-${f}`} className="mb-1 block text-sm font-medium">{s(`ed.field.${f}`)}</label>
-                    <input id={`ov-${f}`} inputMode="numeric" defaultValue={sel[f]} key={`${sel.uid}-${f}-${sel[f]}`}
+                    <input {...PLAIN_INPUT} id={`ov-${f}`} inputMode="numeric" defaultValue={sel[f]} key={`${sel.uid}-${f}-${sel[f]}`}
                       onBlur={(e) => update(setField(elements, sel.uid, f, Number(e.target.value), page, declOf))}
                       onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); update(setField(elements, sel.uid, f, Number((e.target as HTMLInputElement).value), page, declOf)); } }}
                       className={ui.input} />
@@ -478,7 +479,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
                 </div>
                 <div className="mt-2 flex items-center gap-2">
                   <label htmlFor="ov-margin" className="text-sm">{s("ed.margin")}</label>
-                  <input id="ov-margin" inputMode="numeric" value={margin} onChange={(e) => setMargin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={`${ui.input} w-20`} />
+                  <input {...PLAIN_INPUT} id="ov-margin" inputMode="numeric" value={margin} onChange={(e) => setMargin(e.target.value.replace(/[^0-9]/g, "").slice(0, 3))} className={`${ui.input} w-20`} />
                   <span className="text-sm text-muted">px</span>
                 </div>
                 <p id="ov-anchor-help" className={`${ui.help} max-w-[16rem]`}>{s("ed.anchorHelp")}</p>
@@ -586,7 +587,7 @@ function OptionField({ o, el, onChange }: { o: ClientOption; el: EditorElement; 
       {o.type === "choice" ? (
         <select id={id} value={String(value)} onChange={(e) => onChange(o.id, e.target.value)} className={`${ui.input} ${err.className}`} {...err.props}>{o.choices.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select>
       ) : (
-        <input id={id} inputMode={o.type === "number" ? "decimal" : undefined} value={String(value)} onChange={(e) => onChange(o.id, e.target.value)} className={`${ui.input} ${err.className}`} {...err.props} />
+        <input {...PLAIN_INPUT} id={id} inputMode={o.type === "number" ? "decimal" : undefined} value={String(value)} onChange={(e) => onChange(o.id, e.target.value)} className={`${ui.input} ${err.className}`} {...err.props} />
       )}
       <HelpBelow help={o.help} className={ui.help} />
       <FieldErrorText id={err.id} message={err.message} />

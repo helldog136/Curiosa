@@ -22,6 +22,8 @@ export async function setFullPowersAction(tokenId: string, on: boolean, typedNam
   if (!row || row.revokedAt) return { errors: { name: t("fullpowers.err.gone") } };
   if (on) {
     if (row.scope !== "write") return { errors: { name: t("fullpowers.readOnly") } };
+    // Only an access that predates the owners and now has one: a newer access never holds full powers, and one without an owner gets no new rights.
+    if (!row.ownerId || !row.coarseCeiling) return { errors: { name: t("fullpowers.err.owner") } };
     if (!removalConfirmed("erase", { checked: false, typed: String(typedName ?? ""), name: row.name })) return { errors: { name: t("fullpowers.err.name", { name: row.name }) } };
   }
   if (!(await setFullPowers(row.id, on))) return { errors: { name: t("fullpowers.err.gone") } };

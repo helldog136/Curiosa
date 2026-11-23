@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useActionState, useEffect, useRef, useState, useSyncExternalStore, startTransition } from "react";
 import { EditDialog } from "./EditDialog";
 import { PendingButton } from "./PendingButton";
@@ -210,7 +211,7 @@ function Picker({ labels, picked, onPick, search, error }: { labels: RuleLabels;
   return (
     <div>
       <label htmlFor="rule-search" className={ui.label}>{labels.valueLabel}</label>
-      <input id="rule-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={labels.search} autoComplete="off" className={`${ui.input} min-h-11`} aria-invalid={error ? true : undefined} />
+      <input id="rule-search" type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={labels.search} {...PLAIN_INPUT} className={`${ui.input} min-h-11`} aria-invalid={error ? true : undefined} />
       <ul role="listbox" aria-label={labels.valueLabel} className="mt-2 max-h-56 overflow-y-auto rounded-xl border border-line" data-testid="rule-values">
         {items === null && <li className="p-3 text-sm text-muted">{labels.searching}</li>}
         {items !== null && items.length === 0 && <li className="p-3 text-sm text-muted">{labels.none}</li>}

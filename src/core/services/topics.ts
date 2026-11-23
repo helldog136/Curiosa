@@ -1,3 +1,4 @@
+import { ACCOUNT_SCHEMA, CORE_USER, readAccounts } from "@/core/auth/accountTopic";
 import { coreEntryAdapter } from "@/core/content/topics";
 import { pickName } from "@/core/instances";
 import { getSetting, getSiteConfig, setSetting } from "@/core/settings";
@@ -37,6 +38,22 @@ export type TopicAdapter = {
 const ADAPTERS: TopicAdapter[] = [coreEntryAdapter];
 const adapterOf = (topic: string) => ADAPTERS.find((a) => a.topic === topic);
 
+/**
+ * Un sujet que le cœur est SEUL à fournir (aujourd'hui `core.user`, les comptes de connexion) : aucune instance ne le fournit et personne ne s'y abonne (pas de
+ * « Sources » dans l'admin) ; le cœur répond lui-même, sans jamais passer un champ hors du schéma. Il est lu seulement par un module qui le DÉCLARE dans
+ * `consumes` ET déclare la permission `topics` : sans l'un des deux, `collect` lève une erreur (voir `collect`). Aucun module ne peut le « fournir » :
+ * `providersOf` ne regarde pas les `exports` d'un module pour ce sujet.
+ */
+export type OwnTopic = {
+  topic: string;
+  schema: TopicField[];
+  read(query: { limit: number }): Promise<Record<string, unknown>[]>;
+};
+const OWN_TOPICS: OwnTopic[] = [{ topic: CORE_USER, schema: ACCOUNT_SCHEMA, read: readAccounts }];
+const ownOf = (topic: string) => OWN_TOPICS.find((o) => o.topic === topic);
+/** Ce sujet n'a pas de fournisseurs à choisir : le cœur est sa seule source (l'admin n'affiche pas de « Sources » pour lui). */
+export const isOwnTopic = (topic: string) => !!ownOf(topic);
+
 export type Sources = { instances: string[] | null; tags: string[] };
 
 const sourcesKey = (instanceId: string, topic: string) => `instance.${instanceId}.__sources.${topic}`;
@@ -53,6 +70,7 @@ export async function setSources(instanceId: string, topic: string, sources: Sou
 
 /** Instances qui peuvent alimenter un sujet. */
 export async function providersOf(topic: string): Promise<ActiveInstance[]> {
+  if (ownOf(topic)) return [];   // le cœur est la seule source : un module qui déclare « fournir » ce sujet n'est jamais interrogé
   const adapter = adapterOf(topic);
   if (adapter) return adapter.providers();
   return (await getActiveInstances()).filter(({ mod }) => mod.manifest.provides?.some((p) => p.topic === topic) && !!mod.def.exports?.[topic]);
@@ -109,6 +127,8 @@ export async function collect(
 ): Promise<TopicItem[]> {
   const decl: ConsumeDecl | undefined = consumer.mod.manifest.consumes?.find((c) => c.topic === topic);
   if (!decl) throw new Error(`module "${consumer.mod.manifest.id}" does not declare consuming "${topic}"`);
+  const own = ownOf(topic);
+  if (own) return collectOwn(consumer, own, opts);
   const schema = adapterOf(topic)?.schema ?? decl.schema ?? [];
   const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
   // Plage facultative, validée une fois pour toutes les sources (une plage invalide est une erreur du consommateur : elle lève, rien n'est collecté).
@@ -121,6 +141,29 @@ export async function collect(
   const providers = (await providersOf(topic)).filter((p) => !sources.instances || sources.instances.includes(p.instance.key));
   const lists = await Promise.all(providers.map((provider) => itemsOf(provider, topic, schema, opts.locale, limit, sources.tags, config.defaultLocale, window, false)));
   return lists.flat().slice(0, limit);
+}
+
+/**
+ * Lecture d'un sujet que le cœur fournit seul. Deux conditions, toutes deux vérifiées ici et non laissées à la bonne foi du module : il déclare consommer le sujet
+ * (déjà contrôlé par l'appelant) ET il déclare la permission `topics`. Les éléments passent par le schéma du cœur (jamais celui du consommateur), et
+ * un incident de lecture donne une liste vide (comme un fournisseur de module qui plante) : l'appelant ne peut pas le prendre pour « plus personne ».
+ */
+async function collectOwn(consumer: ActiveInstance, own: OwnTopic, opts: { limit?: number; locale: string } & TopicWindowInput): Promise<TopicItem[]> {
+  if (!consumer.mod.manifest.permissions?.includes("topics")) throw new Error(`module "${consumer.mod.manifest.id}" must declare the "topics" permission to read "${own.topic}"`);
+  parseTopicWindow(opts);   // même contrôle de plage que les autres sujets (ce sujet n'a pas de date de période : la plage est ignorée)
+  const limit = Math.min(200, Math.max(1, opts.limit ?? 50));
+  let raws: Record<string, unknown>[] = [];
+  try {
+    raws = await own.read({ limit });
+  } catch (error) {
+    console.error(`[modules] core topic ${own.topic} could not be read:`, error);
+    return [];
+  }
+  const source = { instance: "core", module: "core", name: "core" };
+  return raws.flatMap((raw) => {
+    const item = conform(raw, own.schema);
+    return item ? [{ ...item, source }] : [];
+  }).slice(0, limit);
 }
 
 /** Curseur d'une collecte paginée : le fournisseur où l'on en est (sa clé) et le curseur propre à ce fournisseur. */

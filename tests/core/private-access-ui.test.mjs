@@ -20,7 +20,7 @@ const { HelpTipProvider } = await import("@/components/admin/HelpTip");
 const G = await import("@/core/gitAccess");
 const { AccessSummary } = await import("@/components/admin/PrivateAccess");
 
-const render = (locale, initial) => renderToStaticMarkup(React.createElement(AppearanceLabelsProvider, { labels: appearanceLabels(makeTranslator(locale)) }, React.createElement(PersonalRepo, { locale, initial: { open: true, ...initial } })));
+const render = (locale, initial) => renderToStaticMarkup(React.createElement(AppearanceLabelsProvider, { labels: appearanceLabels(makeTranslator(locale)) }, React.createElement(PersonalRepo, { locale, initial })));
 const inputs = (html, type) => [...html.matchAll(/<input[^>]*>/g)].filter((m) => m[0].includes(` type="${type}"`)).length;
 const esc = (text) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#x27;");
 const REPO = "test-owner/private-assets";
@@ -41,15 +41,15 @@ for (const locale of ["fr", "en"]) {
     assert.ok(html.includes(esc(t("access.field.label"))), "label");
     assert.ok(html.includes(esc(t("access.field.example"))), "example");
     assert.ok(html.includes(esc(t("skins.error.access"))), "the neutral message");
-    assert.ok(/aria-describedby="[^"]*repoUrlError/.test(html) && html.includes('aria-invalid="true"'));
+    assert.ok(/aria-describedby="[^"]*err-repoUrl/.test(html) && html.includes('aria-invalid="true"'));
     assert.match(html, /autoComplete="new-password"|autocomplete="new-password"/i);
     assert.ok(/data-1p-ignore|data-lpignore/.test(html), "password managers are told to leave it alone");
   });
 
   test(`[${locale}] wrong code: the error is under the code field`, () => {
-    const html = render(locale, { url: URL_, needsCode: true, codeError: t("access.error.refused") });
+    const html = render(locale, { url: URL_, needsCode: true, codeError: t("access.error.rejected") });
     const i = html.indexOf('name="code"');
-    assert.ok(i > 0 && html.indexOf(esc(t("access.error.refused")), i) > i, "error after the code field");
+    assert.ok(i > 0 && html.indexOf(esc(t("access.error.rejected")), i) > i, "error after the code field");
   });
 
   test(`[${locale}] configured: a summary line, ONE Edit window, a named Remove access; no code field in the page flow`, () => {

@@ -12,6 +12,7 @@ import { TwoFactorPanel } from "@/components/admin/TwoFactorPanel";
 import { listPasskeys } from "@/core/auth/passkeys";
 import { remainingRecoveryCodes } from "@/core/auth/twoFactor";
 import { getSetting } from "@/core/settings";
+import { MyAccessesCard } from "./MyAccessesCard";
 import { AdminPreferences } from "@/components/admin/AdminPreferences";
 import { cookies } from "next/headers";
 import { ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
@@ -40,6 +41,8 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
           <Select name="locale" label={t("account.language")} help={t("account.languageHelp")} defaultValue={user.locale ?? ""} options={options} />
         </ActionForm>
       </Panel>
+
+      <MyAccessesCard t={t} userId={user.id} />
 
       <AdminPreferences t={t} advanced={advanced} theme={theme} />
 

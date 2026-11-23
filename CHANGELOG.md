@@ -7,6 +7,72 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.47.0 — 2026-11-23
+
+**En bref.** Chaque accès d'un assistant IA appartient maintenant à une personne : un propriétaire obligatoire, des droits au plus égaux aux siens, un écran « Mes accès IA », un onglet « Par personne » et un panneau temporaire « Attribuer les propriétaires ». Une sauvegarde chiffrée peut vous être envoyée par e-mail. Les skins d'overlay peuvent embarquer leurs polices et dire quel skin de site ils accompagnent. Ajouter un skin est plus simple, l'adresse privée d'un skin fonctionne, et les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.
+
+**In short.** Every AI assistant access now belongs to a person: a mandatory owner, rights at most equal to theirs, a "My AI accesses" screen, a "By person" tab and a temporary "Assign owners" panel. An encrypted backup can be e-mailed to you. Overlay skins can ship their own fonts and say which site skin they match. Adding a skin is simpler, a private skin address works, and password managers no longer step into ordinary fields.
+
+### Nouveautés
+
+- **Les skins d'overlay peuvent avoir leur propre police.** Un skin peut embarquer jusqu'à quatre polices (fichiers woff2) : vos alertes et vos objectifs gardent la même allure partout, même sur un ordinateur qui n'a pas la police. Si une police ne se charge pas, l'overlay s'affiche quand même avec une police de remplacement.
+- **(English) Overlay skins can ship their own font.** A skin can bring up to four fonts (woff2 files): your alerts and goals look the same everywhere, even on a computer without that font. If a font does not load, the overlay is still shown with a fallback font.
+- **Un skin d'overlay peut dire quel skin de site il accompagne.** Dans la galerie, un badge « Assorti à votre skin de site » apparaît quand le skin de site actif est le bon. Quand vous changez de skin de site, un bouton propose le skin d'overlay assorti ; rien n'est appliqué sans votre clic.
+- **(English) An overlay skin can name the site skin it goes with.** In the gallery, a "Matches your site skin" badge appears when the active site skin is the right one. When you change your site skin, a button offers the matching overlay skin; nothing is applied without your click.
+- **Apparence : « Ajouter un skin » tient en un seul endroit, avec deux façons (un fichier, une adresse).** Pour une adresse : vous collez l'adresse, vous voyez ce que le skin apporte, puis un seul bouton « Ajouter ce skin ». Plus de cases à cocher.
+- **(English) Appearance: "Add a skin" is one place with two ways (a file, an address).** For an address: you paste it, see what the skin brings, then press one button, "Add this skin". No more tick boxes.
+- **Les skins ajoutés sont dans un seul tableau avec recherche.** Chaque ligne dit d'où vient le skin et si l'accès est configuré ; un bouton et un menu « ⋯ » (modifier l'accès, revenir à la version d'avant, retirer). Chaque action s'ouvre dans une fenêtre.
+- **(English) Added skins are in one table with a search.** Each row says where the skin comes from and whether access is configured; one button and a "..." menu (edit access, go back to the previous version, remove). Each action opens in a window.
+- **Les extensions peuvent connaître les personnes qui se connectent au site.** Une extension qui le demande reçoit leur nom, leur e-mail et leur rôle, rien d'autre : jamais de mot de passe, de clé d'accès ni de code de secours. Rien n'est affiché sur le site public, et une extension qui ne le demande pas ne voit rien.
+- **(English) Extensions can know the people who log in to the site.** An extension that asks for it receives their name, e-mail and role, nothing else: never a password, an access key or a recovery code. Nothing is shown on the public site, and an extension that does not ask sees nothing.
+- **Une sauvegarde chiffrée peut vous être envoyée par e-mail.** Dans *Sauvegarde*, un interrupteur l'active, chaque semaine par défaut. Le fichier est chiffré avec une phrase secrète montrée une seule fois : gardez-la, sans elle il ne s'ouvre pas.
+- **(English) A backup can be e-mailed to you.** In *Backup*, a switch turns it on, every week by default. The file is encrypted with a passphrase shown only once: keep it, without it the file cannot be opened.
+- **Chaque accès IA appartient à une personne.** Dans *Mon compte*, « Mes accès IA » crée un accès (un nom, votre mot de passe, un niveau), le met en pause, le fait évoluer ou le retire. Il peut faire seulement ce que vous pouvez faire.
+- **(English) Every AI access belongs to a person.** In *My account*, "My AI accesses" creates an access (a name, your password, a level), pauses it, changes it or removes it. It can do only what you can do.
+- **Assistants IA : l'onglet « Par personne » dit à qui appartient chaque accès.** Un tableau avec recherche : vous pouvez mettre en pause, choisir une autre personne propriétaire ou retirer. Dans *Utilisateurs*, le menu d'une personne dit si elle peut avoir des accès IA.
+- **(English) AI assistants: the "By person" tab says who owns each access.** A table with a search: you can pause, choose another owner or remove. In *Users*, a person's menu says whether they may have AI accesses.
+- **Les accès IA déjà créés gardent leurs outils.** Avec un seul compte, ils passent à ce compte. Avec plusieurs, ils fonctionnent comme avant, marqués « Sans propriétaire », jusqu'à ce que vous en choisissiez un (page temporaire).
+- **(English) Existing AI accesses keep their tools.** With one account, they go to that account. With several, they work as before, marked "No owner", until you choose one (temporary page).
+- **Un nouvel accès IA a toujours une personne propriétaire.** Par défaut, vous. Un nouvel accès n'a plus d'adresse secrète ; les anciens la gardent.
+- **(English) A new AI access always has an owner.** By default, you. A new access no longer has a secret address; existing ones keep it.
+- **Un accès IA se met en pause si vous vous déconnectez partout ou changez de mot de passe.** Avec un seul compte, cela arrête aussi les accès repris : relancez-les depuis *Mon compte*.
+- **(English) An AI access pauses when you sign out everywhere or change your password.** With one account, this also stops the migrated accesses: resume them from *My account*.
+- **Un accès créé avant ce changement garde son réglage « agir sans demander » et ses limites par heure.** Seuls les nouveaux accès suivent le réglage du site.
+- **(English) An access created before this change keeps its "act without asking" choice and its hourly limits.** Only new accesses follow the site setting.
+
+### Corrections
+
+- **Les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.** Un nom, une étiquette ou une recherche de l'administration n'est plus pris pour un identifiant à enregistrer. Le mot de passe donné à une autre personne n'est plus proposé comme le vôtre.
+- **(English) Password managers no longer step into ordinary fields.** A name, a label or a search in the administration is no longer taken for a login to save. The password given to another person is no longer offered as yours.
+- **Créer un accès pour un assistant ne peut plus en créer deux.** Un double clic, ou une extension qui renvoie le formulaire, ne crée plus un second accès qui cachait le premier : la clé ou l'adresse affichée une seule fois est toujours celle de l'accès créé.
+- **(English) Creating an access for an assistant can no longer create two.** A double click, or an extension that re-sends the form, no longer creates a second access that hid the first: the key or address shown once is always the one of the access created.
+- **Un skin d'un dépôt privé peut enfin être ajouté.** Sur un serveur dont Git est ancien, le code d'accès était refusé même quand il était bon. Il est maintenant transmis d'une façon que tous les Git acceptent.
+- **(English) A skin from a private repository can finally be added.** On a server with an old Git, the access code was refused even when it was right. It is now passed on in a way every Git accepts.
+- **Chaque échec dit ce qu'il faut changer.** Au lieu d'un seul message, vous voyez si le code est refusé ou périmé, si le dépôt est introuvable, s'il a changé de nom (avec sa nouvelle adresse), si GitHub est injoignable ou si Git est trop ancien.
+- **(English) Each failure says what to change.** Instead of one message, you see whether the code is rejected or expired, the repository is not found, it was renamed (with its new address), GitHub cannot be reached or Git is too old.
+
+### Pour les développeurs
+
+- Accès IA et propriétaire (0.47.0) : colonne `ApiToken.coarseCeiling`, repli `COARSE_FALLBACK`, `personalAi/owners.ts` ; `legacyOwners.ts` et `assign-owners/` sont **temporaires (à supprimer en 0.49.0)**. Voir [docs/PERSONAL-AI.md](docs/PERSONAL-AI.md).
+- Sauvegarde automatique par e-mail (`src/core/backup/auto/`) : horaire pur, phrase secrète scellée (`seal.ts`), 5 copies dans `data/backups/auto/`, envoi par `sendCoreMailWithAttachment` (cœur seulement), état en lecture seule dans `maintenance_health`. Réglages `autobackup.*` hors sauvegardes. Voir [docs/BACKUP.md](docs/BACKUP.md).
+- **(English)** Automatic backup by e-mail (`src/core/backup/auto/`): pure schedule, sealed passphrase (`seal.ts`), 5 copies in `data/backups/auto/`, sent with `sendCoreMailWithAttachment` (core only), read-only state in `maintenance_health`. `autobackup.*` settings are not in backups. See [docs/BACKUP.md](docs/BACKUP.md).
+- `components/admin/managerHints.ts` : `PLAIN_INPUT` (`autoComplete="off"` et les indices des gestionnaires) sur tout `<input>` de texte qui n'est pas un identifiant ; `TextField` l'applique par défaut. `tests/core/admin-input-hints.test.mjs` échoue sur un nouvel `<input>` sans lui.
+- **(English)** `components/admin/managerHints.ts`: `PLAIN_INPUT` (`autoComplete="off"` and the managers' hints) on every text input that is not a login; `TextField` applies it by default. `tests/core/admin-input-hints.test.mjs` fails on a new `<input>` without it.
+- `McpTokenCreator` : champ nommé `accessLabel` (l'action lit encore `name`), indices sur le `<form>`, `createGate` (`singleFlight.ts`) pour ignorer un second envoi pendant le premier, bloc créé extrait en `CreatedAccess`. `submitKeepingValues` retombe sur `new FormData(form)` si l'expéditeur n'est pas un bouton du formulaire.
+- **(English)** `McpTokenCreator`: field named `accessLabel` (the action still reads `name`), hints on the `<form>`, `createGate` (`singleFlight.ts`) to ignore a second submit while the first runs, the created block extracted as `CreatedAccess`. `submitKeepingValues` falls back to `new FormData(form)` when the submitter is not a button of the form.
+- `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` refaits ; nouveaux `AddSkin`, `SkinAdded` ; `Segmented` accepte `value` et `onChange` ; `AccessSummary` accepte `compact` (« Retirer l'accès » dans la fenêtre). `InspectView` porte `skinId`. Le serveur exige toujours la confirmation (`understood`) : l'interface l'envoie avec le clic sur « Ajouter ce skin », comme pour l'ajout depuis un fichier.
+- **(English)** `PersonalRepo`, `ManageSkin` (`SkinActions`), `InspectPanel` rebuilt; new `AddSkin`, `SkinAdded`; `Segmented` takes `value` and `onChange`; `AccessSummary` takes `compact` ("Remove access" inside the window). `InspectView` carries `skinId`. The server still demands the confirmation (`understood`): the screen sends it with the click on "Add this skin", as for adding from a file.
+- `core/auth/accountTopic.ts` : sujet `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), fourni par le cœur seul (`OwnTopic` dans `services/topics.ts`). Lu par un module qui le déclare dans `consumes` ET déclare la permission `topics` ; aucun module ne peut le fournir.
+- **(English)** `core/auth/accountTopic.ts`: topic `core.user` (`id`, `name`, `email`, `level`, `roles`, `createdAt`, `updatedAt`), provided by the core alone (`OwnTopic` in `services/topics.ts`). Read by a module that declares it in `consumes` AND the `topics` permission; no module can provide it.
+- La base est lue avec `ACCOUNT_SELECT` (colonnes nommées), chaque élément est construit champ par champ, et `tests/core/account-topic.test.mjs` échoue si une colonne est ajoutée à `User` sans décision. Cœur plus ancien : liste vide (`docs/MODULES.md`).
+- **(English)** The database is read with `ACCOUNT_SELECT` (named columns), each item is built field by field, and `tests/core/account-topic.test.mjs` fails if a column is added to `User` without a decision. Older core: empty list (`docs/MODULES.md`).
+- `core/gitFailure.ts` : `classifyGitFailure` (stderr de git vers une cause) ; `git()` joint la cause (`failure`) à chaque erreur. Git < 2.31 ignore `GIT_CONFIG_COUNT` : le code passe alors par un assistant d'identifiants sans secret en ligne de commande et par `CURIOSA_GIT_CODE`. Un échec de vérification écrit `git.access.failed` (dépôt et cause) au journal.
+- **(English)** `core/gitFailure.ts`: `classifyGitFailure` (git's stderr to a cause); `git()` attaches the cause (`failure`) to every error. Git < 2.31 ignores `GIT_CONFIG_COUNT`: the code then goes through a credential helper with no secret on the command line and `CURIOSA_GIT_CODE`. A failed check writes `git.access.failed` (repository and cause) to the audit log.
+- Contrat de skin d'overlay 6 (`minCore` 0.47.0) : polices woff2 déclarées dans `assets`, `@font-face` écrit par le cœur (`overlays/skinFonts.ts`), listes de polices vérifiées, chargeur dans la page d'overlay. Contrats 2 à 5 inchangés octet pour octet. Voir `docs/OVERLAY-SKINS.md`.
+- `twinOf` (manifeste et catalogue, sans changement de contrat) : logique `overlays/twin.ts`, offre unique `overlays/twinOffer.ts`.
+- **(English)** Overlay skin contract 6 (`minCore` 0.47.0): woff2 fonts declared in `assets`, `@font-face` written by the core (`overlays/skinFonts.ts`), checked font lists, a loader in the overlay page. Contracts 2 to 5 are byte-identical. See `docs/OVERLAY-SKINS.md`.
+- **(English)** `twinOf` (manifest and catalogue, no contract change): logic in `overlays/twin.ts`, one-time offer in `overlays/twinOffer.ts`.
+
 ## 0.46.1 — 2026-11-20
 
 **En bref.** Corrections sur les demandes d'actions des assistants IA et sur la maintenance : une demande en attente ne disparaît plus, votre accord ne publie que ce que vous avez vu, et une longue opération n'est plus doublée. Un skin que vous installez vous-même n'est plus refusé à cause de sa licence, et vous pouvez l'ajouter en déposant son fichier .zip dans Apparence.
@@ -46,7 +112,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English)** `skins/manifest.ts`: `license` (skin and assets) is optional free text (200 characters, `LICENSE_TEXT_MAX`). `skins/validate.ts` no longer judges any license: `SPDX_ALLOWED` and the codes `manifest-license-not-allowed`, `asset-license-not-allowed`, `asset-license-missing` and `asset-license-file` are removed. The kit gives the tip `kit-asset-credits`.
 
 
-## 0.46.0 — 2026-11-21
+## 0.46.0 — 2026-11-20
 
 **En bref.** Première étape des assistants IA personnels : une personne de l'équipe pourra avoir son propre assistant, qui ne peut faire que ce qu'elle peut faire elle-même. Rien ne change sur votre site tant que vous n'activez pas cette fonction, et il n'y a pas encore d'écran (il arrive en 0.46.1).
 

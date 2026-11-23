@@ -19,6 +19,7 @@ export type MailRequest = { to: "owner" | string; subject: string; text: string;
 export type MailResult = { ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" };
 
 const EMAIL_RE = /^[^@\s<>",;]+@[^@\s<>",;]+\.[^@\s<>",;]+$/;
+export const isValidEmail = (value: string): boolean => value.length <= 200 && EMAIL_RE.test(value);
 const KEYS = { host: "mail.host", port: "mail.port", secure: "mail.secure", user: "mail.user", pass: "mail.pass", from: "mail.from" } as const;
 
 export async function getMailConfig(): Promise<MailConfig | null> {
@@ -51,13 +52,14 @@ export async function saveMailConfig(input: { host: string; port: number; secure
 }
 
 type Transport = { sendMail(message: Record<string, unknown>): Promise<unknown> };
-type TransportFactory = (config: MailConfig) => Transport;
+/** `large`: the message carries a big attachment (a backup): the socket gets more time. */
+type TransportFactory = (config: MailConfig, options?: { large?: boolean }) => Transport;
 
-const defaultFactory: TransportFactory = (c) =>
+const defaultFactory: TransportFactory = (c, options) =>
   nodemailer.createTransport({
     host: c.host, port: c.port, secure: c.secure,
     auth: c.user ? { user: c.user, pass: c.pass } : undefined,
-    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 15_000,
+    connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: options?.large ? 120_000 : 15_000,
   }) as unknown as Transport;
 let factory: TransportFactory = defaultFactory;
 /** Pour les tests : remplace le transport SMTP. Sans argument, remet le vrai. */
@@ -87,8 +89,21 @@ async function ownerAddress(): Promise<string | null> {
   return owner && EMAIL_RE.test(owner.email) ? owner.email : null;
 }
 
-/** Envoie un e-mail au nom du site. `actor` identifie l'appelant (clé d'instance, ou « core »). Ne lève jamais. */
-export async function sendMail(request: MailRequest, actor: string): Promise<MailResult> {
+/** Why a send failed, in one word (never the server's own text, which can name accounts and hosts). */
+export type MailCause = "login" | "unreachable" | "refused" | "unknown";
+export function mailCause(error: unknown): MailCause {
+  const code = String((error as { code?: unknown })?.code ?? "");
+  const response = Number((error as { responseCode?: unknown })?.responseCode);
+  if (code === "EAUTH" || response === 535 || response === 534) return "login";
+  if (["ECONNECTION", "ETIMEDOUT", "ESOCKET", "ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "EDNS", "EHOSTUNREACH", "ETLS"].includes(code)) return "unreachable";
+  if (code === "EMESSAGE" || code === "EENVELOPE" || (response >= 400 && response < 600)) return "refused";
+  return "unknown";
+}
+
+export type MailAttachment = { filename: string; content: Buffer };
+export type MailResultWithCause = MailResult | { ok: false; reason: "failed"; cause: MailCause };
+
+async function deliver(request: MailRequest, actor: string, attachment?: MailAttachment): Promise<MailResultWithCause> {
   try {
     const config = await getMailConfig();
     if (!config) return { ok: false, reason: "not_configured" };
@@ -109,12 +124,32 @@ export async function sendMail(request: MailRequest, actor: string): Promise<Mai
     }
 
     if (!allow(actor)) return { ok: false, reason: "rate_limited" };
-    await factory(config).sendMail({ from: config.from, to, subject, text, ...(replyTo ? { replyTo } : {}) });
+    const files = attachment ? [{ filename: oneLine(attachment.filename, 120).replace(/[\\/"]/g, "-"), content: attachment.content, contentType: "application/octet-stream" }] : [];
+    try {
+      await factory(config, { large: files.length > 0 }).sendMail({ from: config.from, to, subject, text, ...(replyTo ? { replyTo } : {}), ...(files.length ? { attachments: files } : {}) });
+    } catch (error) {
+      // Jamais de détail (identifiants, serveur, adresse) vers l'appelant : seulement dans les journaux du serveur.
+      console.error("[mail] send failed:", (error as Error)?.message);
+      return { ok: false, reason: "failed", cause: mailCause(error) };
+    }
     await prisma.auditLog.create({ data: { actor: `module:${actor}`, action: "mail.sent", target: request.to === "owner" ? "owner" : "address" } }).catch(() => {});
     return { ok: true };
   } catch (error) {
-    // Jamais de détail (identifiants, serveur, adresse) vers l'appelant : seulement dans les journaux du serveur.
     console.error("[mail] send failed:", (error as Error)?.message);
     return { ok: false, reason: "failed" };
   }
+}
+
+/** Envoie un e-mail au nom du site. `actor` identifie l'appelant (clé d'instance, ou « core »). Ne lève jamais. */
+export async function sendMail(request: MailRequest, actor: string): Promise<MailResult> {
+  const result = await deliver(request, actor);
+  return result.ok ? result : { ok: false, reason: result.reason };
+}
+
+/**
+ * CORE ONLY (not offered to modules): the same mail, with ONE attached file and the reason of a failure in one word. The automatic backup uses it
+ * (src/core/backup/auto/run.ts). Same sender, same limits, same audit row; the only new thing is the attachment.
+ */
+export function sendCoreMailWithAttachment(request: MailRequest, attachment: MailAttachment | undefined): Promise<MailResultWithCause> {
+  return deliver(request, "core", attachment);
 }

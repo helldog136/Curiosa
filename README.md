@@ -31,7 +31,7 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 
 - **Un site vraiment à vous.** Vos textes, vos images et la liste des personnes qui visitent votre site restent chez vous. Pas d'abonnement, pas de commission : juste le prix d'un petit serveur.
 - **Un public accueilli sans fenêtre à fermer.** Curiosa ne suit pas les personnes qui passent : pas de bandeau à faire accepter, rien à régler pour ça. Vous savez pourtant combien de monde vient et ce qui se lit le plus.
-- **Rien à surveiller.** Les mises à jour se font en un clic, avec retour automatique à la version d'avant si quelque chose se passe mal. Vos sauvegardes sont chiffrées et restent lisibles même sans Curiosa.
+- **Rien à surveiller.** Les mises à jour se font en un clic, avec retour automatique à la version d'avant si quelque chose se passe mal. Vos sauvegardes sont chiffrées et restent lisibles même sans Curiosa ; elles peuvent aussi vous être envoyées par e-mail à intervalle régulier, toujours chiffrées.
 - **Pensé pour qui crée du contenu.** Habillage de stream, bouton « en direct », planning, codes promo, sponsors, kit presse, réseaux sociaux dans l'en-tête : tout est prévu, vous n'activez que ce qui vous sert.
 - **Votre IA préférée peut vous aider.** Si vous le souhaitez, un assistant prépare des brouillons ou tient à jour vos listes ; vous relisez tout avant que ça paraisse, et vous retirez son accès quand vous voulez.
 
@@ -42,7 +42,7 @@ Curiosa est un **site vitrine clé en main que vous possédez** : votre contenu,
 - **Un tableau de bord qui parle.** Combien de personnes aujourd'hui, quelles pages ont du succès, d'où vient votre public, et une pastille « nouveau » pour les personnes qui reviennent.
 - **Un site facile à lire pour les assistants IA.** Fichier pour les IA, liens sociaux et description du site sont préparés, et une page de l'admin montre ce qui reste à faire ; voir [Être cité par les IA](docs/GEO.md).
 - **Plusieurs langues sans effort.** Une seule suffit pour publier ; vous en ajoutez quand vous le voulez.
-- **Des mises à jour et des sauvegardes simples.** Un clic pour mettre à jour, une restauration guidée si un jour vous changez de serveur.
+- **Des mises à jour et des sauvegardes simples.** Un clic pour mettre à jour, une restauration guidée si un jour vous changez de serveur. Une sauvegarde chiffrée peut vous arriver par e-mail chaque semaine.
 
 ## Respect des personnes qui visitent votre site, et sécurité
 
@@ -78,7 +78,7 @@ Un site existant sous **Grav CMS** ? Il peut être converti : [docs/IMPORT-GRAV.
 
 ### Le chemin facile
 
-**Il vous faut :** un petit serveur Linux (Ubuntu ou Debian, processeur **x86_64 / amd64**, 1 à 2 Go de mémoire) et un **nom de domaine** dont l'enregistrement `A` pointe vers lui. Pas encore de serveur ? [Le guide explique comment le choisir](docs/AGENT-INSTALL.md#choisir-et-préparer-son-serveur), se connecter et régler le domaine.
+**Il vous faut :** un petit serveur Linux (Ubuntu ou Debian, processeur **x86_64 / amd64**, 1 à 2 Go de mémoire) **avec un accès SSH** (certains VPS livrés avec un CMS préinstallé n'en donnent pas : vérifiez avant de commander) et un **nom de domaine** dont l'enregistrement `A` pointe vers lui. Pas encore de serveur ? [Le guide explique comment le choisir](docs/AGENT-INSTALL.md#choisir-et-préparer-son-serveur), se connecter et régler le domaine.
 
 Connecté au serveur, deux commandes (la première télécharge le script, que vous pouvez relire avant de lancer la seconde) :
 
@@ -316,7 +316,7 @@ Un assistant IA peut écrire un module à partir de ces documents : donnez-lui `
 | [docs/MODULES.md](docs/MODULES.md) | référence complète des modules |
 | [docs/TESTSUPPORT.md](docs/TESTSUPPORT.md) | le kit de test des modules : les exigences une par une, la commande `module:check` |
 | [docs/PLATFORM.md](docs/PLATFORM.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | le cœur, ses services, les choix de conception |
-| [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée, lisible sans le framework |
+| [docs/BACKUP.md](docs/BACKUP.md) | sauvegarde chiffrée (à la main ou envoyée par e-mail), lisible sans le framework |
 | [docs/BACKGROUND.md](docs/BACKGROUND.md) | décrire le fond de page |
 | [docs/IMPORT-GRAV.md](docs/IMPORT-GRAV.md) | convertir un site Grav |
 | [docs/PRIVACY.md](docs/PRIVACY.md) | cookies, statistiques, politique de confidentialité |

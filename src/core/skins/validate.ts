@@ -21,7 +21,9 @@ import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
 import { sanitizeOverlayCss } from "../overlays/skinCss";
 import { checkSkinTokens } from "../overlays/skinSheet";
-import { OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4, OVERLAY_SKIN_CONTRACT_V5 } from "./constants";
+import { OVERLAY_FONTS_MIN_CORE, OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4, OVERLAY_SKIN_CONTRACT_V5, OVERLAY_SKIN_CONTRACT_V6 } from "./constants";
+import { fontCtx } from "../overlays/skinFonts";
+import { checkWoff2 } from "../fonts/woff2";
 import { checkScene, type SceneAssetInfo } from "../animate/scene";
 import { probeImage } from "../animate/imageProbe";
 import { checkAnimation } from "../animate/recipe";
@@ -176,6 +178,8 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if (m.kind === "overlay" && m.skinContract < OVERLAY_SKIN_CONTRACT) add("overlay-contract");
   if (m.kind !== "overlay" && m.animation) add("animation-overlay-only");
   if (m.kind !== "overlay" && m.scene) add("scene-overlay-only");
+  if (m.kind !== "overlay" && m.twinOf) add("twin-overlay-only");
+  if (m.twinOf && (m.twinOf === m.id || m.twinOf === BASIC_ID)) add("twin-self");
   if (hasErrors(issues)) return fail();   // le reste dépend d'un manifeste sain
   if (m.kind === "overlay") return runOverlay(m, found, byRel, issues, fail);
 
@@ -404,12 +408,19 @@ function typedCheck(name: string, value: string, skinId: string, issues: SkinIss
 
 /**
  * (core 0.8.0) Validation of an OVERLAY skin folder: same folder rules, licences, previews and fingerprint as a site skin, but a closed token vocabulary (`--ov-*`),
- * a strict rule grammar (overlays/skinCss.ts), a contrast check (overlays/skinSheet.ts) and NO font or image (system fonts only). Nothing is executed.
+ * a strict rule grammar (overlays/skinCss.ts), a contrast check (overlays/skinSheet.ts), no image without a scene (contract 5) and fonts only with contract 6
+ * (woff2, declared with a `family`; the core writes the `@font-face`, overlays/skinFonts.ts). Nothing is executed.
  */
 function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, issues: SkinIssue[], fail: () => SkinValidation): SkinValidation {
   const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
   const kinds = new Map<string, FileKind>([["skin.json", "manifest"]]);
-  if (m.assets.length && !m.scene) add("overlay-no-assets");
+  if (m.assets.some((a) => a.kind === "image") && !m.scene) add("overlay-no-assets");
+  // (core 0.47.0) fonts: contract 6 and a core that knows it; the files and the checks are below
+  const fontDecls = m.assets.filter((a) => a.kind === "font");
+  if (fontDecls.length) {
+    if (m.skinContract < OVERLAY_SKIN_CONTRACT_V6) add("overlay-contract-v6");
+    else if (!m.minCore || !coreSatisfies(OVERLAY_FONTS_MIN_CORE, m.minCore)) add("overlay-font-mincore");
+  }
   const declare = (rel: string, kind: FileKind, re: RegExp, missing: string): boolean => {
     if (!re.test(rel)) { add("asset-bad-path", { file: rel }); return false; }
     if (!byRel.has(rel)) { add(missing, { file: rel }); return false; }
@@ -428,12 +439,21 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   if (m.scene) {
     const seen = new Set<string>();
     for (const a of m.assets) {
-      if (a.kind !== "image") { add("overlay-no-assets"); continue; }
+      if (a.kind !== "image") continue;
       if (seen.has(a.file)) { add("asset-duplicate", { file: a.file }); continue; }
       seen.add(a.file);
       if (!/\.(png|webp|svg)$/.test(a.file)) { add("scene-image-type", { file: a.file }); continue; }
       if (declare(a.file, "image", IMAGE_PATH_RE, "asset-missing")) sceneImages.push(a);
     }
+  }
+  // (core 0.47.0) the fonts of the skin: woff2 files under fonts/, one declaration each, a family name each
+  const fontFiles: SkinManifest["assets"] = [];
+  const seenFonts = new Set<string>();
+  for (const a of fontDecls) {
+    if (seenFonts.has(a.file)) { add("asset-duplicate", { file: a.file }); continue; }
+    seenFonts.add(a.file);
+    if (!a.family) { add("overlay-font-family-missing", { file: a.file }); continue; }
+    if (declare(a.file, "font", FONT_PATH_RE, "asset-missing")) fontFiles.push(a);
   }
   for (const f of found) {
     if (kinds.has(f.rel)) continue;
@@ -446,6 +466,20 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   const content = new Map<string, Buffer>();
   const read = (rel: string): Buffer => { let b = content.get(rel); if (!b) { b = fs.readFileSync(byRel.get(rel)!.abs); content.set(rel, b); } return b; };
   for (const p of previews) if (sizeOf(p.file) <= FILE_LIMITS.previewBytes && !hasSignature(p.file, read(p.file))) add("asset-signature", { file: p.file });
+  // (core 0.47.0) same ceilings as the fonts of a site skin (4 files, 150 KB each, 400 KB together); each file is read as a WOFF2 (signature, header, table directory, bounded
+  // Brotli stream, required tables, no SVG, no private data: fonts/woff2.ts), never trusted for its extension
+  if (fontFiles.length > FILE_LIMITS.fonts) add("fonts-too-many", { max: FILE_LIMITS.fonts });
+  const fontsTotal = fontFiles.reduce((n, a) => n + sizeOf(a.file), 0);
+  if (fontsTotal > FILE_LIMITS.fontsTotalBytes) add("fonts-total-too-large", { size: kb(fontsTotal), max: kb(FILE_LIMITS.fontsTotalBytes) });
+  for (const a of fontFiles) {
+    if (sizeOf(a.file) > FILE_LIMITS.fontBytes) { add("file-too-large", { file: a.file, size: kb(sizeOf(a.file)), max: kb(FILE_LIMITS.fontBytes) }); continue; }
+    const bytes = read(a.file);
+    if (!hasSignature(a.file, bytes)) { add("asset-signature", { file: a.file }); continue; }
+    const c = checkWoff2(bytes, FILE_LIMITS.fontBytes);
+    if (!c.ok) add(c.code === "not-woff2" ? "asset-signature" : "overlay-font-invalid", { file: a.file });
+  }
+  // the families the skin may name in its font lists (skins of contract 6 only; contracts 2 to 5 keep the rules they always had)
+  const fonts = fontCtx(m.id, fontFiles, m.skinContract);
 
   const tokens: Record<string, string> = {};
   if (hasTokens && sizeOf(m.tokens) <= FILE_LIMITS.tokensBytes) {
@@ -455,9 +489,12 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     if (raw !== undefined) {
       if (!doc || typeof doc !== "object" || Array.isArray(doc)) add("overlay-tokens-shape");
       else for (const [k, v] of Object.entries(doc as Record<string, unknown>).slice(0, 60)) {
-        const r = checkToken(k, v);
+        const r = checkToken(k, v, fonts);
         if (r.ok) tokens[k] = r.value;
-        else add(r.code === "unknown" ? "overlay-token-unknown" : "overlay-token-value", { name: k });
+        else if (r.code === "unknown") add("overlay-token-unknown", { name: k });
+        else if (r.reason === "undeclared") add("overlay-font-undeclared", { name: r.family ?? k });
+        else if (r.reason === "fallback") add("overlay-font-fallback", { name: k });
+        else add("overlay-token-value", { name: k });
       }
     }
     if (!hasErrors(issues)) for (const i of checkSkinTokens(tokens)) {
@@ -528,8 +565,12 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
   }
   let css = "";
   if (hasSheet && sizeOf(m.stylesheet!) <= 40 * 1024) {
-    const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id);
-    for (const i of sheet.issues) add("overlay-css", { detail: `${i.code}${i.detail ? ` ${i.detail}` : ""}${i.line ? ` l.${i.line}` : ""}` });
+    const sheet = sanitizeOverlayCss(read(m.stylesheet!).toString("utf8"), m.id, fonts);
+    for (const i of sheet.issues) {
+      if (i.code === "font-undeclared") add("overlay-font-undeclared", { name: i.detail ?? "?" });
+      else if (i.code === "font-fallback") add("overlay-font-fallback", { name: i.detail ?? "font-family" });
+      else add("overlay-css", { detail: `${i.code}${i.detail ? ` ${i.detail}` : ""}${i.line ? ` l.${i.line}` : ""}` });
+    }
     css = sheet.css;
     if (sheet.v3 && m.skinContract < OVERLAY_SKIN_CONTRACT_V3) add("overlay-contract-v3");
     if (sheet.shrinks) add("overlay-text-small", { count: sheet.shrinks });

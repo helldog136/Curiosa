@@ -1,7 +1,7 @@
 import { prisma } from "@/core/db";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { deps } from "./deps";
-import { isPersonalToken } from "@/core/services/mcp/tokens";
+import { isStrictPersonalToken } from "@/core/services/mcp/tokens";
 
 /**
  * RATE LIMITS of the actions an AI access takes (one small shared API, used by the maintenance actions, the content writers, media and site settings).
@@ -74,8 +74,8 @@ export async function takeSlot(tokenId: string | undefined, cls: SlotClass = "ri
     const wait = minutes(list[0]! + WINDOW_MS - deps.now());
     throw new McpToolError(`Limit reached: ${limit} ${cls === "risky" ? "risky" : "content"} actions per hour for this access. Next slot in ${wait} min, or the owner can reset it in Admin > AI assistants.`);
   }
-  // (0.46.0) Personal AI assistants ALSO share one site-wide hourly budget per class, so that many people cannot add up to a flood. Checked before anything is taken.
-  if (tokenId && (await isPersonalToken(tokenId))) {
+  // (0.46.0) Personal AI assistants (not the accesses that predate the owners, whose limits stay as they were) ALSO share one site-wide hourly budget per class, so that many people cannot add up to a flood. Checked before anything is taken.
+  if (tokenId && (await isStrictPersonalToken(tokenId))) {
     const all = recent(PERSONAL_POOL, cls);
     if (all.length >= PERSONAL_SITE_LIMITS[cls]) {
       const wait = minutes(all[0]! + WINDOW_MS - deps.now());

@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "./managerHints";
 import { useEffect, useId, useRef, useState } from "react";
 import { createChoice, searchChoice } from "@/app/admin/(panel)/instances/choiceActions";
 import { announce, fill, keyIntent, mergePage, optionCount, optionDomId, showCreate, showEmptyNote, type PickerItem, type PickerStrings } from "./choicePickerModel";
@@ -136,7 +137,7 @@ export function ChoicePicker({ instanceId, fieldKey, name, label, help, flag, in
       </div>
       <div className="relative">
         <input
-          ref={input} id={`${base}-q`} type="search" role="combobox" autoComplete="off" spellCheck={false} maxLength={100}
+          ref={input} id={`${base}-q`} type="search" role="combobox" {...PLAIN_INPUT} spellCheck={false} maxLength={100}
           aria-expanded={open} aria-controls={listId} aria-autocomplete="list" aria-describedby={help && !isLongHelp(help) ? helpId : undefined}
           aria-activedescendant={open && active >= 0 && active < count ? optionDomId(base, active) : undefined}
           placeholder={strings.placeholder} aria-label={`${strings.search} : ${label}`} value={q}

@@ -1,5 +1,6 @@
 "use client";
 
+import { PLAIN_INPUT } from "@/components/admin/managerHints";
 import { useActionState, useRef, useState } from "react";
 import { ui } from "@/components/admin/ui";
 import { Callout } from "@/components/admin/Page";
@@ -72,7 +73,7 @@ export function AssistantStep({ baseUrl, backHref, manageHref, guide, profiles, 
           <form ref={form} onSubmit={submitKeepingValues(run)} className="space-y-5" noValidate>
             <div>
               <label className={ui.label} htmlFor="ai-name">{texts.name}</label>
-              <input id="ai-name" name="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} aria-describedby="ai-name-example" autoComplete="off" className={ui.input} />
+              <input id="ai-name" name="name" maxLength={80} value={name} onChange={(e) => setName(e.target.value)} aria-describedby="ai-name-example" {...PLAIN_INPUT} className={ui.input} />
               <p id="ai-name-example" className={ui.help}>{texts.nameExample}</p>
             </div>
             <fieldset className="min-w-0" data-testid="setup-assistant-profiles">
