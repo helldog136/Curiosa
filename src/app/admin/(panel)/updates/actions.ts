@@ -6,6 +6,7 @@ import { adminCtx } from "@/core/admin";
 import { audit } from "@/core/permissions";
 import { checkForUpdate, getUpdateCheck, setAutoUpdate, setUpdateChannel, startUpdate } from "@/core/updates/service";
 import { getModulesReport, moduleNames, updateModules } from "@/core/modules/updateStatus";
+import { withoutPersonal } from "@/core/modules/personalCatalogues";
 import { buildNames } from "@/core/modules/dependencyView";
 import { describeMissingList } from "@/core/modules/dependencyMessages";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -71,7 +72,8 @@ export type ModulesBilan = { /** Rien n'a été lancé : une autre mise à jour 
  */
 export async function updateModulesAction(ids?: string[], opId?: string): Promise<ModulesBilan> {
   const { user, t, locale, config } = await adminCtx({ right: "core:updates" });
-  const todo = ids?.length ? ids.filter((id) => typeof id === "string").slice(0, 200) : (await getModulesReport(true)).outdated.map((o) => o.id);
+  // "Update all" never includes a module of a personal catalogue (only a click on that very module does); unreadable origin = none.
+  const todo = ids?.length ? ids.filter((id) => typeof id === "string").slice(0, 200) : await withoutPersonal((await getModulesReport(true)).outdated.map((o) => o.id));
   const names = await moduleNames(locale, config.defaultLocale);
   // Suivi d'opération : « module N sur M » avec le nom du module en cours. Un second lancement (autre onglet, double clic) rejoint celui-ci et en rend le bilan.
   const run = await trackOperation(user, { kind: ids?.length === 1 ? "module-update" : "modules-update", key: ids?.length ? `modules-update:${[...todo].sort().join(",").slice(0, 300)}` : "modules-update:all", opId: opIdOf(opId), unitTotal: todo.length },

@@ -1,7 +1,8 @@
 import { ui } from "./ui";
 import { HelpBelow, HelpTip } from "./HelpTip";
 import { isLongHelp } from "./helpRule";
-import { ERROR_BORDER, FieldErrorText } from "./FieldErrors";
+import { FieldErrorText } from "./FieldErrors";
+import { ERROR_BORDER } from "./errorBorder";
 import { PasswordInput } from "./PasswordInput";
 import { fieldHints } from "./managerHints";
 

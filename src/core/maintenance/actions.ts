@@ -11,6 +11,7 @@ import { dockerUpdatePlan, getInstallInfo, readVersion } from "@/core/updates/se
 import { McpToolError } from "@/core/services/mcp/validate";
 import { deps } from "./deps";
 import { isStableVersion, moduleUpdateRefusal, updateRunning } from "./inspect";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, getRequest, finishRequest, reopenRequest, setRequestProgress, type Level3Action, type Plan } from "./requests";
@@ -140,7 +141,18 @@ async function doBackup(): Promise<Outcome> {
   return { ok: true, message: "A copy of the database was made on the server (the 5 most recent are kept). It cannot be downloaded: for an encrypted backup file, the owner uses Admin > Backup.", details: { sizeBytes } };
 }
 
+/** Is this installed module from a personal catalogue? FAIL-CLOSED: true when that cannot be told. */
+async function isPersonal(row: { id: string; repoUrl: string | null }): Promise<boolean> {
+  const idx = await personalIndex();
+  return !idx || idx.has(row);
+}
+
 async function doReinstall(id: string): Promise<Outcome> {
+  // A module of a personal catalogue is renewed from its repository (private, with the owner's access code): only the owner does that. The origin is written on the module
+  // itself (it stays when the catalogue is removed); if it cannot be read, the module is treated as personal.
+  const row = await prisma.module.findUnique({ where: { id }, select: { id: true, repoUrl: true } });
+  const personal = await personalIndex();
+  if (row && (!personal || personal.has(row))) return { ok: false, message: `"${id}" comes from a personal catalogue of the owner: only a human can reinstall it (Admin > Extensions).` };
   const r = await deps.reinstall(id);
   if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.${r.loadError ? ` Cause: ${redactSecrets(r.loadError, 200)}.` : ""}` };
   const bad = r.migrations.some((x) => x.status === "failed" || x.status === "newer");
@@ -287,7 +299,7 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
     const { check, failed } = await deps.checkModule(id);
     if (failed) refuse(`The update of "${id}" could not be checked (network or repository unreachable). Try again later.`);
     if (!check.available || !check.target) refuse(`Module "${id}" is already up to date.`);
-    const why = moduleUpdateRefusal({ id: row.id, ref: row.ref, source: row.source, target: check.target!, needsCore: check.needsCore });
+    const why = moduleUpdateRefusal({ id: row.id, ref: row.ref, source: row.source, target: check.target!, needsCore: check.needsCore, personal: await isPersonal(row) });
     if (why) refuse(`Module "${id}" cannot be updated by an AI: ${why}.`);
     return { module: id, from: row.version, to: check.target!.replace(/^v/, ""), level: check.level };
   }
@@ -302,10 +314,11 @@ export async function prepare(action: Level3Action, args: Params, opts: { patien
     report = got.ok ? got.value : saved!;
   }
   const rows = new Map((await prisma.module.findMany()).map((r) => [r.id, r]));
+  const personal = await personalIndex();
   const modules: NonNullable<Plan["modules"]> = [];
   for (const o of report.outdated) {
     const row = rows.get(o.id);
-    if (!row || moduleUpdateRefusal({ id: o.id, ref: row.ref, source: row.source, target: o.target, needsCore: o.needsCore })) continue;
+    if (!row || moduleUpdateRefusal({ id: o.id, ref: row.ref, source: row.source, target: o.target, needsCore: o.needsCore, personal: !personal || personal.has(row) })) continue;
     modules.push({ id: o.id, from: o.current, to: o.target.replace(/^v/, "") });
   }
   if (!modules.length) refuse("No module can be updated by an AI right now (everything is up to date, or the remaining updates need a human or a newer core).");

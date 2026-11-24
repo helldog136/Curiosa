@@ -7,7 +7,7 @@ import { AnimatedActionButton } from "./AnimatedActionButton";
 import { sleep } from "./animatedAction";
 import { ui } from "./ui";
 
-export type ModuleUpdateRow = { id: string; name: string; icon: string; current: string; target: string; major: boolean; levelLabel: string; /** La version proposée demande un cœur plus récent : pas de bouton, un message. */ needsCore?: string };
+export type ModuleUpdateRow = { id: string; name: string; icon: string; current: string; target: string; major: boolean; levelLabel: string; /** La version proposée demande un cœur plus récent : pas de bouton, un message. */ needsCore?: string; /** From a personal catalogue: never part of "Update all". */ personal?: true };
 type Labels = {
   all: { idle: string; working: string; done: string; failed: string };
   one: { idle: string; working: string; done: string; failed: string };
@@ -67,10 +67,10 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
               </li>
             ))}
           </ul>
-          <div className="flex justify-center sm:justify-start">
+          {rows.some((r) => !r.personal && !r.needsCore) && <div className="flex justify-center sm:justify-start">
             <AnimatedActionButton look="primary" icon="⬆" testid="modules-update-all" labels={labels.all} track="modules-update" trackKey="modules-update:all"
-              confirm={fill(labels.confirmAll, { n: rows.length })} run={go()} {...after} />
-          </div>
+              confirm={fill(labels.confirmAll, { n: rows.filter((r) => !r.personal).length })} run={go()} {...after} />
+          </div>}
         </>
       )}
 

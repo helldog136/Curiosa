@@ -10,7 +10,7 @@ import type { FieldErrorMap } from "@/core/fieldErrors";
  *  - Champs nommés (input name="…") : `useFieldErrorsDom` s'en charge pour tout formulaire, sans toucher aux champs.
  *  - Champs d'un éditeur répétable (menu, grille, liste) : l'éditeur lit `useFieldError(chemin)` et affiche `<FieldErrorText>` sous le champ de CETTE ligne.
  */
-export const ERROR_BORDER = "border-red-500";
+import { ERROR_BORDER } from "./errorBorder";
 const ICON = "⚠";
 
 type Ctx = { errors: FieldErrorMap; clear: (path: string) => void };

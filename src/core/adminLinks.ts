@@ -102,6 +102,8 @@ export const MODULES_HREF = "/admin/modules";
 export const EXTENSIONS_ADD_HREF = `${EXTENSIONS_HREF}/add`;
 export const EXTENSIONS_ADD_DETAILS_HREF = `${EXTENSIONS_ADD_HREF}/details`;
 export const EXTENSIONS_UPDATES_HREF = `${EXTENSIONS_HREF}/updates`;
+/** (0.47.0) Personal catalogues: repositories of the owner (maybe private) that offer their own extensions. */
+export const PERSONAL_HREF = `${EXTENSIONS_HREF}/personal`;
 export const ASSISTANTS_HREF = "/admin/assistants";
 
 // ── Old addresses that redirect to their new place (the route files stay: see legacyExtensionsTarget, legacyAssistantsTarget) ──

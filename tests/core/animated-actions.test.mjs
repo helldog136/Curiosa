@@ -71,8 +71,8 @@ test("textes : mêmes clés en français et en anglais pour les boutons animés"
     const all = Object.keys(dict);
     const at = all.indexOf(keys[0]);
     assert.deepEqual(all.slice(at, at + keys.length), keys, "nouvelles clés groupées, dans le même ordre");
-    // (0.23.0) 1500: the overlay releases of 0.20.0 to 0.25.0 added about 150 keys after these; the point is "near the end", not an exact count.
-    assert.ok(at >= all.length - 1500, "vers la fin du fichier (avant les clés de thème et de couleurs)");
+    // (0.23.0) 1500: the overlay releases of 0.20.0 to 0.25.0 added about 150 keys after these; the point is "near the end", not an exact count (0.47.0: 1600, personal catalogues added about 60 keys).
+    assert.ok(at >= all.length - 1600, "vers la fin du fichier (avant les clés de thème et de couleurs)");
   }
 });
 

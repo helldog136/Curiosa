@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { HelpBelow, HelpTip } from "./HelpTip";
-import { FieldErrorText, ERROR_BORDER } from "./FieldErrors";
+import { FieldErrorText } from "./FieldErrors";
+import { ERROR_BORDER } from "./errorBorder";
 import { isLongHelp } from "./helpRule";
 import { DURATION_UNITS, describeDuration, durationUnits, joinDuration, splitDuration, type DurationUnit } from "@/core/adminkit/values";
 import { ui } from "./ui";
