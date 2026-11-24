@@ -436,6 +436,41 @@ export type InstalledSkin = {
   previous?: { version: string };
 };
 
+/**
+ * (core 0.48.0) Relecture d'un skin installé, mémorisée sur ce qu'il y a sur le disque : la liste de ses fichiers avec taille et date de modification.
+ * Le contrôle d'un skin à fichiers de motifs coûte jusqu'à quelques centaines de millisecondes ; les pages d'administration et les outils MCP le demandaient à chaque appel.
+ * Un fichier ajouté, retiré, modifié (taille ou date) ou une autre version du cœur relit tout : l'altération sur disque reste détectée.
+ */
+const readMemo = new Map<string, { sig: string; value: SkinValidation }>();
+function folderSignature(dir: string): string {
+  const parts: string[] = [];
+  const walk = (d: string, rel: string, depth: number) => {
+    let names: string[] = [];
+    try { names = fs.readdirSync(d).sort(); } catch { return; }
+    for (const n of names) {
+      if (parts.length > 4000) return;
+      try {
+        const st = fs.statSync(path.join(d, n));
+        if (st.isDirectory()) { if (depth < 6) walk(path.join(d, n), `${rel}${n}/`, depth + 1); } else parts.push(`${rel}${n}:${st.size}:${Math.round(st.mtimeMs)}`);
+      } catch { parts.push(`${rel}${n}:?`); }
+    }
+  };
+  walk(dir, "", 0);
+  return parts.join("|");
+}
+function readInstalledFolder(id: string, version: string, moduleParts?: Readonly<Record<string, readonly string[]>>): SkinValidation {
+  const dir = skinDir(id, version);
+  const key = `${dir}:${getCoreVersion()}:${moduleParts ? partsSignature(moduleParts) || "none" : "any"}`;
+  const sig = folderSignature(dir);
+  const hit = readMemo.get(key);
+  if (hit && hit.sig === sig) return hit.value;
+  const value = validateSkinFolder(dir, { coreVersion: getCoreVersion(), expectId: id, moduleParts, reading: true });
+  readMemo.set(key, { sig, value });
+  if (readMemo.size > 50) readMemo.delete(readMemo.keys().next().value!);
+  return value;
+}
+onSkinInvalidate(() => readMemo.clear());
+
 export async function installed(): Promise<InstalledSkin[]> {
   const rows = await readRows();
   const active = await readActiveSetting();
@@ -447,7 +482,7 @@ export async function installed(): Promise<InstalledSkin[]> {
       out.push({ ...base, name: fallbackName, description: { fr: "", en: "" }, modes: [], tags: [], status: "missing", problems: [makeIssue("skin-files-missing")], previews: [] });
       continue;
     }
-    const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, reading: true });
+    const v = readInstalledFolder(row.id, row.version);
     const m = v.manifest;
     const modified = v.ok && v.fingerprint !== row.fingerprint;
     out.push({
@@ -485,7 +520,7 @@ export async function loadInstalledSkin(id: string, opts: { now?: number; module
   const now = opts.now ?? Date.now();
   const hit = loadMemo.get(key);
   if (hit && now - hit.at < LOAD_TTL) return hit.value;
-  const v = validateSkinFolder(skinDir(row.id, row.version), { coreVersion: getCoreVersion(), expectId: row.id, moduleParts: opts.moduleParts, reading: true });
+  const v = readInstalledFolder(row.id, row.version, opts.moduleParts);
   let value: LoadedSkin;
   if (!v.ok || !v.manifest || !v.tokens) value = { ok: false, id, issues: v.issues };
   else if (v.fingerprint !== row.fingerprint) value = { ok: false, id, issues: [makeIssue("skin-modified")] };

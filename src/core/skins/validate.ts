@@ -531,7 +531,7 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     let rawPattern: unknown;
     try { rawPattern = JSON.parse(read(a.file).toString("utf8").replace(/^\uFEFF/, "")); } catch { issues.push(patternUnreadable(a.file)); continue; }
     const c = checkPattern(rawPattern, { bytes: size });
-    issues.push(...patternFileIssues(a.file, c, size, PATTERN.fileBytes).slice(0, 6));
+    issues.push(...patternFileIssues(a.file, c, size, PATTERN.fileBytes));
     const info = patternInfoOf(c);
     if (info) patternInfo.set(a.file, info);
     if (c.ok && c.graph) graphs.set(a.file, c.graph);

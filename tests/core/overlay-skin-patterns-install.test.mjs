@@ -60,3 +60,14 @@ test("a pattern file is never served by the skin file route", async () => {
   assert.equal((await add(patternSkin("slate-test"))).ok, true);
   for (const dir of ["patterns", "images", "fonts"]) assert.equal(Se.resolveSkinAsset("slate-test", "1.0.0", dir, "wide.json"), null, dir);
 });
+
+test("the installed list reuses the check while the folder is unchanged, and still sees a file altered on disk (no cache clearing needed)", async () => {
+  assert.equal((await add(patternSkin("slate-test"))).ok, true);
+  const first = (await S.installed()).find((s) => s.id === "slate-test");
+  assert.equal(first.status, "ok");
+  const t0 = performance.now(); for (let i = 0; i < 20; i++) await S.installed();
+  assert.ok(performance.now() - t0 < 2000, "twenty reads of an unchanged folder stay cheap");
+  const file = path.join(db.dir, "skins/slate-test/1.0.0/patterns/wide.json");
+  fs.writeFileSync(file, JSON.stringify({ ...LT, cells: LT.cells.slice(0, 2) }));
+  assert.notEqual((await S.installed()).find((s) => s.id === "slate-test").status, "ok", "an altered file is seen on the next read");
+});
