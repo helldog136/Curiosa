@@ -15,7 +15,7 @@
 import { PATTERN } from "./spec";
 import { labelPoint, normalisePattern, pointInsideDistance, signedArea, type PatternGraph, type Pt } from "./patternGraph";
 
-export type PatternCode = "pattern-invalid" | "pattern-too-large" | "pattern-cells" | "pattern-cells-cap" | "pattern-polygon" | "pattern-angle" | "pattern-overlap" | "pattern-coverage" | "pattern-contract-newer" | "pattern-ignored";
+export type PatternCode = "pattern-invalid" | "pattern-too-large" | "pattern-cells" | "pattern-cells-cap" | "pattern-polygon" | "pattern-angle" | "pattern-overlap" | "pattern-coverage" | "pattern-contract-newer" | "pattern-ignored" | "pattern-loop";
 export type PatternIssue = { code: PatternCode; path: string; severity: "error" | "warning" };
 /** A checked pattern: pieces counter-clockwise, numbers rounded to 2 decimals and clamped to the domain, only whitelisted keys. */
 export type CleanPattern = { patternContract: number; domain: [number, number]; cells: { p: Pt[]; tone: number; rank: number | null }[] };
@@ -42,8 +42,14 @@ function crosses(a: Pt, b: Pt, c: Pt, d: Pt): boolean {
 
 export function checkPattern(raw: unknown, opts: { bytes?: number } = {}): PatternCheck {
   const issues: PatternIssue[] = [];
-  const add = (code: PatternCode, path: string, severity: "error" | "warning" = "error") => { if (issues.length < 40) issues.push({ code, path: path.slice(0, 80), severity }); };
-  const fail = (): PatternCheck => ({ ok: false, pattern: null, graph: null, issues });
+  // at most 40 findings, but a warning never takes the place of an error: a full list gives its last warning's room to an error, and errors are listed first
+  const add = (code: PatternCode, path: string, severity: "error" | "warning" = "error") => {
+    const item: PatternIssue = { code, path: path.slice(0, 80), severity };
+    if (issues.length < 40) { issues.push(item); return; }
+    if (severity === "error") { const w = issues.map((i) => i.severity).lastIndexOf("warning"); if (w >= 0) issues.splice(w, 1, item); }
+  };
+  const errorsFirst = () => { issues.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "error" ? -1 : 1)); };
+  const fail = (): PatternCheck => { errorsFirst(); return { ok: false, pattern: null, graph: null, issues }; };
   if (typeof opts.bytes === "number" && opts.bytes > PATTERN.fileBytes) { add("pattern-too-large", "file"); return fail(); }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) { add("pattern-invalid", "shape"); return fail(); }
   const r = raw as Record<string, unknown>;
@@ -128,7 +134,12 @@ export function checkPattern(raw: unknown, opts: { bytes?: number } = {}): Patte
   const pattern: CleanPattern = { patternContract: c as number, domain: [W, H], cells };
   const norm = normalisePattern([W, H], cells);
   if (!norm.ok) { add(norm.reason === "overlap" ? "pattern-overlap" : "pattern-polygon", `normalise.${norm.reason}`); return fail(); }
-  return { ok: true, pattern, graph: norm.graph, issues };
+  // the engine draws a graph only within its own bounds (spec.ts PATTERN, graphOk): refuse here what it would silently replace by the simple mosaic
+  const g = norm.graph;
+  if (g.v.length > PATTERN.maxVertices || g.edges.length > PATTERN.maxEdges) { add("pattern-loop", "graph.size"); return fail(); }
+  for (let i = 0; i < g.cells.length; i++) if (g.cells[i]!.loop.length > PATTERN.maxLoop) { add("pattern-loop", `cells.${i}`); return fail(); }
+  errorsFirst();
+  return { ok: true, pattern, graph: g, issues };
 }
 
 /** What a recipe needs to know about each pattern file it names (the caller read and checked the files): its domain and its pieces, or that it is written for a newer contract. */

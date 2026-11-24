@@ -7,7 +7,7 @@
  * path where it is, so an author fixes it at once; a contract NEWER than this core's is not an error: the animation is switched off (`recipe: null`) and the
  * basic rendering applies, the rest of the skin installs as usual.
  */
-import { ANIMATE_CONTRACT, EFFECTS, GENRES, MOTION, PATTERN, PATTERN_PATH_RE, PRIMITIVES, RECIPE_LIMITS, type ParamSpec } from "./spec";
+import { ANIMATE_CONTRACT, EFFECTS, GENRES, MOTION, PATTERN, PATTERN_PATH_RE, PRIMITIVES, RECIPE_LIMITS, SCENE_CONTRACT, type ParamSpec } from "./spec";
 import type { PatternFileInfo } from "./pattern";
 
 /**
@@ -43,20 +43,23 @@ export const contrastRatio = (a: string, b: string): number => { const x = lum(a
  */
 export function checkAnimation(raw: unknown, patterns: ReadonlyMap<string, PatternFileInfo> = new Map()): RecipeCheck {
   const issues: RecipeIssue[] = [];
-  const err = (code: RecipeIssue["code"], path: string) => { if (issues.length < 40) issues.push({ code, path: path.slice(0, 80), severity: "error" }); };
+  // at most 40 findings, but a warning never takes the place of an error: a full list gives its last warning's room to an error, and errors are listed first
+  const room = (item: RecipeIssue) => { if (issues.length < 40) { issues.push(item); return; } if (item.severity === "error") { const w = issues.map((i) => i.severity).lastIndexOf("warning"); if (w >= 0) issues.splice(w, 1, item); } };
+  const err = (code: RecipeIssue["code"], path: string) => room({ code, path: path.slice(0, 80), severity: "error" });
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { ok: false, recipe: null, issues: [{ code: "shape", path: "animation.json", severity: "error" }] };
   const r = raw as Record<string, unknown>;
   const c = r.animateContract as number;
-  if (!Number.isInteger(c) || c < 1) return { ok: false, recipe: null, issues: [{ code: "contract", path: "animateContract", severity: "error" }] };
+  // 3 is the number of the scene contract (scene.json), never a recipe's: refused, so a scene-style number cannot switch an animation on by accident
+  if (!Number.isInteger(c) || c < 1 || c === SCENE_CONTRACT) return { ok: false, recipe: null, issues: [{ code: "contract", path: "animateContract", severity: "error" }] };
   const minC = r.animateMinContract === undefined ? c : r.animateMinContract;
-  if (!Number.isInteger(minC) || (minC as number) < 1 || (minC as number) > c) return { ok: false, recipe: null, issues: [{ code: "contract", path: "animateMinContract", severity: "error" }] };
+  if (!Number.isInteger(minC) || (minC as number) < 1 || (minC as number) > c || minC === SCENE_CONTRACT) return { ok: false, recipe: null, issues: [{ code: "contract", path: "animateMinContract", severity: "error" }] };
   if ((minC as number) > ANIMATE_CONTRACT) return { ok: true, recipe: null, newer: true, issues: [{ code: "contract-newer", path: "animateContract", severity: "warning" }] };
   /** Written for a later contract than ours: whatever is outside what we know is skipped with a warning, even a value out of its bounds. */
   const ahead = c > ANIMATE_CONTRACT, tolerant = c >= 2;
   if (ahead) issues.push({ code: "contract-ahead", path: "animateContract", severity: "warning" });
   for (const k of Object.keys(r)) if (!TOP_KEYS.has(k) || (k === "motion" && c < 2) || (k === "animateMinContract" && c < 2) || (k === "patterns" && c < 4)) issues.push({ code: "shape", path: k, severity: "warning" });
   /** A refusal in a strict reading, a warning when tolerant (the thing is skipped). */
-  const soft = (code: RecipeIssue["code"], path: string, tol = tolerant) => { if (issues.length < 40) issues.push({ code, path: path.slice(0, 80), severity: tol ? "warning" : "error" }); };
+  const soft = (code: RecipeIssue["code"], path: string, tol = tolerant) => room({ code, path: path.slice(0, 80), severity: tol ? "warning" : "error" });
 
   // colours of the recipe
   const colors: Record<string, string> = {};
@@ -176,6 +179,7 @@ export function checkAnimation(raw: unknown, patterns: ReadonlyMap<string, Patte
       }
     } else err("motion-shape", "motion");
   }
+  issues.sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "error" ? -1 : 1));   // errors first: the caller shows the first few
   const ok = !issues.some((i) => i.severity === "error");
   return { ok, recipe: ok ? { animateContract: Math.min(c, ANIMATE_CONTRACT), colors, genres, ...(r.effects ? { effects: r.effects } : {}), ...(motion ? { motion } : {}), ...(Object.keys(patternTable).length ? { patterns: patternTable } : {}) } : null, issues };
 }

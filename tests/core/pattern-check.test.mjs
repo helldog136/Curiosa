@@ -8,6 +8,10 @@ import fs from "node:fs";
 const PC = await import("@/core/animate/pattern");
 const RC = await import("@/core/animate/recipe");
 const S = await import("@/core/animate/spec");
+const Kit = await import("@/core/animate/kit");
+const ENGINE = (() => { const win = {}; new Function("window", Kit.animateScript())(win); return win.CuriosaAnimate; })();
+// what the engine really draws for a graph: one unlit pane per piece when it trusts the graph (its own bounds check), the simple mosaic otherwise
+const drawsPieces = (graph) => ENGINE.frame({ genre: "gauge", value: 100, target: 100 }, { animateContract: 4, genres: { gauge: { body: { draw: "mosaic", pattern: "file", source: "p", seed: 1 } } }, patterns: { p: [graph] } }, 1_800_000_000_000, { w: 400, h: 300 }, { quality: "light" }).ops.filter((o) => o.k === "poly" && o.L === 0).length === graph.cells.length;
 const LT = JSON.parse(fs.readFileSync("tests/fixtures/animate/pattern-lt.json", "utf8"));
 const codes = (r, sev) => r.issues.filter((i) => !sev || i.severity === sev).map((i) => i.code);
 const mk = (cells, domain = [100, 100], extra = {}) => ({ patternContract: 1, domain, cells, ...extra });
@@ -130,7 +134,7 @@ test("fuzz: whatever the input, the checker never throws, always answers in its 
   const WEIRD = [NaN, Infinity, -Infinity, 1e308, -1e308, 0, -0, 1e-300, "7", null, undefined, true, [], {}, [1], [1, 2, 3], () => 1, 2 ** 53, -1, 0.5];
   const num = () => (rnd() < 0.15 ? pick(WEIRD) : rnd() < 0.5 ? Math.round(rnd() * 100 * 100) / 100 : rnd() * 120 - 10);
   const cell = () => rnd() < 0.1 ? pick(WEIRD) : ({ p: rnd() < 0.05 ? pick(WEIRD) : Array.from({ length: Math.floor(rnd() * 15) }, () => (rnd() < 0.05 ? pick(WEIRD) : [num(), num()])), tone: rnd() < 0.2 ? pick(WEIRD) : rnd(), ...(rnd() < 0.3 ? { rank: num() } : {}), ...(rnd() < 0.1 ? { evil: "<script>" } : {}) });
-  const VOCAB = new Set(["pattern-invalid", "pattern-too-large", "pattern-cells", "pattern-cells-cap", "pattern-polygon", "pattern-angle", "pattern-overlap", "pattern-coverage", "pattern-contract-newer", "pattern-ignored"]);
+  const VOCAB = new Set(["pattern-invalid", "pattern-too-large", "pattern-cells", "pattern-cells-cap", "pattern-polygon", "pattern-angle", "pattern-overlap", "pattern-coverage", "pattern-contract-newer", "pattern-ignored", "pattern-loop"]);
   // half of the inputs start from a valid tiling and are mutated a little, so that the accepted branch is exercised as much as the refused one
   const tiling = () => { const n = 1 + Math.floor(rnd() * 5), m = 1 + Math.floor(rnd() * 5), cells = []; for (let i = 0; i < n; i++) for (let j = 0; j < m; j++) cells.push({ p: [[i * (100 / n), j * (100 / m)], [(i + 1) * (100 / n), j * (100 / m)], [(i + 1) * (100 / n), (j + 1) * (100 / m)], [i * (100 / n), (j + 1) * (100 / m)]].map((q) => q.map((x) => Math.round(x * 100) / 100)), tone: rnd(), ...(rnd() < 0.3 ? { rank: i * m + j } : {}) }); if (rnd() < 0.4) { const c = pick(cells); const k = Math.floor(rnd() * 4); c.p[k] = [num(), num()]; } if (rnd() < 0.2) cells.push(cell()); return { patternContract: 1, domain: [100, 100], cells }; };
   let accepted = 0;
@@ -144,6 +148,7 @@ test("fuzz: whatever the input, the checker never throws, always answers in its 
     if (r.ok && r.pattern) {
       accepted++;
       assert.ok(r.graph);
+      if (accepted <= 150) assert.ok(drawsPieces(r.graph), "a pattern the checker accepts is a pattern the engine draws");
       for (const c of r.pattern.cells) { assert.ok(c.p.length >= 3 && c.p.length <= 12); for (const q of c.p) { assert.ok(q[0] >= 0 && q[0] <= r.pattern.domain[0] && q[1] >= 0 && q[1] <= r.pattern.domain[1]); assert.ok(Number.isFinite(q[0]) && Number.isFinite(q[1])); } assert.ok(c.tone >= 0 && c.tone <= 1); }
     } else assert.equal(r.graph, null);
   }
@@ -223,4 +228,36 @@ test("the skin issues: every checker finding becomes a catalogue message in both
   assert.ok(mapped.some((i) => i.code === "patterns-shape"));
   assert.equal(PI.recipePatternIssue({ code: "param", path: "x", severity: "error" }), null);
   assert.equal(PI.patternUnreadable("patterns/a.json").code, "pattern-unreadable");
+});
+
+test("a piece whose side is cut by dozens of neighbours is refused (the engine would draw the simple mosaic): the checker and the engine share the bound", () => {
+  const n = 70, row = Array.from({ length: n }, (_, i) => sq(Math.round((i * 200 * 100) / n) / 100, 50, i === n - 1 ? 200 : Math.round(((i + 1) * 200 * 100) / n) / 100, 100));
+  const raw = mk([sq(0, 0, 200, 50), ...row], [200, 100]);
+  const r = PC.checkPattern(raw);
+  assert.equal(r.ok, false); assert.deepEqual(r.issues.map((i) => i.code), ["pattern-loop"]);
+  // 40 neighbours stay within the bound, and the engine does draw them
+  const m = 40, few = Array.from({ length: m }, (_, i) => sq(Math.round((i * 200 * 100) / m) / 100, 50, i === m - 1 ? 200 : Math.round(((i + 1) * 200 * 100) / m) / 100, 100));
+  const ok = PC.checkPattern(mk([sq(0, 0, 200, 50), ...few], [200, 100]));
+  assert.equal(ok.ok, true, JSON.stringify(ok.issues)); assert.ok(drawsPieces(ok.graph));
+  // the same graph, forced past the bound, is what the engine refuses: the two limits are the same number
+  const big = PC.checkPattern(raw, {}); assert.equal(big.graph, null);
+});
+
+test("errors are never hidden by warnings: 60 unknown keys do not push an overlap error out, in the file and in the recipe", () => {
+  const junk = Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`junk${i}`, i]));
+  const bad = { ...mk([sq(0, 0, 60, 100), sq(40, 0, 100, 100)]), ...junk };
+  const r = PC.checkPattern(bad);
+  assert.equal(r.ok, false); assert.equal(r.issues[0].code, "pattern-overlap"); assert.equal(r.issues[0].severity, "error");
+  assert.ok(r.issues.length <= 40);
+  const rec = RC.checkAnimation({ animateContract: 3, ...Object.fromEntries(Array.from({ length: 60 }, (_, i) => [`x${i}`, 1])), genres: { gauge: { body: { draw: "bar" } } } });
+  assert.equal(rec.ok, false); assert.equal(rec.issues[0].severity, "error");
+});
+
+test("animateContract 3 is the scene contract, never a recipe's: refused, so a scene-style number cannot switch an animation on", () => {
+  const body = { genres: { gauge: { body: { draw: "bar" } } } };
+  assert.equal(RC.checkAnimation({ animateContract: 3, ...body }).ok, false);
+  assert.deepEqual(RC.checkAnimation({ animateContract: 3, ...body }).issues.map((i) => i.code), ["contract"]);
+  assert.equal(RC.checkAnimation({ animateContract: 4, animateMinContract: 3, ...body }).ok, false);
+  assert.equal(RC.checkAnimation({ animateContract: 2, ...body }).ok, true);
+  assert.equal(RC.checkAnimation({ animateContract: 4, ...body }).ok, true);
 });

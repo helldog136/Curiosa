@@ -13,9 +13,11 @@ export function patternUnreadable(file: string): SkinIssue { return makeIssue("p
 export function patternMissing(file: string): SkinIssue { return makeIssue("pattern-missing", { file }); }
 
 /** What the checker found in one pattern file, as skin issues (errors stay errors, warnings stay warnings). */
-export function patternFileIssues(file: string, check: PatternCheck, bytes: number, maxBytes: number): SkinIssue[] {
+export function patternFileIssues(file: string, check: PatternCheck, bytes: number, maxBytes: number, limit = 8): SkinIssue[] {
   const out: SkinIssue[] = [];
-  for (const i of check.issues) {
+  // errors first, then the cap: a run of warnings never hides an error
+  const ordered = [...check.issues].sort((a, b) => (a.severity === b.severity ? 0 : a.severity === "error" ? -1 : 1));
+  for (const i of ordered) {
     const detail = i.path;
     switch (i.code) {
       case "pattern-too-large": out.push(makeIssue("pattern-too-large", { file, size: KB(bytes), max: KB(maxBytes) })); break;
@@ -28,9 +30,10 @@ export function patternFileIssues(file: string, check: PatternCheck, bytes: numb
       case "pattern-coverage": out.push(makeIssue("pattern-coverage", { file, detail })); break;
       case "pattern-contract-newer": out.push(makeIssue("pattern-contract-newer", { file })); break;
       case "pattern-ignored": out.push(makeIssue("pattern-ignored", { file, detail })); break;
+      case "pattern-loop": out.push(makeIssue("pattern-loop", { file, detail })); break;
     }
   }
-  return out;
+  return out.slice(0, limit);
 }
 
 /**

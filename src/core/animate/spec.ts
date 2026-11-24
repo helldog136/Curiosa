@@ -23,7 +23,7 @@
  * per-layer `spring` / `duration` parameters, and the TOLERANT READER (a contract-2 recipe may carry words this core does not know yet: they are skipped with a
  * warning, never an error). A contract-1 recipe keeps its strict reading and its exact curves.
  * Contract 4 (core 0.48.0) is ADDITIVE over 2 again: the top-level `patterns` table and the mosaic's `pattern: "file"` with its `source` (the skin's own pieces, see PATTERN).
- * Contract 3 is skipped on purpose: it is the number of the SCENE contract (SCENE_CONTRACT, scene.json), which recipes and scenes would otherwise share confusingly.
+ * Contract 3 does not exist for a recipe: it is the number of the SCENE contract (SCENE_CONTRACT, scene.json), so `checkAnimation` refuses `animateContract: 3` (and `animateMinContract: 3`) with the `contract` code instead of reading it as a recipe.
  * An older core reads a contract-4 recipe as "written for a later contract" (tolerant: the mosaic falls back to voronoi, unless the skin says `animateMinContract: 4`).
  */
 export const ANIMATE_CONTRACT = 4;
@@ -263,7 +263,7 @@ export const SCENE = {
  */
 export const PATTERN = {
   contract: 1,
-  /** Pieces drawn per element: above this a pattern is not drawn (the voronoi mosaic stands in). To be confirmed by the bench (scripts/visual/animate-bench.mjs). */
+  /** Pieces drawn per element: above this a pattern is not drawn (the voronoi mosaic stands in). Set by the bench scripts/visual/pattern-bench.mjs (docs/OVERLAY-ANIMATIONS.md section 11): at 120 pieces the p95 of a frame is 10 to 19 ms in headless Chromium, at 160 up to 22 ms. */
   maxPieces: 120,
   /** Bounds the engine applies to a normalised graph it is given (vertices and sub-edges after the T-junction split, vertices of a piece). */
   maxVertices: 4000, maxEdges: 6000, maxLoop: 64,
