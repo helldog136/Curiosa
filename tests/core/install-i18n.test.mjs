@@ -410,9 +410,10 @@ test("installation complète : les fichiers écrits et les sorties machine sont 
   assert.match(b.stdout, /sudo sed -n 's\/\^SETUP_TOKEN=\/\/p' \/var\/www\/monsite\/\.env \| tr -d '"'/);
   const tok = /^SETUP_TOKEN="(.+)"$/m.exec(fb["/var/www/monsite/.env"])[1];
   assert.ok(!b.out.includes(tok), "le code d'installation n'apparaît dans aucune sortie");
-  // en anglais, la page finale prévient que l'assistant s'ouvre en français ; en français, rien de plus qu'avant
-  assert.match(b.stdout, /opens in French by default/);
-  assert.doesNotMatch(a.stdout, /s'ouvre en français/);
+  // the setup wizard opens in the browser's language (see tests/core/module-i18n.test.mjs): the final page never claims it opens in French
+  assert.doesNotMatch(b.stdout, /opens in French|by default: pick your language/);
+  assert.doesNotMatch(a.stdout, /s'ouvre en français|par défaut : choisissez votre langue/);
+  assert.ok(!/WIZARD_LANG|f\.wizard_lang/.test(SRC), "no stale hint about the wizard language in the script");
   assert.match(b.stdout, /5\/5  Done/); assert.match(a.stdout, /5\/5  Terminé/);
 });
 

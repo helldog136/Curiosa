@@ -86,7 +86,7 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
   const keptSamples = offeredSamples.filter((ref) => samples.includes(ref));
 
   // The page language follows the wizard language (screen readers, hyphenation), and the action buttons speak it too.
-  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  useEffect(() => { document.documentElement.lang = lang; document.title = ui18n["setup.title"] ?? document.title; }, [lang, ui18n]);
   const progressLabels = Object.fromEntries(Object.entries(ui18n).filter(([k]) => k.startsWith("progress.")).map(([k, v]) => [k.slice(9), v]));
 
   const section = (id: (typeof STEPS)[number]) => ({ "data-step": id, hidden: current !== id, className: "space-y-4" });

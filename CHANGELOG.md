@@ -20,6 +20,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Corrections
 
+- **L'installation ne dit plus que l'assistant s'ouvre en français.** L'assistant de première installation s'ouvre dans la langue de votre navigateur (français ou anglais, sinon anglais) ; la page finale du script d'installation affichait à tort le contraire. Le titre de l'onglet suit lui aussi la langue de l'assistant.
+- **(English) Installation no longer says the setup assistant opens in French.** The first-installation assistant opens in your browser's language (French or English, otherwise English); the final page of the install script wrongly said the opposite. The tab title follows the assistant's language too.
 - **La personne propriétaire d'un accès IA ne change plus jamais.** Elle est fixée à la création, sans transfert possible. Si elle disparaît (compte supprimé, sauvegarde restaurée sans elle), son accès est retiré et ses demandes en attente expirent.
 - **(English) The owner of an AI access never changes.** It is set at creation, with no transfer. If that person disappears (account deleted, backup restored without them), the access is removed and its pending requests expire.
 
