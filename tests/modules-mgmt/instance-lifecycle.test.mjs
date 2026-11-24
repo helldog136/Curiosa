@@ -65,8 +65,8 @@ test("instances are created and erased through the lifecycle module only", () =>
       if (/\bcreateInstance\(/.test(line) || /moduleInstance\.delete(Many)?\(/.test(line)) calls.push(`${file}:${i + 1}`);
     });
   }
-  // Backup restore (stage.ts) wipes the whole table by design; retired.ts puts a retired instance back with its original ids.
-  assert.deepEqual(calls.filter((c) => !/backup[\\/]conversion[\\/]stage\.ts/.test(c)), []);
+  // Backup restore (stage.ts) wipes the whole table by design; retired.ts keeps its own strict `delete` (it must fail if the instance is already gone, so the snapshot rolls back).
+  assert.deepEqual(calls.filter((c) => !/backup[\\/]conversion[\\/]stage\.ts|modules[\\/]retired\.ts/.test(c)), []);
 });
 
 test("addInstance: creates with default names and the book-keeping settings; the creation hook runs only when afterCommit is called", async () => {
