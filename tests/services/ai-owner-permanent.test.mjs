@@ -237,7 +237,7 @@ test("texts: EN and FR say the owner is permanent; the removed states are gone f
   assert.deepEqual(Object.keys(fr).filter((k) => !(k in en)), []);
   assert.equal(Object.keys(en).at(-1), "settings.contrast.accent2");
   const log = fs.readFileSync("CHANGELOG.md", "utf8");
-  const next = log.slice(log.indexOf("## Prochaine version"), log.indexOf("## 0.47.0"));
+  const next = log.slice(log.search(/^## (?:Prochaine version|0\.48\.0)/m), log.indexOf("## 0.47.0")); // the unreleased notes, then the 0.48.0 section once the release is prepared
   assert.match(next, /ne change plus jamais/);
   assert.match(next, /never changes/);
   for (const f of ["docs/PERSONAL-AI.md", "docs/MAINTENANCE-IA.md"]) {
