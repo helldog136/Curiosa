@@ -1,4 +1,6 @@
-# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 2; scenes, contract 5)
+# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 4; scenes, contract 5)
+
+> Core 0.48.0 lets a mosaic use the skin's **own pieces** (section 11, `animateContract` 4): a pattern file of numbers that says where each pane of glass is. The recipes of sections 1 to 10 keep working exactly as they are.
 
 > Core 0.40.0 adds a second way to skin these bars: a **scene** (section 10) that places the skin's own pictures on the abstract bar. The recipes of sections 1 to 9 keep working exactly as they are.
 
@@ -559,3 +561,77 @@ PNG, WebP (lossless or lossy) and **sanitised SVG** only. Not allowed: GIF, APNG
 
 - **OBS**: `createImageBitmap` and `fetch` exist in the Chromium used for the tests (153); the CEF of the OBS you run is **not verified**. If either is missing, the skin shows its basic look.
 - **One catalogue entry per skin id**: the catalogue picks no version by core version (`requires.core` and `skinContract` mark the entry incompatible on an older core, `minCore` refuses the install). A skin that must keep working on older cores needs another id, or a `ref` the owner chooses.
+
+## 11. Patterns: the skin's own pieces for a mosaic (animateContract 4, core 0.48.0)
+
+A `mosaic` normally cuts its window with seeded sites (`voronoi`, `grid`, `bricks`). With `pattern: "file"` the **skin says where each pane is**: it ships a pattern file, a list of polygons drawn by hand in its own units, and the engine lights them, leads them and glows them like any other pane. L-shaped, T-shaped and long straight leads become possible; the window is no longer a cut of a convex shape.
+
+**The principle: presentation only, never data.** A skin gets more power over HOW an element is drawn, never over DATA. A pattern file carries **only numbers** (the geometry of the pieces and a tone each); it is never served as a file, contains no code and no address, and cannot read or change anything of the site (not a value, not a count, not a text). The core reads it, checks it, welds it into a graph of numbers (`src/core/animate/patternGraph.ts`) and the engine re-checks that graph (`SPEC.pattern`, the same table the installer used) before drawing. A pattern that does not pass is not drawn: the voronoi mosaic stands in. The same rule holds for every future way a skin gets more control: numbers and names from closed tables, never a script, a URL or a way to reach data.
+
+### In the recipe (`animation.json`, `animateContract: 4`)
+
+```json
+{
+  "animateContract": 4,
+  "patterns": {
+    "arch": [ { "file": "patterns/arch-wide.json" }, { "file": "patterns/arch-narrow.json" } ]
+  },
+  "genres": { "gauge": { "body": { "draw": "mosaic", "pattern": "file", "source": "arch", "order": "x", "palette": ["#c98c51", "#8a3a1d"] } } }
+}
+```
+
+- `patterns` (top level) is a table `{ name: variant | [variants] }` with at most 12 names and 4 variants per name. A **variant** is `{ "file": "patterns/<name>.json" }` (lower case, one folder, `.json`); every file is declared in `skin.json` (section "Pattern files" of `docs/SKINS.md`). Unknown keys of a variant are warnings.
+- The mosaic's `pattern: "file"` and `source: "<name>"` use an entry of the table. `shape` is **ignored**: the union of the pieces is the window. Everything else (`palette`, `order`, `lead`, `leadWidth`, `irregularity`, `glow`, `thickness`, `seed`…) works as for the other patterns; `cells` and `jitter` do nothing.
+- **Variants** exist for bodies of different shapes (a wide bar, a narrow one): the engine picks the variant whose domain ratio (width over height) is the nearest to the body's, in log scale (the first on a tie), then stretches it to the body box. A warning (`pattern-stretch`) says when two neighbouring variants are so far apart that the body would be stretched by more than 1.4 (or squeezed under 0.7).
+- **Contract negotiation.** Contract 4 is additive over 2 (contract 3 is skipped: it is the scene contract). A core older than 0.48.0 reads a contract-4 recipe as "written for a later contract": the skin installs there too (with a skin of contract 7 it does not, see `docs/SKINS.md`), the mosaic falls back to voronoi, and a skin that cannot do without its pieces says `animateMinContract: 4` (the animation is then off on those cores, the basic rendering applies). In a recipe of contract 2 or lower `source` is an unknown parameter and `pattern: "file"` an error; `patterns` is a warning.
+
+### The pattern file (`patterns/<name>.json`, `patternContract: 1`)
+
+```json
+{
+  "$comment": "free text, ignored",
+  "patternContract": 1,
+  "domain": [120, 60],
+  "cells": [
+    { "p": [[0, 0], [60, 0], [60, 20], [20, 20], [20, 60], [0, 60]], "tone": 0.12 },
+    { "p": [[60, 0], [120, 0], [120, 20], [60, 20]], "tone": 0.8, "rank": 1 }
+  ]
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `patternContract` | `1`. A later number is skipped with a warning (`pattern-contract-newer`), the skin installs. |
+| `domain` | `[width, height]` in the file's own units (never pixels), each from 50 to 20000, width over height from 0.2 to 20. The origin is the top left, `y` goes down. |
+| `cells` | 1 to 160 pieces (the engine draws at most 120: above, a warning `pattern-cells-cap` and the simple pattern applies), 1500 vertices in all. |
+| `cells[].p` | 3 to 12 vertices `[x, y]`, finite numbers inside the domain (a 0.5 % overshoot is clamped), rounded to 2 decimals. Either winding; the core makes it counter-clockwise. A piece may be concave (an L, a T). |
+| `cells[].tone` | 0 to 1: which colour of `palette` the pane takes (and how its details are seeded). |
+| `cells[].rank` | Optional number: the lighting order, art-directed (lowest first). Used only when **every** piece has one; otherwise the order comes from the area centroids and `order`. |
+
+Every unknown key is a warning and is dropped; `$comment` is allowed. The pieces must **tile** (touch along sides, never overlap), and a side may be shared by pieces of different sizes (a T-junction): the core splits the sides there, so a shared lead is drawn once, and a straight lead that runs along several pieces is **one stroke** (bowed once by `irregularity`, not edge by edge).
+
+### What is checked
+
+| Refused (error) | Code |
+|---|---|
+| not an object, an unreadable file, a domain out of bounds, a number that is not finite or is outside the domain, a bad `tone` or `rank` | `pattern-unreadable`, `pattern-invalid` |
+| more than 32 Kb in a file, or more than 96 Kb of patterns in a skin | `pattern-too-large` |
+| no piece, more than 160 pieces, more than 1500 vertices | `pattern-cells` |
+| a piece with fewer than 3 or more than 12 vertices, a repeated vertex, under 0.05 % of the domain, a corner under 3 degrees, a side that crosses another of the same piece, a split that more than quadruples the vertices | `pattern-polygon` |
+| two pieces on top of each other (a crossing, or a vertex, a side middle or an inner point of one strictly inside the other) | `pattern-overlap` |
+| a recipe that names a file that is missing or unusable, or a `source` that is not a name of `patterns` | `pattern-missing`, `pattern-source`, `patterns-shape` |
+
+| Warned only | Code |
+|---|---|
+| a corner under 12 degrees | `pattern-angle` |
+| a window that covers under 97 % of its domain | `pattern-coverage` |
+| more than 120 pieces; a rank on some pieces only; an unknown key | `pattern-cells-cap`, `pattern-ignored` |
+| two variants too far apart in shape | `pattern-stretch` |
+| a pattern written for a later contract | `pattern-contract-newer` |
+
+### At drawing time
+
+- The engine draws **the window as the union of the pieces**; the outline of the biggest outer loop is the silhouette (what a pulse or a ray is cut by, what a `lead` frame follows).
+- **Concave pieces are drawn safely**: the gradient, the mottle, the bubbles and the glow start at the piece's *label point* (the point farthest from its sides, always inside) with its *inradius* instead of the convex centroid and radius, and the mottle, bubbles and streak are cut by the piece's own outline.
+- The geometry is the **same at every effects level and in calm mode**: only the details change, as for the other patterns.
+- A pattern is not drawn when the engine cannot trust it (an unknown `source`, a graph out of bounds, more than 120 pieces): the voronoi mosaic is drawn with the same other parameters, and nothing breaks.
