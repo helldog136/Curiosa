@@ -274,7 +274,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     if (!result?.ok) result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
     if (result.ok) installedNow.push(m.id);
     outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error, ...(result.needsCore ? { needsCore: result.needsCore } : {}) });
-    if (!result.ok) rep.failed.push({ id: `module.${m.id}`, note: "moduleInstall", params: { module: m.id }, path });
+    if (!result.ok) rep.failed.push({ id: `module.${m.id}`, note: result.error === "modules.error.access" ? "moduleAccess" : "moduleInstall", params: { module: m.id }, path });   // a private repository: a backup never holds its access code, so a new server asks for it again
   }
   const undoModules = async () => { for (const id of installedNow) await purgeModule(id).catch(() => {}); };
 

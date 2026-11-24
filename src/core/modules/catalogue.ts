@@ -55,6 +55,8 @@ export type CatalogueEntry = {
    * À ne pas confondre avec `moduleOrigin()` (module installé : catalogue ou dépôt personnel) ni `RecognizedResult.origin` (adresse du dépôt du catalogue).
    */
   origin: "official" | "extra";
+  /** (core 0.47.0) Set when the entry comes from a PERSONAL catalogue (a repository the owner registered, maybe private): its id and friendly name. Then `origin` is "extra". */
+  source?: { id: string; name: string };
 };
 
 /** Entrée du catalogue pour un dépôt reconnu. */
@@ -67,6 +69,7 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews, topics: c.places,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",
+    ...(c.catalogueSource ? { source: c.catalogueSource } : {}),
   };
 }
 
@@ -97,7 +100,7 @@ export async function findCatalogueEntry(id: string, opts: { fetchImpl?: typeof 
 /** D'où vient un module installé ? « catalogue » = listé par le catalogue ; « custom » = dépôt personnel non vérifié. */
 export function moduleOrigin(row: { id: string; source: string; repoUrl: string | null; subdir?: string | null }, market: CatalogueEntry[]): "catalogue" | "custom" {
   const entry = market.find((e) => e.id === row.id);
-  if (!entry) return "custom";
+  if (!entry || entry.source) return "custom";   // a personal catalogue is not "the catalogue": a backup says "custom", so a restore asks and reinstalls from the address (with the access code of the new server)
   if (row.source === "bundled") return "catalogue";   // ligne `bundled` restée d'une très ancienne version, module que le catalogue liste : la sauvegarde la dit « du catalogue », la restauration le réinstalle
   const norm = (u: string | null | undefined) => (u ?? "").replace(/\.git$/, "").replace(/\/$/, "").toLowerCase();
   return norm(entry.repo) === norm(row.repoUrl) && (entry.subdir ?? null) === (row.subdir ?? null) ? "catalogue" : "custom";

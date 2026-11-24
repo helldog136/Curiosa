@@ -19,7 +19,7 @@ import { MAX_REQUESTS_PER_FICHE, rawBase, rawFileUrl, RawError, rawGet, setRawFe
  *      un seul à la fois, effacé dès que les fichiers sont lus.
  * Les mêmes garde-fous que l'installation s'appliquent (hôtes autorisés, https, aucun crochet git). Le texte est NON FIABLE : il n'est affiché que par le rendu Markdown sans HTML brut.
  */
-export type ModulePreview = { manifest: ParsedManifest | null; readme: string | null; truncated: boolean };
+export type ModulePreview = { manifest: ParsedManifest | null; readme: string | null; truncated: boolean; /** (0.47.0) Why module.json could not be used (unreadable JSON, or the first issue of the schema): short, for the personal modules screen. Absent when the file is missing or valid. */ manifestError?: string };
 /** `version` : celle que le catalogue annonce ; avec une étiquette épinglée (`ref`) elle rend la copie sur disque immuable (voir ficheCache.ts). */
 export type PreviewTarget = { kind: "repo"; url: string; ref?: string; subdir?: string; version?: string };
 
@@ -88,9 +88,14 @@ async function gitGate<T>(fn: () => Promise<T>): Promise<T> {
 
 function parse(manifestText: string | null, readmeText: string | null): ModulePreview {
   let manifest: ParsedManifest | null = null;
-  try { const p = manifestText ? parseManifest(JSON.parse(manifestText)) : null; manifest = p?.ok ? p.manifest : null; } catch { /* manifeste illisible : pas d'aperçu des permissions */ }
+  let manifestError: string | undefined;
+  try {
+    const p = manifestText ? parseManifest(JSON.parse(manifestText)) : null;
+    manifest = p?.ok ? p.manifest : null;
+    if (p && !p.ok) manifestError = p.error.slice(0, 200);
+  } catch { manifestError = "module.json is not valid JSON"; /* manifeste illisible : pas d'aperçu des permissions */ }
   const truncated = (readmeText?.length ?? 0) > MAX_README;
-  return { manifest, readme: readmeText === null ? null : readmeText.slice(0, MAX_README), truncated };
+  return { manifest, readme: readmeText === null ? null : readmeText.slice(0, MAX_README), truncated, ...(manifestError ? { manifestError } : {}) };
 }
 const text = (b: Buffer | null, max: number) => (b ? b.toString("utf8").slice(0, max + 1) : null);
 type Reader = (file: string, maxBytes: number) => Promise<Buffer | null>;

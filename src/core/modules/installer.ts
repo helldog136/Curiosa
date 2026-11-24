@@ -281,7 +281,7 @@ export function dirSize(dir: string): number {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
     const full = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) throw new Error("symlinks are not allowed in a module");
+    if (entry.isSymbolicLink()) throw Object.assign(new Error("symlinks are not allowed in a module"), { code: "modules.error.symlink" });
     total += entry.isDirectory() ? dirSize(full) : fs.statSync(full).size;
   }
   return total;
@@ -302,7 +302,7 @@ export function copyModuleFiles(from: string, target: string): void {
   try {
     fs.rmSync(staging, { recursive: true, force: true });
     fs.cpSync(from, staging, { recursive: true, filter: (src) => path.basename(src) !== ".git" && path.basename(src) !== "node_modules" });
-    if (dirSize(staging) > MAX_MODULE_BYTES) throw new Error("size");
+    if (dirSize(staging) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     fs.rmSync(target, { recursive: true, force: true });
     fs.renameSync(staging, target);
   } catch (error) {
@@ -455,6 +455,9 @@ export async function installModule(input: string, opts: {
     if (error instanceof CoreTooOld) return coreRefusal(error);
     if (error instanceof LoadCheckFailed) { await noteBlocked(candidate?.id ?? "?", "", candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
     if (isGitAccessError(error)) return { ok: false, error: "modules.error.access" };
+    // (0.47.0) A refusal that has its own plain sentence (a link inside the module, a module that is too large) is said as such, not as "could not be downloaded".
+    const known = (error as { code?: unknown })?.code;
+    if (known === "modules.error.symlink" || known === "modules.error.size") return { ok: false, error: known };
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
   } finally {

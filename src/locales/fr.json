@@ -894,6 +894,7 @@
   "backup.report.moduleSkipped": "{module} n'a pas été réinstallé (non confirmé). Ses données sont gardées.",
   "backup.report.moduleNeedsCore": "{module} demande la version {core} ou plus. Mettez le site à jour, puis réinstallez-le.",
   "backup.report.moduleInstall": "{module} n'a pas pu être installé.",
+  "backup.report.moduleAccess": "{module} n'a pas pu être installé : son dépôt est privé. Ajoutez son code d'accès, puis installez-le de nouveau.",
   "backup.report.moduleChainInstall": "{module} : l'ancienne version {tag} n'a pas pu être installée.",
   "backup.report.moduleNoRelease": "{module} : aucune version ne convertit la version {from} des données. Mis de côté.",
   "backup.report.moduleStep": "{module} : arrêté à {step} ({error}).",

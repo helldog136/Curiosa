@@ -80,6 +80,7 @@ export const RESTORE_KEYS: readonly string[] = [
   "report.moduleSkipped",
   "report.moduleNeedsCore",
   "report.moduleInstall",
+  "report.moduleAccess",
   "report.moduleChainInstall",
   "report.moduleNoRelease",
   "report.moduleStep",

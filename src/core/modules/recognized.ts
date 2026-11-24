@@ -55,6 +55,8 @@ export type RecognizedItem = {
   places?: string[];
   /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
   catalogueOrigin?: "official" | "extra";
+  /** (core 0.47.0) Set on an entry that comes from a PERSONAL catalogue (a repository the owner registered, possibly private): which one. Always together with `catalogueOrigin: "extra"`. */
+  catalogueSource?: { id: string; name: string };
 };
 
 /** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
@@ -310,6 +312,12 @@ async function readRecognized(opts: RecognizedOptions, key: string): Promise<Rec
       if (res.ok) for (const e of sanitizeEntries(await res.json())) if (!items.some((i) => i.id === e.id)) items.push({ ...e, catalogueOrigin: "extra" });
     } catch { /* index supplémentaire injoignable : on garde le reste */ }
   }
+  // (core 0.47.0) Personal catalogues: the repositories the owner registered. Official ids always win; never throws; never written to the persisted copy above.
+  try {
+    const { personalItems } = await import("./personalCatalogues");
+    const taken = new Set(items.map((i) => i.id));
+    for (const e of await personalItems(taken)) if (!taken.has(e.id)) { taken.add(e.id); items.push(e); }
+  } catch { /* a failing personal catalogue never empties the official one */ }
   const result = { ...base, items: items.slice(0, 300) };
   memo = { at: now(), key, result };
   return result;

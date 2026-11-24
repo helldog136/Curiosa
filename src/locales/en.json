@@ -894,6 +894,7 @@
   "backup.report.moduleSkipped": "{module} was not reinstalled (not confirmed). Its data is kept.",
   "backup.report.moduleNeedsCore": "{module} needs version {core} or later. Update the site, then reinstall it.",
   "backup.report.moduleInstall": "{module} could not be installed.",
+  "backup.report.moduleAccess": "{module} could not be installed: its repository is private. Add its access code, then install it again.",
   "backup.report.moduleChainInstall": "{module}: the older release {tag} could not be installed.",
   "backup.report.moduleNoRelease": "{module}: no release converts data version {from}. Set aside.",
   "backup.report.moduleStep": "{module}: stopped at {step} ({error}).",

@@ -107,10 +107,14 @@ const catalogueInfo = (r: Extract<CatalogueRead, { ok: true }>) => ({
   ...(r.source === "cache" ? { note: "The catalogue could not be refreshed: this is the last copy received, it may be a little old." } : {}),
 });
 
+/** Where an entry comes from, for the assistant: "official", "extra" (unverified index) or "personal" (a repository the owner registered). */
+const originOf = (e: CatalogueEntry): "official" | "extra" | "personal" => (e.source ? "personal" : e.origin === "extra" ? "extra" : "official");
+
 /** Peut-on l'installer ici, et sinon pourquoi (mots simples) ? */
 export function installability(e: CatalogueEntry): { installable: true } | { installable: false; reason: string } {
   if (!e.compatible) return { installable: false, reason: "It was made for another generation of Curiosa modules." };
   if (e.needsNewerCore) return { installable: false, reason: `It needs Curiosa ${e.needsNewerCore} or newer; this site runs ${getCoreVersion()}. Updating Curiosa first would unlock it.` };
+  if (e.source) return { installable: false, reason: `It comes from a personal catalogue (${text(e.source.name, 40)}) that the owner registered: only the owner can install or update it, by hand, in Admin > Extensions > Add an extension. An assistant never does.` };
   if (e.origin === "extra") return { installable: false, reason: "It is not verified by the official catalogue: only the owner can install it, by hand, in Admin > Extensions > Add an extension." };
   return { installable: true };
 }
@@ -157,6 +161,7 @@ export async function catalogList(args: Record<string, unknown>) {
       installed: installed.has(e.id),
       ...(installed.has(e.id) ? { installedVersion: installed.get(e.id) } : {}),
       verified: e.origin !== "extra",
+      origin: originOf(e),
       suggested: e.suggested === true,
       ...can,
       ...(e.platform ? { platform: e.platform } : {}),
@@ -225,7 +230,7 @@ export async function catalogGet(args: Record<string, unknown>, actor?: { name: 
   let manifest: ParsedManifest | null = null;
   let manifestState: "installed" | "read_from_catalogue" | "unavailable" = "unavailable";
   if (row) { manifest = (await getModule(id).catch(() => null))?.manifest ?? null; manifestState = manifest ? "installed" : "unavailable"; }
-  else if (entry) {
+  else if (entry && !entry.source) {   // a personal catalogue may be private: no assistant request ever reads its modules
     const got = await withTimeout(Promise.resolve().then(() => deps.preview(entry)).catch(() => null), deps.catalogTimeoutMs);
     manifest = got.ok ? got.value?.manifest ?? null : null;
     // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé (même garde que l'installation).
@@ -322,6 +327,7 @@ export async function catalogGet(args: Record<string, unknown>, actor?: { name: 
     catalogue: cat.ok ? catalogueInfo(cat) : { source: "unreachable", note: "The catalogue did not answer: this sheet comes from the installed module only." },
     inCatalogue: !!entry,
     verified: entry ? entry.origin !== "extra" : false,
+    ...(entry ? { origin: originOf(entry) } : {}),
     suggested: entry?.suggested === true,
     installed: !!row,
     ...(row ? { installedVersion: row.version, instances: instances.map((i) => ({ key: i.key, ...(i.nickname ? { nickname: text(i.nickname, 40) } : {}) })) } : {}),
@@ -350,7 +356,7 @@ export async function catalogGet(args: Record<string, unknown>, actor?: { name: 
     settingsToPlan: { note: FILLABLE_NOTE, secretsCount: settingsToPlan.filter((s) => "secret" in s).length, fields: settingsToPlan },
     ...(addedTools ? { toolsForYourAssistant: addedTools.tools, toolsForYourAssistantInfo: { note: addedTools.note, ...(addedTools.languageGap ? { languageGap: addedTools.languageGap } : {}), ...(addedTools.sayToTheOwner ? { sayToTheOwner: addedTools.sayToTheOwner } : {}) } } : {}),
     goesWellWith: relatedTo(entry, manifest, id, entries, installedIds, nameOf, candidatesFor),
-    ...(entry?.repo ? { source: { repo: publicRepo(entry.repo), ref: entry.ref ?? null } } : {}),
+    ...(entry?.repo && !entry.source ? { source: { repo: publicRepo(entry.repo), ref: entry.ref ?? null } } : {}),
     next: row
       ? "It is already installed: use maintenance_module_settings to see its settings, maintenance_module_update for a newer version."
       : can.installable
