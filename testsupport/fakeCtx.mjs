@@ -44,6 +44,9 @@ const searchKit = await loadSearchKit();
  *   d'administration : une page, une route, une tâche → `claim` répond `no-person`) ; `by` vaut « u1 » par défaut. `filesQuota` = `{ bytes, files }` (défaut 4 Go / 20 000). Sans la permission
  *   « files » (option `permissions`) : `claim`/`remove` répondent `no-permission` et `ctx.calls.denied` le note. `ctx.calls.files` garde chaque appel `{ op, url, result }` ;
  *   `ctx.dumpFiles()` donne les fichiers encore là `[{ url, bytes, owner }]` (`owner` : « me », une autre instance, ou null), de quoi vérifier qu'un fichier a bien disparu.
+ * - `ctx.api.secrets` (core 0.48.0, permission « secrets »): `set`, `get`, `has`, `state`, `remove`, `names` with the SAME names, bounds (48-character names, 1 to 4096 characters, 20 names) and answers as the core, in memory and unsealed.
+ *   `secrets: { name: value }` pre-fills them; `secretsUnreadable: [name]` makes a name answer "unreadable" (a backup restored on another server). Without the permission (option `permissions`) every call is a refusal and `ctx.calls.denied` notes it.
+ *   `ctx.calls.secrets` keeps `{ op, name }` for each write, never a value. (The core's rate limits are not simulated.)
  * - `ctx.api.files.upload` (core 0.18.0, assistant uploads): `begin`, `chunk`, `finish`, `cancel`. Off (`not-allowed`, like an action that does not declare `uploads: true`)
  *   unless `assistantUploads: { tokenName?, tokenId?, nowMs?: () => number, open?: n }`. The bytes go through the SAME check as the core (`checkAssistantFile`: kind from
  *   the bytes, container probe, sizes, duration), with the same piece size, order, sha256, 30-minute expiry, replay (`already`) and per-access limit (3 open). The PUT
@@ -81,7 +84,7 @@ export function fakeCtx(opts = {}) {
     net: netOverride, netLimits, netBudgetMs = null, choices = {},
     uploads = [], person = { id: "u1", email: "admin@example.test" }, filesQuota = {}, assistantUploads = null,
     logEvents = [], actor: logActor = "module",
-    timezone = "UTC", requires = [], installedModules = {}, caller: serviceCaller,
+    timezone = "UTC", requires = [], installedModules = {}, caller: serviceCaller, secrets: secretSeed = {}, secretsUnreadable = [],
   } = opts;
   // (core 0.48.0) Who the real core hands to a service method: this module, as `{ kind: "module", id, instance, instanceId }`, built like the core does (frozen, no prototype).
   const callerOfThisModule = Object.freeze(Object.assign(Object.create(null), { kind: "module", id: moduleId, instance: key, instanceId: `id-${key}` }));
@@ -95,7 +98,7 @@ export function fakeCtx(opts = {}) {
   const needsList = requires.map((r) => (typeof r === "string" ? { service: r, min: 1 } : { service: r.service, min: r.min ?? 1 }));
   const setUpNeeds = (m) => needsList.filter((n) => (m.offers ?? []).some((o) => o.service === n.service && (o.version ?? 1) >= n.min));
   const setUpOffers = () => (allowed && !allowed.has("instances.setup") ? [] : Object.entries(installedModules).filter(([id, m]) => id !== moduleId && !m.instances && setUpNeeds(m).length).map(([id, m]) => ({ module: id, name: m.name ?? id, services: setUpNeeds(m).map((n) => n.service) })));
-  const calls = { setUps: [], topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [], overlayPlacement: [] };
+  const calls = { setUps: [], topics: [], qr: [], entries: [], mail: [], png: [], services: [], rawg: [], rawgCandidates: [], files: [], secrets: [], seeds: [], cleared: [], legacyCleared: [], writes: [], denied: [], net: [], netLog: [], choices: [], log: [], adminTheme: [], overlayPlacement: [] };
   let netClient;
   const client = () => (netClient ??= makeNetClient({ limits: { retryMinMs: 1, retryMaxMs: 5, ...netLimits }, log: (line) => calls.netLog.push(line) }));
   const net = netOverride ?? {
@@ -133,6 +136,28 @@ export function fakeCtx(opts = {}) {
   };
   for (const [collection, list] of Object.entries(seedRows)) for (const data of list) { const id = `r${++seq}`; rows.set(id, { id, collection, createdAt: new Date(Date.now() + seq), data: structuredClone(data), key: null }); }
   const allowed = permissions ? new Set(permissions) : null;
+  // ── Secrets (ctx.api.secrets, core 0.48.0): same names, bounds and answers as services/secrets.ts, in memory (no sealing here: nothing is written anywhere). ──
+  // `secrets: { name: value }` pre-fills; `secretsUnreadable: [name]` makes those names answer like a value sealed by another server ("unreadable").
+  const secretStore = new Map(Object.entries(secretSeed).map(([k, v]) => [k, String(v)]));
+  const unreadable = new Set(secretsUnreadable);
+  for (const k of unreadable) if (!secretStore.has(k)) secretStore.set(k, "");
+  const SECRET_NAME = /^[A-Za-z][A-Za-z0-9_-]{0,47}$/;
+  const secretsAllowed = () => { if (allowed && !allowed.has("secrets")) { calls.denied.push("secrets"); return false; } return true; };
+  const secretsApi = {
+    set: async (name, value) => {
+      if (!secretsAllowed()) return { ok: false, reason: "no-permission" };
+      if (typeof name !== "string" || !SECRET_NAME.test(name)) return { ok: false, reason: "invalid-name" };
+      if (typeof value !== "string" || value.length < 1 || value.length > 4096) return { ok: false, reason: "invalid-value" };
+      if (!secretStore.has(name) && secretStore.size >= 20) return { ok: false, reason: "too-many" };
+      secretStore.set(name, value); unreadable.delete(name); calls.secrets.push({ op: "set", name });
+      return { ok: true };
+    },
+    get: async (name) => (secretsAllowed() && typeof name === "string" && secretStore.has(name) && !unreadable.has(name) ? secretStore.get(name) : null),
+    has: async (name) => secretsAllowed() && typeof name === "string" && secretStore.has(name) && !unreadable.has(name),
+    state: async (name) => (!secretsAllowed() || typeof name !== "string" || !secretStore.has(name) ? "absent" : unreadable.has(name) ? "unreadable" : "set"),
+    remove: async (name) => { if (!secretsAllowed() || typeof name !== "string") return false; const had = secretStore.delete(name); unreadable.delete(name); if (had) calls.secrets.push({ op: "remove", name }); return had; },
+    names: async () => (secretsAllowed() ? [...secretStore.keys()].sort().slice(0, 20) : []),
+  };
   const need = (permission, value) => {
     if (!allowed || allowed.has(permission)) return value;
     calls.denied.push(permission);
@@ -380,6 +405,7 @@ export function fakeCtx(opts = {}) {
         return { placed: pages.length > 0, onActivePage: pages.some((p) => p.active), pages };
       } } }),
       files: filesApi,
+      secrets: secretsApi,
       log: logApi,
       privacy: { declarations: async () => ((!allowed || allowed.has("privacy")) ? structuredClone(privacyDeclarations) : { modules: [], truncated: false }) },
       rawg: { configured: async () => (!allowed || allowed.has("rawg")) && rawgConfigured, cover: async (title) => { calls.rawg.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", url: null }; return typeof rawgCover === "function" ? rawgCover(title) : rawgCover; }, candidates: async (title) => { calls.rawgCandidates.push(title); if (allowed && !allowed.has("rawg")) return { status: "no-key", candidates: [] }; return typeof rawgCandidates === "function" ? rawgCandidates(title) : rawgCandidates; } },

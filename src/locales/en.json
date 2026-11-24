@@ -1133,6 +1133,7 @@
   "perm.visitor.geolocation": "Ask for the visitor's location, only after they click",
   "perm.files": "Keep and delete the files you upload through this module",
   "perm.instances.setup": "Set up the extensions it needs, only after you click",
+  "perm.secrets": "Keep a password or access code safe, readable only by this extension",
   "catalogue.by": "by {author}",
   "catalogue.asks.friendly": "What this feature will do on your site",
   "catalogue.needs": "Works with: {what}",

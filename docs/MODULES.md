@@ -263,6 +263,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
 | `instances.setup` | (cœur 0.15.0, déclarez `"minCore": "0.15.0"` : un cœur plus ancien refuse le manifeste) le module peut mettre en place d'un clic (action d'administration, administrateur seulement) un module **déjà installé** dont il a besoin, via `ctx.api.instances.pending` et `setUp`. Texte montré à l'administrateur : « Mettre en place les extensions dont elle a besoin, seulement après un clic de votre part ». |
 | `files` | (cœur 0.2.13, déclarez `"minCore": "0.2.13"`) le module appelle `ctx.api.files` : il garde (revendique) les fichiers que la personne envoie par l'administration et peut les supprimer. Voir « Fichiers envoyés : garder et supprimer ». Texte montré à l'administrateur : « Garder et supprimer les fichiers que vous envoyez via ce module ». |
+| `secrets` | (core 0.48.0, declare `"minCore": "0.48.0"`: an older core refuses the manifest) the module calls `ctx.api.secrets`: it keeps a value (a bot token, a password) **sealed**, readable only by its own instance. See "Sealed secrets". |
 | `visitor.geolocation` | (cœur 0.2.12, déclarez `"minCore": "0.2.12"`) le code de la page appelle `navigator.geolocation` (« Près de moi »). **Seule permission qui change vraiment ce que le navigateur autorise** : voir ci-dessous |
 
 #### Permission `visitor.geolocation` (cœur 0.2.12)
@@ -2112,6 +2113,42 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 `replyTo` doit être une adresse valide, 10 envois par heure et par instance et 40 par heure pour tout le site (`rate_limited` au-delà),
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
+
+## Sealed secrets: `ctx.api.secrets` (core 0.48.0, permission `secrets`, `"minCore": "0.48.0"`)
+
+**What it is for.** A value your instance must be able to use but that nobody should be able to read from a copy of the database: the token of a bot, an API password. Until now a module kept such a value in a `secret` setting or in `ctx.api.store`: both are stored as readable text in the database, so a copy of the database (or an unencrypted backup of it) shows them. `ctx.api.secrets` stores the value **sealed** instead.
+
+**What exactly is protected.** The value is encrypted with AES-256-GCM, with a key derived from the **site secret** (`AUTH_SECRET`, or `data/auth-secret`) and the purpose `module-secret-seal` (the primitive of `src/core/seal.ts`, also used for the access code of a private repository). The ciphertext is bound to the instance id and the name. The site secret is not in the database and not in the backup, so a database copy, a database backup and the encrypted backup file all show only ciphertext. It does **not** protect against someone who holds the running server (files, process, the site secret), nor against a module that is hostile: module code runs inside the site process, so a module you install and trust can read its **own** secrets (that is the point) and, if it is malicious, much more. See `docs/SECURITE.md`.
+
+```json
+{ "permissions": ["secrets"], "minCore": "0.48.0" }
+```
+
+```js
+await ctx.api.secrets.set("botToken", value);          // { ok: true } | { ok: false, reason }
+const token = await ctx.api.secrets.get("botToken");   // string | null
+```
+
+| Call | Answer |
+|---|---|
+| `set(name, value)` | `{ ok: true }` (replaces) or `{ ok: false, reason }`: `no-permission`, `invalid-name`, `invalid-value` (empty, not a string, over 4096 characters), `too-many` (20 names), `rate-limited`, `failed` |
+| `get(name)` | the value, or `null` (absent, not openable here, bad name, no permission, rate limit) |
+| `has(name)` | `true` only when a value is stored **and** can be opened on this server |
+| `state(name)` | `"set"`, `"absent"` or `"unreadable"` (stored, but sealed by another server: ask the owner for it again) |
+| `remove(name)` | `true` when something was removed |
+| `names()` | the names stored for this instance (never values), 20 at most |
+
+Rules:
+
+- **Per instance, decided by the core.** The instance comes from the core, not from an argument; a module can never read another module's or another instance's names or values (a ciphertext copied to another instance or name does not open).
+- **A name** starts with a letter, then letters, digits, `_` or `-` (48 characters at most). A value is 1 to 4096 characters. Bounds: 20 names per instance, 20 writes (`set`, `remove`) and 600 reads (`get`, `has`, `state`, `names`) per minute and instance; over the limit the call answers a refusal, it never throws.
+- **Nothing in the core shows it**: not the admin, the assistant (MCP) tools, the central journal, the audit log (it records `module.secret.set` / `remove` with the instance and the **name** only), the readable summary of a backup, the module list or the diagnostics. A test checks each of them.
+- **Backup and restore.** The backup carries the sealed text only. Restored on the same server it opens again; restored on **another** server (another site secret) it cannot be opened: `get` answers `null` and `state` answers `"unreadable"`, exactly like the access code of a private repository. Your admin page then asks the owner for the value again, and `set` replaces it. Check `state` (not only `get`) so that your page can say "enter it again".
+- **Removal.** Deleting an instance, or uninstalling a module without keeping its data, erases its sealed values with the rest of the instance. When the data is **kept** (the owner chose "keep my data"), the sealed text is kept with it until the owner erases that data (and restored with it).
+- **The `secret` setting kind is not sealed.** A manifest setting `"type": "secret"` is still stored as readable text (it is only hidden in the admin and never given to an assistant). Use it for a value the owner types in the admin AND that you can accept in the database, or, better, read what the owner typed from the setting once and move it to `ctx.api.secrets.set` (then clear the setting). Moving the existing kind to sealed storage is a separate change.
+- **Never copy the value elsewhere**: not into a setting, `ctx.api.store`, a log, `ctx.api.log`, a page, the answer of a service or of an assistant tool. A secret you echo is no longer sealed.
+
+Unit tests: `fakeCtx({ permissions: ["secrets"] })` gives the same API in memory with the same rules (names, bounds, `unreadable` through the `secretsUnreadable` option); without the permission it answers the refusals above and `ctx.calls.denied` records it. The conformance kit asks for the permission when the code uses `ctx.api.secrets` (`perm.declared`) and for `"minCore": "0.48.0"` (`compat.minCore`).
 
 ## Appeler une API externe : `ctx.api.net`
 
