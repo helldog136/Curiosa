@@ -1,4 +1,4 @@
-import { ACCESS_LABEL_KEYS } from "@/components/admin/PrivateAccess";
+import { ACCESS_LABEL_KEYS } from "@/components/admin/accessLabelKeys";
 
 /** The texts the personal catalogues blocks need (the page translates them once; the blocks are client components). */
 export const PERSONAL_LABEL_KEYS = [
