@@ -8,6 +8,7 @@ import { pickName } from "../instances";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
 import type { ParsedManifest } from "./manifest";
+import type { ModuleContext, ServiceCaller } from "./types";
 
 /**
  * DÉPENDANCES ENTRE MODULES — un module `offers` des services, un autre les `requires`. Ici : qui offre quoi, ce qui manque, qui dépend de
@@ -164,19 +165,48 @@ async function providersFor(consumer: Pick<ActiveInstance, "mod">, service: stri
   return (await providerInstances(service, consumer.mod.manifest.id)).filter((p) => satisfiesVersion(offerVersionOf(p.mod.manifest.offers, service), min));
 }
 
-const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof p.mod.def.services?.[service]?.[method] === "function";
+/**
+ * WHO CALLS (core 0.48.0). The identity handed to a service method is built HERE, from what the core itself knows (the consumer instance the core resolved from its own registry),
+ * never from the arguments of the call, never from anything the calling module can set. Frozen, built fresh for every call, and delivered twice: as the third argument of the method and as
+ * `ctx.caller` (read-only). `callerOf` is the only place that makes a module caller, and `runOn` requires one, so a new way to invoke a service cannot forget to say who calls.
+ */
+const makeCaller = (own: Record<string, string>): ServiceCaller => Object.freeze(Object.assign(Object.create(null), own)) as ServiceCaller;   // no prototype: nothing inherited (a polluted `Object.prototype.admin`) can ever be read through it
+export const CORE_CALLER: ServiceCaller = makeCaller({ kind: "core" });
+export const callerOf = (consumer: Pick<ActiveInstance, "mod" | "instance">): ServiceCaller =>
+  makeCaller({ kind: "module", id: consumer.mod.manifest.id, instance: consumer.instance.key, instanceId: consumer.instance.id });
+
+/**
+ * THE ONLY LOOKUP of a service method (core 0.48.0). Names come from the calling module, so they are untrusted: a method named "constructor", "__proto__" or "toString" must never
+ * resolve through the prototype chain (`Object` called as a function hands back its first argument, which is the provider's own `ctx`). Both the service table and the method are
+ * OWN properties of what the provider declared, the name has a plain shape, and the value must be a function. Anything else is simply "no such method".
+ */
+const SERVICE_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/;
+const METHOD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+type ServiceFn = (ctx: ModuleContext, args: unknown, caller: ServiceCaller) => unknown;
+export function serviceMethod(p: Pick<ActiveInstance, "mod">, service: unknown, method: unknown): ServiceFn | undefined {
+  if (typeof service !== "string" || typeof method !== "string" || !SERVICE_NAME_RE.test(service) || !METHOD_NAME_RE.test(method)) return undefined;
+  const table = p.mod.def.services as Record<string, Record<string, unknown> | undefined> | undefined;
+  if (!table || !Object.hasOwn(table, service)) return undefined;
+  const methods = table[service];
+  if (!methods || typeof methods !== "object" || !Object.hasOwn(methods, method)) return undefined;
+  const fn = methods[method];
+  return typeof fn === "function" ? (fn as ServiceFn) : undefined;
+}
+const hasMethod = (p: ActiveInstance, service: string, method: string) => serviceMethod(p, service, method) !== undefined;
 /**
  * Exécute la méthode d'un service chez un fournisseur. Pour une page publique, le fournisseur a un temps imparti (voir budget.ts) : sans réponse, `ModuleStalled`
  * est levée (le journal a déjà nommé le fournisseur une fois ; les appelants la traitent comme un échec, sans rien écrire de plus).
  */
-const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, locale?: string, viewer?: AdminUser | null, carryUploads = false) => {
-  const fn = p.mod.def.services?.[service]?.[method];
+const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, by: ServiceCaller, locale?: string, viewer?: AdminUser | null, carryUploads = false) => {
+  const fn = serviceMethod(p, service, method);
   if (!fn) return undefined;
   // `viewer` : appel fait pour une personne de l'administration (création à la volée d'un `choice`) : `ctx.can` du fournisseur vérifie SES droits à elle.
   const base = await buildContext(p.mod, p.instance, locale);
   const ctx = viewer !== undefined ? forViewer(base, viewer, { carryUploads }) : base;
+  // `ctx.caller`: read-only and not configurable, so the provider's own code (or a helper it hands `ctx` to) cannot swap it for another identity.
+  Object.defineProperty(ctx, "caller", { value: by, enumerable: true, writable: false, configurable: false });
   const unit = { kind: "service" as const, moduleId: p.mod.manifest.id, instanceKey: p.instance.key, name: `${service}.${method}` };
-  const value = await boxedInner(unit, () => fn(ctx, args));
+  const value = await boxedInner(unit, () => fn(ctx, args, by));
   if (value === STALLED) throw new ModuleStalled(unit);
   return value;
 };
@@ -219,9 +249,10 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
     const { audit } = await import("../permissions");
     await audit(caller.email, `module.${consumer.instance.key}.asCaller`, `${service}.${method}`);
   }
+  const by = callerOf(consumer);
   let value: unknown;
   try {
-    value = await runOn(master, service, method, args, locale, viewer, carryUploads);
+    value = await runOn(master, service, method, args, by, locale, viewer, carryUploads);
   } catch (error) {
     if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
     return { outcome: { ok: false, reason: "failed" }, master };
@@ -231,7 +262,7 @@ async function dispatch(consumer: Pick<ActiveInstance, "mod" | "instance">, serv
   if (!readOnly.has(method)) {
     await Promise.allSettled(replicas.map(async (r) => {
       if (!hasMethod(r, service, method)) return;
-      try { await runOn(r, service, method, args, locale, viewer); } catch (error) { if (!isStalled(error)) console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
+      try { await runOn(r, service, method, args, by, locale, viewer); } catch (error) { if (!isStalled(error)) console.error(`[modules] replica ${r.instance.key} of ${service}.${method} failed:`, (error as Error)?.message); }
     }));
   }
   return { outcome: { ok: true, value }, master };
@@ -253,7 +284,7 @@ export async function callProvider(service: string, method: string, args: unknow
   const { master } = await defaultTarget(found, service);
   if (!hasMethod(master, service, method)) return { ok: false, reason: "no_method" };
   try {
-    return { ok: true, value: await runOn(master, service, method, args, opts.locale) };
+    return { ok: true, value: await runOn(master, service, method, args, CORE_CALLER, opts.locale) };
   } catch (error) {
     if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed:`, (error as Error)?.message);
     return { ok: false, reason: "failed" };
@@ -312,7 +343,7 @@ export async function callServiceAll(consumer: Pick<ActiveInstance, "mod" | "ins
   return Promise.all((await byCreation(found)).map(async (p): Promise<FanoutResult> => {
     if (!hasMethod(p, service, method)) return { ...label(p), ok: false, error: "no_method" };
     try {
-      return { ...label(p), ok: true, value: await runOn(p, service, method, args, locale) };
+      return { ...label(p), ok: true, value: await runOn(p, service, method, args, callerOf(consumer), locale) };
     } catch (error) {
       if (!isStalled(error)) console.error(`[modules] service ${service}.${method} failed on ${p.instance.key}:`, (error as Error)?.message);
       return { ...label(p), ok: false, error: "failed" };

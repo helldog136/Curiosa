@@ -1317,6 +1317,53 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 
   **Keeping an uploaded file through a service (core 0.14.0, `minCore: "0.14.0"` to rely on it).** `ctx.api.files.claim` needs the person who uploaded the file, and a service method runs in the provider's own context, where that person is unknown (`no-person`). The same four conditions above now ALSO carry the person to the provider's `ctx.api.files.claim` (and the actor of its `remove` in the audit log), and nothing else: the provider keeps declaring `"callerRights": ["saveAlertImages"]` for the method, the consumer calls `ctx.api.services.call("alert.overlay", "saveAlertImages", { files }, { asCaller: true })` from its admin action, and the provider's method calls `ctx.api.files.claim(url)` as usual (it needs the `files` permission itself; the file then belongs to the PROVIDER's instance). `services/files.ts` still checks that the person is the one who uploaded the file, within 30 minutes, on an unowned file. Not carried: an undeclared method, a panel, a route, a task, a service called by another service, the MCP, a replica of the provider (only the master answers a call that carries the person), and any call without `asCaller: true`. A provider must still check its own right with `ctx.can`, and revalidate the addresses it keeps. On an older core `claim` answers `no-person`: tell the person to upload the file in the module that owns it.
 
+#### Who calls a service: the caller identity (core 0.48.0, `"minCore": "0.48.0"`)
+
+A service method is `(ctx, args, caller)`. The core tells it **which module instance called**, so that a provider can enforce rules such as "only the module that created this resource may change it". An older method written as `(ctx, args)` keeps working unchanged: it simply ignores the third argument.
+
+```js
+services: { "chat.messages": {
+  edit: async (ctx, args, caller) => {            // the same object is also `ctx.caller`
+    if (caller.kind !== "module") return { ok: false, reason: "denied" };
+    const row = await ctx.api.store.get(args.id);
+    if (!row || row.data.ownerInstance !== caller.instanceId) return { ok: false, reason: "denied" };   // compare the STABLE id
+    // ...
+  },
+} },
+```
+
+`caller` is one of (type `ServiceCaller` in `types.ts`):
+
+| Value | Meaning |
+|---|---|
+| `{ kind: "module", id, instance, instanceId }` | an instance of another module called `ctx.api.services.call` or `callAll`. `id` is the module id, `instanceId` the **stable** id of the instance (store this to remember an owner: an instance deleted and created again with the same key gets a new `instanceId`, so it does not inherit anything), `instance` its key (readable: logs and messages only). |
+| `{ kind: "core" }` | the core itself called the method: the legacy `ctx.api.rawg` relay and the backup conversion. No module is behind it. |
+
+Who is the caller on each path that reaches a service method (the only code that does it is `src/core/modules/dependencies.ts`, and a test fails if another file does):
+
+| Path | Caller |
+|---|---|
+| `ctx.api.services.call` from any context of module A: page, route, section, overlay, admin panel, admin action (with or without `asCaller`), task, hook, migration, MCP action of A | `{ kind: "module", ... }` of the **calling instance of A**. The person behind an admin action, and the assistant behind an MCP call, are **not** the caller: they are not identities of a module. Use `callerRights` and `ctx.can` for a person. |
+| `ctx.api.services.callAll` | the calling instance, the same for every provider instance |
+| replicas of a write method (master + replicas) | the same calling instance as the master call |
+| a `choice` setting resolving its list or creating a choice on the fly | the instance of the module that declares the setting |
+| `callProvider` (core only): the legacy `ctx.api.rawg` relay, the backup conversion | `{ kind: "core" }` |
+| the assistant (MCP) | no path: it reaches only the `mcp` actions of a module, whose code may then call a service as that module |
+| a person in the admin | no path: it reaches only `adminActions` |
+
+Rules the core keeps (all covered by `tests/modules-mgmt/service-caller.test.mjs`):
+
+- **Set by the core, from its own registry.** It is never read from the arguments, from the options of `call`, from a returned value or from a header. A module that puts `caller`, `kind: "core"` or anything else in its arguments only sends data: the method still sees the real caller.
+- **Not carried through chains.** If X calls A and A calls B, B sees A (never X). If A calls B and B calls C, C sees B. A provider that relays on behalf of another module must say so itself in its arguments, and the provider that receives it decides whether to trust B for that.
+- **Never grant privileges to `kind: "core"`.** It means "the core itself called" (legacy relay, backup conversion), not "trusted". A provider must treat it like any other fact and never open an owner-level action to it just because of the kind.
+- **Method lookup (core 0.48.0).** The service and the method name come from the caller. Only an own function of the provider's own `services` table with a plain name (`^[A-Za-z][A-Za-z0-9_]{0,63}$`) is ever run; `constructor`, `__proto__`, `toString` and the like answer `no_method`, on every path (`call`, `callAll`, replicas, `callProvider`).
+- **Cannot be tampered with.** The object is frozen, has **no prototype** (a polluted `Object.prototype` adds nothing to it) and is built fresh for every call; `ctx.caller` is read-only and not configurable.
+- Absent outside a service method (`"caller" in ctx` is false in a page, a task...) and on an older core: in a module that must also run on an older core, check `typeof caller === "object"` and refuse the sensitive operation when it is missing.
+- It is **not** a permission. It does not stop a consumer from calling a service; it lets the provider decide. A provider that ignores it is exactly as open as before.
+- Residual risk: a module's code runs inside the site process (see "Sécurité : à lire avant d'installer"). A module that is willing to run arbitrary code can read the database or patch the runtime, so the caller identity protects against a module that uses the **API** to claim to be someone else, not against code the owner chose to install and trust. The provider's rule is only as strong as that trust.
+
+The conformance kit asks for `"minCore": "0.48.0"` when a service method takes a third parameter or reads `ctx.caller` (`compat.minCore`), and `fakeCtx({ caller })` sets `ctx.caller` in a unit test.
+
 #### Dire ses services dans l'index du catalogue
 
 Pour qu'un module d'un dépôt reconnu puisse être choisi comme fournisseur (ou annonce ses besoins) **avant d'être téléchargé**, son entrée de `catalogue/index.json` peut porter, en plus de ses champs habituels, deux listes facultatives : `"offers": ["contact.store"]` et `"requires": ["contact.store"]` — chaque élément est un nom de service, ou un objet `{ "service": "contact.store", "version": 2 }` (offres ; `"each": true` possible, voir plus haut : `{ "service": "twitch.live", "each": true }`) / `{ "service": "contact.store", "min": 2 }` (besoins). Valeurs validées (noms de services, entiers ≥ 1, 10 au plus, doublons écartés) ; un cœur plus ancien ignore ces clés. À ne pas confondre avec `"requires": { "core": "0.1.10" }` (version minimale du cœur, un objet) : le cœur distingue les deux par la forme. Un besoin peut porter `"optional": true` (`{ "service": "contact.store", "optional": true }`) : il faut le recopier dans l'index (le script qui génère l'index du dépôt de modules doit le transporter), sans quoi un cœur 0.2.0 le prendrait pour un besoin dur. Ces listes ne servent qu'à **choisir et annoncer** ; à l'installation c'est le `module.json` réel qui fait foi. Un module dont l'entrée n'annonce rien n'a rien à ajouter : son manifeste est lu à l'installation.

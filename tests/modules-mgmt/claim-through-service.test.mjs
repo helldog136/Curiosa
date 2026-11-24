@@ -132,8 +132,8 @@ test("code guards: only dependencies.ts asks for carryUploads, only on the asCal
   assert.deepEqual(hits.sort(), ["src/core/modules/context.ts", "src/core/modules/dependencies.ts"]);
   const dep = fs.readFileSync("src/core/modules/dependencies.ts", "utf8");
   assert.match(dep, /callerMethodsOf\(master, service\)\.includes\(method\)\) \{\n\s+viewer = caller;\n\s+carryUploads = true;/);
-  assert.match(dep, /runOn\(master, service, method, args, locale, viewer, carryUploads\)/);
-  assert.match(dep, /runOn\(r, service, method, args, locale, viewer\)/, "replicas get no uploader");
+  assert.match(dep, /runOn\(master, service, method, args, by, locale, viewer, carryUploads\)/);
+  assert.match(dep, /runOn\(r, service, method, args, by, locale, viewer\)/, "replicas get no uploader");
   const api = fs.readFileSync("src/core/modules/api.ts", "utf8");
   assert.equal((api.match(/caller\?\.uploader/g) ?? []).length, 2, "only claim and the actor of remove read it");
   assert.ok(!/viewer/.test(api));

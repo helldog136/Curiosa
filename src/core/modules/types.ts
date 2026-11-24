@@ -586,8 +586,23 @@ export type ModuleApi = {
   };
 };
 
+/**
+ * (core 0.48.0, `"minCore": "0.48.0"`) WHO CALLS a service method, as the CORE saw it. Delivered to the method as its third argument and as `ctx.caller`; an older method that only
+ * takes `(ctx, args)` is unaffected. It is set by the core from its own registry: it is never read from the arguments, so the calling module cannot choose it.
+ *   - `{ kind: "module", id, instance, instanceId }`: another module's instance called `ctx.api.services.call` or `callAll`, from ANY of its contexts (page, route, admin action, task,
+ *     hook, migration, MCP action...). `id` = the module id, `instanceId` = the STABLE id of the instance (store this to remember an owner: a deleted and re-created instance gets a
+ *     new one), `instance` = its key (readable, for logs and messages).
+ *   - `{ kind: "core" }`: the core itself called the method (the legacy `ctx.api.rawg` relay and the backup conversion). No module is behind it.
+ * There is no other way to reach a service method: the assistant (MCP) only reaches a module's own `mcp` actions, and a person only reaches `adminActions`.
+ */
+export type ServiceCaller =
+  | Readonly<{ kind: "module"; id: string; instance: string; instanceId: string }>
+  | Readonly<{ kind: "core" }>;
+
 export type ModuleContext = {
   moduleId: string;
+  /** (core 0.48.0) ONLY inside a method of `services`: who called it (see `ServiceCaller`). Read-only; `undefined` in every other context and on an older core. */
+  readonly caller?: ServiceCaller;
   /** L'instance pour laquelle le module s'exécute : un module tourne une fois par instance. */
   instance: { id: string; key: string; basePath: string | null; name: string };
   /** Langue du visiteur (ou de l'admin, dans le panneau d'admin). */
@@ -834,7 +849,7 @@ export type ModuleDefinition = {
    * Services offerts aux autres modules (déclarés dans `offers` du manifeste) : `services["contact.store"].add(ctx, args)`. `ctx` est celui de
    * l'instance qui FOURNIT le service. Un module qui `requires` ce service l'appelle par `ctx.api.services.call(…)`.
    */
-  services?: Record<string, Record<string, (ctx: ModuleContext, args: unknown) => unknown | Promise<unknown>>>;
+  services?: Record<string, Record<string, (ctx: ModuleContext, args: unknown, caller: ServiceCaller) => unknown | Promise<unknown>>>;
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;

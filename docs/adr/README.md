@@ -29,3 +29,4 @@ Rules: one decision per file; numbers are never reused; a changed decision gets 
 | [0005](0005-i18n-audit-copy-in-extras.md) | `i18n/audit.mjs` has a verbatim copy on the extras side |
 | [0006](0006-permissions-facade.md) | `permissions.ts` stays as the one import path for access checks |
 | [0007](0007-ai-access-owner-is-permanent.md) | The owner of an AI access is permanent; orphans are swept |
+| [0008](0008-service-caller-identity-is-set-by-the-core.md) | A service method learns who calls it from the core, never from the caller |

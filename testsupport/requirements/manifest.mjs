@@ -31,6 +31,9 @@ function usesBareTimezone(code) {
  * est un fichier du dépôt de modules, pas d'un module. `advice: true` : conseil (exigence `compat.minCoreAdvice`) au lieu de `compat.minCore`.
  */
 export const FEATURES = [
+  // Core 0.48.0. A service method gets the identity of the module that calls it, as its third argument and as `ctx.caller`. An older core passes only (ctx, args): `caller` is undefined there,
+  // so a method that relies on it would let everyone in (or fail to run). A method that takes a third parameter, or code that reads `ctx.caller`, needs the core that provides it.
+  { since: "0.48.0", label: "l'identité de l'appelant d'un service (3e paramètre d'une méthode de « services », ou ctx.caller)", test: (m) => Object.values(m.definition?.services ?? {}).some((svc) => Object.values(svc ?? {}).some((fn) => typeof fn === "function" && fn.length >= 3)) || /\bctx\s*\??\.\s*caller\b/.test(stripComments(m.code)) },
   // Core 0.31.0. `tabs[].place`: the tab object is strict, an older core REFUSES the manifest. The top-level `place` and `places` are ignored by an older core
   // (the module keeps its adminMenu entry): no minCore for them.
   { since: "0.31.0", label: "« place » on a tab (tabs[].place)", test: (m, man) => (man.tabs ?? []).some((t) => t.place !== undefined) },
