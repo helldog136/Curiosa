@@ -540,7 +540,7 @@ PNG, WebP (lossless or lossy) and **sanitised SVG** only. Not allowed: GIF, APNG
 - The engine loads the pictures with `fetch` then `createImageBitmap`, **not** with an `<img>`: an element page may forbid images in its security policy (`stream-goals` does: `default-src 'none'; connect-src 'self'`) and a bitmap decoded from a fetched blob is not an image load. Five seconds, 400 KB and the decoded caps are enforced again in the browser. Without `fetch` or `createImageBitmap`, every picture fails.
 - A layer whose picture is loading, failed, missing or unknown is **skipped**. A role (`track`, `fill`) with no layer left is drawn by the **basic look** of the core in its place (a flat track, a flat fill from the page's colours); the texts and the countdown line are always there. A kit the scene does not draw (`levels` and `counter` in this contract) uses the basic recipe. A failure is remembered for the session; nothing blanks and nothing shows an error.
 - **Tolerant reader**: an anchor, a reveal mode, an event, a property, a kit or a key this core does not know is skipped with a warning (`scene-ignored`), never an error. A known word with a value out of its bounds, an undeclared picture or a timeline that does not exist is refused with its path (`scene-invalid`). A scene written for a later contract (`animateContract` above 3, `animateMinContract` not above 3) is read as far as this core knows it and only warns (`scene-contract-ahead`); a minimum above 3 installs the skin without its scene (`scene-contract-newer`).
-- A skin with `scene` must declare `skinContract: 5` (`overlay-contract-v5`); an older core refuses it cleanly ("contract newer"). The images gate (`overlay-no-assets`) stays for every skin without a scene. Fonts need contract 6 (OVERLAY-SKINS.md, "Fonts"). If a skin has both `animation` and `scene`, this core uses the scene.
+- A skin with `scene` must declare `skinContract: 5` (`overlay-contract-v5`); an older core refuses it cleanly ("contract newer"). The images gate (`overlay-no-assets`) stays for every skin without a scene. Fonts need contract 6 and patterns contract 7 (OVERLAY-SKINS.md, "Fonts" and "Patterns"). If a skin has both `animation` and `scene`, this core uses the scene.
 
 ### Calm mode, effects levels, cost
 
@@ -615,7 +615,8 @@ Every unknown key is a warning and is dropped; `$comment` is allowed. The pieces
 | Refused (error) | Code |
 |---|---|
 | not an object, an unreadable file, a domain out of bounds, a number that is not finite or is outside the domain, a bad `tone` or `rank` | `pattern-unreadable`, `pattern-invalid` |
-| more than 32 Kb in a file, or more than 96 Kb of patterns in a skin | `pattern-too-large` |
+| more than 32 KB in a file | `pattern-too-large` |
+| more than 48 pattern files, or more than 96 KB of pieces handed to the page for a whole skin | `patterns-too-many`, `patterns-total-too-large` |
 | no piece, more than 160 pieces, more than 1500 vertices | `pattern-cells` |
 | a piece with fewer than 3 or more than 12 vertices, a repeated vertex, under 0.05 % of the domain, a corner under 3 degrees, a side that crosses another of the same piece, a split that more than quadruples the vertices | `pattern-polygon` |
 | two pieces on top of each other (a crossing, or a vertex, a side middle or an inner point of one strictly inside the other) | `pattern-overlap` |
@@ -627,7 +628,7 @@ Every unknown key is a warning and is dropped; `$comment` is allowed. The pieces
 | a window that covers under 97 % of its domain | `pattern-coverage` |
 | more than 120 pieces; a rank on some pieces only; an unknown key | `pattern-cells-cap`, `pattern-ignored` |
 | two variants too far apart in shape | `pattern-stretch` |
-| a pattern written for a later contract | `pattern-contract-newer` |
+| a pattern written for a later contract (that variant is skipped; a name with no variant left stays valid and the mosaic draws the simple pattern) | `pattern-contract-newer` |
 
 ### At drawing time
 

@@ -444,7 +444,7 @@ test("contrat 3 : un skin qui utilise le vocabulaire du contrat 3 doit l'annonce
   assert.equal(r2.ok, false); assert.ok(r2.issues.some((i) => i.code === "overlay-contract-v3"));
   const r3 = check(skinFolder("epic", { css, manifest: { skinContract: 3, minCore: "0.8.0" } }));
   assert.equal(r3.ok, true, JSON.stringify(r3.issues.map((i) => i.code)));
-  // (0.40.0) contract 5 is the scene contract of overlay skins: the next one is "newer"
-  const future = check(skinFolder("epic", { manifest: { skinContract: 7 } }));
+  // (0.40.0) contract 5 is the scene contract of overlay skins, 6 the fonts, 7 the patterns (0.48.0): the next one is "newer"
+  const future = check(skinFolder("epic", { manifest: { skinContract: 8 } }));
   assert.ok(future.issues.some((i) => i.code === "manifest-contract-newer"));
 });

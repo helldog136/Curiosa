@@ -93,6 +93,7 @@ export function checkAnimation(raw: unknown, patterns: ReadonlyMap<string, Patte
 
   // (contract 4) the `patterns` table: names of the skin's own pieces, each one a file or a few variants of the same pattern (an aspect ratio each)
   const patternTable: Record<string, { file: string }[]> = {};
+  const patternNames = new Set<string>();   // names well written, even when every variant is skipped (newer than this core): the mosaic then draws the simple pattern
   if (c >= 4 && r.patterns !== undefined) {
     const tbl = r.patterns;
     if (!tbl || typeof tbl !== "object" || Array.isArray(tbl) || Object.keys(tbl).length > PATTERN.maxNames) err("patterns", "patterns");
@@ -114,6 +115,7 @@ export function checkAnimation(raw: unknown, patterns: ReadonlyMap<string, Patte
       // two neighbouring variants must not be so far apart in shape that the body is stretched by more than the limit
       const doms = ok.map((v) => patterns.get(v.file) as { w: number; h: number }).sort((a, b) => a.w / a.h - b.w / b.h);
       for (let i = 1; i < doms.length; i++) if (Math.sqrt((doms[i]!.w / doms[i]!.h) / (doms[i - 1]!.w / doms[i - 1]!.h)) > PATTERN.stretch) issues.push({ code: "pattern-stretch", path: np.slice(0, 80), severity: "warning" });
+      patternNames.add(name);
       if (ok.length) patternTable[name] = ok;
     }
   }
@@ -135,7 +137,7 @@ export function checkAnimation(raw: unknown, patterns: ReadonlyMap<string, Patte
         const L = layer as Record<string, unknown>, prim = typeof L.draw === "string" ? PRIMITIVES[L.draw] : undefined;
         if (!prim || !prim.roles.includes(role)) { soft("draw", `${lp}.draw`); return; }   // a primitive of a later contract: the layer is skipped
         checkParams(prim.params, L, lp, new Set(["draw"]));
-        if (L.draw === "mosaic" && L.pattern === "file" && c >= 4 && !(typeof L.source === "string" && Object.prototype.hasOwnProperty.call(patternTable, L.source))) soft("pattern-source", `${lp}.source`, ahead);   // `file` names an entry of the table
+        if (L.draw === "mosaic" && L.pattern === "file" && c >= 4 && !(typeof L.source === "string" && patternNames.has(L.source))) soft("pattern-source", `${lp}.source`, ahead);   // `file` names an entry of the table
         if (L.draw === "text") {
           // readability, decided at install when the colours are known: an outline wide enough and contrasted, or an opaque plate that contrasts
           const color = known(L.color, "#ffffff"), outline = known(L.outline, "#000000"), plateColor = known(L.plateColor, "#14171c");
