@@ -2,6 +2,8 @@
  * COMPARER DES DESTINATIONS (pur, sans base de données). Utilisé par le total par destination (redirectGroups.ts) et par la réécriture des boutons du site
  * (redirectMeasure.ts) : les deux doivent juger « même destination » exactement de la même façon.
  */
+import { canonicalHost } from "./host";
+
 /** Paramètres d'adresse qui ne servent qu'à suivre un clic (pas à choisir la page) : ils ne comptent pas dans la comparaison. */
 const TRACKING_PARAMS = new Set(["fbclid", "gclid", "dclid", "msclkid", "twclid", "ttclid", "yclid", "igshid", "igsh", "si", "feature", "mc_cid", "mc_eid", "_ga", "_gl", "ref_src", "ref_url", "s_cid"]);
 const isTracking = (name: string) => TRACKING_PARAMS.has(name.toLowerCase()) || name.toLowerCase().startsWith("utm_");
@@ -16,7 +18,7 @@ export function destinationKey(raw: string): string | null {
   let u: URL;
   try { u = new URL(String(raw).trim()); } catch { return null; }
   if (u.protocol !== "https:" && u.protocol !== "http:") return null;
-  const host = u.hostname.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
+  const host = canonicalHost(u.hostname);
   if (!host) return null;
   const port = u.port && !((u.protocol === "https:" && u.port === "443") || (u.protocol === "http:" && u.port === "80")) ? `:${u.port}` : "";
   const path = u.pathname.replace(/\/+$/, "");

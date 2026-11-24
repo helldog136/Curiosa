@@ -45,34 +45,11 @@ export function normalizeLinkInput(raw: string | null | undefined): string {
   return v;
 }
 
-/* ───────────── Visites sortantes : adresses qu'on refuse de contacter ─────────────
- * `isSafeExternalUrl` ne regarde que le schéma (c'est un filtre de liens affichés). Dès que le SERVEUR visite lui-même une adresse venue du contenu
- * (contrôle du contenu, vignettes…), il faut en plus refuser tout ce qui mène au réseau interne : voir `hostProblem` (avant la résolution du nom)
- * et `addressIsPrivate` (après : l'adresse numérique que renvoie le DNS). Logique pure, sans réseau.
+/* ───────────── Outgoing visits: addresses we refuse to contact ─────────────
+ * `isSafeExternalUrl` only looks at the scheme (it filters displayed links). As soon as the SERVER itself visits an address that came from content
+ * (content check, thumbnails...), everything that leads to the internal network must also be refused: see `fetchTargetProblem` in core/host.ts (before the
+ * name is resolved) and `addressIsPrivate` below (after: the numeric address the DNS returns). Pure logic, no network.
  */
-const INTERNAL_SUFFIX = /\.(localhost|local|localdomain|internal|intranet|private|lan|home|corp|home\.arpa)$/i;
-
-export type HostProblem = "scheme" | "credentials" | "port" | "address" | "internal" | "invalid";
-
-/**
- * Pourquoi cette adresse ne doit pas être visitée par le serveur (null : elle peut l'être, sous réserve de la résolution du nom : `addressIsPrivate`).
- * Refuse : un autre schéma que http(s), des identifiants dans l'adresse, un port autre que 443 (80 pour http), une adresse numérique (IPv4 sous toutes ses
- * écritures, IPv6), un nom interne (`localhost`, `.local`, `.lan`, nom sans point…).
- */
-export function hostProblem(input: URL | string): HostProblem | null {
-  let url: URL;
-  try { url = input instanceof URL ? input : new URL(String(input)); } catch { return "invalid"; }
-  if (url.protocol !== "https:" && url.protocol !== "http:") return "scheme";
-  if (url.username || url.password) return "credentials";
-  if (url.port && url.port !== (url.protocol === "https:" ? "443" : "80")) return "port";
-  const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  if (!host || host.length > 253) return "invalid";
-  if (host.startsWith("[") || host.includes(":")) return "address";
-  if (/^[0-9.]+$/.test(host) || /^0x[0-9a-f]+$/i.test(host)) return "address"; // 127.0.0.1, 2130706433, 0x7f000001… (l'analyseur d'adresses les normalise déjà)
-  if (!host.includes(".") || host === "localhost" || INTERNAL_SUFFIX.test(host)) return "internal";
-  if (!/^[a-z0-9._-]+$/.test(host)) return "invalid"; // adresses internationales : déjà converties en « xn-- » par l'analyseur
-  return null;
-}
 
 const v4 = (s: string): number[] | null => {
   const p = s.split(".");

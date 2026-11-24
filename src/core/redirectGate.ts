@@ -15,7 +15,7 @@ type Gate = { map: Map<string, number>; at: number; ttl: number; loading: Promis
 const g = globalThis as unknown as { curiosaRedirectGate?: Gate };
 const gate = (): Gate => (g.curiosaRedirectGate ??= { map: new Map(), at: 0, ttl: 0, loading: null });
 
-/** À appeler quand une redirection change : la prochaine page vue relit la carte. */
+/** À appeler quand une redirection change : la prochaine page vue relit la carte. Réservé au cœur (redirects.ts, managedRedirects.ts) : les pages et actions d'administration passent par les écritures de `core/redirects.ts`, qui l'appellent. */
 export function invalidateRedirectGate(): void {
   const s = gate();
   s.at = 0;

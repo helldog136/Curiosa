@@ -7,10 +7,8 @@ import { adminCtx } from "@/core/admin";
 import { prisma } from "@/core/db";
 import { audit } from "@/core/permissions";
 import { endFormParts, endInstant } from "@/core/redirectEnd";
-import { checkRedirectTarget, createRedirectRecord, deleteRedirectRecord, proposeRedirectPath, updateRedirectRecord, type RedirectFail } from "@/core/redirects";
-import { invalidateRedirectGate } from "@/core/redirectGate";
+import { checkRedirectTarget, createRedirectRecord, deleteRedirectRecord, proposeRedirectPath, reactivateRedirectRecord, setMeasureEnabled, setRedirectActiveRecord, toggleRedirectActiveRecord, updateRedirectRecord, type RedirectFail } from "@/core/redirects";
 import { MEASURE_SETTING } from "@/core/redirectMeasure";
-import { setSetting } from "@/core/settings";
 import { siteTimezone } from "@/core/siteTime";
 import type { ActionState } from "@/components/admin/ActionForm";
 
@@ -67,11 +65,9 @@ export async function updateRedirect(id: string, _prev: ActionState, formData: F
 
 export async function toggleRedirect(id: string): Promise<void> {
   const { user } = await adminCtx("editor");
-  const r = await prisma.redirect.findUnique({ where: { id } });
-  if (!r || r.managedBy) return;   // un lien géré par un module se règle dans ce module
-  await prisma.redirect.update({ where: { id }, data: { active: !r.active } });
-  invalidateRedirectGate();
-  await audit(user.email, "redirect.toggle", r.path);
+  const done = await toggleRedirectActiveRecord(id);   // a link managed by a module is set in that module: nothing happens here
+  if (!done.ok) return;
+  await audit(user.email, "redirect.toggle", done.path);
   revalidatePath(REDIRECTS_HREF);
   revalidatePath(redirectHref(id));
 }
@@ -82,13 +78,10 @@ export async function toggleRedirect(id: string): Promise<void> {
  */
 export async function setRedirectActive(id: string, active: boolean): Promise<{ ok?: string; error?: string }> {
   const { user, t } = await adminCtx("editor");
-  const r = await prisma.redirect.findUnique({ where: { id } });
-  if (!r) return { error: t("redirects.error.missing") };
-  if (r.managedBy) return { error: t("redirects.error.managed") };
-  if (r.active !== active) {
-    await prisma.redirect.update({ where: { id }, data: { active } });
-    invalidateRedirectGate();
-    await audit(user.email, "redirect.toggle", r.path);
+  const done = await setRedirectActiveRecord(id, active);
+  if (!done.ok) return { error: t(done.reason === "missing" ? "redirects.error.missing" : "redirects.error.managed") };
+  if (done.changed) {
+    await audit(user.email, "redirect.toggle", done.path);
     revalidatePath(REDIRECTS_HREF);
     revalidatePath(redirectHref(id));
   }
@@ -98,11 +91,9 @@ export async function setRedirectActive(id: string, active: boolean): Promise<{ 
 /** « Réactiver » en un clic : retire la date de fin (le lien redirige de nouveau tout de suite). */
 export async function reactivateRedirect(id: string): Promise<void> {
   const { user } = await adminCtx("editor");
-  const r = await prisma.redirect.findUnique({ where: { id } });
-  if (!r || r.managedBy) return;
-  await prisma.redirect.update({ where: { id }, data: { expiresAt: null, active: true } });
-  invalidateRedirectGate();
-  await audit(user.email, "redirect.reactivate", r.path);
+  const path = await reactivateRedirectRecord(id);
+  if (path === null) return;
+  await audit(user.email, "redirect.reactivate", path);
   revalidatePath(REDIRECTS_HREF);
   revalidatePath(redirectHref(id));
 }
@@ -127,8 +118,7 @@ export async function suggestRedirectName(address: string): Promise<string> {
 /** « Compter les clics sur mes liens » : réglage du site, réservé à l'administration (il change les adresses de boutons de tout le site). Désactivé par défaut. */
 export async function saveMeasureLinks(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
-  await setSetting(MEASURE_SETTING, formData.get("measureLinks") === "on");
-  invalidateRedirectGate(); // relit aussi la carte « destination → lien court »
+  await setMeasureEnabled(formData.get("measureLinks") === "on");
   await audit(user.email, "settings.update", MEASURE_SETTING);
   revalidatePath("/", "layout");
   return { ok: t("action.saved") };

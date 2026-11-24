@@ -8,6 +8,7 @@
  * Les données viennent d'un manifeste ou d'un index lu sur le réseau : elles sont validées ici (tailles, expressions régulières refusées si elles ressemblent à
  * un risque d'explosion de calcul) et ne servent qu'à reconnaître : jamais à exécuter quoi que ce soit.
  */
+import { bareHost } from "./host";
 import type { SocialSpec } from "./socialSpec";
 
 export type { SocialSpec };
@@ -27,7 +28,7 @@ export function recognizeOne(spec: SocialSpec, input: string): SocialMatch | nul
   if (spec.fediverse) { const m = /^@?([A-Za-z0-9_.-]{1,60})@([A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+)$/.exec(v); if (m) v = `https://${m[2]}/@${m[1]}`; }
   for (const [form, url] of spec.forms ?? []) { const m = new RegExp(form).exec(v); if (m) { v = url.replace("{1}", m[1] ?? ""); break; } }
   if (!/^[a-z][a-z0-9+.-]*:/i.test(v)) {
-    const first = (v.split(/[/?#]/)[0] ?? "").toLowerCase().replace(/^www\./, "");
+    const first = bareHost(v.split(/[/?#]/)[0] ?? "");
     const known = spec.hosts ? [...spec.hosts, ...aliases.map((a) => a[0])] : null;
     if (first.includes(".") && (known ? hostIs(first, known) : /^[^/]+\/(?:@|users\/)/.test(v))) v = `https://${v}`;
   }
@@ -35,7 +36,7 @@ export function recognizeOne(spec: SocialSpec, input: string): SocialMatch | nul
     let u: URL;
     try { u = new URL(v); } catch { return null; }
     if (u.protocol !== "https:" || u.username || u.password) return null;
-    let h = u.hostname.toLowerCase().replace(/^www\./, "");
+    let h = bareHost(u.hostname);
     for (const [short, real] of aliases) if (hostIs(h, [short])) { h = real.replace(/^www\./, ""); u.hostname = real; break; }
     if (spec.hosts && !hostIs(h, spec.hosts)) return null;
     for (const k of [...u.searchParams.keys()]) if (TRACKING.test(k)) u.searchParams.delete(k);

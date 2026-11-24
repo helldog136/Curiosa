@@ -5,29 +5,10 @@
  * Règle de fond : la cible d'une redirection est TOUJOURS `SITE_URL` (jamais une valeur venue de la requête), donc aucune redirection ouverte possible.
  */
 
+import { hostOf, publicHostProblem, sameSiteHost } from "@/core/host";
+
 /** Au plus 10 anciens domaines (borne d'un site ; au-delà, la liste est tronquée et la page le dit). */
 export const MAX_LEGACY_HOSTS = 10;
-
-/** Un nom de domaine public : étiquettes de lettres, chiffres et tirets, au moins un point, une fin alphabétique (« .be », « .com »). Pas d'adresse numérique. */
-const LABEL = /^(?!-)[a-z0-9-]{1,63}(?<!-)$/;
-const TLD = /^(?:[a-z]{2,24}|xn--[a-z0-9-]{2,59})$/;
-/** Fins de nom qui désignent un réseau privé : refusées pour un site public. */
-const PRIVATE_SUFFIXES = [".localhost", ".local", ".internal", ".lan", ".home", ".home.arpa", ".corp", ".intranet", ".test", ".invalid", ".example"];
-
-export type HostProblem = "empty" | "form" | "ip" | "local" | "invalid" | "toolong";
-
-/** Vérifie un NOM de domaine (déjà en minuscules, sans port ni schéma). Renvoie le problème, ou null s'il convient à un site public. */
-export function hostProblem(host: string): HostProblem | null {
-  if (!host) return "empty";
-  if (host.length > 253) return "toolong";
-  if (/^\[.*\]$/.test(host) || host.includes(":")) return "ip";
-  if (/^\d+(?:\.\d+){0,3}$/.test(host) || /^0x[0-9a-f]+$/i.test(host)) return "ip";
-  if (host === "localhost" || PRIVATE_SUFFIXES.some((s) => host.endsWith(s))) return "local";
-  const labels = host.split(".");
-  if (labels.length < 2 || labels.some((l) => !LABEL.test(l))) return "invalid";
-  if (!TLD.test(labels[labels.length - 1]!)) return "invalid";
-  return null;
-}
 
 export type AddressError = "empty" | "http" | "scheme" | "path" | "credentials" | "port" | "ip" | "local" | "invalid" | "toolong";
 export type AddressResult = { ok: true; url: string; host: string } | { ok: false; error: AddressError };
@@ -51,21 +32,10 @@ export function parseSiteAddress(input: string): AddressResult {
   if (url.port) return { ok: false, error: "port" };
   if ((url.pathname !== "/" && url.pathname !== "") || url.search || url.hash) return { ok: false, error: "path" };
   const host = url.hostname.toLowerCase().replace(/\.$/, "");
-  const problem = hostProblem(host);
+  const problem = publicHostProblem(host);
   if (problem === "form" || problem === "invalid") return { ok: false, error: "invalid" };
   if (problem) return { ok: false, error: problem };
   return { ok: true, url: `https://${host}`, host };
-}
-
-/** Le nom de domaine d'une adresse de site (`SITE_URL`), en minuscules ; "" si elle est illisible. */
-export function hostOfUrl(url: string): string {
-  try { return new URL(url).hostname.toLowerCase().replace(/\.$/, ""); } catch { return ""; }
-}
-
-/** Compare deux noms de domaine d'un site en ignorant la casse, le point final et un « www. » d'avant. */
-export function sameSiteHost(a: string, b: string): boolean {
-  const norm = (h: string) => h.toLowerCase().replace(/\.$/, "").replace(/^www\./, "");
-  return !!a && !!b && norm(a) === norm(b);
 }
 
 export type LegacyHosts = { hosts: string[]; rejected: string[]; truncated: boolean };
@@ -80,7 +50,7 @@ export function parseLegacyHosts(raw: string | undefined | null, siteHost: strin
   for (const part of String(raw ?? "").split(/[\s,;]+/)) {
     const name = part.trim().toLowerCase().replace(/\.$/, "");
     if (!name) continue;
-    if (name.length > 253 || hostProblem(name) !== null) { if (rejected.length < 20) rejected.push(name.slice(0, 80)); continue; }
+    if (name.length > 253 || publicHostProblem(name) !== null) { if (rejected.length < 20) rejected.push(name.slice(0, 80)); continue; }
     if (name === siteHost.toLowerCase() || hosts.includes(name)) continue;
     if (hosts.length >= MAX_LEGACY_HOSTS) { truncated = true; continue; }
     hosts.push(name);
@@ -115,7 +85,7 @@ export function legacyRedirectTarget(req: LegacyRequest, siteUrl: string, legacy
   if (req.method !== "GET" && req.method !== "HEAD") return null;
   const host = req.host;
   if (!host || !legacy.includes(host)) return null;
-  const site = hostOfUrl(siteUrl);
+  const site = hostOf(siteUrl);
   if (!site || host === site) return null;
   let origin: string;
   try { origin = new URL(siteUrl).origin; } catch { return null; }
@@ -135,7 +105,7 @@ export function legacyConfig(env: Record<string, string | undefined> = process.e
   const site = (env.SITE_URL || "http://localhost:3000").replace(/\/+$/, "");
   const legacy = env.LEGACY_HOSTS ?? "";
   if (memo && memo.site === site && memo.legacy === legacy) return memo.value;
-  const value = { siteUrl: site, hosts: parseLegacyHosts(legacy, hostOfUrl(site)).hosts };
+  const value = { siteUrl: site, hosts: parseLegacyHosts(legacy, hostOf(site)).hosts };
   memo = { site, legacy, value };
   return value;
 }
@@ -145,8 +115,8 @@ export function legacyConfig(env: Record<string, string | undefined> = process.e
  * illisible ne donne jamais d'avertissement : on ne sait pas.
  */
 export function visitedAddress(hostHeader: string | null | undefined, siteUrl: string): { visited: string | null; configured: string; same: boolean | null } {
-  const configured = hostOfUrl(siteUrl);
+  const configured = hostOf(siteUrl);
   const visited = requestHost(hostHeader);
-  if (!visited || !configured || hostProblem(configured) !== null) return { visited, configured, same: null };
+  if (!visited || !configured || publicHostProblem(configured) !== null) return { visited, configured, same: null };
   return { visited, configured, same: sameSiteHost(visited, configured) };
 }

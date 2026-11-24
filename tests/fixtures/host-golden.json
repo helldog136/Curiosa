@@ -1,0 +1,2561 @@
+{
+ "urls": [
+  "https://Example.COM/",
+  "https://example.com:443/",
+  "https://example.com:8443/",
+  "http://example.com:80/",
+  "http://example.com:81/",
+  "https://www.Example.com/x",
+  "https://WWW.example.com./",
+  "https://example.com./",
+  "https://bücher.de/",
+  "https://BÜCHER.de./",
+  "https://xn--bcher-kva.de/",
+  "https://[::1]/",
+  "https://[2001:db8::1]:443/",
+  "https://user:pw@example.com/",
+  "https://user@www.example.com/a",
+  "",
+  "   ",
+  "not a url",
+  "ftp://example.com",
+  "https://localhost/",
+  "https://LOCALHOST./",
+  "https://127.0.0.1/",
+  "https://2130706433/",
+  "https://0x7f000001/",
+  "https://127.1/",
+  "https://intranet/",
+  "https://a.local/",
+  "https://a.home.arpa/",
+  "https://www.www.example.com/",
+  "https://wwwexample.com/",
+  "https://www./",
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag",
+  "https://example.com/Path//",
+  "https://example.org/?v=abc&fbclid=1",
+  "https://example.org/#",
+  "//example.com",
+  "example.com",
+  "mailto:a@b.c",
+  "javascript:alert(1)",
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/",
+  "https://-bad.example.com/",
+  "https://exa_mple.com/",
+  "https://example.test/",
+  "https://foo.example/",
+  "https://exa%6Dple.com/",
+  "https://example.com%2e/",
+  "https://a.b/",
+  "https://1.2.3.4.5/",
+  "https://example.c/",
+  "http://Example.com:80/Page/?B=2&a=1"
+ ],
+ "hosts": [
+  "Example.COM",
+  "example.com",
+  "www.example.com",
+  "WWW.EXAMPLE.COM",
+  "www.example.com.",
+  "example.com.",
+  "",
+  "wwwexample.com",
+  "www.",
+  "www.www.example.com",
+  "xn--bcher-kva.de",
+  "bücher.de",
+  "[::1]",
+  "::1",
+  "127.0.0.1",
+  "1",
+  "1.2",
+  "0x7f000001",
+  "localhost",
+  "a.local",
+  "foo.example",
+  "foo.test",
+  "foo.invalid",
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "-a.com",
+  "a-.com",
+  "a.b.c.d.e.co",
+  "a.c",
+  "a.123",
+  "a.xn--p1ai",
+  "a..b.com",
+  "exa_mple.com",
+  "example.com:8443",
+  "www.example.com:8443",
+  "a.home.arpa",
+  "example.home"
+ ],
+ "pairHosts": [
+  "Example.COM",
+  "example.com",
+  "www.example.com",
+  "WWW.EXAMPLE.COM",
+  "www.example.com.",
+  "example.com.",
+  "",
+  "other.org",
+  "www.www.example.com",
+  "wwwexample.com",
+  "example.com:8443"
+ ],
+ "fetchTargetProblem": {
+  "https://Example.COM/": {
+   "v": null
+  },
+  "https://example.com:443/": {
+   "v": null
+  },
+  "https://example.com:8443/": {
+   "v": "port"
+  },
+  "http://example.com:80/": {
+   "v": null
+  },
+  "http://example.com:81/": {
+   "v": "port"
+  },
+  "https://www.Example.com/x": {
+   "v": null
+  },
+  "https://WWW.example.com./": {
+   "v": null
+  },
+  "https://example.com./": {
+   "v": null
+  },
+  "https://bücher.de/": {
+   "v": null
+  },
+  "https://BÜCHER.de./": {
+   "v": null
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": null
+  },
+  "https://[::1]/": {
+   "v": "address"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "address"
+  },
+  "https://user:pw@example.com/": {
+   "v": "credentials"
+  },
+  "https://user@www.example.com/a": {
+   "v": "credentials"
+  },
+  "": {
+   "v": "invalid"
+  },
+  "   ": {
+   "v": "invalid"
+  },
+  "not a url": {
+   "v": "invalid"
+  },
+  "ftp://example.com": {
+   "v": "scheme"
+  },
+  "https://localhost/": {
+   "v": "internal"
+  },
+  "https://LOCALHOST./": {
+   "v": "internal"
+  },
+  "https://127.0.0.1/": {
+   "v": "address"
+  },
+  "https://2130706433/": {
+   "v": "address"
+  },
+  "https://0x7f000001/": {
+   "v": "address"
+  },
+  "https://127.1/": {
+   "v": "address"
+  },
+  "https://intranet/": {
+   "v": "internal"
+  },
+  "https://a.local/": {
+   "v": "internal"
+  },
+  "https://a.home.arpa/": {
+   "v": "internal"
+  },
+  "https://www.www.example.com/": {
+   "v": null
+  },
+  "https://wwwexample.com/": {
+   "v": null
+  },
+  "https://www./": {
+   "v": "internal"
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": null
+  },
+  "https://example.com/Path//": {
+   "v": null
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": null
+  },
+  "https://example.org/#": {
+   "v": null
+  },
+  "//example.com": {
+   "v": "invalid"
+  },
+  "example.com": {
+   "v": "invalid"
+  },
+  "mailto:a@b.c": {
+   "v": "scheme"
+  },
+  "javascript:alert(1)": {
+   "v": "scheme"
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "invalid"
+  },
+  "https://-bad.example.com/": {
+   "v": null
+  },
+  "https://exa_mple.com/": {
+   "v": null
+  },
+  "https://example.test/": {
+   "v": null
+  },
+  "https://foo.example/": {
+   "v": null
+  },
+  "https://exa%6Dple.com/": {
+   "v": null
+  },
+  "https://example.com%2e/": {
+   "v": null
+  },
+  "https://a.b/": {
+   "v": null
+  },
+  "https://1.2.3.4.5/": {
+   "v": "invalid"
+  },
+  "https://example.c/": {
+   "v": null
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": null
+  }
+ },
+ "fetchTargetProblemUrlObject": {
+  "https://Example.COM/": {
+   "v": null
+  },
+  "https://example.com:443/": {
+   "v": null
+  },
+  "https://example.com:8443/": {
+   "v": "port"
+  },
+  "http://example.com:80/": {
+   "v": null
+  },
+  "http://example.com:81/": {
+   "v": "port"
+  },
+  "https://www.Example.com/x": {
+   "v": null
+  },
+  "https://WWW.example.com./": {
+   "v": null
+  },
+  "https://example.com./": {
+   "v": null
+  },
+  "https://bücher.de/": {
+   "v": null
+  },
+  "https://BÜCHER.de./": {
+   "v": null
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": null
+  },
+  "https://[::1]/": {
+   "v": "address"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "address"
+  },
+  "https://user:pw@example.com/": {
+   "v": "credentials"
+  },
+  "https://user@www.example.com/a": {
+   "v": "credentials"
+  },
+  "": {
+   "throws": "TypeError"
+  },
+  "   ": {
+   "throws": "TypeError"
+  },
+  "not a url": {
+   "throws": "TypeError"
+  },
+  "ftp://example.com": {
+   "v": "scheme"
+  },
+  "https://localhost/": {
+   "v": "internal"
+  },
+  "https://LOCALHOST./": {
+   "v": "internal"
+  },
+  "https://127.0.0.1/": {
+   "v": "address"
+  },
+  "https://2130706433/": {
+   "v": "address"
+  },
+  "https://0x7f000001/": {
+   "v": "address"
+  },
+  "https://127.1/": {
+   "v": "address"
+  },
+  "https://intranet/": {
+   "v": "internal"
+  },
+  "https://a.local/": {
+   "v": "internal"
+  },
+  "https://a.home.arpa/": {
+   "v": "internal"
+  },
+  "https://www.www.example.com/": {
+   "v": null
+  },
+  "https://wwwexample.com/": {
+   "v": null
+  },
+  "https://www./": {
+   "v": "internal"
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": null
+  },
+  "https://example.com/Path//": {
+   "v": null
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": null
+  },
+  "https://example.org/#": {
+   "v": null
+  },
+  "//example.com": {
+   "throws": "TypeError"
+  },
+  "example.com": {
+   "throws": "TypeError"
+  },
+  "mailto:a@b.c": {
+   "v": "scheme"
+  },
+  "javascript:alert(1)": {
+   "v": "scheme"
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "invalid"
+  },
+  "https://-bad.example.com/": {
+   "v": null
+  },
+  "https://exa_mple.com/": {
+   "v": null
+  },
+  "https://example.test/": {
+   "v": null
+  },
+  "https://foo.example/": {
+   "v": null
+  },
+  "https://exa%6Dple.com/": {
+   "v": null
+  },
+  "https://example.com%2e/": {
+   "v": null
+  },
+  "https://a.b/": {
+   "v": null
+  },
+  "https://1.2.3.4.5/": {
+   "throws": "TypeError"
+  },
+  "https://example.c/": {
+   "v": null
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": null
+  }
+ },
+ "publicHostProblem": {
+  "1": {
+   "v": "ip"
+  },
+  "Example.COM": {
+   "v": "invalid"
+  },
+  "example.com": {
+   "v": null
+  },
+  "www.example.com": {
+   "v": null
+  },
+  "WWW.EXAMPLE.COM": {
+   "v": "invalid"
+  },
+  "www.example.com.": {
+   "v": "invalid"
+  },
+  "example.com.": {
+   "v": "invalid"
+  },
+  "": {
+   "v": "empty"
+  },
+  "wwwexample.com": {
+   "v": null
+  },
+  "www.": {
+   "v": "invalid"
+  },
+  "www.www.example.com": {
+   "v": null
+  },
+  "xn--bcher-kva.de": {
+   "v": null
+  },
+  "bücher.de": {
+   "v": "invalid"
+  },
+  "[::1]": {
+   "v": "ip"
+  },
+  "::1": {
+   "v": "ip"
+  },
+  "127.0.0.1": {
+   "v": "ip"
+  },
+  "1.2": {
+   "v": "ip"
+  },
+  "0x7f000001": {
+   "v": "ip"
+  },
+  "localhost": {
+   "v": "local"
+  },
+  "a.local": {
+   "v": "local"
+  },
+  "foo.example": {
+   "v": "local"
+  },
+  "foo.test": {
+   "v": "local"
+  },
+  "foo.invalid": {
+   "v": "local"
+  },
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+   "v": "toolong"
+  },
+  "-a.com": {
+   "v": "invalid"
+  },
+  "a-.com": {
+   "v": "invalid"
+  },
+  "a.b.c.d.e.co": {
+   "v": null
+  },
+  "a.c": {
+   "v": "invalid"
+  },
+  "a.123": {
+   "v": "invalid"
+  },
+  "a.xn--p1ai": {
+   "v": null
+  },
+  "a..b.com": {
+   "v": "invalid"
+  },
+  "exa_mple.com": {
+   "v": "invalid"
+  },
+  "example.com:8443": {
+   "v": "ip"
+  },
+  "www.example.com:8443": {
+   "v": "ip"
+  },
+  "a.home.arpa": {
+   "v": "local"
+  },
+  "example.home": {
+   "v": "local"
+  }
+ },
+ "hostOfUrl": {
+  "https://Example.COM/": {
+   "v": "example.com"
+  },
+  "https://example.com:443/": {
+   "v": "example.com"
+  },
+  "https://example.com:8443/": {
+   "v": "example.com"
+  },
+  "http://example.com:80/": {
+   "v": "example.com"
+  },
+  "http://example.com:81/": {
+   "v": "example.com"
+  },
+  "https://www.Example.com/x": {
+   "v": "www.example.com"
+  },
+  "https://WWW.example.com./": {
+   "v": "www.example.com"
+  },
+  "https://example.com./": {
+   "v": "example.com"
+  },
+  "https://bücher.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://BÜCHER.de./": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://[::1]/": {
+   "v": "[::1]"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "[2001:db8::1]"
+  },
+  "https://user:pw@example.com/": {
+   "v": "example.com"
+  },
+  "https://user@www.example.com/a": {
+   "v": "www.example.com"
+  },
+  "": {
+   "v": ""
+  },
+  "   ": {
+   "v": ""
+  },
+  "not a url": {
+   "v": ""
+  },
+  "ftp://example.com": {
+   "v": "example.com"
+  },
+  "https://localhost/": {
+   "v": "localhost"
+  },
+  "https://LOCALHOST./": {
+   "v": "localhost"
+  },
+  "https://127.0.0.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://2130706433/": {
+   "v": "127.0.0.1"
+  },
+  "https://0x7f000001/": {
+   "v": "127.0.0.1"
+  },
+  "https://127.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://intranet/": {
+   "v": "intranet"
+  },
+  "https://a.local/": {
+   "v": "a.local"
+  },
+  "https://a.home.arpa/": {
+   "v": "a.home.arpa"
+  },
+  "https://www.www.example.com/": {
+   "v": "www.www.example.com"
+  },
+  "https://wwwexample.com/": {
+   "v": "wwwexample.com"
+  },
+  "https://www./": {
+   "v": "www"
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": "sub.example.co.uk"
+  },
+  "https://example.com/Path//": {
+   "v": "example.com"
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": "example.org"
+  },
+  "https://example.org/#": {
+   "v": "example.org"
+  },
+  "//example.com": {
+   "v": ""
+  },
+  "example.com": {
+   "v": ""
+  },
+  "mailto:a@b.c": {
+   "v": ""
+  },
+  "javascript:alert(1)": {
+   "v": ""
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+  },
+  "https://-bad.example.com/": {
+   "v": "-bad.example.com"
+  },
+  "https://exa_mple.com/": {
+   "v": "exa_mple.com"
+  },
+  "https://example.test/": {
+   "v": "example.test"
+  },
+  "https://foo.example/": {
+   "v": "foo.example"
+  },
+  "https://exa%6Dple.com/": {
+   "v": "example.com"
+  },
+  "https://example.com%2e/": {
+   "v": "example.com"
+  },
+  "https://a.b/": {
+   "v": "a.b"
+  },
+  "https://1.2.3.4.5/": {
+   "v": ""
+  },
+  "https://example.c/": {
+   "v": "example.c"
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": "example.com"
+  }
+ },
+ "canonicalHost": {
+  "1": {
+   "v": "1"
+  },
+  "Example.COM": {
+   "v": "example.com"
+  },
+  "example.com": {
+   "v": "example.com"
+  },
+  "www.example.com": {
+   "v": "example.com"
+  },
+  "WWW.EXAMPLE.COM": {
+   "v": "example.com"
+  },
+  "www.example.com.": {
+   "v": "example.com"
+  },
+  "example.com.": {
+   "v": "example.com"
+  },
+  "": {
+   "v": ""
+  },
+  "wwwexample.com": {
+   "v": "wwwexample.com"
+  },
+  "www.": {
+   "v": "www"
+  },
+  "www.www.example.com": {
+   "v": "www.example.com"
+  },
+  "xn--bcher-kva.de": {
+   "v": "xn--bcher-kva.de"
+  },
+  "bücher.de": {
+   "v": "bücher.de"
+  },
+  "[::1]": {
+   "v": "[::1]"
+  },
+  "::1": {
+   "v": "::1"
+  },
+  "127.0.0.1": {
+   "v": "127.0.0.1"
+  },
+  "1.2": {
+   "v": "1.2"
+  },
+  "0x7f000001": {
+   "v": "0x7f000001"
+  },
+  "localhost": {
+   "v": "localhost"
+  },
+  "a.local": {
+   "v": "a.local"
+  },
+  "foo.example": {
+   "v": "foo.example"
+  },
+  "foo.test": {
+   "v": "foo.test"
+  },
+  "foo.invalid": {
+   "v": "foo.invalid"
+  },
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "-a.com": {
+   "v": "-a.com"
+  },
+  "a-.com": {
+   "v": "a-.com"
+  },
+  "a.b.c.d.e.co": {
+   "v": "a.b.c.d.e.co"
+  },
+  "a.c": {
+   "v": "a.c"
+  },
+  "a.123": {
+   "v": "a.123"
+  },
+  "a.xn--p1ai": {
+   "v": "a.xn--p1ai"
+  },
+  "a..b.com": {
+   "v": "a..b.com"
+  },
+  "exa_mple.com": {
+   "v": "exa_mple.com"
+  },
+  "example.com:8443": {
+   "v": "example.com:8443"
+  },
+  "www.example.com:8443": {
+   "v": "example.com:8443"
+  },
+  "a.home.arpa": {
+   "v": "a.home.arpa"
+  },
+  "example.home": {
+   "v": "example.home"
+  }
+ },
+ "bareHost": {
+  "1": {
+   "v": "1"
+  },
+  "Example.COM": {
+   "v": "example.com"
+  },
+  "example.com": {
+   "v": "example.com"
+  },
+  "www.example.com": {
+   "v": "example.com"
+  },
+  "WWW.EXAMPLE.COM": {
+   "v": "example.com"
+  },
+  "www.example.com.": {
+   "v": "example.com."
+  },
+  "example.com.": {
+   "v": "example.com."
+  },
+  "": {
+   "v": ""
+  },
+  "wwwexample.com": {
+   "v": "wwwexample.com"
+  },
+  "www.": {
+   "v": ""
+  },
+  "www.www.example.com": {
+   "v": "www.example.com"
+  },
+  "xn--bcher-kva.de": {
+   "v": "xn--bcher-kva.de"
+  },
+  "bücher.de": {
+   "v": "bücher.de"
+  },
+  "[::1]": {
+   "v": "[::1]"
+  },
+  "::1": {
+   "v": "::1"
+  },
+  "127.0.0.1": {
+   "v": "127.0.0.1"
+  },
+  "1.2": {
+   "v": "1.2"
+  },
+  "0x7f000001": {
+   "v": "0x7f000001"
+  },
+  "localhost": {
+   "v": "localhost"
+  },
+  "a.local": {
+   "v": "a.local"
+  },
+  "foo.example": {
+   "v": "foo.example"
+  },
+  "foo.test": {
+   "v": "foo.test"
+  },
+  "foo.invalid": {
+   "v": "foo.invalid"
+  },
+  "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  "-a.com": {
+   "v": "-a.com"
+  },
+  "a-.com": {
+   "v": "a-.com"
+  },
+  "a.b.c.d.e.co": {
+   "v": "a.b.c.d.e.co"
+  },
+  "a.c": {
+   "v": "a.c"
+  },
+  "a.123": {
+   "v": "a.123"
+  },
+  "a.xn--p1ai": {
+   "v": "a.xn--p1ai"
+  },
+  "a..b.com": {
+   "v": "a..b.com"
+  },
+  "exa_mple.com": {
+   "v": "exa_mple.com"
+  },
+  "example.com:8443": {
+   "v": "example.com:8443"
+  },
+  "www.example.com:8443": {
+   "v": "example.com:8443"
+  },
+  "a.home.arpa": {
+   "v": "a.home.arpa"
+  },
+  "example.home": {
+   "v": "example.home"
+  }
+ },
+ "bareHostOfUrl": {
+  "https://Example.COM/": {
+   "v": "example.com"
+  },
+  "https://example.com:443/": {
+   "v": "example.com"
+  },
+  "https://example.com:8443/": {
+   "v": "example.com"
+  },
+  "http://example.com:80/": {
+   "v": "example.com"
+  },
+  "http://example.com:81/": {
+   "v": "example.com"
+  },
+  "https://www.Example.com/x": {
+   "v": "example.com"
+  },
+  "https://WWW.example.com./": {
+   "v": "example.com."
+  },
+  "https://example.com./": {
+   "v": "example.com."
+  },
+  "https://bücher.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://BÜCHER.de./": {
+   "v": "xn--bcher-kva.de."
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://[::1]/": {
+   "v": "[::1]"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "[2001:db8::1]"
+  },
+  "https://user:pw@example.com/": {
+   "v": "example.com"
+  },
+  "https://user@www.example.com/a": {
+   "v": "example.com"
+  },
+  "": {
+   "v": ""
+  },
+  "   ": {
+   "v": ""
+  },
+  "not a url": {
+   "v": ""
+  },
+  "ftp://example.com": {
+   "v": "example.com"
+  },
+  "https://localhost/": {
+   "v": "localhost"
+  },
+  "https://LOCALHOST./": {
+   "v": "localhost."
+  },
+  "https://127.0.0.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://2130706433/": {
+   "v": "127.0.0.1"
+  },
+  "https://0x7f000001/": {
+   "v": "127.0.0.1"
+  },
+  "https://127.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://intranet/": {
+   "v": "intranet"
+  },
+  "https://a.local/": {
+   "v": "a.local"
+  },
+  "https://a.home.arpa/": {
+   "v": "a.home.arpa"
+  },
+  "https://www.www.example.com/": {
+   "v": "www.example.com"
+  },
+  "https://wwwexample.com/": {
+   "v": "wwwexample.com"
+  },
+  "https://www./": {
+   "v": ""
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": "sub.example.co.uk"
+  },
+  "https://example.com/Path//": {
+   "v": "example.com"
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": "example.org"
+  },
+  "https://example.org/#": {
+   "v": "example.org"
+  },
+  "//example.com": {
+   "v": ""
+  },
+  "example.com": {
+   "v": ""
+  },
+  "mailto:a@b.c": {
+   "v": ""
+  },
+  "javascript:alert(1)": {
+   "v": ""
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+  },
+  "https://-bad.example.com/": {
+   "v": "-bad.example.com"
+  },
+  "https://exa_mple.com/": {
+   "v": "exa_mple.com"
+  },
+  "https://example.test/": {
+   "v": "example.test"
+  },
+  "https://foo.example/": {
+   "v": "foo.example"
+  },
+  "https://exa%6Dple.com/": {
+   "v": "example.com"
+  },
+  "https://example.com%2e/": {
+   "v": "example.com."
+  },
+  "https://a.b/": {
+   "v": "a.b"
+  },
+  "https://1.2.3.4.5/": {
+   "v": ""
+  },
+  "https://example.c/": {
+   "v": "example.c"
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": "example.com"
+  }
+ },
+ "destinationKey": {
+  "https://Example.COM/": {
+   "v": "example.com"
+  },
+  "https://example.com:443/": {
+   "v": "example.com"
+  },
+  "https://example.com:8443/": {
+   "v": "example.com:8443"
+  },
+  "http://example.com:80/": {
+   "v": "example.com"
+  },
+  "http://example.com:81/": {
+   "v": "example.com:81"
+  },
+  "https://www.Example.com/x": {
+   "v": "example.com/x"
+  },
+  "https://WWW.example.com./": {
+   "v": "example.com"
+  },
+  "https://example.com./": {
+   "v": "example.com"
+  },
+  "https://bücher.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://BÜCHER.de./": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://[::1]/": {
+   "v": "[::1]"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "[2001:db8::1]"
+  },
+  "https://user:pw@example.com/": {
+   "v": "example.com"
+  },
+  "https://user@www.example.com/a": {
+   "v": "example.com/a"
+  },
+  "": {
+   "v": null
+  },
+  "   ": {
+   "v": null
+  },
+  "not a url": {
+   "v": null
+  },
+  "ftp://example.com": {
+   "v": null
+  },
+  "https://localhost/": {
+   "v": "localhost"
+  },
+  "https://LOCALHOST./": {
+   "v": "localhost"
+  },
+  "https://127.0.0.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://2130706433/": {
+   "v": "127.0.0.1"
+  },
+  "https://0x7f000001/": {
+   "v": "127.0.0.1"
+  },
+  "https://127.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://intranet/": {
+   "v": "intranet"
+  },
+  "https://a.local/": {
+   "v": "a.local"
+  },
+  "https://a.home.arpa/": {
+   "v": "a.home.arpa"
+  },
+  "https://www.www.example.com/": {
+   "v": "www.example.com"
+  },
+  "https://wwwexample.com/": {
+   "v": "wwwexample.com"
+  },
+  "https://www./": {
+   "v": "www"
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": "sub.example.co.uk/path?a=1&b=2#frag"
+  },
+  "https://example.com/Path//": {
+   "v": "example.com/Path"
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": "example.org?v=abc"
+  },
+  "https://example.org/#": {
+   "v": "example.org"
+  },
+  "//example.com": {
+   "v": null
+  },
+  "example.com": {
+   "v": null
+  },
+  "mailto:a@b.c": {
+   "v": null
+  },
+  "javascript:alert(1)": {
+   "v": null
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+  },
+  "https://-bad.example.com/": {
+   "v": "-bad.example.com"
+  },
+  "https://exa_mple.com/": {
+   "v": "exa_mple.com"
+  },
+  "https://example.test/": {
+   "v": "example.test"
+  },
+  "https://foo.example/": {
+   "v": "foo.example"
+  },
+  "https://exa%6Dple.com/": {
+   "v": "example.com"
+  },
+  "https://example.com%2e/": {
+   "v": "example.com"
+  },
+  "https://a.b/": {
+   "v": "a.b"
+  },
+  "https://1.2.3.4.5/": {
+   "v": null
+  },
+  "https://example.c/": {
+   "v": "example.c"
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": "example.com/Page?B=2&a=1"
+  }
+ },
+ "probeCanon": {
+  "https://Example.COM/": {
+   "v": "example.com"
+  },
+  "https://example.com:443/": {
+   "v": "example.com"
+  },
+  "https://example.com:8443/": {
+   "v": "example.com"
+  },
+  "http://example.com:80/": {
+   "v": "example.com"
+  },
+  "http://example.com:81/": {
+   "v": "example.com"
+  },
+  "https://www.Example.com/x": {
+   "v": "example.com/x"
+  },
+  "https://WWW.example.com./": {
+   "v": "example.com."
+  },
+  "https://example.com./": {
+   "v": "example.com."
+  },
+  "https://bücher.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://BÜCHER.de./": {
+   "v": "xn--bcher-kva.de."
+  },
+  "https://xn--bcher-kva.de/": {
+   "v": "xn--bcher-kva.de"
+  },
+  "https://[::1]/": {
+   "v": "[::1]"
+  },
+  "https://[2001:db8::1]:443/": {
+   "v": "[2001:db8::1]"
+  },
+  "https://user:pw@example.com/": {
+   "v": "example.com"
+  },
+  "https://user@www.example.com/a": {
+   "v": "example.com/a"
+  },
+  "": {
+   "throws": "TypeError"
+  },
+  "   ": {
+   "throws": "TypeError"
+  },
+  "not a url": {
+   "throws": "TypeError"
+  },
+  "ftp://example.com": {
+   "v": "example.com"
+  },
+  "https://localhost/": {
+   "v": "localhost"
+  },
+  "https://LOCALHOST./": {
+   "v": "localhost."
+  },
+  "https://127.0.0.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://2130706433/": {
+   "v": "127.0.0.1"
+  },
+  "https://0x7f000001/": {
+   "v": "127.0.0.1"
+  },
+  "https://127.1/": {
+   "v": "127.0.0.1"
+  },
+  "https://intranet/": {
+   "v": "intranet"
+  },
+  "https://a.local/": {
+   "v": "a.local"
+  },
+  "https://a.home.arpa/": {
+   "v": "a.home.arpa"
+  },
+  "https://www.www.example.com/": {
+   "v": "www.example.com"
+  },
+  "https://wwwexample.com/": {
+   "v": "wwwexample.com"
+  },
+  "https://www./": {
+   "v": ""
+  },
+  "https://sub.example.co.uk/path?utm_source=x&b=2&a=1#frag": {
+   "v": "sub.example.co.uk/path?utm_source=x&b=2&a=1"
+  },
+  "https://example.com/Path//": {
+   "v": "example.com/Path"
+  },
+  "https://example.org/?v=abc&fbclid=1": {
+   "v": "example.org?v=abc&fbclid=1"
+  },
+  "https://example.org/#": {
+   "v": "example.org"
+  },
+  "//example.com": {
+   "throws": "TypeError"
+  },
+  "example.com": {
+   "throws": "TypeError"
+  },
+  "mailto:a@b.c": {
+   "v": "a@b.c"
+  },
+  "javascript:alert(1)": {
+   "v": "alert(1)"
+  },
+  "https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com/": {
+   "v": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com"
+  },
+  "https://-bad.example.com/": {
+   "v": "-bad.example.com"
+  },
+  "https://exa_mple.com/": {
+   "v": "exa_mple.com"
+  },
+  "https://example.test/": {
+   "v": "example.test"
+  },
+  "https://foo.example/": {
+   "v": "foo.example"
+  },
+  "https://exa%6Dple.com/": {
+   "v": "example.com"
+  },
+  "https://example.com%2e/": {
+   "v": "example.com."
+  },
+  "https://a.b/": {
+   "v": "a.b"
+  },
+  "https://1.2.3.4.5/": {
+   "throws": "TypeError"
+  },
+  "https://example.c/": {
+   "v": "example.c"
+  },
+  "http://Example.com:80/Page/?B=2&a=1": {
+   "v": "example.com/Page?B=2&a=1"
+  }
+ },
+ "sameSiteHost": [
+  [
+   "Example.COM",
+   "Example.COM",
+   true
+  ],
+  [
+   "Example.COM",
+   "example.com",
+   true
+  ],
+  [
+   "Example.COM",
+   "www.example.com",
+   true
+  ],
+  [
+   "Example.COM",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "Example.COM",
+   "www.example.com.",
+   true
+  ],
+  [
+   "Example.COM",
+   "example.com.",
+   true
+  ],
+  [
+   "Example.COM",
+   "",
+   false
+  ],
+  [
+   "Example.COM",
+   "other.org",
+   false
+  ],
+  [
+   "Example.COM",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "Example.COM",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "Example.COM",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com",
+   "Example.COM",
+   true
+  ],
+  [
+   "example.com",
+   "example.com",
+   true
+  ],
+  [
+   "example.com",
+   "www.example.com",
+   true
+  ],
+  [
+   "example.com",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "example.com",
+   "www.example.com.",
+   true
+  ],
+  [
+   "example.com",
+   "example.com.",
+   true
+  ],
+  [
+   "example.com",
+   "",
+   false
+  ],
+  [
+   "example.com",
+   "other.org",
+   false
+  ],
+  [
+   "example.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.example.com",
+   "Example.COM",
+   true
+  ],
+  [
+   "www.example.com",
+   "example.com",
+   true
+  ],
+  [
+   "www.example.com",
+   "www.example.com",
+   true
+  ],
+  [
+   "www.example.com",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "www.example.com",
+   "www.example.com.",
+   true
+  ],
+  [
+   "www.example.com",
+   "example.com.",
+   true
+  ],
+  [
+   "www.example.com",
+   "",
+   false
+  ],
+  [
+   "www.example.com",
+   "other.org",
+   false
+  ],
+  [
+   "www.example.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "www.example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "Example.COM",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.example.com",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.example.com.",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com.",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "other.org",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.example.com.",
+   "Example.COM",
+   true
+  ],
+  [
+   "www.example.com.",
+   "example.com",
+   true
+  ],
+  [
+   "www.example.com.",
+   "www.example.com",
+   true
+  ],
+  [
+   "www.example.com.",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "www.example.com.",
+   "www.example.com.",
+   true
+  ],
+  [
+   "www.example.com.",
+   "example.com.",
+   true
+  ],
+  [
+   "www.example.com.",
+   "",
+   false
+  ],
+  [
+   "www.example.com.",
+   "other.org",
+   false
+  ],
+  [
+   "www.example.com.",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com.",
+   "Example.COM",
+   true
+  ],
+  [
+   "example.com.",
+   "example.com",
+   true
+  ],
+  [
+   "example.com.",
+   "www.example.com",
+   true
+  ],
+  [
+   "example.com.",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "example.com.",
+   "www.example.com.",
+   true
+  ],
+  [
+   "example.com.",
+   "example.com.",
+   true
+  ],
+  [
+   "example.com.",
+   "",
+   false
+  ],
+  [
+   "example.com.",
+   "other.org",
+   false
+  ],
+  [
+   "example.com.",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com.",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com.",
+   "example.com:8443",
+   false
+  ],
+  [
+   "",
+   "Example.COM",
+   false
+  ],
+  [
+   "",
+   "example.com",
+   false
+  ],
+  [
+   "",
+   "www.example.com",
+   false
+  ],
+  [
+   "",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "",
+   "www.example.com.",
+   false
+  ],
+  [
+   "",
+   "example.com.",
+   false
+  ],
+  [
+   "",
+   "",
+   false
+  ],
+  [
+   "",
+   "other.org",
+   false
+  ],
+  [
+   "",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "",
+   "example.com:8443",
+   false
+  ],
+  [
+   "other.org",
+   "Example.COM",
+   false
+  ],
+  [
+   "other.org",
+   "example.com",
+   false
+  ],
+  [
+   "other.org",
+   "www.example.com",
+   false
+  ],
+  [
+   "other.org",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "other.org",
+   "www.example.com.",
+   false
+  ],
+  [
+   "other.org",
+   "example.com.",
+   false
+  ],
+  [
+   "other.org",
+   "",
+   false
+  ],
+  [
+   "other.org",
+   "other.org",
+   true
+  ],
+  [
+   "other.org",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "other.org",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "other.org",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "Example.COM",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.example.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com.",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "other.org",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.www.example.com",
+   true
+  ],
+  [
+   "www.www.example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "Example.COM",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "example.com.",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "other.org",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "wwwexample.com",
+   true
+  ],
+  [
+   "wwwexample.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com:8443",
+   "Example.COM",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.example.com.",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com.",
+   false
+  ],
+  [
+   "example.com:8443",
+   "",
+   false
+  ],
+  [
+   "example.com:8443",
+   "other.org",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com:8443",
+   true
+  ]
+ ],
+ "sameHost": [
+  [
+   "Example.COM",
+   "Example.COM",
+   true
+  ],
+  [
+   "Example.COM",
+   "example.com",
+   true
+  ],
+  [
+   "Example.COM",
+   "www.example.com",
+   true
+  ],
+  [
+   "Example.COM",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "Example.COM",
+   "www.example.com.",
+   false
+  ],
+  [
+   "Example.COM",
+   "example.com.",
+   false
+  ],
+  [
+   "Example.COM",
+   "",
+   false
+  ],
+  [
+   "Example.COM",
+   "other.org",
+   false
+  ],
+  [
+   "Example.COM",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "Example.COM",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "Example.COM",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com",
+   "Example.COM",
+   true
+  ],
+  [
+   "example.com",
+   "example.com",
+   true
+  ],
+  [
+   "example.com",
+   "www.example.com",
+   true
+  ],
+  [
+   "example.com",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "example.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "example.com",
+   "example.com.",
+   false
+  ],
+  [
+   "example.com",
+   "",
+   false
+  ],
+  [
+   "example.com",
+   "other.org",
+   false
+  ],
+  [
+   "example.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.example.com",
+   "Example.COM",
+   true
+  ],
+  [
+   "www.example.com",
+   "example.com",
+   true
+  ],
+  [
+   "www.example.com",
+   "www.example.com",
+   true
+  ],
+  [
+   "www.example.com",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "www.example.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "www.example.com",
+   "example.com.",
+   false
+  ],
+  [
+   "www.example.com",
+   "",
+   false
+  ],
+  [
+   "www.example.com",
+   "other.org",
+   false
+  ],
+  [
+   "www.example.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "www.example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "Example.COM",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.example.com",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "WWW.EXAMPLE.COM",
+   true
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.example.com.",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com.",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "other.org",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "WWW.EXAMPLE.COM",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.example.com.",
+   "Example.COM",
+   false
+  ],
+  [
+   "www.example.com.",
+   "example.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "www.example.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "www.example.com.",
+   "www.example.com.",
+   true
+  ],
+  [
+   "www.example.com.",
+   "example.com.",
+   true
+  ],
+  [
+   "www.example.com.",
+   "",
+   false
+  ],
+  [
+   "www.example.com.",
+   "other.org",
+   false
+  ],
+  [
+   "www.example.com.",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.example.com.",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com.",
+   "Example.COM",
+   false
+  ],
+  [
+   "example.com.",
+   "example.com",
+   false
+  ],
+  [
+   "example.com.",
+   "www.example.com",
+   false
+  ],
+  [
+   "example.com.",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "example.com.",
+   "www.example.com.",
+   true
+  ],
+  [
+   "example.com.",
+   "example.com.",
+   true
+  ],
+  [
+   "example.com.",
+   "",
+   false
+  ],
+  [
+   "example.com.",
+   "other.org",
+   false
+  ],
+  [
+   "example.com.",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com.",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com.",
+   "example.com:8443",
+   false
+  ],
+  [
+   "",
+   "Example.COM",
+   false
+  ],
+  [
+   "",
+   "example.com",
+   false
+  ],
+  [
+   "",
+   "www.example.com",
+   false
+  ],
+  [
+   "",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "",
+   "www.example.com.",
+   false
+  ],
+  [
+   "",
+   "example.com.",
+   false
+  ],
+  [
+   "",
+   "",
+   true
+  ],
+  [
+   "",
+   "other.org",
+   false
+  ],
+  [
+   "",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "",
+   "example.com:8443",
+   false
+  ],
+  [
+   "other.org",
+   "Example.COM",
+   false
+  ],
+  [
+   "other.org",
+   "example.com",
+   false
+  ],
+  [
+   "other.org",
+   "www.example.com",
+   false
+  ],
+  [
+   "other.org",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "other.org",
+   "www.example.com.",
+   false
+  ],
+  [
+   "other.org",
+   "example.com.",
+   false
+  ],
+  [
+   "other.org",
+   "",
+   false
+  ],
+  [
+   "other.org",
+   "other.org",
+   true
+  ],
+  [
+   "other.org",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "other.org",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "other.org",
+   "example.com:8443",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "Example.COM",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.example.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com.",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "other.org",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "www.www.example.com",
+   true
+  ],
+  [
+   "www.www.example.com",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "www.www.example.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "Example.COM",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.example.com.",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "example.com.",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "other.org",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "wwwexample.com",
+   "wwwexample.com",
+   true
+  ],
+  [
+   "wwwexample.com",
+   "example.com:8443",
+   false
+  ],
+  [
+   "example.com:8443",
+   "Example.COM",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "WWW.EXAMPLE.COM",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.example.com.",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com.",
+   false
+  ],
+  [
+   "example.com:8443",
+   "",
+   false
+  ],
+  [
+   "example.com:8443",
+   "other.org",
+   false
+  ],
+  [
+   "example.com:8443",
+   "www.www.example.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "wwwexample.com",
+   false
+  ],
+  [
+   "example.com:8443",
+   "example.com:8443",
+   true
+  ]
+ ]
+}

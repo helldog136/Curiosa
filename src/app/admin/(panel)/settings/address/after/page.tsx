@@ -6,7 +6,8 @@ import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
 import { buildChecklist } from "@/core/domainChecklist";
 import { afterTasks, getAfterTicks, runAfterChecks, type AfterTask, type CheckResult } from "@/core/domainChecks";
-import { hostOfUrl, parseLegacyHosts } from "@/core/siteAddress";
+import { hostOf } from "@/core/host";
+import { parseLegacyHosts } from "@/core/siteAddress";
 import { PageHeader, Panel } from "@/components/admin/Page";
 import { CopyBlock } from "@/components/admin/CopyBlock";
 import { PendingButton } from "@/components/admin/PendingButton";
@@ -24,7 +25,7 @@ export default async function AfterChangePage({ searchParams }: { searchParams: 
   if (!advanced) redirect(SETTINGS_HREF);
   const sp = await searchParams;
   const run = (Array.isArray(sp.run) ? sp.run[0] : sp.run) === "1";
-  const legacy = parseLegacyHosts(process.env.LEGACY_HOSTS, hostOfUrl(siteUrl)).hosts;
+  const legacy = parseLegacyHosts(process.env.LEGACY_HOSTS, hostOf(siteUrl)).hosts;
   const hostHeader = (await headers()).get("host");
   // À la demande seulement : aucun appel sortant tant que la personne n'a pas cliqué sur « Lancer le contrôle ».
   const results: CheckResult[] | null = run ? await runAfterChecks({ siteUrl, hostHeader, legacy }) : null;
