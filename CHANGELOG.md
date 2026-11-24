@@ -13,6 +13,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Un assistant IA voit tout ce que le site pourrait lui permettre de faire.** Il connaît la liste à jour des opérations, même celles qu'il n'a pas, et lesquelles demandent votre validation. Il peut vous dire « si vous m'accordez ceci, je pourrais le faire moi-même », ou signaler ce que vos propres droits ne permettent pas.
 - **(English) An AI assistant can see everything the site could let it do.** It knows the up-to-date list of every operation, even those not granted to it, and whether they need your approval. It can tell you "if you grant me this, I could do it myself", or warn you that an operation is above your own rights.
+- **Les skins d'overlay peuvent dessiner eux-mêmes les morceaux d'un vitrail.** Un skin fournit la forme de chaque pièce d'une mosaïque (des nombres seulement, jamais de code) et la barre prend cette forme au lieu de morceaux au hasard. Si un motif ne convient pas, un motif simple s'affiche à la place.
+- **(English) Overlay skins can draw the pieces of a stained-glass window themselves.** A skin supplies the shape of each piece of a mosaic (numbers only, never code) and the bar takes that shape instead of random pieces. If a pattern does not fit, a simple pattern is shown instead.
 
 ### Corrections
 

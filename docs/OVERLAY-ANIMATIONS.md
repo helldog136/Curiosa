@@ -636,3 +636,19 @@ Every unknown key is a warning and is dropped; `$comment` is allowed. The pieces
 - **Concave pieces are drawn safely**: the gradient, the mottle, the bubbles and the glow start at the piece's *label point* (the point farthest from its sides, always inside) with its *inradius* instead of the convex centroid and radius, and the mottle, bubbles and streak are cut by the piece's own outline.
 - The geometry is the **same at every effects level and in calm mode**: only the details change, as for the other patterns.
 - A pattern is not drawn when the engine cannot trust it (an unknown `source`, a graph out of bounds, more than 120 pieces): the voronoi mosaic is drawn with the same other parameters, and nothing breaks.
+
+### Variants by proportions, and what a pattern costs
+
+- **Variants.** A name of the `patterns` table lists one to four files of different proportions. At drawing time the engine takes the variant whose width over height is nearest to the element's (compared on a log scale, so 2:1 and 1:2 are equally far from 1:1) and stretches it to the element; it never mixes two variants. Give a wide bar, an ultra-wide bar and a square element each a file of their own when the drawing matters; `pattern-stretch` warns when two neighbouring variants are so far apart that the nearer one would still be stretched by more than 1.4 in each direction.
+- **The cap of 120 pieces** comes from a measurement in real Chromium (headless, software rendering, so slower than a computer with a graphics card). One mosaic is made of about 10.5 drawing operations per piece, and the frame (`frame()` then `draw()`, 150 frames while the value climbs, then holds) cost:
+
+  | Pieces | 1764 x 717, light | 3440 x 1440, light | 1764 x 717, full | 3440 x 1440, full |
+  |---|---|---|---|---|
+  | 60 | avg 3.3 ms, p95 6.9 | avg 3.4, p95 6.2 | avg 3.6, p95 6.5 | avg 2.7, p95 5.0 |
+  | 90 | avg 4.4, p95 8.1 | avg 4.4, p95 7.9 | avg 5.2, p95 15.1 | avg 6.2, p95 20.9 |
+  | 120 | avg 6.2, p95 12.5 | avg 6.0, p95 11.3 | avg 6.5, p95 18.8 | avg 5.9, p95 10.3 |
+  | 160 | avg 6.2, p95 11.8 | avg 8.8, p95 19.3 | avg 6.9, p95 15.8 | avg 8.8, p95 21.9 |
+
+  The first frame of a new size costs 30 to 90 ms once (the pieces are cut and cached); a resize pays it again. The averages are far below one 60 Hz frame (16.7 ms), but the 95th percentile is not: at 120 pieces it reaches 18.8 ms at 1764 x 717 with full effects, above one frame, so a frame in twenty can be late on this software-rendered machine (the other three columns stay at or under 12.5 ms). At 160 pieces it goes over the frame in three columns out of four. The cost grows with the pieces, not with the pixels. The cap stays at 120: a file may hold up to 160 (a skin can keep one drawing for several uses), a pattern above 120 draws the simple mosaic and says so (`pattern-cells-cap`). Re-measure with `node --import ./tests/helpers/register.mjs scripts/visual/pattern-bench.mjs` (`COUNTS=60,120 QUALITY=full` to narrow it); the script is the source of the table.
+
+- **Checking a skin costs CPU once, not at every read** (core 0.48.0): reading a skin with the most files the contract allows (48 pattern files of 120 twelve-vertex pieces) takes about 350 to 600 ms of the server's main thread. The installed-skin list (admin pages, MCP tools, the page-save check) reuses that check while the files of the folder keep the same names, sizes and dates, so a skin is read again only when something on disk changes. The page of a skin on a stream is read through its own 10-minute cache.
