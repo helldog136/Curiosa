@@ -5,6 +5,7 @@ import { uploadFileName } from "@/core/fonts/registry";
 import { listUploads } from "@/core/fonts/uploads";
 import { prisma } from "@/core/db";
 import { getCatalogue, moduleOrigin } from "@/core/modules/catalogue";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { buildContext } from "@/core/modules/context";
 import { getActiveInstances, listModuleRows, loadModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
@@ -77,11 +78,13 @@ export async function createBackup(password: string, opts: { now?: Date; iterati
   const records = await readRecords(keyOf);
   const market = await getCatalogue().catch(() => []);
   const modules: BackupModule[] = [];
+  // A module from a personal catalogue is written as "custom" (even once its catalogue is removed); if that cannot be told, all of them are: a restore then asks first.
+  const personal = await personalIndex();
   for (const row of moduleRows) {
     const loaded = await loadModule(row);
     modules.push({
       id: row.id, source: row.source as BackupModule["source"], version: row.version, repoUrl: row.repoUrl, ref: row.ref, subdir: row.subdir, commit: row.commit,
-      origin: moduleOrigin(row, market), name: loaded ? localized(loaded.manifest.name, "en", "en") : row.id,
+      origin: !personal || personal.has(row) ? "custom" : moduleOrigin(row, market), name: loaded ? localized(loaded.manifest.name, "en", "en") : row.id,
     });
   }
 

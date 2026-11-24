@@ -39,7 +39,8 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const { error, topic: rawTopic, origin: rawOrigin } = await searchParams;
   const topic = parseTopic(rawTopic);
   const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
-  const entries = await getCatalogue();
+  // (0.47.0) The entries of personal catalogues are shown only to those who may install (the names of a private repository are not for everyone).
+  const entries = (await getCatalogue()).filter((e) => isOwner || !e.personal);
   const source = await getCatalogueSource();
   const installed = new Set((await listModuleRows()).map((r) => r.id));
   // Données gardées d'extensions retirées : on le dit sur leur carte, et on les liste (pour les effacer ou réinstaller) tant que l'extension n'est pas revenue.

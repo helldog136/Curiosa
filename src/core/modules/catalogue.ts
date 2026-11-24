@@ -65,7 +65,8 @@ function recognizedEntry(c: RecognizedItem, suggested: Set<string>): CatalogueEn
   const needs = normalizeNeeds(c.needs);
   return {
     id: c.id, name: entryText(c, "name"), description: entryText(c, "description"), version: c.version, icon: c.icon, author: c.author, suggested: c.catalogueOrigin !== "extra" && suggested.has(c.id),
-    kind: "recognized", provides: c.provides, social: c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
+    // An entry of a personal catalogue is unverified: what it declares about itself (topics it provides, social sources) never drives suggestions or other pages.
+    kind: "recognized", provides: c.catalogueSource ? undefined : c.provides, social: c.catalogueSource ? undefined : c.social, platform: c.platform, repo: c.repo, ref: c.ref, subdir: c.subdir, compatible: c.apiVersion === undefined || c.apiVersion === MODULE_API_VERSION,
     requires: c.requires, needsNewerCore: incompatWithThisCore(c.requires)?.needs,
     offers: offers?.length ? offers : undefined, needs: needs?.length ? needs : undefined, previews: c.previews, topics: c.places,
     origin: c.catalogueOrigin === "extra" ? "extra" : "official",

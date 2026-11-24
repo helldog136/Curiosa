@@ -12,7 +12,7 @@ import { languageLabel } from "@/core/i18n/audit.mjs";
 import { i18nStatus } from "@/core/i18n/status";
 import { moduleI18nReport, readModuleTexts } from "@/core/i18n/moduleStatus";
 import { sourceKind } from "@/core/modules/reinstall";
-import { fromPersonal, listCatalogues } from "@/core/modules/personalCatalogues";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { dockerUpdatePlan, getInstallInfo, getUpdateChannel, getUpdateCheck, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
 import type { ModulesReport } from "@/core/modules/bulkUpdate";
@@ -300,7 +300,7 @@ export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: 
   } catch { core.note = "the release list could not be reached"; }
 
   const rows = new Map((await listModuleRows()).map((r) => [r.id, r]));
-  const personalList = await listCatalogues().catch(() => []);
+  const personal = await personalIndex();
   const { report, stale } = await updating;
   const blocked = new Map<string, BlockedUpdate>();
   for (const o of report?.outdated ?? []) { const b = await readBlockedUpdate(o.id); if (b) blocked.set(o.id, b); }
@@ -308,7 +308,7 @@ export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: 
     core,
     modules: (report?.outdated ?? []).map((o) => {
       const row = rows.get(o.id);
-      const base = moduleUpdateRefusal({ id: o.id, ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore, personal: fromPersonal(row?.repoUrl, personalList) });
+      const base = moduleUpdateRefusal({ id: o.id, ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore, personal: !personal || personal.has({ id: o.id, repoUrl: row?.repoUrl }) });
       // Cette version précise a déjà été refusée (elle ne se charge pas) : la réessayer ne sert à rien tant que l'auteur n'en a pas publié une autre.
       const again = blocked.get(o.id);
       const alreadyRefused = again && again.to === o.target ? { at: again.at, cause: redactSecrets(again.reason, 200) } : undefined;

@@ -244,6 +244,14 @@ export async function git(args: string[], cwd?: string, env?: Record<string, str
   return runGit(args, cwd, env, timeoutMs);
 }
 
+/**
+ * (0.47.0) A git command with a code that is NOT saved yet (reading the catalogue of a repository the owner is about to add): the code goes to the child environment
+ * exactly like a saved one, and is stored by nobody. With no `code`, the saved code of the repository is used, as for `git()`.
+ */
+export async function gitWithCode(args: string[], cwd: string | undefined, timeoutMs: number, override?: { url: string; code: string }): Promise<string> {
+  return runGit(args, cwd, undefined, timeoutMs, override);
+}
+
 /** `git ls-remote` of one repository with a code that is NOT saved yet (the check of a code the owner has just pasted). Nothing is stored here. */
 export async function gitCheckAccess(url: string, code: string): Promise<void> {
   await runGit(["ls-remote", "--", url, "HEAD"], undefined, undefined, 30_000, { url, code });
@@ -1046,6 +1054,7 @@ export async function purgeModule(id: string): Promise<void> {
   await prisma.moduleRecord.deleteMany({ where: { instanceId: { in: ids } } });
   await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
   await prisma.module.delete({ where: { id } });
+  try { await (await import("./personalCatalogues")).unmarkPersonal(id); } catch { /* the mark of a module that is gone is harmless */ }
   forgetModule(id);
   await clearBlockedUpdate(id);
   await reconcileManaged();   // les adresses courtes de ses instances partent avec elles
@@ -1067,7 +1076,10 @@ export async function installFromCatalogue(id: string, opts: { dependencies?: bo
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   const { confirmExtra: _confirmed, ...rest } = opts;
   void _confirmed;
-  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  const result = await installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  // (0.47.0) The origin is written on the module itself: it stays "personal" if the catalogue is removed later, and an assistant can never update it.
+  if (result.ok && entry.personal) await (await import("./personalCatalogues")).markPersonal(id, entry.personal).catch(() => { /* the registered repository still marks it (personalIndex) */ });
+  return result;
 }
 
 /**

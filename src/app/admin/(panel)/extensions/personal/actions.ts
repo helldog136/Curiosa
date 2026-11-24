@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { accessState, type AccessState } from "@/core/gitAccess";
-import { saveAccessCode } from "@/core/gitAccessAdmin";
+import { verifyAccessCode } from "@/core/gitAccessAdmin";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { PERSONAL_HREF } from "@/core/adminLinks";
 import { addCatalogue, catalogueLabel, checkCatalogue, listCatalogues, refreshCatalogues, removeCatalogue, type Offer, type RefusalReason } from "@/core/modules/personalCatalogues";
@@ -29,19 +29,20 @@ const offerView = (o: Offer): OfferView => ({ id: o.id, name: o.name, ...(o.vers
 export async function checkPersonalAction(address: string, code?: string): Promise<CheckView> {
   const { user, t } = await adminCtx({ right: "core:modules.install" });
   const url = String(address ?? "").slice(0, 400).trim();
+  // A code the owner has just pasted is tried from memory and NOT saved: it is saved only when the catalogue is added (addPersonalAction).
   if (code?.trim()) {
-    const saved = await saveAccessCode(url.split("#")[0]!, code, user.email);
-    if (!saved.ok) return { ok: false, field: "code", needsCode: true, error: t(`access.error.${saved.error}`, saved.address ? { address: saved.address } : undefined) };
+    const tried = await verifyAccessCode(url.split("#")[0]!, code, user.email);
+    if (!tried.ok) return { ok: false, field: "code", needsCode: true, error: t(`access.error.${tried.error}`, tried.address ? { address: tried.address } : undefined) };
   }
-  const r = await checkCatalogue(url);
+  const r = await checkCatalogue(url, code?.trim() || undefined);
   if (!r.ok) return { ok: false, error: t(r.error), ...(r.needsCode ? { needsCode: true } : {}) };
   const why = (reason: RefusalReason, id: string, by?: string) => t(`personal.refused.${reason}`, { id, by: by ?? "" });
   return { ok: true, address: r.address, name: r.name, offers: r.offers.map(offerView), refused: r.refused.map((x) => ({ id: x.id, text: why(x.reason, x.id, x.by) })), access: r.access, alreadyAdded: r.alreadyAdded };
 }
 
-export async function addPersonalAction(address: string, name: string): Promise<{ ok: true; offered: number } | { ok: false; error: string }> {
+export async function addPersonalAction(address: string, name: string, code?: string): Promise<{ ok: true; offered: number } | { ok: false; error: string }> {
   const { user, t } = await adminCtx({ right: "core:modules.install" });
-  const r = await addCatalogue(String(address ?? "").slice(0, 400).trim(), String(name ?? "").slice(0, 80), user.email);
+  const r = await addCatalogue(String(address ?? "").slice(0, 400).trim(), String(name ?? "").slice(0, 80), user.email, typeof code === "string" && code.trim() ? code : undefined);
   if (!r.ok) return { ok: false, error: t(r.error) };
   await audit(user.email, "module.catalogue.add", catalogueLabel(r.catalogue.url));
   refresh();

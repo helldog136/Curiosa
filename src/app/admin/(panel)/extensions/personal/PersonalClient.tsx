@@ -26,6 +26,8 @@ export function AddCatalogue({ labels, initial }: { labels: PersonalLabels; /** 
   const router = useRouter();
   const [url, setUrl] = useState(initial?.url ?? "");
   const [code, setCode] = useState("");
+  /** The code that worked for the check: kept in memory only until the catalogue is added (it is saved then, never before). */
+  const [triedCode, setTriedCode] = useState("");
   const [name, setName] = useState(initial?.view?.ok ? initial.view.name : "");
   const [view, setView] = useState<CheckView | null>(initial?.view ?? null);
   const [needsCode, setNeedsCode] = useState(!!initial?.needsCode);
@@ -41,19 +43,19 @@ export function AddCatalogue({ labels, initial }: { labels: PersonalLabels; /** 
   useEffect(() => { if (showCode) codeBox.current?.querySelector("input")?.focus(); }, [showCode]);
   useEffect(() => { if (urlError && !showCode) document.getElementById("catalogueUrl")?.focus(); }, [urlError, showCode]);
 
-  const reset = () => { setView(null); setNeedsCode(false); setCodeError(undefined); setAddError(undefined); setAdded(null); };
+  const reset = () => { setTriedCode(""); setView(null); setNeedsCode(false); setCodeError(undefined); setAddError(undefined); setAdded(null); };
   const check = () => start(async () => {
     setView(null); setCodeError(undefined); setAddError(undefined); setAdded(null);
     if (showCode && !code.trim()) { setCodeError(labels["access.error.empty"]); return; }
     const r = await checkPersonalAction(url.trim(), code || undefined);
-    if (r.ok) { setCode(""); setNeedsCode(false); setName(r.name); setView(r); return; }
+    if (r.ok) { setTriedCode(code); setCode(""); setNeedsCode(false); setName(r.name); setView(r); return; }
     if (r.field === "code") { setCodeError(r.error); setNeedsCode(true); return; }
     setNeedsCode(!!r.needsCode); setView(r);
   });
   const add = () => startAdd(async () => {
     setAddError(undefined);
-    const r = await addPersonalAction(url.trim(), name);
-    if (r.ok) { setAdded(r.offered); setView(null); setUrl(""); setName(""); router.refresh(); } else setAddError(r.error);
+    const r = await addPersonalAction(url.trim(), name, triedCode || undefined);
+    if (r.ok) { setTriedCode(""); setAdded(r.offered); setView(null); setUrl(""); setName(""); router.refresh(); } else setAddError(r.error);
   });
   const summary = view?.ok ? view : null;
   const ready = summary ? summary.offers.filter((o) => o.ready).length : 0;

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { can as canDo } from "@/core/auth/access";
 import { findCatalogueEntry } from "@/core/modules/catalogue";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { getCoreVersion } from "@/core/modules/compat";
 import { parseRepoUrl } from "@/core/modules/installer";
 import { accessState, accessTarget, isGitAccessError } from "@/core/gitAccess";
@@ -63,6 +64,7 @@ type Entry = Awaited<ReturnType<typeof findCatalogueEntry>>;
 async function FicheBody({ embedded, entry, custom, target }: { embedded: boolean; entry: Entry; custom: { url: string; ref?: string; subdir?: string } | null; target: PreviewTarget | null }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
   const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
+  if (entry?.personal && !isOwner) notFound();   // (0.47.0) the extensions of a personal catalogue are the owner's business
   const L = (v: Parameters<typeof localized>[0]) => localized(v, locale, config.defaultLocale);
 
   let preview: ModulePreview | null = null;
@@ -74,7 +76,11 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
   if (target) { try { preview = await getModulePreview(target, { waitMs: PREVIEW_WAIT_MS, stored: isOwner }); } catch (e) { console.error("[catalogue] preview failed:", (e as Error)?.message); failed = true; refused = isGitAccessError(e); timedOut = e instanceof PreviewTimeout; rateLimited = e instanceof PreviewFailure && e.reason === "rate-limit"; } }
 
   const m = preview?.manifest ?? null;
-  const installed = entry ? (await listModuleRows()).some((r) => r.id === entry!.id) : false;
+  const installedRow = entry ? (await listModuleRows()).find((r) => r.id === entry!.id) : undefined;
+  const installed = !!installedRow;
+  // The origin of an INSTALLED module is the one written on it, not what the catalogue says today (fail-closed: unreadable = personal).
+  const personalIdx = installedRow ? await personalIndex() : null;
+  const installedPersonal = !!installedRow && (!personalIdx || personalIdx.has(installedRow));
   // Données gardées d'une désinstallation précédente : elles reviennent telles quelles avec le module.
   const kept = !installed && (entry?.id ?? m?.id) ? await listRetired(entry?.id ?? m?.id) : [];
 
@@ -103,7 +109,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
 
   // Résumé d'une ligne des détails techniques : « Garde des données de votre public · Demande 3 autorisations · Installe aussi Contacts ».
   const alsoInstalls = (planView?.lines ?? []).filter((l) => l.action === "install").map((l) => l.name);
-  const origin = entry ? (entry.personal ? "personal" : entry.origin === "extra" ? "extra" : "official") : "custom";
+  const origin = entry ? (entry.personal || installedPersonal ? "personal" : entry.origin === "extra" ? "extra" : "official") : "custom";
   const summary = m
     ? (() => { const s = techSummary(m, perms); return [t(`fiche.tech.keeps.${s.keeps}`), s.asks === 0 ? t("fiche.tech.asks.none") : t("fiche.tech.asks", { n: s.asks }), alsoInstalls.length ? t("fiche.tech.alsoInstalls", { names: alsoInstalls.join(", ") }) : ""].filter(Boolean).join(" · "); })()
     : origin === "official" ? t("fiche.tech.source.official") : t(origin === "extra" ? "catalogue.origin.extra" : origin === "personal" ? "catalogue.origin.personal" : "catalogue.origin.custom");

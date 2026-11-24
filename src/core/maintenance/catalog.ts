@@ -4,6 +4,7 @@ import { prisma } from "@/core/db";
 import { makeTranslator } from "@/core/i18n/dictionary";
 import { getSiteConfig } from "@/core/settings";
 import type { CatalogueEntry } from "@/core/modules/catalogue";
+import { visibleToAssistant } from "@/core/modules/personalCatalogues";
 import { describeIncompat, getCoreVersion, requirementOf } from "@/core/modules/compat";
 import { liveProviders } from "@/core/modules/dependencies";
 import { buildNames } from "@/core/modules/dependencyView";
@@ -98,7 +99,8 @@ export async function readCatalogue(): Promise<CatalogueRead> {
   if (!got.ok || !got.value || got.value.source === "none") {
     return { ok: false, reply: { available: false, reason: "catalogue_unreachable", message: "The module catalogue cannot be reached right now (no network answer and no earlier copy). Nothing is wrong with the site. Try again in a few minutes; the owner can also look at Admin > Extensions > Add an extension." } };
   }
-  return { ok: true, entries: got.value.entries, source: got.value.source, fetchedAt: got.value.fetchedAt };
+  // Entries of a PRIVATE personal repository are not shown to an assistant at all (their names are the owner's business); those of a public one are, flagged "personal" and never installable.
+  return { ok: true, entries: await visibleToAssistant(got.value.entries), source: got.value.source, fetchedAt: got.value.fetchedAt };
 }
 
 const catalogueInfo = (r: Extract<CatalogueRead, { ok: true }>) => ({
@@ -107,7 +109,7 @@ const catalogueInfo = (r: Extract<CatalogueRead, { ok: true }>) => ({
   ...(r.source === "cache" ? { note: "The catalogue could not be refreshed: this is the last copy received, it may be a little old." } : {}),
 });
 
-/** Where an entry comes from, for the assistant: "official", "extra" (unverified index) or "personal" (a repository the owner registered). */
+/** Where an entry comes from, for the assistant: "official", "extra" (unverified index) or "personal" (a PUBLIC repository the owner registered: private ones are not shown). */
 const originOf = (e: CatalogueEntry): "official" | "extra" | "personal" => (e.personal ? "personal" : e.origin === "extra" ? "extra" : "official");
 
 /** Peut-on l'installer ici, et sinon pourquoi (mots simples) ? */
@@ -230,7 +232,7 @@ export async function catalogGet(args: Record<string, unknown>, actor?: { name: 
   let manifest: ParsedManifest | null = null;
   let manifestState: "installed" | "read_from_catalogue" | "unavailable" = "unavailable";
   if (row) { manifest = (await getModule(id).catch(() => null))?.manifest ?? null; manifestState = manifest ? "installed" : "unavailable"; }
-  else if (entry && !entry.personal) {   // a personal catalogue may be private: no assistant request ever reads its modules
+  else if (entry && !entry.personal) {   // no assistant request ever downloads the modules of a personal catalogue
     const got = await withTimeout(Promise.resolve().then(() => deps.preview(entry)).catch(() => null), deps.catalogTimeoutMs);
     manifest = got.ok ? got.value?.manifest ?? null : null;
     // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé (même garde que l'installation).
