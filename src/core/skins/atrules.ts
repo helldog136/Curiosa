@@ -3,11 +3,12 @@
  * Chaque condition est analysée par une grammaire fermée puis réécrite à partir de ce qui a été compris.
  */
 import { ALLOWED_PROPERTIES, BOUNDS, type SkinLimits } from "./allowlist";
+import type { IssueCode } from "./messages";
 
 export class AtRuleError extends Error {
-  readonly code: string;
+  readonly code: IssueCode;
   readonly params: Record<string, string | number>;
-  constructor(code: string, params: Record<string, string | number> = {}) {
+  constructor(code: IssueCode, params: Record<string, string | number> = {}) {
     super(code);
     this.code = code;
     this.params = params;

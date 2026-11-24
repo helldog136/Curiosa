@@ -20,7 +20,7 @@ import {
 import { BRAND_LOCKED_INHERITED, BRAND_LOCKED_OWN, brandReach } from "./brand";
 import { checkDeclaration, urlOut, type DeclContext } from "./declarations";
 import type { Params } from "./messages";
-import { makeIssue, type SkinIssue } from "./messages";
+import { makeIssue, type IssueCode, type SkinIssue } from "./messages";
 import { parseSelectorList, SelectorError, stripAuthorScope, validateAndRewrite, type Complex, type Subject } from "./selectors";
 import { encodeCssString, tokenizeValue } from "./valueTokens";
 
@@ -102,7 +102,7 @@ export function sanitizeSkinCss(css: unknown, options: SanitizeOptions): Sanitiz
 
 function run(css: unknown, opts: SanitizeOptions): SanitizeResult {
   const issues: SkinIssue[] = [];
-  const bad = (code: string, params: Params = {}) => issues.push(makeIssue(code, params));
+  const bad = (code: IssueCode, params: Params = {}) => issues.push(makeIssue(code, params));
   if (typeof css !== "string") {
     bad("css-not-text");
     return emptyResult(0, issues);
@@ -197,7 +197,7 @@ function push(state: State, issue: SkinIssue) {
 }
 
 function reporter(state: State, node?: { source?: { start?: { line: number; column: number } } }) {
-  return (code: string, params: Params = {}, severity?: "error" | "warning") => {
+  return (code: IssueCode, params: Params = {}, severity?: "error" | "warning") => {
     const issue = makeIssue(code, params, severity);
     issue.line = node?.source?.start?.line;
     issue.column = node?.source?.start?.column;
@@ -205,7 +205,7 @@ function reporter(state: State, node?: { source?: { start?: { line: number; colu
   };
 }
 
-function fatal(state: State, node: { source?: { start?: { line: number; column: number } } } | undefined, code: string, params: Params): never {
+function fatal(state: State, node: { source?: { start?: { line: number; column: number } } } | undefined, code: IssueCode, params: Params): never {
   reporter(state, node)(code, params);
   throw new Fatal();
 }
@@ -486,7 +486,7 @@ function processFontFace(node: AtRule, state: State, depth: number): Out | null 
   let src: string[] = [];
   const extra: string[] = [];
   let failed = false;
-  const fail = (code: string, params: Params = {}, n: ChildNode = node) => {
+  const fail = (code: IssueCode, params: Params = {}, n: ChildNode = node) => {
     failed = true;
     reporter(state, n)(code, params);
   };

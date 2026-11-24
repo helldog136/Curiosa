@@ -16,6 +16,8 @@
  *  - Plafonds : taille, nombre de règles, de déclarations, profondeur et longueur de sélecteur, longueur de valeur.
  */
 
+import type { IssueCode } from "./messages";
+
 export const SKIN_ID_RE = /^[a-z][a-z0-9-]{1,40}$/;
 
 /** Régions du DOM stable du cœur (§9.1). */
@@ -132,7 +134,7 @@ export const ALLOWED_FUNCTIONS: readonly string[] = [
 ];
 
 /** Fonctions refusées avec une explication particulière (le reste : « fonction non autorisée »). */
-export const FORBIDDEN_FUNCTION_CODES: Readonly<Record<string, string>> = {
+export const FORBIDDEN_FUNCTION_CODES: Readonly<Record<string, IssueCode>> = {
   attr: "attr-forbidden",
   expression: "expression-forbidden",
   "image-set": "image-function-forbidden",

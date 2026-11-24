@@ -4,6 +4,7 @@
  * Un sélecteur n'est JAMAIS recopié tel quel : il est analysé en structure (composés, attributs, pseudo-classes), validé,
  * puis réécrit à partir de cette structure sous la forme `:root[data-skin="<id>"] <sélecteur>`.
  */
+import type { IssueCode } from "./messages";
 import {
   CONTENT_ELEMENTS, DECOR_PARTS, DECOR_PSEUDO_ELEMENTS, DECOR_REGIONS, GLOBAL_ELEMENTS, LEGACY_PSEUDO_ELEMENTS, LOGICAL_PSEUDO_CLASSES, MODE_ATTRIBUTE, MODE_QUALIFIER_VALUES,
   MODULE_HTML_ATTRIBUTES, MODULE_HTML_ELEMENTS, MODULE_HTML_PART, MODULE_PART_RE, NTH_PSEUDO_CLASSES, PARTS, PSEUDO_CLASSES, PSEUDO_ELEMENTS, REGIONS, STATE_ATTRIBUTES, type SkinLimits,
@@ -22,9 +23,9 @@ export type Complex = {
 };
 
 export class SelectorError extends Error {
-  readonly code: string;
+  readonly code: IssueCode;
   readonly params: Record<string, string | number>;
-  constructor(code: string, params: Record<string, string | number> = {}) {
+  constructor(code: IssueCode, params: Record<string, string | number> = {}) {
     super(code);
     this.code = code;
     this.params = params;
@@ -58,7 +59,7 @@ class Parser {
     while (isSpace(this.peek())) this.i++;
     return this.i > start;
   }
-  fail(code: string, params: Record<string, string | number> = {}): never {
+  fail(code: IssueCode, params: Record<string, string | number> = {}): never {
     throw new SelectorError(code, params);
   }
   ident(): string {
