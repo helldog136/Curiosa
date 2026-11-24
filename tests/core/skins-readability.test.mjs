@@ -461,8 +461,10 @@ test("retouches : surface choisie, texte non choisi : avertit sous la surface", 
 
 test("retouches : jamais d'exception, jamais de modification des entrées", () => {
   const colors = Object.freeze({ background: "#121214", text: "#555555" });
-  assert.doesNotThrow(() => R.probableIllegibility(colors, "dark"));
-  for (const bad of [null, undefined, 5, "x", [], { background: 5 }, { background: "#fff", text: {} }]) assert.doesNotThrow(() => R.probableIllegibility(bad, "light"));
+  const warnings = R.probableIllegibility(colors, "dark");
+  assert.deepEqual(warnings.map((w) => [w.field, w.pair, w.mode]), [["text", 1, "dark"]], "grey text on a near-black background is flagged, once");
+  assert.deepEqual(colors, { background: "#121214", text: "#555555" }, "the input is left as it was (it is frozen: a write would have thrown)");
+  for (const bad of [null, undefined, 5, "x", [], { background: 5 }, { background: "#fff", text: {} }]) assert.deepEqual(R.probableIllegibility(bad, "light"), [], `nothing to say about ${JSON.stringify(bad)}`);
 });
 
 test("pannes internes : le contrôle échoue toujours du côté prudent", () => {

@@ -50,9 +50,9 @@ function measure(dir) {
   };
 }
 
-test("overlay skins of contracts 2 to 5: validation, fingerprint, compiled sheet and the page that wears them are unchanged", () => {
+test("overlay skins of contracts 2 to 5: validation, fingerprint, compiled sheet and the page that wears them are unchanged", (t) => {
   const now = Object.fromEntries(Object.entries(SKINS).map(([k, f]) => [k, measure(f())]));
-  if (process.env.RECORD) { fs.writeFileSync(process.env.RECORD, JSON.stringify(now, null, 1) + "\n"); return; }
+  if (process.env.RECORD) { fs.writeFileSync(process.env.RECORD, JSON.stringify(now, null, 1) + "\n"); t.skip("RECORD is set: the golden hashes were written to that file, nothing was compared"); return; }
   const golden = JSON.parse(fs.readFileSync(GOLDEN_FILE, "utf8"));
   for (const [k, v] of Object.entries(now)) {
     assert.equal(v.ok, true, `${k} still installs: ${v.issues}`);
