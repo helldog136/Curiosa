@@ -12,10 +12,9 @@ import { followsSite, readMulti, resolveDefault } from "./settingValues";
 import type { ModuleContext } from "./types";
 import { overlayKit } from "@/core/overlays/moduleKit";
 import { searchKit } from "./searchKit";
+import { instanceSettingKey } from "@/core/instanceKeys";
 
-export function instanceSettingKey(instanceId: string, key: string): string {
-  return `instance.${instanceId}.${key}`;
-}
+export { instanceSettingKey };
 
 /** Qui, parmi les contextes construits, porte les droits d'une personne pour `asCaller` (rempli par `forViewer` avec l option carryRights seulement). */
 const CALLERS = new WeakMap<object, CallerRef>();

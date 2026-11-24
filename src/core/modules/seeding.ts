@@ -1,7 +1,7 @@
 import { prisma } from "@/core/db";
 import { getSiteConfig } from "@/core/settings";
-import { createInstance, defaultNames, freeKey, runInstanceCreateHook } from "@/core/instanceService";
-import { checkNickname, keyFromNickname, NICKNAME_MAX } from "@/core/instanceLabel";
+import { addInstance, defaultNames, eraseInstanceRows } from "@/core/instanceLifecycle";
+import { checkNickname, NICKNAME_MAX } from "@/core/instanceLabel";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { audit } from "@/core/permissions";
 import type { InstanceView } from "@/core/instances";
@@ -102,8 +102,7 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
 
     // Création ATOMIQUE : instance, réglages et marque ensemble — jamais une instance sans sa marque (un second passage créerait un doublon).
     const created = await prisma.$transaction(async (tx) => {
-      const key = await freeKey(tx, keyFromNickname(manifest.id, nickname));
-      const instance = await createInstance(tx, { manifest, key, nickname, names });
+      const { instance, afterCommit } = await addInstance(manifest, { tx, nickname, names });
       for (const s of settings) {
         await tx.setting.upsert({
           where: { key_locale: { key: instanceSettingKey(instance.id, s.key), locale: s.locale } },
@@ -112,17 +111,13 @@ export function openSeedSession(mod: LoadedModule, owner: InstanceView): SeedSes
         });
       }
       await tx.setting.create({ data: { key: markerKey(owner.id, seedKey), locale: "", value: JSON.stringify({ module: targetId, instance: instance.key, at: Date.now() }) } });
-      return instance;
+      return { instance, afterCommit };
     });
-    undo.push(async () => {
-      await prisma.setting.deleteMany({ where: { key: { startsWith: `instance.${created.id}.` } } });
-      await prisma.moduleRecord.deleteMany({ where: { instanceId: created.id } });
-      await prisma.moduleInstance.delete({ where: { id: created.id } }).catch(() => {});
-    });
-    after.push(() => runInstanceCreateHook(created.id));
-    audits.push(`${mod.manifest.id} -> ${targetId} : ${created.key}`);
+    undo.push(() => eraseInstanceRows([created.instance.id]));
+    after.push(created.afterCommit);
+    audits.push(`${mod.manifest.id} -> ${targetId} : ${created.instance.key}`);
     confirmed = true;
-    return { created: true, instanceKey: created.key };
+    return { created: true, instanceKey: created.instance.key };
   }
 
   async function clearSetting(key: string): Promise<void> {

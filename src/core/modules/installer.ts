@@ -21,6 +21,7 @@ import { eraseOwnedFiles } from "../services/files";
 import { eraseRetired, restoreModuleInstances, retireModuleInstances } from "./retired";
 import { commitJournal, newJournal, satisfyRequirements, unwind, type DepOps, type Journal, type Missing } from "./dependencyInstaller";
 import { ensureDefaultInstance } from "./defaultInstance";
+import { eraseInstanceRows } from "../instanceLifecycle";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
@@ -1083,11 +1084,12 @@ export async function uninstallModule(id: string, opts: { keepData: boolean }): 
 
 /** Supprime un module, ses instances et leurs données vivantes SANS contrôle des dépendants (le contrôle est dans `uninstallModule` ; ici, l'annulation d'une cascade). Les données gardées ne sont pas touchées. */
 export async function purgeModule(id: string): Promise<void> {
-  const instances = await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } });
-  const ids = instances.map((i) => i.id);
-  if (ids.length) await prisma.setting.deleteMany({ where: { OR: ids.map((i) => ({ key: { startsWith: `instance.${i}.` } })) } });
-  await prisma.moduleRecord.deleteMany({ where: { instanceId: { in: ids } } });
-  await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
+  // Until none is left: an instance created between the read and the erasure would otherwise stay behind (and the module row could not be deleted cleanly).
+  for (;;) {
+    const ids = (await prisma.moduleInstance.findMany({ where: { moduleId: id }, select: { id: true } })).map((i) => i.id);
+    if (!ids.length) break;
+    await eraseInstanceRows(ids);
+  }
   await prisma.module.delete({ where: { id } });
   try { await (await import("./personalCatalogues")).unmarkPersonal(id); } catch { /* the mark of a module that is gone is harmless */ }
   forgetModule(id);

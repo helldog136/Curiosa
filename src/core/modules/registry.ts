@@ -5,6 +5,7 @@ import { cache } from "react";
 import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
+import { dataStatusKey } from "../instanceKeys";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { listInstances, type InstanceView } from "../instances";
 import { getSetting } from "../settings";
@@ -193,7 +194,7 @@ export const getActiveInstances = cache(async (): Promise<ActiveInstance[]> => {
   });
   // Une instance dont la migration de données a échoué (ou dont les données sont plus récentes que le code du module) ne tourne pas.
   const sane = await Promise.all(all.map(async (a): Promise<ActiveInstance | null> => {
-    if ((await getSetting<{ status?: string }>(`instance.${a.instance.id}.__dataStatus`))?.status) return null;
+    if ((await getSetting<{ status?: string }>(dataStatusKey(a.instance.id)))?.status) return null;
     const key = a.mod.manifest.pageSetting;
     return key ? { ...a, pageOn: pageIsOn(a.mod.manifest, await getSetting(pageSettingStorageKey(a.instance.id, key))) } : a;
   }));

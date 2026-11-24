@@ -8,6 +8,7 @@ import { reconcileManaged, releaseManaged } from "../managedRedirects";
 import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
+import { instanceSettingsWhere } from "../instanceKeys";
 import { localized } from "./types";
 import { planRestore, parsePayload, reviveDates, type RetiredLine, type RetiredPayload, type Row } from "./retiredPlan";
 
@@ -22,7 +23,6 @@ import { planRestore, parsePayload, reviveDates, type RetiredLine, type RetiredP
  */
 export type RetiredReason = "uninstall" | "delete" | "legacy";
 
-const prefix = (id: string) => `instance.${id}.`;
 const toLine = (r: { id: string; moduleId: string; key: string; label: string; moduleName: string; reason: string; retiredAt: Date; entryCount: number; recordCount: number; repoUrl: string | null; ref: string | null; subdir: string | null }): RetiredLine => ({ id: r.id, moduleId: r.moduleId, key: r.key, label: r.label, moduleName: r.moduleName, reason: r.reason, retiredAt: r.retiredAt, entryCount: r.entryCount, recordCount: r.recordCount, repoUrl: r.repoUrl, ref: r.ref, subdir: r.subdir });
 
 /** Range une instance (tout ce qu'elle possède) puis l'ôte du site, en une seule opération : tout ou rien. Rien n'est supprimé du bloc rangé. */
@@ -36,7 +36,7 @@ async function retireInstanceRow(id: string, reason: RetiredReason): Promise<Ret
   await releaseManaged(id);   // son adresse courte part avec elle (elle revient à la restauration, si le nom est libre)
   const [entries, settings, records, moduleRow, mod] = await Promise.all([
     prisma.entry.findMany({ where: { instanceId: id }, include: { translations: true }, orderBy: { createdAt: "asc" } }),
-    prisma.setting.findMany({ where: { key: { startsWith: prefix(id) } }, orderBy: [{ key: "asc" }, { locale: "asc" }] }),
+    prisma.setting.findMany({ where: instanceSettingsWhere(id), orderBy: [{ key: "asc" }, { locale: "asc" }] }),
     prisma.moduleRecord.findMany({ where: { instanceId: id }, orderBy: { createdAt: "asc" } }),
     prisma.module.findUnique({ where: { id: inst.moduleId } }),
     getModule(inst.moduleId).catch(() => null),
@@ -60,8 +60,9 @@ async function retireInstanceRow(id: string, reason: RetiredReason): Promise<Ret
   };
   const [saved] = await prisma.$transaction([
     prisma.retiredInstance.upsert({ where: { id }, create: { id, ...data }, update: { ...data, retiredAt: new Date() } }),
-    prisma.setting.deleteMany({ where: { key: { startsWith: prefix(id) } } }),
+    prisma.setting.deleteMany({ where: instanceSettingsWhere(id) }),
     prisma.moduleRecord.deleteMany({ where: { instanceId: id } }),
+    // `delete`, not `deleteMany`: an instance erased meanwhile (deleteInstance) makes this throw and rolls the snapshot back, so no snapshot of erased data is ever kept.
     prisma.moduleInstance.delete({ where: { id } }),   // ses traductions et ses entrées partent avec (suppression en cascade)
   ]);
   return toLine(saved);
@@ -110,7 +111,7 @@ export async function restoreInstance(id: string): Promise<RestoreOutcome> {
   const knownAuthors = new Set((await prisma.user.findMany({ where: { id: { in: authorIds } }, select: { id: true } })).map((u) => u.id));
 
   await prisma.$transaction(async (tx) => {
-    await tx.setting.deleteMany({ where: { key: { startsWith: prefix(id) } } });   // jamais de reste d'une vie antérieure
+    await tx.setting.deleteMany({ where: instanceSettingsWhere(id) });   // jamais de reste d'une vie antérieure
     const live = pickKnownColumns("instances", reviveDates("instance", { ...payload.instance, key: plan.key, basePath: plan.basePath, nickname: plan.nickname }));
     await tx.moduleInstance.create({ data: live as never });
     for (const t of payload.translations) await tx.instanceTranslation.create({ data: pickKnownColumns("instanceTranslations", t) as never });
