@@ -2134,7 +2134,7 @@ const token = await ctx.api.secrets.get("botToken");   // string | null
 | `set(name, value)` | `{ ok: true }` (replaces) or `{ ok: false, reason }`: `no-permission`, `invalid-name`, `invalid-value` (empty, not a string, over 4096 characters), `too-many` (20 names), `rate-limited`, `failed` |
 | `get(name)` | the value, or `null` (absent, not openable here, bad name, no permission, rate limit) |
 | `has(name)` | `true` only when a value is stored **and** can be opened on this server |
-| `state(name)` | `"set"`, `"absent"` or `"unreadable"` (stored, but sealed by another server: ask the owner for it again) |
+| `state(name)` | `"set"`, `"absent"`, `"unreadable"` (stored, but sealed by another server: ask the owner for it again) or `"rate-limited"` (too many reads this minute: try again later). `get` answers `null` for all three non-set cases, so a caller that must tell them apart uses `state`. One read is charged per call (`has` is one `state`); `names` is one read |
 | `remove(name)` | `true` when something was removed |
 | `names()` | the names stored for this instance (never values), 20 at most |
 
@@ -2144,7 +2144,7 @@ Rules:
 - **A name** starts with a letter, then letters, digits, `_` or `-` (48 characters at most). A value is 1 to 4096 characters. Bounds: 20 names per instance, 20 writes (`set`, `remove`) and 600 reads (`get`, `has`, `state`, `names`) per minute and instance; over the limit the call answers a refusal, it never throws.
 - **Nothing in the core shows it**: not the admin, the assistant (MCP) tools, the central journal, the audit log (it records `module.secret.set` / `remove` with the instance and the **name** only), the readable summary of a backup, the module list or the diagnostics. A test checks each of them.
 - **Backup and restore.** The backup carries the sealed text only. Restored on the same server it opens again; restored on **another** server (another site secret) it cannot be opened: `get` answers `null` and `state` answers `"unreadable"`, exactly like the access code of a private repository. Your admin page then asks the owner for the value again, and `set` replaces it. Check `state` (not only `get`) so that your page can say "enter it again".
-- **Removal.** Deleting an instance, or uninstalling a module without keeping its data, erases its sealed values with the rest of the instance. When the data is **kept** (the owner chose "keep my data"), the sealed text is kept with it until the owner erases that data (and restored with it).
+- **Removal.** Deleting an instance, or uninstalling a module without keeping its data, removes its sealed values with the rest of the instance. When the data is **kept** (the owner chose "keep my data"), the sealed rows are kept with the other settings of the instance and **come back with it** when the module is installed again; only erasing the kept data removes them.
 - **The `secret` setting kind is not sealed.** A manifest setting `"type": "secret"` is still stored as readable text (it is only hidden in the admin and never given to an assistant). Use it for a value the owner types in the admin AND that you can accept in the database, or, better, read what the owner typed from the setting once and move it to `ctx.api.secrets.set` (then clear the setting). Moving the existing kind to sealed storage is a separate change.
 - **Never copy the value elsewhere**: not into a setting, `ctx.api.store`, a log, `ctx.api.log`, a page, the answer of a service or of an assistant tool. A secret you echo is no longer sealed.
 

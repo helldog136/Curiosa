@@ -103,6 +103,17 @@ test("bounds: bad values, 4096 characters, 20 names (replacing one is still allo
   assert.equal((await ca.api.secrets.names()).length, S.SECRET_MAX_NAMES);
 });
 
+test("the 20-name cap holds when new names are written at the same time", async () => {
+  const { ca } = await twoInstances();
+  let now = 7_000_000; S.secretClock.now = () => (now += 5_000);
+  for (let i = 0; i < S.SECRET_MAX_NAMES - 2; i++) await ca.api.secrets.set(`n${i}`, "v");
+  const results = await Promise.all(Array.from({ length: 6 }, (_, i) => ca.api.secrets.set(`race${i}`, "v")));
+  const names = await ca.api.secrets.names();
+  assert.ok(names.length <= S.SECRET_MAX_NAMES, `${names.length} names after a race`);
+  for (const r of results) assert.ok(r.ok === true || r.reason === "too-many");
+  assert.equal(results.filter((r) => r.ok).length, names.filter((n) => n.startsWith("race")).length, "an answer ok means the value is really there");
+});
+
 test("rate limits per instance: 20 writes and 600 reads a minute, back after the minute, not shared between instances", async () => {
   const { ca, cb } = await twoInstances();
   let now = 1_000_000; S.secretClock.now = () => now;
@@ -114,6 +125,8 @@ test("rate limits per instance: 20 writes and 600 reads a minute, back after the
   assert.deepEqual(await ca.api.secrets.set("t", "later"), { ok: true });
   for (let i = 0; i < S.SECRET_READS_PER_MIN; i++) await ca.api.secrets.get("t");
   assert.equal(await ca.api.secrets.get("t"), null, "the 601st read in the minute answers nothing");
+  assert.equal(await ca.api.secrets.state("t"), "rate-limited", "state tells rate-limited apart from absent and unreadable");
+  assert.equal(await ca.api.secrets.has("t"), false);
   now += 61_000;
   assert.equal(await ca.api.secrets.get("t"), "later");
 });
@@ -183,13 +196,18 @@ test("removal wipes: deleting the instance, uninstalling the module, and erasing
   // Uninstalling and erasing the data too.
   assert.equal((await uninstallModule("bot", { keepData: false })).ok, true);
   assert.equal(await left(b.id), 0);
-  // Kept data: the sealed values stay with the kept instance (like all its settings) until the owner erases it, which removes them.
+  // Kept data: the sealed values stay with the kept instance (like all its settings) until the owner erases it (and they come back with it on reinstall).
   await install(mod("keeper")); await db.prisma.moduleInstance.deleteMany({ where: { moduleId: "keeper" } }); const k = await instance("keeper", "k-bot");
   await (await ctxOf("keeper", "k-bot")).api.secrets.set("botToken", TOKEN);
   assert.equal((await uninstallModule("keeper", { keepData: true })).ok, true);
   assert.equal(await left(k.id), 0, "not in the live settings any more");
   assert.equal(await db.prisma.retiredInstance.count(), 1);
   assert.ok(!(await allText()).includes(TOKEN));
+  // Kept means KEPT: reinstalled and restored, the same instance opens its value again.
+  await install(mod("keeper"));   // installing brings the kept instances back (restoreModuleInstances)
+  assert.equal(await db.prisma.retiredInstance.count(), 0);
+  assert.equal(await (await ctxOf("keeper", "k-bot")).api.secrets.get("botToken"), TOKEN, "restored with the kept data");
+  assert.equal((await uninstallModule("keeper", { keepData: true })).ok, true);
   await eraseRetired({ moduleId: "keeper" });
   assert.equal(await db.prisma.retiredInstance.count(), 0);
 });

@@ -485,7 +485,7 @@ export type ModuleApi = {
     /** True only when a value is stored AND can be opened here. */
     has(name: string): Promise<boolean>;
     /** "set", "absent", or "unreadable" (stored but sealed by another server: ask for it again). */
-    state(name: string): Promise<"set" | "unreadable" | "absent">;
+    state(name: string): Promise<"set" | "unreadable" | "absent" | "rate-limited">;
     /** Deletes it; true when something was deleted. */
     remove(name: string): Promise<boolean>;
     /** The names stored for this instance (never values), 20 at most, sorted. */
