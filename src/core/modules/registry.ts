@@ -1,11 +1,11 @@
 import fs from "node:fs";
-import { dataStatusKey } from "../instanceKeys";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { cache } from "react";
 import type { Module } from "@prisma/client";
 import { prisma } from "../db";
 import { MODULES_DIR } from "../config";
+import { dataStatusKey } from "../instanceKeys";
 import { parseManifest, type ParsedManifest } from "./manifest";
 import { listInstances, type InstanceView } from "../instances";
 import { getSetting } from "../settings";

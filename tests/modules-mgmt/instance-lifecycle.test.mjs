@@ -140,3 +140,34 @@ test("instanceRowErasures can be batched in one transaction", async () => {
   assert.equal(await prisma.moduleRecord.count(), 0);
   assert.equal(await prisma.setting.count({ where: K.instanceSettingsWhere(a.id) }), 0);
 });
+
+test("purgeModule: an instance created between the read and the erasure is erased too, with its settings", async () => {
+  const manifest = await installed("lifecycle-f");
+  await addInstance(manifest, { key: "purge-a", locales: ["en"] });
+  const original = prisma.moduleInstance.findMany;
+  let late = null, calls = 0;
+  prisma.moduleInstance.findMany = async (...args) => {
+    const rows = await original.apply(prisma.moduleInstance, args);
+    if (calls++ === 0) late = (await addInstance(manifest, { key: "purge-late", locales: ["en"] })).instance;   // arrives after the read
+    return rows;
+  };
+  try { await I.purgeModule("lifecycle-f"); } finally { prisma.moduleInstance.findMany = original; }
+  assert.ok(late);
+  assert.equal(await prisma.moduleInstance.count({ where: { moduleId: "lifecycle-f" } }), 0);
+  assert.equal(await prisma.setting.count({ where: K.instanceSettingsWhere(late.id) }), 0, "no orphaned settings");
+  assert.equal(await prisma.module.findUnique({ where: { id: "lifecycle-f" } }), null);
+});
+
+test("retireInstance: an instance erased meanwhile rolls the snapshot back (no retired copy of erased data)", async () => {
+  const { retireInstance } = await import("@/core/modules/retired");
+  const manifest = await installed("lifecycle-g");
+  const a = (await addInstance(manifest, { key: "retire-a", locales: ["en"] })).instance;
+  const original = prisma.moduleRecord.findMany;
+  prisma.moduleRecord.findMany = async (...args) => {
+    const rows = await original.apply(prisma.moduleRecord, args);
+    await eraseInstanceRows([a.id]);   // a concurrent deleteInstance(keepData: false) finishes after the snapshot was read
+    return rows;
+  };
+  try { await assert.rejects(retireInstance(a.id, "delete")); } finally { prisma.moduleRecord.findMany = original; }
+  assert.equal(await prisma.retiredInstance.count({ where: { id: a.id } }), 0);
+});

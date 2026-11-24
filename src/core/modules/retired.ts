@@ -8,7 +8,6 @@ import { reconcileManaged, releaseManaged } from "../managedRedirects";
 import { bumpGenerations } from "../services/store";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { getModule } from "./registry";
-import { instanceRowErasures } from "../instanceLifecycle";
 import { instanceSettingsWhere } from "../instanceKeys";
 import { localized } from "./types";
 import { planRestore, parsePayload, reviveDates, type RetiredLine, type RetiredPayload, type Row } from "./retiredPlan";
@@ -61,7 +60,10 @@ async function retireInstanceRow(id: string, reason: RetiredReason): Promise<Ret
   };
   const [saved] = await prisma.$transaction([
     prisma.retiredInstance.upsert({ where: { id }, create: { id, ...data }, update: { ...data, retiredAt: new Date() } }),
-    ...instanceRowErasures(prisma, [id]),   // réglages, stockage, puis l'instance ; ses traductions et ses entrées partent avec (suppression en cascade)
+    prisma.setting.deleteMany({ where: instanceSettingsWhere(id) }),
+    prisma.moduleRecord.deleteMany({ where: { instanceId: id } }),
+    // `delete`, not `deleteMany`: an instance erased meanwhile (deleteInstance) makes this throw and rolls the snapshot back, so no snapshot of erased data is ever kept.
+    prisma.moduleInstance.delete({ where: { id } }),   // ses traductions et ses entrées partent avec (suppression en cascade)
   ]);
   return toLine(saved);
 }
