@@ -122,11 +122,12 @@ test("workflow: image names and tags follow the shared policy; the dry run pushe
   assert.match(wf, /workflow_dispatch:[\s\S]*image_dry_run:[\s\S]*type: boolean[\s\S]*default: true/);
 });
 
-test("release-pack: the archive carries upgrade.json, prisma.config.ts and the SQLite driver for every supported Node.js (existing sites run Node.js 20)", () => {
+test("release-pack: the archive carries upgrade.json, prisma.config.ts and the SQLite driver for every supported Node.js (existing sites run Node.js 20)", (t) => {
+  const arch = process.arch;
+  // The release only builds linux-x64 and linux-arm64 archives: nothing to pack on another architecture.
+  if (!["x64", "arm64"].includes(arch)) { t.skip(`release archives exist for x64 and arm64 only, this machine is ${arch}`); return; }
   const root = makeTempDir("curiosa-pack-");
   try {
-    const arch = process.arch;
-    if (!["x64", "arm64"].includes(arch)) return;
     const w = (f, c = "x") => { fs.mkdirSync(path.dirname(path.join(root, f)), { recursive: true }); fs.writeFileSync(path.join(root, f), c); };
     w("package.json", JSON.stringify({ name: "curiosa", version: "1.2.3" })); w(".next/BUILD_ID"); w("upgrade.json", JSON.stringify({ minFrom: "1.0.0" }));
     w("prisma.config.ts"); w("prisma/schema.prisma"); w("prisma/migrations/001/migration.sql"); w("scripts/install.sh"); w("scripts/docker-entrypoint.mjs"); w("node_modules/x/index.js");

@@ -35,6 +35,23 @@ test("a redirect (renamed or moved): redirect, with the new address only when gi
   assert.equal(classifyGitFailure("returned error: 301\nredirect: https://user:secret@evil.example/x").location, undefined, "an address with credentials is never offered");
 });
 
+test("a redirect address that carries ANY user information (a token as user name, a lone password) is never offered, and never echoed", () => {
+  // `locationOf` rebuilds the address from `origin` + path, so the secret could not leak anyway; the guard is defence in depth and keeps "no address" (the caller then
+  // looks the move up itself) instead of an address that the sender had decorated with a secret. The `||` of that guard must stay an `||`: user name alone, password alone.
+  for (const [label, address] of [
+    ["token as user name", "https://ghp_exampletoken1234@github.com/new/name.git/info/refs?service=git-upload-pack"],
+    ["user name only", "https://etoile_nord@github.com/new/name"],
+    ["password only", "https://:s3cr3tvalue@github.com/new/name"],
+    ["user name and password", "https://etoile_nord:s3cr3tvalue@github.com/new/name"],
+  ]) {
+    const r = classifyGitFailure(`warning: redirecting to ${address}\nfatal: unable to update url base from redirection:\n   redirect: ${address}`);
+    assert.deepEqual(r, { kind: "redirect" }, label);
+    assert.doesNotMatch(JSON.stringify(r), /ghp_|s3cr3t|etoile_nord/, `${label}: nothing of the user information is echoed`);
+  }
+  // The same address without user information IS offered: the guard is about the user information, not about the shape.
+  assert.deepEqual(classifyGitFailure("returned error: 301\nredirect: https://github.com/new/name.git/info/refs"), { kind: "redirect", location: "https://github.com/new/name" });
+});
+
 test("git did not use the code, is missing or too old: tooOld", () => {
   // The code was attached but git asked for a user name: it never read the configuration the code travels in.
   assert.equal(kind("fatal: could not read Username for 'https://github.com': terminal prompts disabled", { credentialsSent: true }), "tooOld");

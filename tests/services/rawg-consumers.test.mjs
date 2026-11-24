@@ -14,7 +14,7 @@ import { findExtrasDir } from "../helpers/extras.mjs";
 const extras = findExtrasDir();
 const NEEDED = ["game-covers", "game-suggestions", "planning", "stream-story"];
 const present = extras && NEEDED.every((id) => fs.existsSync(path.join(extras, "modules", id, "module.json")));
-if (!present) test("consommateurs de jaquettes sur le cœur 0.3.0", { skip: "dépôt des modules (curiosa-extras) absent : CURIOSA_EXTRAS_DIR" }, () => {});
+if (!present) test("consommateurs de jaquettes sur le cœur 0.3.0", (t) => { t.skip("dépôt des modules (curiosa-extras) absent : CURIOSA_EXTRAS_DIR"); });
 else {
   const db = await useTestDb();
   const cat = createCatalogue();

@@ -431,12 +431,14 @@ test("relancer en changeant de langue ne casse rien : reprise, désinstallation 
   assert.equal(purge.status, 1); assert.match(purge.stderr, /typed in a terminal/);
 });
 
-test("shellcheck propre sur le script (s'il est installé), et le script reste UN seul fichier autonome (aucun fichier de langue à côté)", () => {
+test("le script reste UN seul fichier autonome (aucun fichier de langue à côté)", () => {
   assert.equal(spawnSync("bash", ["-n", SCRIPT]).status, 0);
   assert.ok(!fs.readdirSync("scripts").some((f) => /^install\..+/.test(f) && f !== "install.sh"), "pas de scripts/install.* à côté : le script est téléchargé seul");
   assert.ok(!/\bsource\b|^\s*\. /m.test(code.replace(/^\s*#.*$/gm, "").replace(/\$\(\. "\$osr".*$/gm, "")), "le script ne charge aucun autre fichier");
-  const sc = spawnSync("shellcheck", ["--version"], { encoding: "utf8" });
-  if (sc.error) { console.log("# SKIP shellcheck n'est pas installé ici"); return; }
+});
+
+const HAS_SHELLCHECK = !spawnSync("shellcheck", ["--version"], { encoding: "utf8" }).error;
+test("shellcheck propre sur le script", { skip: HAS_SHELLCHECK ? false : "shellcheck is not installed on this machine (the CI can install it)" }, () => {
   const r = spawnSync("shellcheck", ["-x", "-S", "warning", SCRIPT], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stdout);
 });
