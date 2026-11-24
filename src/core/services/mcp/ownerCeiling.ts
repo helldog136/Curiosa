@@ -76,7 +76,7 @@ const NONE = { none: true } as const;
  */
 export const CORE_REQUIREMENTS: Record<string, ToolRequirement> = {
   // describe the AI itself
-  site_info: NONE, maintenance_my_access: NONE, maintenance_request_status: NONE,
+  site_info: NONE, maintenance_my_access: NONE, maintenance_available_operations: NONE, maintenance_request_status: NONE,
   // reads of the site's state: the admin tier
   maintenance_status: ADMIN, maintenance_health: ADMIN, maintenance_modules: ADMIN, maintenance_updates: ADMIN, maintenance_diagnose: ADMIN, maintenance_audit: ADMIN,
   maintenance_legacy: ADMIN, maintenance_skin_status: ADMIN, maintenance_skin_list: ADMIN, maintenance_places: ADMIN, maintenance_content_check: ADMIN, maintenance_content_check_run: ADMIN,

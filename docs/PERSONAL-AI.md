@@ -33,13 +33,26 @@ On **every request** (`tools/list` and `tools/call`), `canUse` (`services/mcp/ac
 | `maintenance_check_updates`, `core_update`, `module_update`, `modules_update_all` | `core:updates` |
 | `maintenance_backup_run` | `core:backup` |
 | install, uninstall, reinstall, restart, `instance_add`, skins install/remove/activate, catalogue | `core:modules.install` |
-| `site_info`, `maintenance_my_access`, `maintenance_request_status` | nothing |
+| `site_info`, `maintenance_my_access`, `maintenance_available_operations`, `maintenance_request_status` | nothing |
 | a module tool | its manifest key `mcp[].right` (a local right of that module) |
 
 - **A new access hides a tool with no declared requirement** (fail closed). A catalogue test fails when a core tool is missing from the table.
 - **The coarse fallback (0.47.0).** An access that existed before every access had an owner carries `ApiToken.coarseCeiling = true`. For a **module tool that declares no `right`** its requirement is the **admin tier** (`COARSE_FALLBACK` in `ownerCeiling.ts`): the level of the people who could create those accesses. Why: many modules do not declare `right` yet; hiding their tools would switch off every access on upgrade. An owner who is an administrator or above keeps every such tool; an editor does not. Tools with a declared requirement and **every core tool keep the table above**: so an access given to an administrator loses only the tools that need a reserved right (updates, backup, installs). Full powers granted before the change keep working for such an access (and for it only), and so does its secret address; the ceiling always comes first. A new access never has the fallback, full powers or a secret address. **The marker is written only by `legacyOwners.ts`** (at start-up, on every access that has no owner): choosing an owner later (`assignOwner`) never changes it, so an access created after the feature that lost its owner stays fail-closed, and `setFullPowers` refuses it. A migrated (coarse) access also keeps its stored "act without asking" choice and its own hourly limits exactly as before; only a newer access follows `allowDirect` and shares the site-wide hourly budget.
 - An owner who does not exist, a paused access, a locked account (temporary password, two-factor required and missing) or a missing resolver: the access answers nothing, with a clear message (or "invalid token" when the owner no longer exists).
 - `maintenance_my_access` reports `access.owner` (the owner's name, or "no owner" with what to do), `above_owner_rights` for tools the owner cannot do (no box to tick) and `reconnectNeeded` when the owner's rights changed. `maintenance_health` reports two numbers, `accessesWithoutOwner` (never had an owner: they work as before) and `accessesOwnerRemoved` (their owner no longer exists: they are stopped); `maintenance_diagnose` lists them as "needs a human" (an info item and a warning); all read only.
+
+## What the AI can learn about what it lacks
+
+`maintenance_available_operations` (level 1, read, `src/core/maintenance/operations.ts`) is always listed for every valid access (`ALWAYS_LISTED` in `access.ts`: not revocable, no owner right needed, never a request, no side effect). It returns the **live** list of every operation of the installed and enabled modules and of the core, grouped by module, each with its kind (`read`, `draft`, `write`, `publish`, `request`, `delete`), the right it needs (`needs`; `needsAssumed: true` when the module declared none and the coarse fallback is shown), a one-line text of 120 characters at most, and its state for **this** access:
+
+| `status` | Meaning for the AI |
+|---|---|
+| `allowed` | It can do it now. |
+| `needs_approval` | A request the owner approves each time (the access asks first, or the action always waits: installs, new instance). |
+| `not_granted` | The owner can grant it (`why`: `box_not_ticked` or `access_is_read_only`); `howToGrant` says where (Account > My AI accesses > Change the level for a personal access; Admin > AI assistants for an access without an owner). |
+| `above_owner_ceiling` | The owner cannot grant it (`why: module_declares_no_right` for a new access and a module that declared no right). The AI must say so and not suggest granting it. |
+
+Filters: `module` (module id, instance key, or `core`), `status`, `limit` (150 by default, 300 at most) and `offset` (the answer says `truncated.nextOffset`). `counts` always describe the whole picture. It is a sibling of `maintenance_my_access`, which keeps describing the access itself (ceiling, approval setting, limits, uploads, reconnection). Names, one-liners and flags only: no input schema, no setting value, no secret, nothing about other accesses. The server `instructions` point to it.
 
 ## Choosing owners (temporary page: removed in 0.49.0)
 
