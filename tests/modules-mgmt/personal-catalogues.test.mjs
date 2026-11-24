@@ -124,8 +124,8 @@ test("adding: the modules are merged next to the official ones, flagged personal
   assert.deepEqual(entries.map((e) => e.id).sort(), ["blog", "etoile-nord", "lune-douce"]);
   const mine = entries.find((e) => e.id === "etoile-nord");
   assert.equal(mine.origin, "extra");
-  assert.deepEqual(mine.source, { id: "test-owner-private-cat", name: "Camille" });
-  assert.equal(entries.find((e) => e.id === "blog").source, undefined);
+  assert.deepEqual(mine.personal, { id: "test-owner-private-cat", name: "Camille" });
+  assert.equal(entries.find((e) => e.id === "blog").personal, undefined);
   assert.equal(mine.suggested, false);
   assert.deepEqual(await I.installFromCatalogue("etoile-nord"), { ok: false, error: "modules.error.extraConfirm" });
   const done = await I.installFromCatalogue("etoile-nord", { confirmExtra: true });
@@ -143,7 +143,7 @@ test("refusals: the same address twice, a duplicate id across two personal catal
   assert.deepEqual(second.refused, [{ id: "etoile-nord", reason: "duplicate", by: "test-owner-private-cat" }]);
   assert.deepEqual(second.offers.map((o) => o.id), ["autre-mod"]);
   assert.equal((await P.addCatalogue(SECOND, "B", "o")).ok, true);
-  const owners = (await C.getCatalogue()).filter((e) => e.source).map((e) => [e.id, e.source.name]).sort();
+  const owners = (await C.getCatalogue()).filter((e) => e.personal).map((e) => [e.id, e.personal.name]).sort();
   assert.deepEqual(owners, [["autre-mod", "B"], ["etoile-nord", "A"]]);
   const bad = await P.checkCatalogue("https://github.com/test-owner/no-index");
   assert.equal(bad.ok, false);

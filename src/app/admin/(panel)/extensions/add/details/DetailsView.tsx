@@ -103,7 +103,7 @@ async function FicheBody({ embedded, entry, custom, target }: { embedded: boolea
 
   // Résumé d'une ligne des détails techniques : « Garde des données de votre public · Demande 3 autorisations · Installe aussi Contacts ».
   const alsoInstalls = (planView?.lines ?? []).filter((l) => l.action === "install").map((l) => l.name);
-  const origin = entry ? (entry.source ? "personal" : entry.origin === "extra" ? "extra" : "official") : "custom";
+  const origin = entry ? (entry.personal ? "personal" : entry.origin === "extra" ? "extra" : "official") : "custom";
   const summary = m
     ? (() => { const s = techSummary(m, perms); return [t(`fiche.tech.keeps.${s.keeps}`), s.asks === 0 ? t("fiche.tech.asks.none") : t("fiche.tech.asks", { n: s.asks }), alsoInstalls.length ? t("fiche.tech.alsoInstalls", { names: alsoInstalls.join(", ") }) : ""].filter(Boolean).join(" · "); })()
     : origin === "official" ? t("fiche.tech.source.official") : t(origin === "extra" ? "catalogue.origin.extra" : origin === "personal" ? "catalogue.origin.personal" : "catalogue.origin.custom");

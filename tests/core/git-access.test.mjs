@@ -271,7 +271,10 @@ test("only the owner-gated admin actions can save or remove a code, and nothing 
   const walk = (d, out = []) => { for (const e of fs.readdirSync(d, { withFileTypes: true })) { const p = path.join(d, e.name); if (e.isDirectory()) walk(p, out); else if (/\.(ts|tsx)$/.test(p)) out.push(p.replaceAll("\\", "/")); } return out; };
   const all = walk("src");
   const importersOf = (needle) => all.filter((f) => new RegExp(`from "[^"]*${needle}"`).test(fs.readFileSync(f, "utf8")));
-  assert.deepEqual(importersOf("gitAccessAdmin").sort(), ["src/app/admin/(panel)/appearance/actions.ts", "src/components/admin/accessActions.ts"]);
+  assert.deepEqual(importersOf("gitAccessAdmin").sort(), ["src/app/admin/(panel)/appearance/actions.ts", "src/app/admin/(panel)/extensions/personal/actions.ts", "src/components/admin/accessActions.ts", "src/core/modules/personalCatalogues.ts"]);
+  // (0.47.0) personalCatalogues.ts removes a code only from removeCatalogue(), which only the owner-gated action of the personal catalogues page calls.
+  const removers = all.filter((f) => /removeCatalogue\(/.test(fs.readFileSync(f, "utf8")) && f !== "src/core/modules/personalCatalogues.ts");
+  assert.deepEqual(removers, ["src/app/admin/(panel)/extensions/personal/actions.ts"]);
   // Who imports the access actions (by their full path): admin pages and components only, never the assistant's code or an API route.
   const users = all.filter((f) => /[aA]ccess(Actions|\/actions)"/.test(fs.readFileSync(f, "utf8")) && f !== "src/components/admin/accessActions.ts");
   assert.ok(users.length >= 2);
