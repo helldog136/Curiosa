@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
 import { revokeAccess } from "./revoke";
+import { expirePendingOfToken, listRequests } from "@/core/maintenance/requests";
 
 /**
  * THE OWNER OF AN ACCESS IS A PERMANENT FACT (core 0.47.1): an access is never given to another person, and when its owner disappears the access disappears with them (it is REVOKED,
@@ -29,17 +30,28 @@ let sweeping: Promise<string[]> | null = null;
 export function sweepOrphanedAccesses(actor = "system"): Promise<string[]> {
   if (sweeping) return sweeping;
   const run = (async () => {
-    const [rows, users] = await Promise.all([
-      prisma.apiToken.findMany({ where: { revokedAt: null, ownerId: { not: null } }, select: { id: true, name: true, ownerId: true } }),
-      prisma.user.findMany({ select: { id: true } }),
-    ]);
+    // Accesses FIRST, people second: a person created after the first read can never make a valid access look orphaned. And the check is made again right before each revoke (revocation is final).
+    const rows = await prisma.apiToken.findMany({ where: { ownerId: { not: null } }, select: { id: true, name: true, ownerId: true, revokedAt: true } });
+    if (rows.length === 0) return [];
+    const users = await prisma.user.findMany({ select: { id: true } });
+    // An empty user table (swapped or wiped database, setup not done) proves nothing about owners: do nothing.
+    if (users.length === 0) return [];
     const ids = new Set(users.map((u) => u.id));
+    const orphans = rows.filter((r) => r.ownerId && !ids.has(r.ownerId));
     const names: string[] = [];
-    for (const row of rows) {
-      if (!row.ownerId || ids.has(row.ownerId)) continue;
-      await revokeAccess(row.id);
-      await prisma.auditLog.create({ data: { actor, actorKind: actor === "system" ? "system" : "person", action: "mcp.personal.revoke", target: `${row.name}: owner removed`.slice(0, 300) } }).catch(() => {});
-      names.push(row.name);
+    // Revoked orphans whose pending requests were not expired (a failure midway): finish that job, idempotent.
+    const pending = new Set((await listRequests().catch(() => [])).filter((r) => r.status === "pending").map((r) => r.tokenId));
+    for (const row of orphans.filter((r) => r.revokedAt && pending.has(r.id))) await expirePendingOfToken(row.id).catch(() => 0);
+    for (const row of orphans) {
+      if (row.revokedAt) continue;
+      try {
+        if (await prisma.user.findUnique({ where: { id: row.ownerId! }, select: { id: true } })) continue;
+        await revokeAccess(row.id);
+        await prisma.auditLog.create({ data: { actor, actorKind: actor === "system" ? "system" : "person", action: "mcp.personal.revoke", target: `${row.name}: owner removed`.slice(0, 300) } }).catch(() => {});
+        names.push(row.name);
+      } catch (error) {
+        console.error("[ai] owner sweep: one access could not be revoked, it will be retried:", (error as Error)?.message);
+      }
     }
     return names;
   })().finally(() => { sweeping = null; });

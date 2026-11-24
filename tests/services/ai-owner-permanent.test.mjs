@@ -246,3 +246,73 @@ test("texts: EN and FR say the owner is permanent; the removed states are gone f
     assert.ok(!/Owner removed|accessesOwnerRemoved|\*\*Choose an owner\*\*/.test(doc), f);
   }
 });
+
+test("sweep safety: a person created between the two reads is never revoked; an empty user table does nothing", async () => {
+  const boss = await mk("etoile_nord", "owner");
+  const made = await PA.createPersonalAccess(boss.id, { password: PASSWORD, name: "Late" });
+  await db.prisma.apiToken.update({ where: { id: made.id }, data: { ownerId: "late-person" } }); // test setup: the owner row does not exist yet
+  const original = db.prisma.user.findMany;
+  let created = false;
+  db.prisma.user.findMany = async (...args) => {
+    const out = await original.apply(db.prisma.user, args);
+    if (!created) { created = true; await db.prisma.user.create({ data: { id: "late-person", email: "late@example.org", name: "Late", passwordHash: "x", ...columnsOf("admin") } }); }
+    return out; // stale: does not contain the new person
+  };
+  try { assert.deepEqual(await LIFE.sweepOrphanedAccesses(), [], "re-checked right before the revoke"); } finally { db.prisma.user.findMany = original; }
+  assert.equal(created, true);
+  assert.equal((await row(made.id)).revokedAt, null);
+  // empty user table: nothing is touched
+  await db.prisma.user.deleteMany({});
+  assert.deepEqual(await LIFE.sweepOrphanedAccesses(), []);
+  assert.equal((await row(made.id)).revokedAt, null);
+  assert.equal((await audits("mcp.personal.revoke")).length, 0);
+});
+
+test("sweep safety: one failing revoke does not stop the others, stays retryable, and pending requests of an already revoked orphan are expired", async () => {
+  const boss = await mk("etoile_nord", "owner");
+  const plan = { module: "m1", from: "1.0.0", to: "1.0.1" };
+  const mkOrphan = async (name) => {
+    const a = await PA.createPersonalAccess(boss.id, { password: PASSWORD, name, level: "maintenance" });
+    await db.prisma.apiToken.update({ where: { id: a.id }, data: { ownerId: `gone-${name}` } });
+    await RQ.createRequest({ action: "module_update", plan, tokenId: a.id, tokenName: name, ownerId: `gone-${name}` });
+    return a;
+  };
+  const a = await mkOrphan("A"); const b = await mkOrphan("B");
+  const original = db.prisma.apiToken.updateMany;
+  let failed = false;
+  db.prisma.apiToken.updateMany = async (arg) => { if (!failed && arg?.data?.revokedAt) { failed = true; throw new Error("disk hiccup"); } return original.call(db.prisma.apiToken, arg); };
+  let first;
+  try { first = await LIFE.sweepOrphanedAccesses(); } finally { db.prisma.apiToken.updateMany = original; }
+  assert.equal(first.length, 1, "the other access was still handled");
+  const failedRow = (await row(a.id)).revokedAt ? b : a;
+  assert.equal((await row(failedRow.id)).revokedAt, null, "the failed one is still live: retryable");
+  assert.deepEqual(await LIFE.sweepOrphanedAccesses(), [failedRow.name], "the next pass finishes it");
+  assert.equal((await RQ.listRequests()).filter((r) => r.status === "pending").length, 0);
+  // revoked orphan that still has a pending request (a failure after revokedAt): the sweep expires it
+  await RQ.createRequest({ action: "module_update", plan, tokenId: a.id, tokenName: "A", ownerId: "gone-A" });
+  assert.equal((await RQ.listRequests()).filter((r) => r.status === "pending").length, 1);
+  assert.deepEqual(await LIFE.sweepOrphanedAccesses(), []);
+  assert.equal((await RQ.listRequests()).filter((r) => r.status === "pending").length, 0);
+});
+
+test("the start-up sweep is wired in instrumentation.ts, before the legacy step", () => {
+  const src = fs.readFileSync("src/instrumentation.ts", "utf8");
+  const sweep = src.indexOf("sweepOrphanedAccesses()");
+  assert.ok(sweep > 0, "sweepOrphanedAccesses is called at start-up");
+  assert.ok(src.indexOf("personalAi/lifecycle") > 0 && sweep < src.indexOf("assignLegacyOwners()"));
+});
+
+test("source scan, strict: no apiToken write takes `data` from a variable or spread; no raw tagged template touches the table (src and scripts)", () => {
+  const files = [...walk("src"), ...(fs.existsSync("scripts") ? walk("scripts") : [])].filter((f) => /\.(ts|tsx|mjs|js)$/.test(f));
+  const bad = [];
+  for (const f of files) {
+    const src = fs.readFileSync(f, "utf8");
+    for (const m of src.matchAll(/apiToken\.(create|createMany|update|updateMany|upsert)\(/g)) {
+      const call = src.slice(m.index, m.index + 700);
+      if (!/data:\s*\{/.test(call.split(/\n\s*\n/)[0]) ) bad.push(`${f}: data is not a literal`);
+      if (/\(\s*\w+\s*\)/.test(call.slice(0, 40)) || /\(\s*\.\.\./.test(call.slice(0, 40))) bad.push(`${f}: argument is a variable`);
+    }
+    if (/\$(execute|query)Raw`[^`]*ApiToken/.test(src) || /\$(execute|query)Raw(Unsafe)?\([^)]*ApiToken/.test(src)) bad.push(`${f}: raw SQL on ApiToken`);
+  }
+  assert.deepEqual(bad, []);
+});
