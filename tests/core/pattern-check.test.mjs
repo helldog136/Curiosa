@@ -207,3 +207,20 @@ test("older contracts: `file` and `source` are not words of contract 2 (an error
   const newerCore = RC.checkAnimation({ ...recipe(), animateContract: 5, animateMinContract: 5 }, info);
   assert.equal(newerCore.recipe, null); assert.equal(newerCore.newer, true);
 });
+
+test("the skin issues: every checker finding becomes a catalogue message in both languages, severities kept", async () => {
+  const PI = await import("@/core/skins/patternIssues");
+  const overlapping = mk([sq(0, 0, 60, 100), sq(40, 0, 100, 100)]);
+  const c = PC.checkPattern(overlapping, { bytes: 2048 });
+  const list = PI.patternFileIssues("patterns/a.json", c, 2048, S.PATTERN.fileBytes);
+  assert.ok(list.some((i) => i.code === "pattern-overlap" && i.severity === "error"));
+  for (const i of list) assert.ok(i.message.en && i.message.fr && i.hint.en && i.hint.fr);
+  const big = PI.patternFileIssues("patterns/a.json", PC.checkPattern(LT, { bytes: 40000 }), 40000, S.PATTERN.fileBytes);
+  assert.deepEqual(big.map((i) => i.code), ["pattern-too-large"]);
+  assert.match(big[0].message.en, /40 KB; at most 32 KB/);
+  const r = RC.checkAnimation({ animateContract: 4, patterns: { Bad: [{ file: "patterns/a.json" }] }, genres: {} }, new Map());
+  const mapped = r.issues.map(PI.recipePatternIssue).filter(Boolean);
+  assert.ok(mapped.some((i) => i.code === "patterns-shape"));
+  assert.equal(PI.recipePatternIssue({ code: "param", path: "x", severity: "error" }), null);
+  assert.equal(PI.patternUnreadable("patterns/a.json").code, "pattern-unreadable");
+});
