@@ -244,7 +244,7 @@ Voir aussi [GEO.md](GEO.md) (être cité par les IA, expliqué pour la personne 
 
 ## Contrôle du contenu (Santé de mon site) : une fonctionnalité du cœur
 
-Extension de l'Entretien du cœur, pas un module : `src/core/maintenance/content/` lit la base **directement** (par paquets, 5 000 entrées au plus) et alimente la page d'administration *Santé de mon site*, `maintenance_diagnose` (en `info` seulement), l'audit, une ligne sobre du tableau de bord et les outils `maintenance_content_check[_run]`. Les visites de liens externes ne partent qu'à la demande, par paquets suivis par `OperationProgress`, avec les gardes `hostProblem` / `addressIsPrivate` de `core/url.ts` et une connexion qui ne va qu'aux adresses vérifiées (`content/net.ts`). Voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md).
+Extension de l'Entretien du cœur, pas un module : `src/core/maintenance/content/` lit la base **directement** (par paquets, 5 000 entrées au plus) et alimente la page d'administration *Santé de mon site*, `maintenance_diagnose` (en `info` seulement), l'audit, une ligne sobre du tableau de bord et les outils `maintenance_content_check[_run]`. Les visites de liens externes ne partent qu'à la demande, par paquets suivis par `OperationProgress`, avec les gardes `fetchTargetProblem` (`core/host.ts`) / `addressIsPrivate` (`core/url.ts`) et une connexion qui ne va qu'aux adresses vérifiées (`content/net.ts`). Voir [SANTE-DU-SITE.md](SANTE-DU-SITE.md).
 
 ## Liens des réseaux sociaux : `rel`, `referrerPolicy`, `target` (0.2.13)
 

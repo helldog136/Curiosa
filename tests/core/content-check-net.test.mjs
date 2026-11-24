@@ -5,7 +5,8 @@ import fs from "node:fs";
 import http from "node:http";
 import { clock, makeNet, publicDns } from "../helpers/content-check-kit.mjs";
 
-const { hostProblem, addressIsPrivate, isSafeExternalUrl } = await import("@/core/url");
+const { fetchTargetProblem } = await import("@/core/host");
+const { addressIsPrivate, isSafeExternalUrl } = await import("@/core/url");
 const { probeLink, MAX_REDIRECTS } = await import("@/core/maintenance/content/probe");
 const { createPinnedFetch, pinnedLookup, resolveHost, createContentNet } = await import("@/core/maintenance/content/net");
 const { createNetClient } = await import("@/core/services/net");
@@ -23,16 +24,16 @@ test("adresses refusées d'avance : numériques (toutes écritures), noms intern
     "https://[::1]/", "https://[fe80::1]/", "https://[::ffff:127.0.0.1]/", "https://localhost/", "https://intranet/", "https://printer.local/", "https://nas.lan/", "https://db.internal/", "https://x.home.arpa/",
     "https://example.org:8443/", "https://example.org:22/", "https://user:pass@example.org/", "ftp://example.org/", "https://app.localhost/",
   ];
-  for (const u of refused) assert.notEqual(hostProblem(new URL(u)), null, `${u} doit être refusée`);
-  for (const u of ["https://example.org/", "https://www.example.org:443/x?y=1", "https://sub.domaine.example.org/", "http://example.org/", "https://xn--bcher-kva.example/"]) assert.equal(hostProblem(new URL(u)), null, `${u} peut être visitée`);
-  assert.equal(hostProblem("pas une adresse"), "invalid");
+  for (const u of refused) assert.notEqual(fetchTargetProblem(new URL(u)), null, `${u} doit être refusée`);
+  for (const u of ["https://example.org/", "https://www.example.org:443/x?y=1", "https://sub.domaine.example.org/", "http://example.org/", "https://xn--bcher-kva.example/"]) assert.equal(fetchTargetProblem(new URL(u)), null, `${u} peut être visitée`);
+  assert.equal(fetchTargetProblem("pas une adresse"), "invalid");
 });
 
 test("garde du cœur complétée : isSafeExternalUrl (liens affichés) reste inchangé ; la règle des visites sortantes est une fonction à part", () => {
   assert.equal(isSafeExternalUrl("https://example.org"), true);
   assert.equal(isSafeExternalUrl("javascript:alert(1)"), false);
   assert.equal(isSafeExternalUrl("https://127.0.0.1/"), true, "un lien AFFICHÉ vers une IP reste permis : seule une VISITE du serveur est refusée");
-  assert.equal(hostProblem("https://127.0.0.1/"), "address");
+  assert.equal(fetchTargetProblem("https://127.0.0.1/"), "address");
 });
 
 test("une adresse numérique issue de la résolution d'un nom : privée, locale, réservée → refusée ; publique → permise", () => {

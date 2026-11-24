@@ -1,5 +1,6 @@
 import { prisma } from "./db";
 import { siteUrl } from "./config";
+import { bareHost, bareHostOf } from "./host";
 import { destinationKey } from "./redirectDestination";
 import { getSetting } from "./settings";
 import { isSafeExternalUrl } from "./url";
@@ -86,7 +87,7 @@ export async function loadMeasureMap(now = Date.now()): Promise<MeasureMap> {
 }
 
 function siteHost(): string {
-  try { return new URL(siteUrl).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
+  return bareHostOf(siteUrl);
 }
 
 /**
@@ -96,7 +97,7 @@ function siteHost(): string {
 export function measureHref(map: MeasureMap, href: string, opts: { absolute?: boolean; now?: number } = {}): string {
   if (typeof href !== "string" || map.size === 0 || href.length > 2100 || !/^https?:\/\//i.test(href)) return href;
   let host: string;
-  try { host = new URL(href).hostname.toLowerCase().replace(/^www\./, ""); } catch { return href; }
+  try { host = bareHost(new URL(href).hostname); } catch { return href; }
   if (host === siteHost()) return href;
   const key = destinationKey(href);
   const hit = key ? map.get(key) : undefined;

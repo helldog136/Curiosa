@@ -1,5 +1,6 @@
 import type { NetRequest, NetResult } from "@/core/services/net";
-import { addressIsPrivate, hostProblem } from "@/core/url";
+import { bareHost, fetchTargetProblem } from "@/core/host";
+import { addressIsPrivate } from "@/core/url";
 import type { PinTable, Resolved, Resolver } from "./net";
 
 /**
@@ -38,7 +39,7 @@ export type ProbeDeps = {
 
 /** Pourquoi cette adresse ne doit pas être visitée (null : elle peut l'être). Fait la résolution du nom, une fois par nom et par paquet. */
 export async function refusal(url: URL, deps: Pick<ProbeDeps, "resolve" | "dnsCache" | "pins">): Promise<{ kind: "refused"; why: string } | { kind: "ok"; addresses: string[] } | { kind: "unresolved"; reason: "notfound" | "timeout" | "error" }> {
-  const problem = hostProblem(url);
+  const problem = fetchTargetProblem(url);
   if (problem) return { kind: "refused", why: problem };
   const host = url.hostname.toLowerCase();
   let found = deps.dnsCache?.get(host);
@@ -51,7 +52,7 @@ export async function refusal(url: URL, deps: Pick<ProbeDeps, "resolve" | "dnsCa
   return { kind: "ok", addresses: found.addresses };
 }
 
-const canon = (u: URL) => `${u.hostname.toLowerCase().replace(/^www\./, "")}${u.pathname.replace(/\/+$/, "")}${u.search}`;
+const canon = (u: URL) => `${bareHost(u.hostname)}${u.pathname.replace(/\/+$/, "")}${u.search}`;
 
 type Hit = { status: number; location?: string } | { fail: "timeout" | "network" | "invalid" } | { paused: true; retryAt?: number; reason: string };
 

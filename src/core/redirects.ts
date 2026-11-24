@@ -4,9 +4,12 @@ import { RESERVED_PATHS, siteUrl } from "./config";
 import { listInstances } from "./instances";
 import { isKnownLocale } from "./i18n/locales";
 import { invalidateRedirectGate } from "./redirectGate";
+import { MEASURE_SETTING } from "./redirectMeasure";
 import { flushRedirectHits, isHumanVisit, recordRedirectHit } from "./redirectStats";
+import { setSetting } from "./settings";
 import { slugify } from "./slug";
 import { matchesSearch, searchText } from "./adminkit/search";
+import { bareHost, sameHost } from "./host";
 import { isSafeExternalUrl, normalizeLinkInput } from "./url";
 
 /**
@@ -64,8 +67,6 @@ export function cleanPastedAddress(raw: string | null | undefined): string {
   return normalizeLinkInput(v);
 }
 
-const sameHost = (a: string, b: string) => a.toLowerCase().replace(/^www\./, "") === b.toLowerCase().replace(/^www\./, "");
-
 /**
  * Une destination acceptable : http(s) seulement (`isSafeExternalUrl` écarte déjà `javascript:`, `data:`…, et ici `mailto:`), sans identifiants dans l'adresse,
  * de longueur bornée, et qui ne renvoie pas vers un autre lien court de CE site (boucle). Renvoie l'adresse nettoyée ou une clé d'erreur.
@@ -111,7 +112,7 @@ function endOfAddress(parsed: URL): string {
 
 /** Le nom du site visé : « www.twitch.tv » → « twitch ». */
 function siteOfAddress(parsed: URL): string {
-  const parts = parsed.hostname.toLowerCase().replace(/^www\./, "").split(".").filter(Boolean);
+  const parts = bareHost(parsed.hostname).split(".").filter(Boolean);
   if (parts.length === 0) return "";
   const idx = parts.length >= 3 && SECOND_LEVEL.has(parts[parts.length - 2]!) ? parts.length - 3 : Math.max(0, parts.length - 2);
   return shorten(slugify(parts[parts.length === 1 ? 0 : idx]!));
@@ -235,6 +236,44 @@ export async function deleteRedirectRecord(id: string): Promise<string | null> {
   await prisma.redirect.delete({ where: { id } }).catch(() => {});
   invalidateRedirectGate();
   return row.path;
+}
+
+export type RedirectSwitch = { ok: true; path: string; changed: boolean } | { ok: false; reason: "missing" | "managed" };
+
+/**
+ * Turns a link on or off. It SAYS the wanted state (`active`), it never flips anything: a double click never undoes the first one. A link managed by a module is
+ * set in that module (`managed`). `changed` is false when the link already was in the wanted state (nothing was written).
+ */
+export async function setRedirectActiveRecord(id: string, active: boolean): Promise<RedirectSwitch> {
+  const r = await prisma.redirect.findUnique({ where: { id }, select: { path: true, active: true, managedBy: true } });
+  if (!r) return { ok: false, reason: "missing" };
+  if (r.managedBy) return { ok: false, reason: "managed" };
+  if (r.active === active) return { ok: true, path: r.path, changed: false };
+  await prisma.redirect.update({ where: { id }, data: { active } });
+  invalidateRedirectGate();
+  return { ok: true, path: r.path, changed: true };
+}
+
+/** Flips the on/off state of a link (the old "Enable / Disable" action). Same rules as `setRedirectActiveRecord`. */
+export async function toggleRedirectActiveRecord(id: string): Promise<RedirectSwitch> {
+  const r = await prisma.redirect.findUnique({ where: { id }, select: { active: true } });
+  if (!r) return { ok: false, reason: "missing" };
+  return setRedirectActiveRecord(id, !r.active);
+}
+
+/** "Reactivate" in one click: removes the end date and turns the link on (it redirects again at once). Returns the path, or null for a missing or module-managed link. */
+export async function reactivateRedirectRecord(id: string): Promise<string | null> {
+  const r = await prisma.redirect.findUnique({ where: { id }, select: { path: true, managedBy: true } });
+  if (!r || r.managedBy) return null;
+  await prisma.redirect.update({ where: { id }, data: { expiresAt: null, active: true } });
+  invalidateRedirectGate();
+  return r.path;
+}
+
+/** "Count the clicks on my links": the site setting that makes button addresses go through short links. Also reloads the "destination to short link" map. */
+export async function setMeasureEnabled(enabled: boolean): Promise<void> {
+  await setSetting(MEASURE_SETTING, enabled);
+  invalidateRedirectGate();
 }
 
 /* ───────────── Liste ───────────── */

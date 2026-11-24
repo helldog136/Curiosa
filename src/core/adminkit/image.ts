@@ -3,11 +3,11 @@
  * Logique pure (testée sans navigateur ni réseau). Liste FERMÉE :
  *  - une page du site (`/uploads/…`, `/m/<clé>/image`…), sans `..`, sans `\`, jamais `/api/` ni `/admin` (un `<img>` envoie un GET avec les cookies de la personne connectée) ;
  *  - une adresse `https://` dont le nom d'hôte est EXACTEMENT l'un de ceux que le module déclare dans son manifeste (`imageHosts`) ; pas de port, d'identifiant,
- *    d'adresse numérique ni de nom interne (voir `hostProblem`). Aucun hôte arbitraire, aucun joker.
+ *    d'adresse numérique ni de nom interne (voir `fetchTargetProblem`). Aucun hôte arbitraire, aucun joker.
  * Rien n'est jamais exécuté : une image est une balise `<img>` (un SVG chargé ainsi n'exécute aucun script), jamais un cadre ni un `<object>`.
  */
 import type { Block, TableCell } from "../blocks";
-import { hostProblem } from "../url";
+import { fetchTargetProblem } from "../host";
 
 type TableBlock = Extract<Block, { type: "table" }>;
 export type CellImage = { src: string; alt: string; fit?: "cover" | "contain" };
@@ -20,7 +20,7 @@ export const MAX_IMAGE_ALT = 160;
 /** Un nom d'hôte déclarable : minuscules, au moins un point, ni adresse numérique ni nom interne (`localhost`, `.local`, `.lan`…). */
 const HOST_NAME = /^(?=.{4,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z][a-z0-9-]{1,62}$/;
 export function isDeclarableImageHost(value: unknown): value is string {
-  return typeof value === "string" && HOST_NAME.test(value) && hostProblem(`https://${value}/`) === null;
+  return typeof value === "string" && HOST_NAME.test(value) && fetchTargetProblem(`https://${value}/`) === null;
 }
 
 export type ImageSrcProblem = "empty" | "too-long" | "invalid" | "site-path" | "scheme" | "host-not-declared";
@@ -47,7 +47,7 @@ export function checkImageSrc(src: unknown, hosts: readonly string[] = []): Imag
   let url: URL;
   try { url = new URL(src); } catch { return { ok: false, problem: "invalid" }; }
   if (url.protocol !== "https:") return { ok: false, problem: "scheme" };
-  if (hostProblem(url) !== null) return { ok: false, problem: "invalid" };
+  if (fetchTargetProblem(url) !== null) return { ok: false, problem: "invalid" };
   if (!hosts.includes(url.hostname)) return { ok: false, problem: "host-not-declared" };
   return { ok: true, src: url.href };
 }

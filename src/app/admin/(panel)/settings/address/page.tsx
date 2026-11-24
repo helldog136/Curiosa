@@ -6,7 +6,8 @@ import { adminCtx } from "@/core/admin";
 import { siteUrl } from "@/core/config";
 import { buildChecklist } from "@/core/domainChecklist";
 import { detectServerContext, migrationCommands } from "@/core/domainCommands";
-import { hostOfUrl, hostProblem, parseLegacyHosts, parseSiteAddress, visitedAddress } from "@/core/siteAddress";
+import { hostOf, publicHostProblem } from "@/core/host";
+import { parseLegacyHosts, parseSiteAddress, visitedAddress } from "@/core/siteAddress";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { CopyBlock } from "@/components/admin/CopyBlock";
 import { TextField } from "@/components/admin/Field";
@@ -34,7 +35,7 @@ export default async function AddressPage({ searchParams }: { searchParams: Sear
   const target = parsed?.ok ? parsed : null;
   const asked1 = first(sp.step);
   const step = target ? (asked1 === "1" ? 1 : asked1 === "3" ? 3 : 2) : 1;
-  const oldHost = hostOfUrl(siteUrl);
+  const oldHost = hostOf(siteUrl);
   const legacy = parseLegacyHosts(process.env.LEGACY_HOSTS, oldHost);
   const visit = visitedAddress((await headers()).get("host"), siteUrl);
   const same = !!target && target.url === siteUrl;
@@ -51,7 +52,7 @@ export default async function AddressPage({ searchParams }: { searchParams: Sear
         {visit.same === true && <p><span role="status" className={ui.chipOk} title={t("domain.current.same")}>✔ {t("domain.current.sameChip")}</span></p>}
         {visit.same === false && <Callout tone="warn" role="status" testid="domain-mismatch">{t("domain.current.differs", { visited: visit.visited ?? "", host: visit.configured })}</Callout>}
         {visit.same === null && <Callout role="status">{t("domain.current.local")}</Callout>}
-        {hostProblem(oldHost) === null && !siteUrl.startsWith("https://") && <Callout tone="warn" role="status">{t("domain.current.http")}</Callout>}
+        {publicHostProblem(oldHost) === null && !siteUrl.startsWith("https://") && <Callout tone="warn" role="status">{t("domain.current.http")}</Callout>}
         {legacy.hosts.length > 0 && <p className="text-sm text-muted" data-testid="domain-legacy">{t("domain.current.legacy", { n: legacy.hosts.length, list: legacy.hosts.join(", ") })}</p>}
         {(legacy.rejected.length > 0 || legacy.truncated) && <Callout tone="warn" role="status">{t("domain.current.legacyIgnored", { list: legacy.rejected.join(", ") })}</Callout>}
       </Panel>

@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { classifyAgent, ROBOT_CATEGORIES, type RobotCategory } from "@/core/agents";
 import { prisma } from "@/core/db";
+import { bareHost } from "@/core/host";
 import { deleteSetting, getSetting, setSetting } from "@/core/settings";
 
 /**
@@ -43,9 +44,9 @@ export function normalizePath(raw: unknown): string | null {
 export function refHost(referrer: unknown, ownHost?: string): string | null {
   if (typeof referrer !== "string" || referrer === "" || referrer.length > 500) return null;
   let host: string;
-  try { const u = new URL(referrer); if (!/^https?:$/.test(u.protocol)) return null; host = u.hostname.toLowerCase().replace(/^www\./, ""); } catch { return null; }
+  try { const u = new URL(referrer); if (!/^https?:$/.test(u.protocol)) return null; host = bareHost(u.hostname); } catch { return null; }
   if (!host || host.length > 80 || !/^[a-z0-9.-]+$/.test(host)) return null;
-  return ownHost && host === ownHost.toLowerCase().replace(/^www\./, "").split(":")[0] ? null : host;
+  return ownHost && host === bareHost(ownHost).split(":")[0] ? null : host;
 }
 
 /** Jour (AAAA-MM-JJ) à l'heure du serveur. */

@@ -1,5 +1,5 @@
 import { prisma } from "@/core/db";
-import { hostProblem } from "@/core/url";
+import { fetchTargetProblem } from "@/core/host";
 
 /**
  * TRUSTED IMAGE SOURCES: the only places `media_import` may download an image from (see mediaImport.ts, trustedImageFetch.ts).
@@ -36,7 +36,7 @@ export function parseSource(input: string): ParsedSource {
   const host = m[1]!;
   let url: URL;
   try { url = new URL(`https://${host}/`); } catch { return { ok: false, problem: "host" }; }
-  if (url.hostname !== host || host.endsWith(".") || host.startsWith(".") || host.includes("..") || hostProblem(url) !== null) return { ok: false, problem: "host" };
+  if (url.hostname !== host || host.endsWith(".") || host.startsWith(".") || host.includes("..") || fetchTargetProblem(url) !== null) return { ok: false, problem: "host" };
   let port: number | undefined;
   if (m[2] !== undefined) {
     port = Number(m[2]);

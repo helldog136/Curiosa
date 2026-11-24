@@ -2,7 +2,8 @@ import http from "node:http";
 import { createPinnedFetch, resolveHost, type Resolver } from "@/core/maintenance/content/net";
 import { addressIsPrivate } from "@/core/url";
 import { getSetting, setSetting } from "@/core/settings";
-import { hostOfUrl, hostProblem, visitedAddress } from "@/core/siteAddress";
+import { hostOf, publicHostProblem } from "@/core/host";
+import { visitedAddress } from "@/core/siteAddress";
 import type { Checklist } from "@/core/domainChecklist";
 
 /**
@@ -29,7 +30,7 @@ export function createProbe(deps: { resolve?: Resolver; fetch?: FetchLike; timeo
     if (u.protocol !== "https:" && u.protocol !== "http:") return { ok: false, error: "invalid" };
     const host = u.hostname.toLowerCase().replace(/\.$/, "");
     // Une adresse numérique ou un nom de réseau privé n'est jamais contacté (pas de résolution du tout).
-    if (hostProblem(host) !== null) return { ok: false, error: "private" };
+    if (publicHostProblem(host) !== null) return { ok: false, error: "private" };
     const started = Date.now();
     const found = await resolve(host);
     if (!found.ok) return { ok: false, error: found.reason === "timeout" ? "timeout" : "dns" };
@@ -64,8 +65,8 @@ const LOCATION_OK = (location: string | null, siteUrl: string): boolean => {
 export async function runAfterChecks(opts: { siteUrl: string; hostHeader: string | null; legacy: readonly string[]; probe?: Probe }): Promise<CheckResult[]> {
   const probe = opts.probe ?? createProbe();
   const { siteUrl } = opts;
-  const siteHost = hostOfUrl(siteUrl);
-  const publicSite = hostProblem(siteHost) === null;
+  const siteHost = hostOf(siteUrl);
+  const publicSite = publicHostProblem(siteHost) === null;
   const out: CheckResult[] = [];
 
   const v = visitedAddress(opts.hostHeader, siteUrl);
