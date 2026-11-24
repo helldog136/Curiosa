@@ -352,6 +352,70 @@ async function verifyOrThrow(row: { id: string; version: string; commit: string 
   if (!r.ok) throw new LoadCheckFailed(r.reason);
 }
 
+/** A refusal that carries the i18n key of its own plain sentence (`modules.error.*`): the catch blocks of the install and update flows say it as such (see `toInstallResult`). */
+const refusal = (code: string) => Object.assign(new Error(code.split(".").pop()), { code });
+
+type CandidateChecks = {
+  /** The module id the candidate must have (absent = no check). */
+  expectId?: string;
+  /** What a different id is called: a repository that serves another module than announced, or an update whose manifest is not the module's. */
+  idError?: "modules.error.idmismatch" | "modules.error.nomanifest";
+  /** When to ask for a core recent enough: before the file checks ("first", an installation) or after them ("last", an update from a folder of a repository); false = the caller did it. */
+  core?: "first" | "last" | false;
+  /** An extra refusal to check once the cheap checks have passed and before the load check (an installation: the module already exists). */
+  beforePreflight?: () => Promise<void>;
+  /** false = skip the load check in a fresh process (the caller runs it, or the files are not final yet). */
+  preflight?: boolean;
+};
+
+/**
+ * THE checks every candidate version of a module goes through before anything is installed or swapped, in this order: its id, the core it needs, its main file,
+ * its size (a link inside it refuses too, see `dirSize`), then the load check in a brand-new process (`preflightOrThrow`). Throws: `refusal(...)`, `CoreTooOld`,
+ * `LoadCheckFailed`; `toInstallResult` turns them into the answer of the flow. The order of the cheap checks decides which refusal is said when several apply.
+ */
+async function validateCandidate(root: string, manifest: ParsedManifest, opts: CandidateChecks = {}): Promise<void> {
+  const { expectId, idError = "modules.error.nomanifest", core = "first", preflight = true } = opts;
+  if (expectId !== undefined && manifest.id !== expectId) throw refusal(idError);
+  if (core === "first") assertCore(requirementOf(manifest));
+  if (manifest.main && !fs.existsSync(path.join(root, manifest.main))) throw refusal("modules.error.nomain");
+  if (dirSize(root) > MAX_MODULE_BYTES) throw refusal("modules.error.size");
+  if (core === "last") assertCore(requirementOf(manifest));
+  await opts.beforePreflight?.();
+  if (preflight) await preflightOrThrow(root, manifest);
+}
+
+/** What a failed flow tells `toInstallResult`: an installation (the candidate, once its manifest is read) or the update of an installed module (what it was, what it was going to). */
+type FailureContext =
+  | { op: "install"; candidate: { id: string; version: string } | null }
+  | { op: "update"; id: string; fromVersion: string; toVersion: string };
+
+/** The refusals an installation says as such; any other failure of it reads "could not be downloaded". */
+const INSTALL_REFUSALS = new Set(["modules.error.idmismatch", "modules.error.nomain", "modules.error.size", "modules.error.symlink", "modules.error.exists"]);
+
+/**
+ * The answer of an install or update flow that threw. The caller has already undone what it had done (journal, files, row): this only chooses the answer, and
+ * notes a blocked update. `update` says any coded refusal as such (and `modules.error.clone` otherwise); `install` only the ones listed above.
+ */
+async function toInstallResult(error: unknown, ctx: FailureContext): Promise<InstallResult> {
+  if (ctx.op === "update" && error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
+  if (error instanceof CoreTooOld) return coreRefusal(error);
+  if (error instanceof LoadCheckFailed) {
+    if (ctx.op === "install") { await noteBlocked(ctx.candidate?.id ?? "?", "", ctx.candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
+    await noteBlocked(ctx.id, ctx.fromVersion, ctx.toVersion, error, "update");
+    return loadCheckRefusal(error, true);
+  }
+  if (ctx.op === "install") {
+    if (isGitAccessError(error)) return { ok: false, error: "modules.error.access" };
+    // (0.47.0) A refusal that has its own plain sentence (a link inside the module, a module that is too large) is said as such, not as "could not be downloaded".
+    const known = (error as { code?: unknown })?.code;
+    if (typeof known === "string" && INSTALL_REFUSALS.has(known)) return { ok: false, error: known };
+    console.error("[modules] install failed:", error);
+    return { ok: false, error: "modules.error.clone" };
+  }
+  console.error("[modules] update failed:", (error as Error)?.message);
+  return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
+}
+
 /**
  * Installe un module depuis un dépôt git. « Installé » = « actif » : il n'y a pas d'état intermédiaire, c'est pourquoi l'accord de l'administrateur se donne AVANT
  * (case « je fais confiance » pour un dépôt personnel, fiche du catalogue). Si les données d'une désinstallation précédente avaient été gardées, elles reviennent.
@@ -400,18 +464,11 @@ export async function installModule(input: string, opts: {
     if (!manifest.ok) return { ok: false, error: manifest.error };
     const m = manifest.manifest;
     candidate = { id: m.id, version: m.version };
-    // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé.
-    if (opts.expectId && m.id !== opts.expectId) return { ok: false, error: "modules.error.idmismatch" };
-    assertCore(requirementOf(m));
-
-    if (m.main && !fs.existsSync(path.join(root, m.main))) return { ok: false, error: "modules.error.nomain" };
-    if (dirSize(root) > MAX_MODULE_BYTES) return { ok: false, error: "modules.error.size" };
-
-    const existing = await prisma.module.findUnique({ where: { id: m.id } });
-    if (existing) return { ok: false, error: "modules.error.exists" };
-
-    // Contrôle de chargement AVANT de rien installer (ni module, ni fournisseurs) : un code qui ne se charge pas n'entre pas.
-    await preflightOrThrow(root, m);
+    // Un dépôt reconnu ne peut pas servir un autre module que celui annoncé. Contrôle de chargement AVANT de rien installer (ni module, ni fournisseurs) : un code qui ne se charge pas n'entre pas.
+    await validateCandidate(root, m, {
+      ...(opts.expectId ? { expectId: opts.expectId } : {}), idError: "modules.error.idmismatch",
+      beforePreflight: async () => { if (await prisma.module.findUnique({ where: { id: m.id } })) throw refusal("modules.error.exists"); },
+    });
 
     // Les fournisseurs d'abord : si l'un d'eux ne peut pas être installé, rien n'est laissé (ni lui, ni ce module).
     if (opts.dependencies !== false && m.requires?.length) {
@@ -460,14 +517,7 @@ export async function installModule(input: string, opts: {
     };
   } catch (error) {
     if (deps) await unwind(deps);
-    if (error instanceof CoreTooOld) return coreRefusal(error);
-    if (error instanceof LoadCheckFailed) { await noteBlocked(candidate?.id ?? "?", "", candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
-    if (isGitAccessError(error)) return { ok: false, error: "modules.error.access" };
-    // (0.47.0) A refusal that has its own plain sentence (a link inside the module, a module that is too large) is said as such, not as "could not be downloaded".
-    const known = (error as { code?: unknown })?.code;
-    if (known === "modules.error.symlink" || known === "modules.error.size") return { ok: false, error: known };
-    console.error("[modules] install failed:", error);
-    return { ok: false, error: "modules.error.clone" };
+    return toInstallResult(error, { op: "install", candidate });
   } finally {
     fs.rmSync(tmp, { recursive: true, force: true });
   }
@@ -636,12 +686,9 @@ async function updateSubdirModule(row: Module, chain: string[], toRef?: string):
     opStep("verify");
     if (fetched.tree === row.tree) return { ok: false, error: "modules.error.uptodate" };
     const manifest = fetched.manifest;
-    if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
-    if (manifest.main && !fs.existsSync(path.join(fetched.root, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
-    if (dirSize(fetched.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
-    assertCore(requirementOf(manifest));
+    if (!manifest) throw refusal("modules.error.nomanifest");
     // Contrôle de chargement dans un processus tout neuf, AVANT de toucher à quoi que ce soit : un code qui ne se charge pas n'est pas échangé.
-    await preflightOrThrow(fetched.root, manifest);
+    await validateCandidate(fetched.root, manifest, { expectId: id, core: "last" });
     // 2. Échanger les fichiers : l'ancienne version est mise de côté et revient telle quelle au moindre échec (jusqu'aux migrations).
     fs.rmSync(backup, { recursive: true, force: true });
     fs.renameSync(target, backup);
@@ -674,11 +721,7 @@ async function updateSubdirModule(row: Module, chain: string[], toRef?: string):
     if (swapped) { fs.rmSync(target, { recursive: true, force: true }); fs.renameSync(backup, target); }
     if (rowChanged) await prisma.module.update({ where: { id }, data: { commit: row.commit, tree: row.tree, version: row.version, ref: row.ref } }).catch(() => {});
     forgetModule(id);
-    if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
-    if (error instanceof CoreTooOld) return coreRefusal(error);
-    if (error instanceof LoadCheckFailed) { await noteBlocked(id, row.version, fetched?.manifest?.version ?? "?", error, "update"); return loadCheckRefusal(error, true); }
-    console.error("[modules] update failed:", (error as Error)?.message);
-    return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
+    return toInstallResult(error, { op: "update", id, fromVersion: row.version, toVersion: fetched?.manifest?.version ?? "?" });
   } finally {
     fetched?.cleanup();
     fs.rmSync(backup, { recursive: true, force: true });
@@ -794,16 +837,13 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     opStep("verify");
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
     if (incoming?.ok) {
-      assertCore(requirementOf(incoming.manifest));
+      assertCore(requirementOf(incoming.manifest));   // (the core first, before the new code is even laid out)
       targetVersion = incoming.manifest.version;
       // Contrôle de chargement dans un processus tout neuf, AVANT de toucher au dossier du module : le nouveau code est posé à part et essayé là.
       const staged = await stageFetchHead(dir);
       try {
         // Les mêmes contrôles simples que plus bas, dans le même ordre, pour que l'erreur dite soit la plus précise (fichier principal absent, trop gros…) et non « ne se charge pas ».
-        if (incoming.manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
-        if (incoming.manifest.main && !fs.existsSync(path.join(staged.root, incoming.manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
-        if (dirSize(staged.root) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
-        await preflightOrThrow(staged.root, incoming.manifest);
+        await validateCandidate(staged.root, incoming.manifest, { expectId: id, core: false });
       } finally { staged.cleanup(); }
     }
     // Versions sautées : chacune à son tour, ses `requires` puis SES migrations, avec SON code, avant de passer à la dernière.
@@ -816,9 +856,8 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     await git(["reset", "--hard", "FETCH_HEAD"], dir);
     const commit = await git(["rev-parse", "HEAD"], dir);
     const manifest = readGitManifest(id);
-    if (!manifest || manifest.id !== id) throw Object.assign(new Error("manifest"), { code: "modules.error.nomanifest" });
-    if (manifest.main && !fs.existsSync(path.join(dir, manifest.main))) throw Object.assign(new Error("main"), { code: "modules.error.nomain" });
-    if (dirSize(dir) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
+    if (!manifest) throw refusal("modules.error.nomanifest");
+    await validateCandidate(dir, manifest, { expectId: id, core: false, preflight: false });
     targetVersion = manifest.version;
     // Puis dans le processus du site, depuis une copie neuve, AVANT de basculer la ligne en base : la version d'avant sert jusque-là.
     const next = { id, version: manifest.version, commit };
@@ -849,11 +888,7 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
       await prisma.module.update({ where: { id }, data: back ?? { commit: row.commit, version: row.version, ref: row.ref } }).catch(() => {});
     }
     forgetModule(id);
-    if (error instanceof RequirementsMissing) return requirementsRefusal(error.missing);
-    if (error instanceof CoreTooOld) return coreRefusal(error);
-    if (error instanceof LoadCheckFailed) { await noteBlocked(id, row.version, targetVersion, error, "update"); return loadCheckRefusal(error, true); }
-    console.error("[modules] update failed:", (error as Error)?.message);
-    return { ok: false, error: (error as { code?: string })?.code ?? "modules.error.clone" };
+    return toInstallResult(error, { op: "update", id, fromVersion: row.version, toVersion: targetVersion });
   }
 }
 
