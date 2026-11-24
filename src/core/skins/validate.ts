@@ -15,7 +15,7 @@ import { sanitizeSvg } from "../svg";
 import { FONT_PATH_RE, IMAGE_PATH_RE, SKIN_ID_RE } from "./allowlist";
 import { BASIC_ID, FILE_LIMITS } from "./constants";
 import { parseSkinManifest, type SkinManifest } from "./manifest";
-import { makeIssue, type Params, type SkinIssue } from "./messages";
+import { makeIssue, type IssueCode, type Params, type SkinIssue } from "./messages";
 import { checkReadability, type Mode, type ModulePair, type ReadabilityIssue } from "./readability";
 import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
@@ -144,7 +144,7 @@ export function validateSkinFolder(dir: string, options: ValidateOptions): SkinV
 
 function run(dir: string, opts: ValidateOptions): SkinValidation {
   const issues: SkinIssue[] = [];
-  const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
+  const add = (code: IssueCode, params: Params = {}) => { issues.push(makeIssue(code, params)); };
   const known: { manifest?: SkinManifest } = {};
   const fail = (): SkinValidation => ({ ok: false, issues: unique(issues), manifest: known.manifest, css: "", readability: [], files: [], installFiles: [], fingerprint: "", totalBytes: 0 });
 
@@ -317,11 +317,11 @@ export function fingerprintOf(files: readonly { path: string; sha256: string }[]
 }
 
 /** Parcourt le dossier : refuse liens symboliques, sous-dossiers inconnus ou trop profonds, noms douteux, trop de fichiers ou trop d'octets. null = refus (déjà signalé). */
-function scan(dir: string, add: (code: string, params?: Params) => void): Found[] | null {
+function scan(dir: string, add: (code: IssueCode, params?: Params) => void): Found[] | null {
   const out: Found[] = [];
   let total = 0;
   let bad = false;
-  const refuse = (code: string, params: Params) => { add(code, params); bad = true; };
+  const refuse = (code: IssueCode, params: Params) => { add(code, params); bad = true; };
   let st: fs.Stats;
   try { st = fs.lstatSync(dir); } catch { add("manifest-missing"); return null; }
   if (!st.isDirectory()) { add("manifest-missing"); return null; }
@@ -354,7 +354,7 @@ function scan(dir: string, add: (code: string, params?: Params) => void): Found[
 
 /** Lit `tokens.json` : forme, noms, valeurs une à une par l'assainisseur (mêmes règles que la feuille), jetons des options. */
 function readTokens(bytes: Buffer, m: SkinManifest, so: { skinId: string; assetBase: string; assets: string[] }, issues: SkinIssue[]): SkinTokens | undefined {
-  const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
+  const add = (code: IssueCode, params: Params = {}) => { issues.push(makeIssue(code, params)); };
   let raw: unknown;
   try { raw = JSON.parse(bytes.toString("utf8").replace(/^﻿/, "")); } catch { add("tokens-unreadable"); return undefined; }
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) { add("tokens-shape", { what: "tokens" }); return undefined; }
@@ -412,7 +412,7 @@ function typedCheck(name: string, value: string, skinId: string, issues: SkinIss
  * (woff2, declared with a `family`; the core writes the `@font-face`, overlays/skinFonts.ts). Nothing is executed.
  */
 function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, issues: SkinIssue[], fail: () => SkinValidation): SkinValidation {
-  const add = (code: string, params: Params = {}) => { issues.push(makeIssue(code, params)); };
+  const add = (code: IssueCode, params: Params = {}) => { issues.push(makeIssue(code, params)); };
   const kinds = new Map<string, FileKind>([["skin.json", "manifest"]]);
   if (m.assets.some((a) => a.kind === "image") && !m.scene) add("overlay-no-assets");
   // (core 0.47.0) fonts: contract 6 and a core that knows it; the files and the checks are below
@@ -421,7 +421,7 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     if (m.skinContract < OVERLAY_SKIN_CONTRACT_V6) add("overlay-contract-v6");
     else if (!m.minCore || !coreSatisfies(OVERLAY_FONTS_MIN_CORE, m.minCore)) add("overlay-font-mincore");
   }
-  const declare = (rel: string, kind: FileKind, re: RegExp, missing: string): boolean => {
+  const declare = (rel: string, kind: FileKind, re: RegExp, missing: IssueCode): boolean => {
     if (!re.test(rel)) { add("asset-bad-path", { file: rel }); return false; }
     if (!byRel.has(rel)) { add(missing, { file: rel }); return false; }
     kinds.set(rel, kind);

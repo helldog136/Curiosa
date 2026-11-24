@@ -14,8 +14,11 @@ export type Param = string | number | Text;
 export type Params = Record<string, Param>;
 export type Severity = "error" | "warning";
 
+/** Every code of the catalogue below: a misspelt or missing code is a compile error. */
+export type IssueCode = keyof typeof T;
+
 export type SkinIssue = {
-  code: string;
+  code: IssueCode;
   severity: Severity;
   message: Text;
   hint: Text;
@@ -26,7 +29,7 @@ export type SkinIssue = {
 type Entry = { sev: Severity; fr: string; en: string; hintFr: string; hintEn: string };
 
 /** Catalogue : `code → [gravité, message FR, message EN, aide FR, aide EN]`. */
-const T: Record<string, [Severity, string, string, string, string]> = {
+const T = {
   // ---- feuille entière
   "internal-error": ["error", "Le contrôle du skin a rencontré un problème inattendu. Le skin n'a pas été appliqué.", "Checking the skin hit an unexpected problem. The skin was not applied.", "Signalez ce cas : il ne devrait pas arriver.", "Please report this case: it should not happen."],
   // ---- pièces de skin des modules (docs/SKINS.md §8)
@@ -304,16 +307,16 @@ const T: Record<string, [Severity, string, string, string, string]> = {
   "overlay-text-small": ["warning", "Ce skin réduit la taille du texte sur {count} règle(s) : à l'écran d'un stream, un texte trop petit se lit mal.", "This skin makes the text smaller on {count} rule(s): on a stream, text that is too small is hard to read.", "Gardez 100 % (ou 1em) ou plus pour le texte.", "Keep 100 % (or 1em) or more for text."],
   "overlay-css": ["error", "La feuille de style du skin d'overlay contient une règle non permise ({detail}).", "The overlay skin's style sheet contains a rule that is not allowed ({detail}).", "Voir les règles permises dans docs/OVERLAY-SKINS.md.", "See the allowed rules in docs/OVERLAY-SKINS.md."],
   "skin-files-missing": ["error", "Les fichiers du skin sont absents : le skin de base est utilisé en attendant.", "The skin's files are missing: the base skin is used in the meantime.", "Le skin sera réinstallé dès que son dépôt sera joignable.", "The skin will be reinstalled as soon as its repository can be reached."],
-};
+} satisfies Record<string, [Severity, string, string, string, string]>;
 
-const CATALOG: Readonly<Record<string, Entry>> = Object.fromEntries(
+const CATALOG: Readonly<Record<IssueCode, Entry>> = Object.fromEntries(
   Object.entries(T).map(([code, [sev, fr, en, hintFr, hintEn]]) => [code, { sev, fr, en, hintFr, hintEn }]),
-);
+) as Record<IssueCode, Entry>;
 
-export const ISSUE_CODES: readonly string[] = Object.keys(CATALOG);
+export const ISSUE_CODES: readonly IssueCode[] = Object.keys(CATALOG) as IssueCode[];
 
 /** Entrée brute du catalogue (pour les tests de parité). */
-export function catalogEntry(code: string): Readonly<Entry> | undefined {
+export function catalogEntry(code: IssueCode): Readonly<Entry> {
   return CATALOG[code];
 }
 
@@ -346,8 +349,9 @@ export function makeText(fr: string, en: string, params: Params): Text {
 }
 
 /** Construit un problème à partir de son code. Un code inconnu retombe sur « problème inattendu » en gardant le code. */
-export function makeIssue(code: string, params: Params = {}, severity?: Severity): SkinIssue {
-  const e = CATALOG[code] ?? CATALOG["internal-error"]!;
+export function makeIssue(code: IssueCode, params: Params = {}, severity?: Severity): SkinIssue {
+  // Typed callers cannot pass an unknown code; the fallback only protects untyped callers (tests, plain JS).
+  const e = (CATALOG as Partial<Record<string, Entry>>)[code] ?? CATALOG["internal-error"];
   return { code, severity: severity ?? e.sev, message: makeText(e.fr, e.en, params), hint: makeText(e.hintFr, e.hintEn, params) };
 }
 
