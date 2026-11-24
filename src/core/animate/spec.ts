@@ -22,8 +22,11 @@
  * Version of the recipe contract (animation.json `animateContract`) this core understands. Contract 2 (core 0.33.0) is ADDITIVE over 1: the `motion` key and the
  * per-layer `spring` / `duration` parameters, and the TOLERANT READER (a contract-2 recipe may carry words this core does not know yet: they are skipped with a
  * warning, never an error). A contract-1 recipe keeps its strict reading and its exact curves.
+ * Contract 4 (core 0.48.0) is ADDITIVE over 2 again: the top-level `patterns` table and the mosaic's `pattern: "file"` with its `source` (the skin's own pieces, see PATTERN).
+ * Contract 3 does not exist for a recipe: it is the number of the SCENE contract (SCENE_CONTRACT, scene.json), so `checkAnimation` refuses `animateContract: 3` (and `animateMinContract: 3`) with the `contract` code instead of reading it as a recipe.
+ * An older core reads a contract-4 recipe as "written for a later contract" (tolerant: the mosaic falls back to voronoi, unless the skin says `animateMinContract: 4`).
  */
-export const ANIMATE_CONTRACT = 2;
+export const ANIMATE_CONTRACT = 4;
 /** Version of the engine text (bumped when its behaviour changes in a way a module could notice). */
 export const ANIMATE_VERSION = 3;
 
@@ -260,11 +263,29 @@ export const SCENE = {
  */
 export const PATTERN = {
   contract: 1,
-  /** Pieces drawn per element: above this a pattern is not drawn (the voronoi mosaic stands in). To be confirmed by the bench (scripts/visual/animate-bench.mjs). */
+  /** Pieces drawn per element: above this a pattern is not drawn (the voronoi mosaic stands in). Set by the bench scripts/visual/pattern-bench.mjs (docs/OVERLAY-ANIMATIONS.md section 11): at 120 pieces the p95 of a frame is 10 to 19 ms in headless Chromium, at 160 up to 22 ms. */
   maxPieces: 120,
   /** Bounds the engine applies to a normalised graph it is given (vertices and sub-edges after the T-junction split, vertices of a piece). */
   maxVertices: 4000, maxEdges: 6000, maxLoop: 64,
+  // ---- what the installer accepts in a pattern FILE (pattern.ts; the engine never sees the file, only the graph made from it)
+  /** Largest file, and the largest sum of the pattern files a skin inlines into its page. */
+  fileBytes: 32 * 1024, totalBytes: 96 * 1024,
+  /** Pieces and vertices of one file; vertices of one piece (`minPieceVertices`, `maxPieceVertices`). */
+  maxCellsFile: 160, maxVerticesFile: 1500, minPieceVertices: 3, maxPieceVertices: 12,
+  /** The domain (the file's own units, never pixels) and its width / height. */
+  domainMin: 50, domainMax: 20000, aspectMin: 0.2, aspectMax: 20,
+  /** Coordinates may overshoot the domain by this fraction (then they are clamped). A piece must cover more than `minArea` of the domain. */
+  margin: 0.005, minArea: 0.0005,
+  /** Sharpest interior angle of a piece, in degrees: a warning under `angleWarn`, an error under `angleError`. */
+  angleWarn: 12, angleError: 3,
+  /** A window covering less of its domain than this is warned about. */
+  coverage: 0.97,
+  /** Variants of one pattern name, names in a `patterns` table, and the largest stretch between two neighbouring variants (the body is stretched by at most about this). */
+  maxVariants: 4, maxNames: 12, stretch: 1.4,
 } as const;
+
+/** Where a skin's pattern file may be: one folder, a lower-case name (the same shape as the other skin files; the folder is declared in `assets` with `kind: "pattern"`). */
+export const PATTERN_PATH_RE = /^patterns\/[a-z0-9][a-z0-9._-]{0,63}\.json$/;
 
 /** The whole table, as sent to the browser with the engine. */
 export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, pattern: PATTERN, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS, scene: SCENE };
