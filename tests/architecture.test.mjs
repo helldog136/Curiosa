@@ -41,6 +41,8 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     "src/core/services/qr.ts": [],
     "src/core/services/render.ts": [],
     "src/core/services/store.ts": ["@/core/db"],
+    // Sealed values of a module instance: the database and the sealing primitive, nothing else (no module, no settings cache, no session).
+    "src/core/services/secrets.ts": ["@/core/db", "@/core/seal"],
     "src/core/services/uploads.ts": ["@/core/config", "@/core/audioTypes", "@/core/uploadLimits"],
     "src/core/services/index.ts": [],
     // Le client réseau ne connaît rien du cœur (ni modules, ni réglages, ni base) : il est aussi chargé seul par le kit de test.

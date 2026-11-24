@@ -1133,6 +1133,7 @@
   "perm.visitor.geolocation": "Demander la position de la personne, seulement après un clic de sa part",
   "perm.files": "Garder et supprimer les fichiers que vous envoyez via ce module",
   "perm.instances.setup": "Mettre en place les extensions dont elle a besoin, seulement après un clic de votre part",
+  "perm.secrets": "Garder à l'abri un mot de passe ou un code d'accès, lisible par cette seule extension",
   "catalogue.by": "par {author}",
   "catalogue.asks.friendly": "Ce que cette fonctionnalité fera sur votre site",
   "catalogue.needs": "Fonctionne avec : {what}",

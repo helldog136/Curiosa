@@ -29,6 +29,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Un service sait quel module l'appelle (0.48.0).** Il le reçoit en troisième argument et dans `ctx.caller`, fixé par le cœur et impossible à falsifier ; un service qui l'ignore fonctionne comme avant. Pour s'en servir : `"minCore": "0.48.0"`, voir `docs/MODULES.md`.
 - **(English) A service knows which module calls it (0.48.0).** It receives that as its third argument and in `ctx.caller`, set by the core and impossible to forge; a service that ignores it works as before. To use it: `"minCore": "0.48.0"`, see `docs/MODULES.md`.
+- **Un module peut garder un mot de passe chiffré (0.48.0).** `ctx.api.secrets` (permission `secrets`) range une valeur, comme le jeton d'un bot, chiffrée et lisible par cette seule instance ; une copie de la base ou de la sauvegarde n'en montre que du texte scellé. Sur un autre serveur la valeur n'est plus lisible : le module la redemande. Pour s'en servir : `"minCore": "0.48.0"`, voir `docs/MODULES.md`.
+- **(English) A module can keep a password encrypted (0.48.0).** `ctx.api.secrets` (permission `secrets`) stores a value, such as a bot token, sealed and readable only by that instance; a copy of the database or backup shows only sealed text. On another server the value cannot be read: the module asks for it again. To use it: `"minCore": "0.48.0"`, see `docs/MODULES.md`.
 
 ## 0.47.0 — 2026-11-23
 
