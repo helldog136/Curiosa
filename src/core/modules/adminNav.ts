@@ -1,4 +1,5 @@
 import { getSetting } from "../settings";
+import { dataStatusKey } from "../instanceKeys";
 import { listInstances } from "../instances";
 import { buildContext } from "./context";
 import { getInstanceLabeler } from "./labels";
@@ -57,7 +58,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
     const mod = mods.find((m) => m.manifest.id === instance.moduleId);
     if (!mod) continue;
     // Une instance dont la migration de données a échoué ne tourne pas (comme sur le site) : elle n'a ni pastille ni place dans le menu, mais reste dans Extensions avec son erreur.
-    const error = !!(await getSetting<{ status?: string }>(`instance.${instance.id}.__dataStatus`))?.status;
+    const error = !!(await getSetting<{ status?: string }>(dataStatusKey(instance.id)))?.status;
     const stored = await getSetting(placementSettingKey(instance.id));
     const parsed = parsePlacement(stored);
     const pinned = parsed && placementsFor(mod.manifest).includes(parsed) ? parsed : null;

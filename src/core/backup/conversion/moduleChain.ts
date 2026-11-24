@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { DATA_DIR } from "@/core/config";
+import { dataVersionKey } from "@/core/instanceKeys";
 import { git, installModule, parseRepoUrl, updateModule, updateModuleToRef, type InstallResult } from "@/core/modules/installer";
 import { compareVersions, isReleaseTag } from "@/core/updates/versions";
 import type { Row } from "./types";
@@ -66,7 +67,7 @@ export async function openRepo(url: string): Promise<RepoReader> {
 /** The version of the data of a module in a backup: the lowest `instance.<id>.__dataVersion` of its instances (absent = 1). */
 export function dataVersionInBackup(d: { instances: Row[]; settings: Row[] }, moduleId: string): number {
   const versions = d.instances.filter((i) => i.moduleId === moduleId).map((i) => {
-    const v = Number(d.settings.find((s) => s.key === `instance.${String(i.id)}.__dataVersion` && !s.locale)?.value);
+    const v = Number(d.settings.find((s) => s.key === dataVersionKey(String(i.id)) && !s.locale)?.value);
     return Number.isInteger(v) && v >= 1 ? v : 1;
   });
   return versions.length ? Math.min(...versions) : 1;

@@ -1,4 +1,5 @@
 import { prisma } from "@/core/db";
+import { DATA_STATUS_NAME, DATA_VERSION_NAME } from "@/core/instanceKeys";
 import { getCachedCatalogue } from "./catalogue";
 import { readDismissed } from "./legacyDismiss";
 import { readGitManifest } from "./registry";
@@ -118,10 +119,10 @@ export async function legacyReport(): Promise<LegacyReport> {
     const manifest = manifests.get(inst.moduleId);
     if (!manifest) continue;   // module absent ou illisible : rien à comparer (signalé ailleurs par la maintenance)
     const own = byInstance.get(inst.id) ?? new Map<string, string[]>();
-    const from = intOf(own.get("__dataVersion")?.[0]) ?? 1;
+    const from = intOf(own.get(DATA_VERSION_NAME)?.[0]) ?? 1;
     const to = manifest.dataVersion ?? 1;
     let status: { status?: string; error?: string; floor?: number } | null = null;
-    try { status = own.has("__dataStatus") ? JSON.parse(own.get("__dataStatus")![0]!) : null; } catch { status = null; }
+    try { status = own.has(DATA_STATUS_NAME) ? JSON.parse(own.get(DATA_STATUS_NAME)![0]!) : null; } catch { status = null; }
     const item = { key: inst.key, module: inst.moduleId, from, to };
     if (status?.status === "newer" || from > to) newer.push(item);
     else if (status?.status === "failed") failed.push({ ...item, reason: status.error === "floor" ? "floor" : status.error === "timeout" ? "timeout" : "error", ...(Number.isInteger(status.floor) ? { floor: status.floor } : {}) });

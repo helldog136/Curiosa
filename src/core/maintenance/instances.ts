@@ -1,6 +1,6 @@
 import { prisma } from "@/core/db";
 import { checkNickname } from "@/core/instanceLabel";
-import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
+import { addInstance } from "@/core/instanceLifecycle";
 import { getModule } from "@/core/modules/registry";
 import { localized, type JsonSchemaLite } from "@/core/modules/types";
 import { getSiteConfig } from "@/core/settings";
@@ -52,8 +52,8 @@ export async function executeInstanceAdd(plan: Plan, actorLabel: string): Promis
   if (!mod) return { ok: false, message: `Not done: module "${id}" cannot be loaded. Check maintenance_modules.` };
   const nickname = plan.newInstance?.nickname ?? "";
   const { locales } = await getSiteConfig();
-  const created = await createInstance(prisma, { manifest: mod.manifest, nickname, names: defaultNames(mod.manifest, locales, nickname) });
-  await runInstanceCreateHook(created.id);
+  const { instance: created, afterCommit } = await addInstance(mod.manifest, { nickname, locales });
+  await afterCommit();
   await prisma.auditLog.create({ data: { actor: actorLabel, action: "instance.create", target: created.key } }).catch(() => {});
   return { ok: true, message: `Instance "${created.key}" of "${id}" was created with default settings. Next: maintenance_module_settings {instance: "${created.key}"} to see what is left to fill in. The owner decides where it shows in the menu.`, details: { instance: created.key, module: id } };
 }
