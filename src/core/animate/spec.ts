@@ -80,7 +80,9 @@ export type ParamSpec =
   | readonly ["bool", boolean]
   | readonly ["color", string]
   | readonly ["colors", number, number, readonly string[]]
-  | readonly ["seed", number];
+  | readonly ["seed", number]
+  /** A NAME that must exist in a top-level table of the recipe (`["ref", "patterns"]`: the name of an entry of `patterns`). Empty when absent. */
+  | readonly ["ref", string];
 
 const IRREG = ["num", 0, 4, 1] as const;
 const ALPHA = (d: number) => ["num", 0, 1, d] as const;
@@ -114,7 +116,9 @@ export const PRIMITIVES: Record<string, { roles: readonly string[]; params: Reco
     roles: ["body"],
     params: {
       shape: ["enum", ["rect", "arch", "roundArch", "capsule", "ellipse"], "arch"],
-      pattern: ["enum", ["voronoi", "grid", "bricks"], "voronoi"],
+      pattern: ["enum", ["voronoi", "grid", "bricks", "file"], "voronoi"],
+      /** With `pattern: "file"`: the name of an entry of the recipe's `patterns` table (the skin's own pieces). `shape` is then ignored: the union of the pieces is the window. */
+      source: ["ref", "patterns"],
       cells: ["int", 4, 90, 28], jitter: ["num", 0, 1, 0.7], seed: ["seed", 7], order: ["enum", ["x", "y", "center", "random"], "x"],
       palette: ["colors", 1, 8, ["#c98c51", "#e2a35e", "#8a3a1d", "#b3541f", "#e6e2d3"]],
       unlit: ["num", 0, 1, 0.3], tint: ["num", 0, 1, 0.5], bubbles: ["num", 0, 1, 0.4], streaks: ["num", 0, 1, 0.5], mottle: ["num", 0, 1, 0.5],
@@ -248,6 +252,20 @@ export const SCENE = {
   limits: { bytes: 48 * 1024, layers: 16, timelines: 12, keys: 12, emitters: 4, particles: 40, live: 120, sprites: 200, assets: 12, side: 2048, pixels: 4_000_000, totalPixels: 16_000_000, frames: 64, grid: 8 },
 } as const;
 
+/**
+ * THE PATTERN CONTRACT (core 0.48.0): a skin may bring its own PIECES for a `mosaic` (`pattern: "file"`). The principle: a skin gets more power over HOW an element is
+ * drawn, never over DATA. A pattern file carries only numbers (the geometry of the pieces and a tone each); it is never served raw, holds no code and no address,
+ * and reads or changes nothing of the site. The core normalises it (patternGraph.ts: shared vertices, T-junctions split, straight leads joined) and hands the
+ * engine a graph of numbers, which the engine re-bounds with this table (second lock).
+ */
+export const PATTERN = {
+  contract: 1,
+  /** Pieces drawn per element: above this a pattern is not drawn (the voronoi mosaic stands in). To be confirmed by the bench (scripts/visual/animate-bench.mjs). */
+  maxPieces: 120,
+  /** Bounds the engine applies to a normalised graph it is given (vertices and sub-edges after the T-junction split, vertices of a piece). */
+  maxVertices: 4000, maxEdges: 6000, maxLoop: 64,
+} as const;
+
 /** The whole table, as sent to the browser with the engine. */
-export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS, scene: SCENE };
+export const ANIMATE_SPEC = { contract: ANIMATE_CONTRACT, version: ANIMATE_VERSION, pattern: PATTERN, genres: GENRES, primitives: PRIMITIVES, effects: EFFECTS, quality: QUALITY, timing: TIMING, motion: MOTION, highlights: HIGHLIGHTS, phases: PHASES, formats: FORMATS, scene: SCENE };
 export type AnimateSpec = typeof ANIMATE_SPEC;

@@ -67,7 +67,9 @@ export function checkAnimation(raw: unknown): RecipeCheck {
       const s = c < 2 && CONTRACT2_PARAMS.has(k) ? undefined : spec[k];
       if (!s) { soft("param", `${path}.${k}`); continue; }   // an unknown parameter: an error in contract 1, skipped with a warning from contract 2
       const bad = () => { if (CONTRACT2_PARAMS.has(k)) soft("motion-name", `${path}.${k}`, ahead); else if (ahead) soft("param", `${path}.${k}`, true); else err(s[0] === "color" || s[0] === "colors" ? "color" : "param", `${path}.${k}`); };
+      if (k === "pattern" && v === "file") { bad(); continue; }   // (the engine already draws it; the recipe words that open it come with the pattern files)
       switch (s[0]) {
+        case "ref": if (typeof v !== "string" || !NAME.test(v)) bad(); break;
         case "num": if (typeof v !== "number" || !isFinite(v) || v < s[1] || v > s[2]) bad(); break;
         case "int": if (!Number.isInteger(v) || (v as number) < s[1] || (v as number) > s[2]) bad(); break;
         case "seed": if (!Number.isInteger(v) || (v as number) < 0 || (v as number) > 999999) bad(); break;

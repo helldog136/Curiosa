@@ -112,6 +112,7 @@ export function animateEngine(win: any, SPEC: any): void {
       else if (s[0] === "seed") o[k] = typeof v === "number" && isFinite(v) ? Math.abs(Math.round(v)) % 1000000 : s[1];
       else if (s[0] === "enum") o[k] = s[1].indexOf(v) >= 0 ? v : s[2];
       else if (s[0] === "bool") o[k] = typeof v === "boolean" ? v : s[1];
+      else if (s[0] === "ref") o[k] = typeof v === "string" && /^[a-z][a-z0-9-]{0,20}$/.test(v) ? v : "";
       else if (s[0] === "color") o[k] = colorOf(v, colorOf(s[1], s[1], ctx), ctx);
       else if (s[0] === "colors") {
         var list: string[] = [];
@@ -390,6 +391,131 @@ export function animateEngine(win: any, SPEC: any): void {
     TESS[key] = res;
     return res;
   }
+  /**
+   * PATTERN GRAPHS (core 0.48.0): a skin's own pieces for a mosaic (`pattern: "file"`). The server hands the engine a NORMALISED graph of numbers (patternGraph.ts:
+   * shared vertices, edges split at T-junctions, straight leads joined into chains, a label point and an inradius per piece); this block only checks it again (second
+   * lock: counts, finiteness, indices), scales it to the body and bows each chain once. It reads numbers and nothing else: a pattern cannot carry data, only geometry.
+   */
+  function graphOk(g: any): boolean {
+    if (!g || typeof g !== "object") return false;
+    if (g.__ok !== undefined) return g.__ok;
+    var PL = SPEC.pattern, ok = checkGraph(g, PL);
+    try { Object.defineProperty(g, "__ok", { value: ok, enumerable: false }); } catch (e) { void e; /* a frozen object is checked again each time */ }
+    return ok;
+  }
+  function isInt(x: any): boolean { return typeof x === "number" && isFinite(x) && Math.floor(x) === x; }
+  function isPt(p: any): boolean { return Array.isArray(p) && p.length === 2 && typeof p[0] === "number" && isFinite(p[0]) && typeof p[1] === "number" && isFinite(p[1]) && Math.abs(p[0]) < 1e7 && Math.abs(p[1]) < 1e7; }
+  function checkGraph(g: any, PL: any): boolean {
+    if (!Array.isArray(g.domain) || !isPt(g.domain) || !(g.domain[0] > 0) || !(g.domain[1] > 0)) return false;
+    if (!Array.isArray(g.v) || g.v.length < 3 || g.v.length > PL.maxVertices || !Array.isArray(g.edges) || g.edges.length > PL.maxEdges || !Array.isArray(g.chains) || !Array.isArray(g.cells)) return false;
+    if (g.cells.length < 1 || g.cells.length > PL.maxPieces || g.chains.length > g.edges.length) return false;
+    var i: number, j: number, nv = g.v.length, ne = g.edges.length;
+    for (i = 0; i < nv; i++) if (!isPt(g.v[i])) return false;
+    for (i = 0; i < ne; i++) { var e = g.edges[i]; if (!e || !isInt(e.a) || !isInt(e.b) || e.a < 0 || e.b < 0 || e.a >= nv || e.b >= nv || e.a === e.b || !isInt(e.chain) || e.chain < 0 || e.chain >= g.chains.length) return false; }
+    var seen: any = {};
+    for (i = 0; i < g.chains.length; i++) {
+      var ch = g.chains[i];
+      if (!ch || !Array.isArray(ch.ids) || !Array.isArray(ch.e) || ch.ids.length < 2 || ch.ids.length > PL.maxEdges + 1 || ch.e.length !== ch.ids.length - 1) return false;
+      for (j = 0; j < ch.e.length; j++) {
+        var ei = ch.e[j], ed = isInt(ei) && ei >= 0 && ei < ne ? g.edges[ei] : null;
+        if (!ed || seen[ei] || ed.chain !== i || !((ed.a === ch.ids[j] && ed.b === ch.ids[j + 1]) || (ed.b === ch.ids[j] && ed.a === ch.ids[j + 1]))) return false;
+        seen[ei] = true;
+      }
+    }
+    for (i = 0; i < g.cells.length; i++) {
+      var c = g.cells[i];
+      if (!c || !Array.isArray(c.loop) || !Array.isArray(c.e) || c.loop.length < 3 || c.loop.length > PL.maxLoop || c.e.length !== c.loop.length) return false;
+      if (typeof c.tone !== "number" || !isFinite(c.tone) || (c.rank !== null && c.rank !== undefined && (typeof c.rank !== "number" || !isFinite(c.rank))) || !isPt(c.cen) || !isPt(c.lp) || typeof c.ri !== "number" || !isFinite(c.ri) || typeof c.area !== "number" || !isFinite(c.area)) return false;
+      for (j = 0; j < c.loop.length; j++) {
+        var a0 = c.loop[j], b0 = c.loop[(j + 1) % c.loop.length], ec = c.e[j];
+        if (!isInt(a0) || a0 < 0 || a0 >= nv || !isInt(ec) || ec < 0 || ec >= ne) return false;
+        var ee = g.edges[ec]; if (!((ee.a === a0 && ee.b === b0) || (ee.b === a0 && ee.a === b0))) return false;
+      }
+    }
+    if (!Array.isArray(g.outline) || g.outline.length < 3 || g.outline.length > PL.maxVertices) return false;
+    for (i = 0; i < g.outline.length; i++) if (!isInt(g.outline[i]) || g.outline[i] < 0 || g.outline[i] >= nv) return false;
+    return true;
+  }
+  /** The variant of a pattern whose aspect ratio (w / h of its domain) is the nearest, in log scale, to the body's (the first on a tie). */
+  function pickGraph(list: any, bw: number, bh: number): any {
+    var arr = Array.isArray(list) ? list : list && typeof list === "object" ? [list] : [], best: any = null, bd = Infinity, target = Math.log(bw / bh);
+    for (var i = 0; i < arr.length && i < 8; i++) {
+      var g = arr[i]; if (!graphOk(g)) continue;
+      var d = Math.abs(Math.log(g.domain[0] / g.domain[1]) - target);
+      if (d < bd - 1e-12) { bd = d; best = g; }
+    }
+    return best;
+  }
+  function graphHash(g: any): number { if (g.__h === undefined) { var h = hash(JSON.stringify(g)); try { Object.defineProperty(g, "__h", { value: h, enumerable: false }); } catch (e) { void e; return h; } } return g.__h; }
+  /**
+   * The panes of a pattern for a body box: the same product as `tessellate` (panes with their bowed outline, edges to paint as lead, the fill order, the silhouette),
+   * from the skin's pieces. `null` when the pattern is unknown or invalid: the caller draws the voronoi mosaic instead. Memoised by its inputs.
+   */
+  function patternTess(b: any, p: any, ctx: any): any {
+    var list = ctx && ctx.patterns && p.source ? ctx.patterns[p.source] : null;
+    var g = pickGraph(list, b.w, b.h);
+    if (!g) return null;
+    var key = ["P", p.source, graphHash(g), p.seed, p.order, p.irregularity, Math.round(b.x), Math.round(b.y), Math.round(b.w), Math.round(b.h)].join("|");
+    if (TESS[key]) return TESS[key];
+    if (++TESS_N > 24) { TESS = {}; TESS_N = 1; }
+    var sx = b.w / g.domain[0], sy = b.h / g.domain[1], nv = g.v.length, P: Pt[] = [], i: number, j: number, k: number;
+    for (i = 0; i < nv; i++) P.push([b.x + g.v[i][0] * sx, b.y + g.v[i][1] * sy]);
+    var irr = p.irregularity, nch = g.chains.length, cinfo: any[] = [], dsum: number[][] = [], dn: number[] = [];
+    for (i = 0; i < nv; i++) { dsum.push([0, 0]); dn.push(0); }
+    // every chain is bowed ONCE (a long straight lead is one hand-drawn line): the offset along its axis is measured on the bowed line, then applied to each sub-edge
+    for (i = 0; i < nch; i++) {
+      var ch = g.chains[i], A = P[ch.ids[0]]!, B = P[ch.ids[ch.ids.length - 1]]!, dx = B[0]! - A[0]!, dy = B[1]! - A[1]!, len = Math.sqrt(dx * dx + dy * dy) || 1, nx = -dy / len, ny = dx / len;
+      var ns = Math.max(2, Math.min(64, Math.round(len / 18))), hl = handLine(A, B, p.seed * 131 + i * 977 + ch.ids[0] * 31, irr, ns), off: number[] = [];
+      for (j = 0; j <= ns; j++) off.push((hl[j]![0]! - (A[0]! + (dx * j) / ns)) * nx + (hl[j]![1]! - (A[1]! + (dy * j) / ns)) * ny);
+      var ci: any = { A: A, dx: dx, dy: dy, len: len, nx: nx, ny: ny, ns: ns, off: off, ax: len * len };
+      cinfo.push(ci);
+      ci.at = function (q: Pt): number { var u = clamp(((q[0]! - this.A[0]!) * this.dx + (q[1]! - this.A[1]!) * this.dy) / this.ax, 0, 1) * this.ns, i0 = Math.min(this.ns - 1, Math.floor(u)), f = u - i0; return this.off[i0] + (this.off[i0 + 1] - this.off[i0]) * f; };
+      for (j = 1; j < ch.ids.length - 1; j++) { var vv = ch.ids[j], o1 = ci.at(P[vv]); dsum[vv]![0]! += o1 * nx; dsum[vv]![1]! += o1 * ny; dn[vv]!++; }
+    }
+    var D: Pt[] = [];
+    for (i = 0; i < nv; i++) D.push(dn[i] ? [P[i]![0]! + dsum[i]![0]! / dn[i]!, P[i]![1]! + dsum[i]![1]! / dn[i]!] : P[i]!);
+    var epts: any[] = [], elist: any[] = [];
+    for (i = 0; i < nch; i++) {
+      var chn = g.chains[i], cc = cinfo[i], run: Pt[] = [];
+      for (j = 0; j < chn.e.length; j++) {
+        var va = chn.ids[j], vb = chn.ids[j + 1], pa = P[va]!, pb = P[vb]!, own = j > 0 ? cc.at(pa) : 0, own2 = j + 1 < chn.e.length ? cc.at(pb) : 0;
+        var ca = [D[va]![0]! - (pa[0]! + own * cc.nx), D[va]![1]! - (pa[1]! + own * cc.ny)], cb = [D[vb]![0]! - (pb[0]! + own2 * cc.nx), D[vb]![1]! - (pb[1]! + own2 * cc.ny)];
+        var el = Math.sqrt((pb[0]! - pa[0]!) * (pb[0]! - pa[0]!) + (pb[1]! - pa[1]!) * (pb[1]! - pa[1]!)), segs = Math.max(1, Math.min(8, Math.round(el / 18))), sp: Pt[] = [];
+        for (k = 0; k <= segs; k++) {
+          var f = k / segs, qx = pa[0]! + (pb[0]! - pa[0]!) * f, qy = pa[1]! + (pb[1]! - pa[1]!) * f, o2 = k === 0 ? own : k === segs ? own2 : cc.at([qx, qy]);
+          sp.push(k === 0 ? D[va]! : k === segs ? D[vb]! : [qx + o2 * cc.nx + ca[0]! + (cb[0]! - ca[0]!) * f, qy + o2 * cc.ny + ca[1]! + (cb[1]! - ca[1]!) * f]);
+        }
+        epts[chn.e[j]] = { from: va, pts: sp };
+        for (k = j === 0 ? 0 : 1; k < sp.length; k++) run.push(sp[k]!);
+      }
+      elist.push({ a: chn.ids[0], b: chn.ids[chn.ids.length - 1], border: !!g.edges[chn.e[0]].border, pts: run });
+    }
+    var cells: any[] = [], rmin = Math.min(sx, sy);
+    for (i = 0; i < g.cells.length; i++) {
+      var gc = g.cells[i], path: Pt[] = [], pts: Pt[] = [], chs: number[] = [], seenCh: any = {};
+      for (j = 0; j < gc.loop.length; j++) {
+        var ep = epts[gc.e[j]], seg: Pt[] = ep.from === gc.loop[j] ? ep.pts : ep.pts.slice().reverse(), cidx = g.edges[gc.e[j]].chain;
+        for (k = 0; k < seg.length - 1; k++) path.push(seg[k]!);
+        pts.push(P[gc.loop[j]]!);
+        if (!seenCh[cidx]) { seenCh[cidx] = true; chs.push(cidx); }
+      }
+      var RT = rng(p.seed * 31 + i * 7 + 1); RT();
+      cells.push({ pts: pts, path: path, ids: gc.loop, chs: chs, c: [b.x + gc.lp[0] * sx, b.y + gc.lp[1] * sy], cen: [b.x + gc.cen[0] * sx, b.y + gc.cen[1] * sy], r: Math.max(0, gc.ri * rmin), area: Math.abs(gc.area) * sx * sy, tone: clamp(gc.tone, 0, 1), tone2: RT(), rs: 9000 + i * 7919, clip: true, art: typeof gc.rank === "number" ? gc.rank : null });
+    }
+    // fill order: the pieces' own rank when EVERY piece has one (art-directed), else computed from the area centroids exactly like a tessellation
+    var allRanked = true; for (i = 0; i < cells.length; i++) if (cells[i].art === null) allRanked = false;
+    var cx0 = b.x + b.w / 2, cy0 = b.y + b.h / 2, RO = rng(p.seed + 101), cw = Math.sqrt((b.w * b.h) / cells.length);
+    for (i = 0; i < cells.length; i++) {
+      var cen = cells[i].cen, jo = (RO() - 0.5) * 0.35;
+      cells[i].key = allRanked ? cells[i].art : p.order === "y" ? 1 - (cen[1] - b.y) / b.h + jo * 0.3 : p.order === "center" ? Math.sqrt((cen[0] - cx0) * (cen[0] - cx0) + (cen[1] - cy0) * (cen[1] - cy0)) / Math.max(b.w, b.h) + jo * 0.1 : p.order === "random" ? RO() : (cen[0] - b.x) / b.w + jo * (cw / b.w);
+    }
+    var order = cells.slice().sort(function (m: any, n2: any) { return m.key - n2.key; });
+    for (i = 0; i < order.length; i++) order[i].rank = i;
+    var shape: Pt[] = []; for (i = 0; i < g.outline.length; i++) shape.push(P[g.outline[i]]!);
+    var res = { shape: shape, cells: cells, edges: elist, order: order };
+    TESS[key] = res;
+    return res;
+  }
   /** A rose window: a centre medallion and 1-3 rings of segments of unequal widths, each boundary a slightly irregular circle. Ordered for lighting. */
   function roseGeom(cx: number, cy: number, R0: number, p: any): any {
     var key = ["rose", r2(cx), r2(cy), r2(R0), p.rings, p.segments, p.seed, p.irregularity].join("|");
@@ -482,17 +608,20 @@ export function animateEngine(win: any, SPEC: any): void {
 
   /** A pane of glass, lit from behind: tinted base, light centre to shaded edge, mottling, bubbles, a reflection streak. Detail follows the quality. */
   function glassPane(out: any, L: number, cell: any, base: string, p: any, Q: any, alpha: number, glowBlur: number): void {
-    var c = cell.c, r = Math.max(2, cell.r), R = rng(Math.floor(cell.tone * 1e6) + 3), path = cell.path, ext = Math.max(r * 2.2, Math.sqrt(cell.area || r * r * 4)), n0 = out.ops.length;
+    var c = cell.c, r = Math.max(2, cell.r), R = rng(cell.rs !== undefined ? cell.rs : Math.floor(cell.tone * 1e6) + 3), path = cell.path, ext = Math.max(r * 2.2, Math.sqrt(cell.area || r * r * 4)), n0 = out.ops.length;
     if (!glowBlur && p.glow > 0 && Q.details > 0) circ(out, L, c[0], c[1], ext * 1.1, { f: radial(c[0], c[1], ext * 1.1, [[0, rgba(p.glowColor, 0.22 * p.glow * alpha)], [1, rgba(p.glowColor, 0)]]) });
     poly(out, L, path, { f: base, a: alpha, g: glowBlur, gc: p.glowColor });
     out.tagFrom = n0;
     if (Q.details <= 0) return;
     poly(out, L, path, { f: radial(c[0] - r * 0.4, c[1] - r * 0.5, ext, [[0, rgba(p.light, 0.5 * alpha)], [0.5, rgba(base, 0)], [1, rgba(p.shade, 0.45 * alpha)]]) });
+    // (a piece of a pattern may be concave: its label point is inside, but a mottle or a streak may reach past its side, so the details are cut by the piece)
+    if (cell.clip) out.ops.push({ k: "clip", L: L, p: flat(path) });
     var nm = Math.round(p.mottle * 2 * Q.details);
     for (var m = 0; m < nm; m++) { var mx = c[0] + (R() - 0.5) * r, my = c[1] + (R() - 0.5) * r, mr = r * (0.5 + R() * 0.6); circ(out, L, mx, my, mr, { f: radial(mx, my, mr, [[0, rgba(R() < 0.5 ? p.shade : p.light, 0.16 * alpha)], [1, rgba(base, 0)]]) }); }
     var nb = Math.round(p.bubbles * 4 * Q.details * R());
     for (var bq = 0; bq < nb; bq++) circ(out, L, c[0] + (R() - 0.5) * r * 1.1, c[1] + (R() - 0.5) * r * 1.1, Math.max(0.6, r * (0.03 + R() * 0.05)), { f: rgba(p.light, 0.35 * alpha), s: rgba(p.shade, 0.25 * alpha), w: 0.6 });
     if (p.streaks > 0 && cell.tone > 1 - p.streaks * 0.8) poly(out, L, shrink(cell.pts, c, 0.5), { f: rgba("#ffffff", (0.07 + 0.1 * cell.tone) * alpha) });
+    if (cell.clip) out.ops.push({ k: "unclip", L: L });
   }
   /** Tags the ops of one lit pane with its rank, so a cached lit layer only paints the panes added since (one more follow = one pane drawn). */
   function tag(out: any, from: number, rank: number): void { for (var i = from; i < out.ops.length; i++) out.ops[i].pr = rank; }
@@ -505,9 +634,11 @@ export function animateEngine(win: any, SPEC: any): void {
     }
   }
 
-  function drawMosaic(out: any, v: any, Lb: any, p: any, Q: any): any {
+  function drawMosaic(out: any, v: any, Lb: any, p: any, Q: any, ctx: any): any {
     var b = { x: Lb.x, y: Lb.y + Lb.h * (1 - p.thickness) / 2, w: Lb.w, h: Lb.h * p.thickness };
-    var T = tessellate(b, p), n = T.order.length, lit = v.progress * n, full = Math.floor(lit + 1e-9), frac = lit - full, unitW = Math.max(1.2, b.h * p.leadWidth);
+    var T = p.pattern === "file" ? patternTess(b, p, ctx) : null;
+    if (!T) { var pv = p; if (p.pattern === "file") { pv = {}; for (var pk in p) pv[pk] = p[pk]; pv.pattern = "voronoi"; } T = tessellate(b, pv); }   // an unknown or invalid pattern: the voronoi mosaic stands in
+    var n = T.order.length, lit = v.progress * n, full = Math.floor(lit + 1e-9), frac = lit - full, unitW = Math.max(1.2, b.h * p.leadWidth);
     var blur = Q.blur && p.glow > 0 ? Math.round(b.h * 0.08 * p.glow) : 0;
     // layer 0: the window unlit (dim glass) — never changes
     for (var i = 0; i < T.cells.length; i++) { var c = T.cells[i], base = paneColor(c, p); poly(out, 0, c.path, { f: mix(p.shade, base, 0.2 + 0.45 * p.unlit), a: 0.5 + 0.45 * p.unlit }); }
@@ -520,7 +651,9 @@ export function animateEngine(win: any, SPEC: any): void {
     var headPt = full > 0 ? T.order[Math.min(n, full) - 1].c : [b.x, b.y + b.h / 2];
     if (full < n && frac > 0.001) {
       var cp = T.order[full]; glassPane(out, 3, cp, paneColor(cp, p), p, Q, out3(frac), 0);
-      var mine: any[] = []; for (var e = 0; e < T.edges.length; e++) { var ed = T.edges[e]; if (cp.ids && (cp.ids.indexOf(ed.a) >= 0 && cp.ids.indexOf(ed.b) >= 0)) mine.push(ed); }
+      var mine: any[] = [];
+      if (cp.chs) { for (var e0 = 0; e0 < cp.chs.length; e0++) mine.push(T.edges[cp.chs[e0]]); }   // a pattern: the chains this piece touches
+      else for (var e = 0; e < T.edges.length; e++) { var ed = T.edges[e]; if (cp.ids && (cp.ids.indexOf(ed.a) >= 0 && cp.ids.indexOf(ed.b) >= 0)) mine.push(ed); }
       leadEdges(out, 3, mine, unitW, p, Q, p.seed * 7 + 999);
       headPt = cp.c;
     }
@@ -765,7 +898,7 @@ export function animateEngine(win: any, SPEC: any): void {
     var qn = QUALITY[opts.quality] ? opts.quality : "full", Q = QUALITY[qn], calm = !!opts.calm;
     var tokens = { fg: HEX.test((opts.tokens || {}).fg || "") ? opts.tokens.fg : "#ffffff", accent: HEX.test((opts.tokens || {}).accent || "") ? opts.tokens.accent : "#e8a23b", surface: HEX.test((opts.tokens || {}).surface || "") ? opts.tokens.surface : "#14171c" };
     if (isScene(recipe)) return sceneFrame(s, recipe, t, size, opts, stateRaw, w, h, qn, calm, tokens);
-    var ok = usable(recipe), rc = ok ? recipe : null, cx: any = { tokens: tokens, colors: rc && rc.colors && typeof rc.colors === "object" ? rc.colors : {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: null as any, contract: rc ? rc.animateContract : SPEC.contract, mo: null as any };
+    var ok = usable(recipe), rc = ok ? recipe : null, cx: any = { tokens: tokens, colors: rc && rc.colors && typeof rc.colors === "object" ? rc.colors : {}, font: typeof opts.font === "string" ? opts.font : "", lang: opts.lang === "fr" ? "fr" : "en", calm: calm, v: null as any, contract: rc ? rc.animateContract : SPEC.contract, mo: null as any, patterns: rc && rc.patterns && typeof rc.patterns === "object" ? rc.patterns : null };
     var g = s.genre, roles = GENRES[g], lay: any = {};
     for (var i = 0; i < roles.length; i++) lay[roles[i]] = layersOf(rc, BASIC, g, roles[i], cx);
     // motion (contract 2): the recipe's `motion`, or only the layers that ask for a spring or a duration; a recipe that says nothing keeps today's curves exactly
@@ -787,7 +920,7 @@ export function animateEngine(win: any, SPEC: any): void {
     // body
     var body: any;
     if (g === "counter" || !bodyLayer) body = { shape: roundRect(L.body.x, L.body.y, L.body.w, L.body.h, 8), head: L.center, box: L.body };
-    else if (bodyDraw === "mosaic") body = drawMosaic(out, v, L.body, bodyLayer, Q);
+    else if (bodyDraw === "mosaic") body = drawMosaic(out, v, L.body, bodyLayer, Q, cx);
     else if (bodyDraw === "rose") body = L.rose ? drawRose(out, v, L.rose, bodyLayer, Q) : drawRose(out, v, [L.center[0], L.center[1], Math.min(L.body.w, L.body.h) / 2], bodyLayer, Q);
     else if (bodyDraw === "tube") body = drawTube(out, v, L.body, bodyLayer, Q);
     else if (bodyDraw === "cells") body = drawCells(out, v, L.body, bodyLayer, Q);
@@ -805,7 +938,7 @@ export function animateEngine(win: any, SPEC: any): void {
     drawText(out, valueTxt, L.value, L.valueSize, valueStyle, Q, 1, 0, cx);
     drawEffects(out, rc && rc.effects, v, body, L, t, Q, cx);
     if (v.moving || v.timeLive || v.hold) out.animating = true;
-    var base = [w, h, qn, calm ? 1 : 0, ok ? hash(JSON.stringify(rc)) : 0, cx.font, tokens.fg, tokens.accent].join("|");
+    var base = [w, h, qn, calm ? 1 : 0, ok ? recipeHash(rc) : 0, cx.font, tokens.fg, tokens.accent].join("|");
     return { ops: out.ops, keys: [base, base + "|" + (out.key1 || "") + "|" + v.level, base], inc1: out.inc1 ? [base + "|" + out.inc1[0], out.inc1[1]] : null, layerAlpha: out.layerAlpha, animating: out.animating, view: v, size: { w: w, h: h }, skin: ok, quality: qn, calm: calm };
   }
 
@@ -818,6 +951,8 @@ export function animateEngine(win: any, SPEC: any): void {
   var SC = SPEC.scene, SL = SC.limits, TIER_RANK: any = { minimal: 0, light: 1, full: 2 };
   function isScene(r: any): boolean { return !!r && typeof r === "object" && r.animateContract === SC.contract && !!r.scene && typeof r.scene === "object" && typeof r.base === "string"; }
   function sceneUrl(rc: any, a: any): string { return rc.base + a.file + (a.svg ? "?raster=1" : ""); }
+  /** The hash of a recipe, computed once per recipe object (a recipe may carry the pieces of a pattern: stringifying it at every frame would cost). */
+  function recipeHash(rc: any): number { if (rc.__rh === undefined) { var h = hash(JSON.stringify(rc)); try { Object.defineProperty(rc, "__rh", { value: h, enumerable: false }); } catch (e) { void e; return h; } } return rc.__rh; }
   function sceneHash(rc: any): number { if (!rc.__h) Object.defineProperty(rc, "__h", { value: hash(JSON.stringify(rc.scene) + rc.base), enumerable: false }); return rc.__h; }
   function keysAt(ks: number[][], u: number): number {
     if (u <= ks[0]![0]!) return ks[0]![1]!;

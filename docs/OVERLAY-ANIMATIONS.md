@@ -148,7 +148,8 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | Parameter | Value |
 |---|---|
 | `shape` | `rect` · `arch` · `roundArch` · `capsule` · `ellipse` (default `arch`) |
-| `pattern` | `voronoi` · `grid` · `bricks` (default `voronoi`) |
+| `pattern` | `voronoi` · `grid` · `bricks` · `file` (default `voronoi`) |
+| `source` | a name of the recipe's `patterns` table, used with `pattern: "file"` (default none) |
 | `cells` | integer 4 to 90, default 28 |
 | `jitter` | number 0 to 1, default 0.7 |
 | `seed` | seed, integer 0 to 999999 (default 7) |
