@@ -168,6 +168,69 @@ test("the core itself calling a service (callProvider: legacy rawg relay, backup
   assert.deepEqual(Object.keys(r.value.third), ["kind"]);
 });
 
+// A method NAME is chosen by the calling module. `Object.prototype` members must never resolve as a service method: `constructor` is `Object`, which, called as a function, hands back
+// its first argument, the provider's own `ctx` (its `api.secrets`, its `api.store`). Every way to invoke a method goes through one own-property lookup.
+const BAD_NAMES = ["constructor", "__proto__", "toString", "hasOwnProperty", "valueOf", "isPrototypeOf", "propertyIsEnumerable", "toLocaleString", "__defineGetter__", "prototype", "call", "bind", "", " echo", "echo ", "ec ho", "a".repeat(80)];
+const isProviderCtx = (v) => v !== null && typeof v === "object" && ("api" in v || "instance" in v);
+test("a consumer cannot get the provider's ctx through a method name taken from Object.prototype (call, replicas, callAll, callProvider)", async () => {
+  await install(provider()); await install(consumer());
+  await db.prisma.moduleInstance.deleteMany({ where: { moduleId: { in: ["prov", "cons"] } } });
+  await instance("prov", "a-store"); await instance("prov", "b-store"); await instance("cons", "form");
+  await Dep.setRouting(SVC, { master: "a-store", replicas: ["b-store"] });
+  const cons = await active("cons");
+  globalThis.__seen.length = 0;
+  for (const name of BAD_NAMES) {
+    const r = await quiet(() => Dep.callService(cons, SVC, name, {}));
+    assert.deepEqual(r, { ok: false, reason: "no_method" }, `callService ${JSON.stringify(name)}`);
+    const p = await quiet(() => Dep.callProvider(SVC, name, {}));
+    assert.equal(p.ok, false, `callProvider ${JSON.stringify(name)}`);
+    assert.equal(isProviderCtx(p.value), false);
+  }
+  assert.deepEqual(globalThis.__seen, [], "no provider code ran for any of these names");
+  // The service NAME too.
+  for (const svc of ["constructor", "__proto__", "toString", "hasOwnProperty"]) {
+    const r = await quiet(() => Dep.callService(cons, svc, "echo", {}));
+    assert.equal(r.ok, false);
+    assert.equal(isProviderCtx(r.value), false);
+  }
+  // Through the module's real ctx.api (what a hostile consumer module can reach).
+  const api = (await buildContext((await R.getModule("cons")), (await active("cons")).instance)).api;
+  for (const name of ["constructor", "__proto__", "toString"]) {
+    const r = await quiet(() => api.services.call(SVC, name, {}));
+    assert.equal(r.ok, false);
+    assert.equal(isProviderCtx(r.value), false);
+  }
+});
+test("callAll refuses the same names, and a polluted Object.prototype does not add methods or services to a provider", async () => {
+  await install(makeRepo({ "module.json": manifest("prov", { offers: [{ service: SVC, each: true }] }), "index.mjs": "export default {};" })); await install(consumer());
+  await db.prisma.moduleInstance.deleteMany({ where: { moduleId: { in: ["prov", "cons"] } } });
+  await instance("prov", "a-chan"); await instance("prov", "b-chan"); await instance("cons", "form");
+  const cons = await active("cons");
+  const leak = (ctx) => ctx;
+  Object.defineProperty(Object.prototype, SVC, { value: { leak, echo: leak }, configurable: true, enumerable: false, writable: true });
+  Object.defineProperty(Object.prototype, "leak", { value: leak, configurable: true, enumerable: false, writable: true });
+  try {
+    for (const name of ["constructor", "__proto__", "toString", "leak", "echo"]) {
+      const all = await quiet(() => Dep.callServiceAll(cons, SVC, name, {}));
+      for (const x of all) { assert.equal(x.ok, false, name); assert.equal(isProviderCtx(x.value), false); }
+      const one = await quiet(() => Dep.callService(cons, SVC, name, {}));
+      assert.equal(one.ok, false, name); assert.equal(isProviderCtx(one.value), false);
+      const core = await quiet(() => Dep.callProvider(SVC, name, {}));
+      assert.equal(core.ok, false, name); assert.equal(isProviderCtx(core.value), false);
+    }
+  } finally { delete Object.prototype[SVC]; delete Object.prototype.leak; }
+});
+test("serviceMethod: only an own function of an own service table, with a plain name", () => {
+  const mod = { def: { services: { "demo.who": { echo: () => 1, notFn: 3 } } } };
+  assert.equal(typeof Dep.serviceMethod({ mod }, "demo.who", "echo"), "function");
+  for (const [s, m] of [["demo.who", "notFn"], ["demo.who", "constructor"], ["constructor", "echo"], ["demo.who", "__proto__"], ["demo.who", 5], [{}, "echo"], ["demo.other", "echo"]]) assert.equal(Dep.serviceMethod({ mod }, s, m), undefined, `${String(s)}.${String(m)}`);
+  assert.equal(Dep.serviceMethod({ mod: { def: {} } }, "demo.who", "echo"), undefined);
+  // Even an own method must have a plain name (defence in depth: nothing odd is ever looked up).
+  const odd = { def: { services: { "demo.who": { "bad name": () => 1, ["x".repeat(80)]: () => 1, "__proto__x": () => 1, ok_1: () => 1 } } } };
+  for (const m of ["bad name", "x".repeat(80), "__proto__x"]) assert.equal(Dep.serviceMethod({ mod: odd }, "demo.who", m), undefined, m);
+  assert.equal(typeof Dep.serviceMethod({ mod: odd }, "demo.who", "ok_1"), "function");
+});
+
 test("a failing method still names no detail and the caller is not leaked into the answer", async () => {
   await basic();
   const cons = await active("cons");
@@ -181,6 +244,8 @@ test("guard: a service method can only be reached through dependencies.ts, and e
   const src = fs.readFileSync("src/core/modules/dependencies.ts", "utf8");
   const calls = [...src.matchAll(/\brunOn\(([^\n]*)/g)].map((m) => m[1]).filter((l) => !l.startsWith("p: ActiveInstance"));
   assert.equal(calls.length, 4);
+  assert.match(src, /Object\.hasOwn\(table, service\)/, "the service table lookup must be an own-property lookup");
+  assert.match(src, /Object\.hasOwn\(methods, method\)/, "the method lookup must be an own-property lookup");
   for (const c of calls) assert.match(c, /\bby\b|CORE_CALLER|callerOf\(consumer\)/, c);
   // The identity is never read from the caller-supplied arguments in the one function that builds it.
   assert.match(src, /export const callerOf = \(consumer: Pick<ActiveInstance, "mod" \| "instance">\)/);

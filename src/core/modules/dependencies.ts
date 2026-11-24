@@ -7,7 +7,7 @@ import { pickName } from "../instances";
 import { deleteSetting, getSetting, setSetting } from "../settings";
 import { getActiveInstances, getModule, listModuleRows, type ActiveInstance } from "./registry";
 import type { ParsedManifest } from "./manifest";
-import type { ServiceCaller } from "./types";
+import type { ModuleContext, ServiceCaller } from "./types";
 
 /**
  * DÉPENDANCES ENTRE MODULES — un module `offers` des services, un autre les `requires`. Ici : qui offre quoi, ce qui manque, qui dépend de
@@ -174,13 +174,30 @@ export const CORE_CALLER: ServiceCaller = makeCaller({ kind: "core" });
 export const callerOf = (consumer: Pick<ActiveInstance, "mod" | "instance">): ServiceCaller =>
   makeCaller({ kind: "module", id: consumer.mod.manifest.id, instance: consumer.instance.key, instanceId: consumer.instance.id });
 
-const hasMethod = (p: ActiveInstance, service: string, method: string) => typeof p.mod.def.services?.[service]?.[method] === "function";
+/**
+ * THE ONLY LOOKUP of a service method (core 0.48.0). Names come from the calling module, so they are untrusted: a method named "constructor", "__proto__" or "toString" must never
+ * resolve through the prototype chain (`Object` called as a function hands back its first argument, which is the provider's own `ctx`). Both the service table and the method are
+ * OWN properties of what the provider declared, the name has a plain shape, and the value must be a function. Anything else is simply "no such method".
+ */
+const SERVICE_NAME_RE = /^[A-Za-z][A-Za-z0-9_.-]{0,63}$/;
+const METHOD_NAME_RE = /^[A-Za-z][A-Za-z0-9_]{0,63}$/;
+type ServiceFn = (ctx: ModuleContext, args: unknown, caller: ServiceCaller) => unknown;
+export function serviceMethod(p: Pick<ActiveInstance, "mod">, service: unknown, method: unknown): ServiceFn | undefined {
+  if (typeof service !== "string" || typeof method !== "string" || !SERVICE_NAME_RE.test(service) || !METHOD_NAME_RE.test(method)) return undefined;
+  const table = p.mod.def.services as Record<string, Record<string, unknown> | undefined> | undefined;
+  if (!table || !Object.hasOwn(table, service)) return undefined;
+  const methods = table[service];
+  if (!methods || typeof methods !== "object" || !Object.hasOwn(methods, method)) return undefined;
+  const fn = methods[method];
+  return typeof fn === "function" ? (fn as ServiceFn) : undefined;
+}
+const hasMethod = (p: ActiveInstance, service: string, method: string) => serviceMethod(p, service, method) !== undefined;
 /**
  * Exécute la méthode d'un service chez un fournisseur. Pour une page publique, le fournisseur a un temps imparti (voir budget.ts) : sans réponse, `ModuleStalled`
  * est levée (le journal a déjà nommé le fournisseur une fois ; les appelants la traitent comme un échec, sans rien écrire de plus).
  */
 const runOn = async (p: ActiveInstance, service: string, method: string, args: unknown, by: ServiceCaller, locale?: string, viewer?: AdminUser | null, carryUploads = false) => {
-  const fn = p.mod.def.services?.[service]?.[method];
+  const fn = serviceMethod(p, service, method);
   if (!fn) return undefined;
   // `viewer` : appel fait pour une personne de l'administration (création à la volée d'un `choice`) : `ctx.can` du fournisseur vérifie SES droits à elle.
   const base = await buildContext(p.mod, p.instance, locale);

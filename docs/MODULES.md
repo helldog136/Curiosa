@@ -1354,7 +1354,9 @@ Who is the caller on each path that reaches a service method (the only code that
 Rules the core keeps (all covered by `tests/modules-mgmt/service-caller.test.mjs`):
 
 - **Set by the core, from its own registry.** It is never read from the arguments, from the options of `call`, from a returned value or from a header. A module that puts `caller`, `kind: "core"` or anything else in its arguments only sends data: the method still sees the real caller.
-- **Not transitive.** If A calls B and B calls C, C sees B. A provider that relays on behalf of another module must say so itself in its arguments, and the provider that receives it decides whether to trust B for that.
+- **Not carried through chains.** If X calls A and A calls B, B sees A (never X). If A calls B and B calls C, C sees B. A provider that relays on behalf of another module must say so itself in its arguments, and the provider that receives it decides whether to trust B for that.
+- **Never grant privileges to `kind: "core"`.** It means "the core itself called" (legacy relay, backup conversion), not "trusted". A provider must treat it like any other fact and never open an owner-level action to it just because of the kind.
+- **Method lookup (core 0.48.0).** The service and the method name come from the caller. Only an own function of the provider's own `services` table with a plain name (`^[A-Za-z][A-Za-z0-9_]{0,63}$`) is ever run; `constructor`, `__proto__`, `toString` and the like answer `no_method`, on every path (`call`, `callAll`, replicas, `callProvider`).
 - **Cannot be tampered with.** The object is frozen, has **no prototype** (a polluted `Object.prototype` adds nothing to it) and is built fresh for every call; `ctx.caller` is read-only and not configurable.
 - Absent outside a service method (`"caller" in ctx` is false in a page, a task...) and on an older core: in a module that must also run on an older core, check `typeof caller === "object"` and refuse the sensitive operation when it is missing.
 - It is **not** a permission. It does not stop a consumer from calling a service; it lets the provider decide. A provider that ignores it is exactly as open as before.

@@ -13,7 +13,8 @@ The core adds the caller's identity to what the method receives, and nothing the
 
 - `callerOf(consumer)` in `dependencies.ts` builds `{ kind: "module", id, instance, instanceId }` from the consumer instance the core resolved in its own registry; `CORE_CALLER` is `{ kind: "core" }` and is used only by `callProvider` (core code). Both are frozen objects without a prototype.
 - `runOn`, the only function that runs a service method, takes the caller as a required parameter, passes it as the **third argument** and defines it as the read-only, non-configurable `ctx.caller`. Existing methods `(ctx, args)` ignore it: additive and backward compatible.
-- The identity is the **immediate** caller, not transitive. It is a fact for the provider to use, not a permission: the core does not block anything by it.
+- The identity is the **immediate** caller, not carried through chains: X calls A, A calls B, B sees A (never X). It is a fact for the provider to use, not a permission: the core does not block anything by it, and a provider must never grant privileges to `kind: "core"` (it means the core called, not "trusted").
+- Method lookup is one shared function, `serviceMethod`: own-property check on the service table and on the method, plain name shape, must be a function. Found by review: without it `method: "constructor"` resolved to `Object`, which returns the provider's `ctx` to the consumer.
 - Modules require it with `"minCore": "0.48.0"`; the conformance kit (`compat.minCore`) asks for it when a method takes a third parameter or reads `ctx.caller`, and `fakeCtx({ caller })` supports unit tests.
 
 ## Consequences
