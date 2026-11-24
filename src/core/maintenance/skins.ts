@@ -1,5 +1,5 @@
 import type { JsonSchemaLite } from "@/core/modules/types";
-import { McpToolError } from "@/core/services/mcp/validate";
+import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
 import { chooseSkin, saveColorChoices, saveFontChoices } from "@/core/skins/appearance";
 import { definitionOf, loadAppearanceView } from "@/core/skins/appearanceView";
 import { composeDraft } from "@/core/skins/customizeDraft";
@@ -12,7 +12,8 @@ import { SKIN_ID_RE } from "@/core/skins/allowlist";
 import * as skins from "@/core/skins/service";
 import { isHexColor } from "@/core/color";
 import { fontStatus, prepareFont } from "./fonts";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import type { Plan } from "./requests";
 
 /**
@@ -226,16 +227,13 @@ export async function executeSkinOptions(plan: Plan, actorLabel: string): Promis
   };
 }
 
-/** Niveau 3, exécution (après l'accord de la personne propriétaire) : revérifie que la demande vise toujours la même chose, puis passe par les mêmes fonctions que l'admin. */
-export async function executeSkin(action: SkinAction, plan: Plan, actorLabel: string): Promise<Outcome> {
+/**
+ * Niveau 3, exécution (après l'accord de la personne propriétaire) : passe par les mêmes fonctions que l'admin. La demande a déjà été préparée de nouveau (et, pour une
+ * installation, la version du skin dans le catalogue comparée) par `executeLevel3` : voir `recheck` des définitions plus bas.
+ */
+export async function applySkin(action: SkinAction, plan: Plan, actorLabel: string): Promise<Outcome> {
   const id = plan.skin ?? "";
-  let fresh: Plan;
-  try { fresh = await prepareSkin(action, { skin: id }); } catch (error) {
-    if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
-    throw error;
-  }
   if (action === "skin_install") {
-    if (fresh.to !== plan.to) return { ok: false, message: `Not done: the version of skin "${id}" in the catalogue changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
     // Jamais `confirmExtra` ni `confirmPersonal` : un skin hors du catalogue officiel n'est jamais installé par une IA.
     const r = await skins.installFromCatalogue(id, { actor: actorLabel });
     if (!r.ok) {
@@ -313,3 +311,65 @@ export async function executeSkinCustomize(plan: Plan, actorLabel: string): Prom
   const tips = (composition?.signals ?? []).map((x) => `${x.control} (${x.mode}): contrast ${x.ratio}, ${x.min} advised`);
   return { ok: true, message: `${r.changed ? `Customization updated (${plan.customize.names}).` : "Nothing needed to change: these values were already in place."} Nothing is corrected automatically; the owner can reset any setting in Admin > Appearance > Customize.${tips.length ? ` Hard to read: ${tips.join("; ")}.` : ""}` };
 }
+
+/* ───────────── The level 3 actions ───────────── */
+
+const skinAudit = (plan: Plan): string => `${plan.skin}${plan.to ? ` ${plan.to}` : ""}`;
+const skinSummary = (action: SkinAction): Parameters<typeof defineLevel3>[0]["summarize"] => (p, t) => t(`aim.req.${action}`, { name: p.name ?? p.skin ?? "?", version: p.to ?? "?" });
+
+export const skinInstall = defineLevel3({
+  name: "skin_install", input: SKIN_ARG, slot: "risky", background: true,
+  // Installing a skin is never done without the owner's approval, whatever the approval setting of the access.
+  alwaysHuman: true,
+  prepare: (args) => prepareSkin("skin_install", { skin: args.skin }),
+  recheck: (plan) => ({
+    kind: "again", args: { skin: plan.skin }, gated: true,
+    same: (fresh) => (fresh.to !== plan.to ? `Not done: the version of skin "${plan.skin ?? ""}" in the catalogue changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` : null),
+  }),
+  execute: ({ plan, by }) => applySkin("skin_install", plan, by),
+  audit: skinAudit,
+  summarize: skinSummary("skin_install"),
+});
+
+export const skinActivate = defineLevel3({
+  name: "skin_activate", input: SKIN_ARG, slot: "risky",
+  prepare: (args) => prepareSkin("skin_activate", { skin: args.skin }),
+  recheck: (plan) => ({ kind: "again", args: { skin: plan.skin }, gated: true }),
+  execute: ({ plan, by }) => applySkin("skin_activate", plan, by),
+  audit: skinAudit,
+  summarize: skinSummary("skin_activate"),
+});
+
+export const skinRemove = defineLevel3({
+  name: "skin_remove", input: SKIN_ARG, slot: "risky", destructive: true,
+  prepare: (args) => prepareSkin("skin_remove", { skin: args.skin }),
+  recheck: (plan) => ({ kind: "again", args: { skin: plan.skin }, gated: true }),
+  execute: ({ plan, by }) => applySkin("skin_remove", plan, by),
+  audit: skinAudit,
+  summarize: skinSummary("skin_remove"),
+});
+
+export const skinSetOptions = defineLevel3({
+  name: "skin_set_options", input: SKIN_OPTIONS_ARG, slot: "content",
+  fromTool: (raw) => ({ options: validateArgs(SKIN_OPTIONS_ARG, raw) }),
+  prepare: (args) => prepareSkinOptions(args.options ?? {}),
+  // `executeSkinOptions` starts by comparing the active skin with the one of the plan.
+  recheck: () => ({ kind: "inside" }),
+  execute: ({ plan, by }) => executeSkinOptions(plan, by),
+  audit: (plan) => (plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : plan.fonts ? plan.fonts.names : `${plan.skin}`),
+  summarize(p, t) {
+    const colors = p.options ? `${Object.entries(p.options.colors).map(([f, v]) => `${t(`aim.req.color.${f}`)} ${v || t("aim.req.color.reset")}`).join(", ")}${p.options.mode ? ` (${t(`aim.req.mode.${p.options.mode}`)})` : ""}` : "";
+    return t("aim.req.skin_set_options", { list: [colors, p.fonts?.names].filter(Boolean).join("; ") || "?" });
+  },
+});
+
+export const skinCustomize = defineLevel3({
+  name: "skin_customize", input: SKIN_CUSTOMIZE_ARG, slot: "content",
+  fromTool: (raw) => ({ customize: validateArgs(SKIN_CUSTOMIZE_ARG, raw) }),
+  prepare: (args) => prepareSkinCustomize(args.customize ?? {}),
+  // `executeSkinCustomize` starts by comparing the active skin with the one of the plan, and merges onto the CURRENT saved values.
+  recheck: () => ({ kind: "inside" }),
+  execute: ({ plan, by }) => executeSkinCustomize(plan, by),
+  audit: (plan) => `${plan.skin}`,
+  summarize: (p, t) => t("aim.req.skin_customize", { list: p.customize?.names ?? "?" }),
+});

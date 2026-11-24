@@ -1,9 +1,9 @@
 import { callLevel3 } from "@/core/maintenance/actions";
+import { paramsOfTool } from "@/core/maintenance/level3Registry";
 import { refuseForbidden, SITE_SETTINGS_INPUT, siteSettingsGet } from "@/core/maintenance/siteSettings";
 import { MEDIA_IMPORT_INPUT, mediaImport } from "@/core/mediaImport";
 import { MEDIA_ALT_INPUT, MEDIA_LIST_INPUT, MEDIA_UPLOAD_INPUT, mediaList, mediaSetAlt, mediaUpload } from "@/core/mediaMcp";
 import type { McpTool, McpToolProvider } from "@/core/services/mcp/types";
-import { validateArgs } from "@/core/services/mcp/validate";
 
 /**
  * CORE TOOLS FOR SETTING A SITE UP WITHOUT OPENING THE ADMIN: media (media.ts) and the site settings (maintenance/siteSettings.ts).
@@ -51,7 +51,7 @@ export const setupToolProvider: McpToolProvider = {
       tool({
         name: "site_settings_set", title: "Change the settings of the site", readOnly: false, request: true, audited: true, input: SITE_SETTINGS_INPUT,
         description: "Changes ONLY what you give: name, tagline and presentation per language ({\"en\": \"…\", \"fr\": \"…\"}), the public contact e-mail, the logo slots from an image already on the site (an address from media_upload), and the background sound of the public site (backgroundSound: on or off, volume, pages, corner, and a sound file the owner already uploaded in the admin; you cannot upload sounds). Same limits as Admin > Settings; everything is checked first and nothing is saved if one value is wrong. It cannot change languages, addresses, people, secrets or security. It FOLLOWS the approval setting of this access: either a request the owner approves (old and new values listed; poll maintenance_request_status), or applied at once with the old values in the journal.",
-        call: (args, actor) => { refuseForbidden(args); return callLevel3("site_settings_set", { site: validateArgs(SITE_SETTINGS_INPUT, args) }, actor); },
+        call: (args, actor) => { refuseForbidden(args); return callLevel3("site_settings_set", paramsOfTool("site_settings_set", args), actor); },
       }),
     ];
   },

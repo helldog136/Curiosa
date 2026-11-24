@@ -1,0 +1,1522 @@
+{
+ "LEVEL3_ACTIONS": [
+  "module_update",
+  "modules_update_all",
+  "core_update",
+  "module_uninstall",
+  "module_install",
+  "skin_install",
+  "skin_activate",
+  "skin_remove",
+  "font_set",
+  "skin_set_options",
+  "skin_customize",
+  "instance_add",
+  "entry_publish",
+  "entry_unpublish",
+  "site_settings_set",
+  "navigation_set",
+  "home_sections_set"
+ ],
+ "LEVEL3_CLASS": {
+  "module_update": "risky",
+  "modules_update_all": "risky",
+  "core_update": "risky",
+  "module_uninstall": "risky",
+  "module_install": "risky",
+  "skin_install": "risky",
+  "skin_activate": "risky",
+  "skin_remove": "risky",
+  "instance_add": "risky",
+  "font_set": "content",
+  "skin_set_options": "content",
+  "skin_customize": "content",
+  "entry_publish": "content",
+  "entry_unpublish": "content",
+  "site_settings_set": "content",
+  "navigation_set": "content",
+  "home_sections_set": "content"
+ },
+ "BACKGROUND_LEVEL3": [
+  "module_update",
+  "modules_update_all",
+  "module_install",
+  "skin_install"
+ ],
+ "ALWAYS_HUMAN": [
+  "module_install",
+  "skin_install",
+  "instance_add"
+ ],
+ "LEVEL3_INPUT": {
+  "core_update": {
+   "type": "object"
+  },
+  "modules_update_all": {
+   "type": "object"
+  },
+  "module_update": {
+   "type": "object",
+   "properties": {
+    "module": {
+     "type": "string",
+     "maxLength": 64,
+     "description": "Module identifier, as listed by maintenance_modules."
+    }
+   },
+   "required": [
+    "module"
+   ]
+  },
+  "module_uninstall": {
+   "type": "object",
+   "properties": {
+    "module": {
+     "type": "string",
+     "maxLength": 64,
+     "description": "Module identifier, as listed by maintenance_modules."
+    },
+    "keepData": {
+     "type": "boolean",
+     "description": "true (default): the module's settings and data are kept aside, inert, and come back if the module is installed again. false: everything is erased for good (irreversible)."
+    }
+   },
+   "required": [
+    "module"
+   ]
+  },
+  "module_install": {
+   "type": "object",
+   "properties": {
+    "module": {
+     "type": "string",
+     "maxLength": 40,
+     "description": "Module identifier from maintenance_catalog_list (for example blog). Use module OR modules."
+    },
+    "modules": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "description": "Several module identifiers (12 at most) asked in ONE request that the owner approves as a whole; plan them first with maintenance_catalog_plan. No instanceKey with a list."
+    },
+    "instanceKey": {
+     "type": "string",
+     "maxLength": 31,
+     "description": "Optional, only for a module that allows several instances: the key of its first instance (lowercase letters, digits and dashes, for example blog-news). Default: derived from the module identifier."
+    }
+   }
+  },
+  "skin_install": {
+   "type": "object",
+   "properties": {
+    "skin": {
+     "type": "string",
+     "maxLength": 41,
+     "description": "Skin identifier, as listed by maintenance_skin_list (for example paper-ink). The basic skin is basic."
+    }
+   },
+   "required": [
+    "skin"
+   ]
+  },
+  "skin_activate": {
+   "type": "object",
+   "properties": {
+    "skin": {
+     "type": "string",
+     "maxLength": 41,
+     "description": "Skin identifier, as listed by maintenance_skin_list (for example paper-ink). The basic skin is basic."
+    }
+   },
+   "required": [
+    "skin"
+   ]
+  },
+  "skin_remove": {
+   "type": "object",
+   "properties": {
+    "skin": {
+     "type": "string",
+     "maxLength": 41,
+     "description": "Skin identifier, as listed by maintenance_skin_list (for example paper-ink). The basic skin is basic."
+    }
+   },
+   "required": [
+    "skin"
+   ]
+  },
+  "skin_set_options": {
+   "type": "object",
+   "properties": {
+    "mode": {
+     "type": "string",
+     "enum": [
+      "light",
+      "dark"
+     ],
+     "description": "Only for a skin that has both a light and a dark mode (see maintenance_skin_status > activeSkin.modes): which mode the colours are for. The other mode keeps its values."
+    },
+    "background": {
+     "type": "string",
+     "maxLength": 9,
+     "description": "Page background as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged."
+    },
+    "surface": {
+     "type": "string",
+     "maxLength": 9,
+     "description": "Cards and panels as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged."
+    },
+    "textColor": {
+     "type": "string",
+     "maxLength": 9,
+     "description": "Text as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged."
+    },
+    "accent": {
+     "type": "string",
+     "maxLength": 9,
+     "description": "Main colour (links, buttons) as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged."
+    },
+    "accent2": {
+     "type": "string",
+     "maxLength": 9,
+     "description": "Second accent as a hex colour (for example #1a2b3c), or an empty string to go back to the skin's own value. Omit to leave it unchanged."
+    },
+    "fontTitles": {
+     "type": "string",
+     "maxLength": 60,
+     "description": "Font of titles: \"skin\" or a value listed in maintenance_skin_status > fonts.available. Omit to leave it unchanged."
+    },
+    "fontText": {
+     "type": "string",
+     "maxLength": 60,
+     "description": "Font of body text: same values as fontTitles. Omit to leave it unchanged."
+    }
+   }
+  },
+  "skin_customize": {
+   "type": "object",
+   "properties": {
+    "values": {
+     "type": "array",
+     "maxItems": 24,
+     "items": {
+      "type": "object",
+      "properties": {
+       "id": {
+        "type": "string",
+        "maxLength": 25,
+        "description": "The setting id."
+       },
+       "value": {
+        "type": "string",
+        "maxLength": 40,
+        "description": "The value, written as text: a swatch id or #rrggbb for a colour, a value id for a choice, true or false for a toggle, a number for a slider, a picture id or none for a picture."
+       }
+      },
+      "required": [
+       "id",
+       "value"
+      ]
+     },
+     "description": "Settings to change, as listed by maintenance_skin_status > activeSkin.customize. Only what is named changes. Nothing can be uploaded: a picture is one of the skin's own, by id."
+    },
+    "look": {
+     "type": "string",
+     "maxLength": 31,
+     "description": "The id of a look offered by the skin: it sets several settings at once, then `values` apply on top."
+    },
+    "reset": {
+     "type": "array",
+     "items": {
+      "type": "string"
+     },
+     "maxItems": 24,
+     "description": "Setting ids to put back to the skin's own value, or [\"all\"] for everything."
+    }
+   }
+  },
+  "font_set": {
+   "type": "object",
+   "properties": {
+    "titles": {
+     "type": "string",
+     "maxLength": 60,
+     "description": "Font of titles: \"skin\" (the skin's own), or a value listed in maintenance_skin_status > fonts.available (for example lib:lora, sys:serif). Omit to leave it unchanged."
+    },
+    "text": {
+     "type": "string",
+     "maxLength": 60,
+     "description": "Font of body text: same values as titles. Omit to leave it unchanged."
+    }
+   }
+  },
+  "instance_add": {
+   "type": "object",
+   "properties": {
+    "module": {
+     "type": "string",
+     "maxLength": 64,
+     "description": "Identifier of an INSTALLED module that allows several instances, as listed by maintenance_modules (for example blog)."
+    },
+    "nickname": {
+     "type": "string",
+     "maxLength": 40,
+     "description": "Short name that tells the new instance apart from the others of the same module (for example News). It also becomes the public name at the start."
+    }
+   },
+   "required": [
+    "module",
+    "nickname"
+   ]
+  },
+  "entry_publish": {
+   "type": "object"
+  },
+  "entry_unpublish": {
+   "type": "object"
+  },
+  "site_settings_set": {
+   "type": "object"
+  },
+  "navigation_set": {
+   "type": "object",
+   "properties": {
+    "entries": {
+     "type": "array",
+     "description": "The WHOLE menu, in display order (40 entries at most, submenus included; 40 per submenu; two levels). Start from what navigation_get returns. Each entry has ONE target: {\"page\": \"home\"} (a page of the site: home or privacy), {\"instance\": \"pages\"} (the page of a module instance, key from site_info), {\"instance\": \"pages\", \"entry\": \"<entry id>\"} (a published entry of that instance), {\"path\": \"/contact\"} (a page of this site, by its address), or {\"externalUrl\": \"https://example.org\"} (a page elsewhere, https only). A submenu has no target but a label and \"children\": [...]. \"label\" is {\"en\": \"Home\", \"fr\": \"Accueil\"} with EVERY language of the site: optional when the target has its own name (the entry keeps it), required for externalUrl and submenus. Nothing is saved if one entry is wrong; every problem is listed.",
+     "items": {
+      "type": "object"
+     }
+    }
+   },
+   "required": [
+    "entries"
+   ]
+  },
+  "home_sections_set": {
+   "type": "object",
+   "properties": {
+    "sections": {
+     "type": "array",
+     "description": "The WHOLE home page, top to bottom (30 sections at most). Start from what home_sections_list returns. A section that stays: {\"id\": \"<its id>\"} alone. A new section of a module: {\"instance\": \"hero\", \"section\": \"hero\", \"options\": {...}, \"size\": \"full\"} (instance key and section id come from home_sections_list > canAdd). A new text block: {\"block\": {\"kind\": \"cta\", \"title\": {\"en\": \"...\", \"fr\": \"...\"}, \"text\": {...}, \"buttonLabel\": {...}, \"buttonUrl\": \"/contact\"}} with EVERY language of the site (kinds: media, tabs, stats, cta, video). \"size\" is small, medium, large or full; \"isolated\": true puts it alone on its line. Plain text only, no HTML. Nothing is saved if one section is wrong; every problem is listed.",
+     "items": {
+      "type": "object"
+     }
+    }
+   },
+   "required": [
+    "sections"
+   ]
+  }
+ },
+ "DESTRUCTIVE_LEVEL3": [
+  "module_uninstall",
+  "skin_remove"
+ ],
+ "CORE_REQUIREMENTS": {
+  "site_info": {
+   "none": true
+  },
+  "maintenance_my_access": {
+   "none": true
+  },
+  "maintenance_available_operations": {
+   "none": true
+  },
+  "maintenance_request_status": {
+   "none": true
+  },
+  "maintenance_status": {
+   "tier": "admin"
+  },
+  "maintenance_health": {
+   "tier": "admin"
+  },
+  "maintenance_modules": {
+   "tier": "admin"
+  },
+  "maintenance_updates": {
+   "tier": "admin"
+  },
+  "maintenance_diagnose": {
+   "tier": "admin"
+  },
+  "maintenance_audit": {
+   "tier": "admin"
+  },
+  "maintenance_legacy": {
+   "tier": "admin"
+  },
+  "maintenance_skin_status": {
+   "tier": "admin"
+  },
+  "maintenance_skin_list": {
+   "tier": "admin"
+  },
+  "maintenance_places": {
+   "tier": "admin"
+  },
+  "maintenance_content_check": {
+   "tier": "admin"
+  },
+  "maintenance_content_check_run": {
+   "tier": "admin"
+  },
+  "log_list": {
+   "tier": "admin"
+  },
+  "maintenance_module_settings": {
+   "tier": "admin"
+  },
+  "maintenance_place_settings": {
+   "tier": "admin"
+  },
+  "maintenance_module_configure": {
+   "tier": "admin"
+  },
+  "maintenance_module_configure_advanced": {
+   "tier": "admin"
+  },
+  "maintenance_check_updates": {
+   "right": "core:updates"
+  },
+  "maintenance_core_update": {
+   "right": "core:updates"
+  },
+  "maintenance_module_update": {
+   "right": "core:updates"
+  },
+  "maintenance_modules_update_all": {
+   "right": "core:updates"
+  },
+  "maintenance_backup_run": {
+   "right": "core:backup"
+  },
+  "maintenance_module_install": {
+   "right": "core:modules.install"
+  },
+  "maintenance_module_uninstall": {
+   "right": "core:modules.install"
+  },
+  "maintenance_module_reinstall": {
+   "right": "core:modules.install"
+  },
+  "maintenance_module_restart": {
+   "right": "core:modules.install"
+  },
+  "maintenance_instance_add": {
+   "right": "core:modules.install"
+  },
+  "maintenance_skin_install": {
+   "right": "core:modules.install"
+  },
+  "maintenance_skin_remove": {
+   "right": "core:modules.install"
+  },
+  "maintenance_skin_activate": {
+   "right": "core:modules.install"
+  },
+  "maintenance_catalog_list": {
+   "right": "core:modules.install"
+  },
+  "maintenance_catalog_get": {
+   "right": "core:modules.install"
+  },
+  "maintenance_catalog_plan": {
+   "right": "core:modules.install"
+  },
+  "maintenance_font_set": {
+   "tier": "admin"
+  },
+  "maintenance_skin_set_options": {
+   "tier": "admin"
+  },
+  "maintenance_skin_customize": {
+   "tier": "admin"
+  },
+  "navigation_get": {
+   "tier": "admin"
+  },
+  "navigation_set": {
+   "tier": "admin"
+  },
+  "home_sections_list": {
+   "tier": "admin"
+  },
+  "home_sections_set": {
+   "tier": "admin"
+  },
+  "site_settings_get": {
+   "tier": "admin"
+  },
+  "site_settings_set": {
+   "tier": "admin"
+  },
+  "overlay_skins_list": {
+   "tier": "admin"
+  },
+  "overlay_skin_rules_list": {
+   "tier": "admin"
+  },
+  "overlay_skin_rules_create": {
+   "tier": "admin"
+  },
+  "overlay_skin_rules_update": {
+   "tier": "admin"
+  },
+  "redirects_list": {
+   "tier": "editor"
+  },
+  "redirects_stats": {
+   "tier": "editor"
+  },
+  "redirects_summary": {
+   "tier": "editor"
+  },
+  "redirects_create": {
+   "tier": "editor"
+  },
+  "redirects_update": {
+   "tier": "editor"
+  },
+  "redirects_delete": {
+   "tier": "editor"
+  },
+  "media_list": {
+   "tier": "editor"
+  },
+  "media_upload": {
+   "tier": "editor"
+  },
+  "media_import": {
+   "tier": "editor"
+  },
+  "media_set_alt": {
+   "tier": "editor"
+  }
+ },
+ "requirementOfAction": {
+  "module_update": {
+   "right": "core:updates"
+  },
+  "modules_update_all": {
+   "right": "core:updates"
+  },
+  "core_update": {
+   "right": "core:updates"
+  },
+  "module_uninstall": {
+   "right": "core:modules.install"
+  },
+  "module_install": {
+   "right": "core:modules.install"
+  },
+  "skin_install": {
+   "right": "core:modules.install"
+  },
+  "skin_activate": {
+   "right": "core:modules.install"
+  },
+  "skin_remove": {
+   "right": "core:modules.install"
+  },
+  "font_set": {
+   "tier": "admin"
+  },
+  "skin_set_options": {
+   "tier": "admin"
+  },
+  "skin_customize": {
+   "tier": "admin"
+  },
+  "instance_add": {
+   "right": "core:modules.install"
+  },
+  "entry_publish": {
+   "right": "core:entries.publish"
+  },
+  "entry_unpublish": {
+   "right": "core:entries.publish"
+  },
+  "site_settings_set": {
+   "tier": "admin"
+  },
+  "navigation_set": {
+   "tier": "admin"
+  },
+  "home_sections_set": {
+   "tier": "admin"
+  }
+ },
+ "PROFILE_TOOLS": {
+  "read": [
+   "site_info",
+   "maintenance_status",
+   "maintenance_health",
+   "maintenance_modules",
+   "maintenance_updates",
+   "maintenance_diagnose",
+   "maintenance_audit",
+   "maintenance_request_status",
+   "maintenance_legacy",
+   "maintenance_catalog_list",
+   "maintenance_catalog_get",
+   "maintenance_skin_status",
+   "maintenance_skin_list",
+   "maintenance_content_check",
+   "maintenance_my_access",
+   "maintenance_available_operations",
+   "maintenance_catalog_plan",
+   "maintenance_places",
+   "navigation_get",
+   "home_sections_list",
+   "redirects_list",
+   "redirects_stats",
+   "redirects_summary",
+   "media_list",
+   "site_settings_get",
+   "overlay_skins_list",
+   "overlay_skin_rules_list"
+  ],
+  "assistant": [
+   "maintenance_check_updates",
+   "maintenance_backup_run",
+   "maintenance_module_reinstall",
+   "maintenance_module_restart",
+   "maintenance_content_check_run",
+   "maintenance_module_settings",
+   "maintenance_place_settings",
+   "maintenance_module_configure",
+   "navigation_set",
+   "home_sections_set",
+   "redirects_create",
+   "redirects_update",
+   "media_upload",
+   "media_set_alt",
+   "site_settings_set"
+  ],
+  "full": [
+   "overlay_skin_rules_create",
+   "overlay_skin_rules_update",
+   "media_import",
+   "maintenance_module_install",
+   "maintenance_instance_add",
+   "maintenance_skin_install",
+   "maintenance_skin_activate",
+   "maintenance_font_set",
+   "maintenance_skin_set_options",
+   "maintenance_skin_customize"
+  ]
+ },
+ "PROFILE_EXCLUDED": {
+  "log_list": "The site journal can show names and addresses of people: granted knowingly.",
+  "maintenance_module_configure_advanced": "Technical settings: only for an AI the owner trusts with them.",
+  "maintenance_skin_remove": "Removes files: a deliberate choice.",
+  "maintenance_module_update": "Updating is upkeep, not setup.",
+  "maintenance_modules_update_all": "Updating is upkeep, not setup.",
+  "maintenance_core_update": "Updating the core is upkeep, not setup.",
+  "maintenance_module_uninstall": "Uninstalling can lose data.",
+  "redirects_delete": "Deletes short links."
+ },
+ "MAINTENANCE_TOOLS": [
+  {
+   "name": "maintenance_my_access",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_available_operations",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_status",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_health",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_modules",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_updates",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_diagnose",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_audit",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_request_status",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_legacy",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_catalog_list",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_catalog_plan",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_catalog_get",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_skin_status",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_skin_list",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_places",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_content_check",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_check_updates",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_backup_run",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_reinstall",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_restart",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_content_check_run",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_settings",
+   "level": 2,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_place_settings",
+   "level": 2,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_configure",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_configure_advanced",
+   "level": 2,
+   "readOnly": false,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "maintenance_module_install",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_instance_add",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_skin_install",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_skin_activate",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_skin_remove",
+   "level": 3,
+   "readOnly": false,
+   "destructive": true,
+   "request": true
+  },
+  {
+   "name": "maintenance_font_set",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_skin_set_options",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_skin_customize",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_module_update",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_modules_update_all",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_core_update",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "maintenance_module_uninstall",
+   "level": 3,
+   "readOnly": false,
+   "destructive": true,
+   "request": true
+  },
+  {
+   "name": "navigation_get",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "navigation_set",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  },
+  {
+   "name": "home_sections_list",
+   "level": 1,
+   "readOnly": true,
+   "destructive": false,
+   "request": false
+  },
+  {
+   "name": "home_sections_set",
+   "level": 3,
+   "readOnly": false,
+   "destructive": false,
+   "request": true
+  }
+ ],
+ "tools": [
+  {
+   "name": "maintenance_my_access",
+   "readOnly": true,
+   "default": true,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "ddcf4d35a845369c"
+  },
+  {
+   "name": "maintenance_available_operations",
+   "readOnly": true,
+   "default": true,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "5850ccb2509727d9"
+  },
+  {
+   "name": "maintenance_status",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "209b86da6c966228"
+  },
+  {
+   "name": "maintenance_health",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "8047286753972f0c"
+  },
+  {
+   "name": "maintenance_modules",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "ecb72b47a0c9e34d"
+  },
+  {
+   "name": "maintenance_updates",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "befe7365524d50f6"
+  },
+  {
+   "name": "maintenance_diagnose",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "a6b86d7df3cc0bf1"
+  },
+  {
+   "name": "maintenance_audit",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "aa573c81ff608473"
+  },
+  {
+   "name": "maintenance_request_status",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "d4ce68a0b980174f"
+  },
+  {
+   "name": "maintenance_legacy",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "ecf5ee0837399600"
+  },
+  {
+   "name": "maintenance_catalog_list",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "1b2e23e8302cf6ae"
+  },
+  {
+   "name": "maintenance_catalog_plan",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "26b490f171f0781f"
+  },
+  {
+   "name": "maintenance_catalog_get",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "778b27d91488ab7c"
+  },
+  {
+   "name": "maintenance_skin_status",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "4eb0af676aed3aaf"
+  },
+  {
+   "name": "maintenance_skin_list",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "ff277c00d46530b3"
+  },
+  {
+   "name": "maintenance_places",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "70a5c9b22cbbe1f6"
+  },
+  {
+   "name": "maintenance_content_check",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": true,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "2c06d7b9c225e1c9"
+  },
+  {
+   "name": "maintenance_check_updates",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "73ca6b2276518c68"
+  },
+  {
+   "name": "maintenance_backup_run",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "a934ea39aea2e96d"
+  },
+  {
+   "name": "maintenance_module_reinstall",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "4b31d839995e5d42"
+  },
+  {
+   "name": "maintenance_module_restart",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "4bf6b7b013dc805f"
+  },
+  {
+   "name": "maintenance_content_check_run",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "9208fd73f6c952a8"
+  },
+  {
+   "name": "maintenance_module_settings",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "01ce31256663fd14"
+  },
+  {
+   "name": "maintenance_place_settings",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "9c2d94ab7e0d41f5"
+  },
+  {
+   "name": "maintenance_module_configure",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "53058a6888052d02"
+  },
+  {
+   "name": "maintenance_module_configure_advanced",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "fe890d62688f98af"
+  },
+  {
+   "name": "maintenance_module_install",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "c3f23e5473627b8c"
+  },
+  {
+   "name": "maintenance_instance_add",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "02dcf2a80a4a1f00"
+  },
+  {
+   "name": "maintenance_skin_install",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "81473e2e5013337c"
+  },
+  {
+   "name": "maintenance_skin_activate",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "e373f39976d6d9d5"
+  },
+  {
+   "name": "maintenance_skin_remove",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": true,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "43d8d634e97b3c15"
+  },
+  {
+   "name": "maintenance_font_set",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "6cc5b1d9669b5719"
+  },
+  {
+   "name": "maintenance_skin_set_options",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "578b509c5f19ae65"
+  },
+  {
+   "name": "maintenance_skin_customize",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "14528e201683cf8d"
+  },
+  {
+   "name": "maintenance_module_update",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "172c3c6ec5b0aff9"
+  },
+  {
+   "name": "maintenance_modules_update_all",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "1ea6e85a1234b178"
+  },
+  {
+   "name": "maintenance_core_update",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "4b0820a120e9d73b"
+  },
+  {
+   "name": "maintenance_module_uninstall",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": true,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "de8753145b5dd37a"
+  },
+  {
+   "name": "navigation_get",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "d0ad06803663ef4a"
+  },
+  {
+   "name": "navigation_set",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "c84b938b4893ccc8"
+  },
+  {
+   "name": "home_sections_list",
+   "readOnly": true,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": false,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "9a0ac002f8e065f2"
+  },
+  {
+   "name": "home_sections_set",
+   "readOnly": false,
+   "default": false,
+   "profileDefault": false,
+   "destructive": false,
+   "request": true,
+   "source": "maintenance",
+   "audited": true,
+   "sha": "93a0dc9bb615e4e0"
+  }
+ ],
+ "samples": [
+  {
+   "action": "core_update",
+   "audit": "0.46.1>0.47.0",
+   "en": "Update Curiosa from version 0.46.1 to version 0.47.0.",
+   "fr": "Mettre Curiosa à jour de la version 0.46.1 vers la version 0.47.0."
+  },
+  {
+   "action": "module_update",
+   "audit": "etoile-nord",
+   "en": "Update the feature \"ETOILE-NORD\" from version 1.0.0 to version 1.1.0.",
+   "fr": "Mettre à jour la fonctionnalité « ETOILE-NORD » de la version 1.0.0 vers la version 1.1.0."
+  },
+  {
+   "action": "modules_update_all",
+   "audit": "etoile-nord 1.0.0>1.1.0, lune-douce 2.0.0>2.0.1",
+   "en": "Update 2 features: ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1).",
+   "fr": "Mettre à jour 2 fonctionnalités : ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1)."
+  },
+  {
+   "action": "module_uninstall",
+   "audit": "etoile-nord keepData",
+   "en": "Uninstall the feature \"ETOILE-NORD\", keeping its data aside (it comes back if the feature is installed again).",
+   "fr": "Désinstaller la fonctionnalité « ETOILE-NORD » en gardant ses données de côté (elles reviennent si elle est réinstallée)."
+  },
+  {
+   "action": "module_uninstall",
+   "audit": "etoile-nord erase",
+   "en": "Uninstall the feature \"ETOILE-NORD\" AND erase all its data.",
+   "fr": "Désinstaller la fonctionnalité « ETOILE-NORD » ET effacer toutes ses données."
+  },
+  {
+   "action": "module_install",
+   "audit": "journal 1.2.0 key=journal-news + fournisseur, autre",
+   "en": "Install the feature \"Journal\" (version 1.2.0) and create its first instance. It comes with: Fournisseur, AUTRE.",
+   "fr": "Installer la fonctionnalité « Journal » (version 1.2.0) et lui créer sa première instance. Elle arrive avec : Fournisseur, AUTRE."
+  },
+  {
+   "action": "module_install",
+   "audit": "journal 1.2.0",
+   "en": "Install the feature \"Journal\" (version 1.2.0) and create its first instance.",
+   "fr": "Installer la fonctionnalité « Journal » (version 1.2.0) et lui créer sa première instance."
+  },
+  {
+   "action": "module_install",
+   "audit": "journal 1.2.0, liens 0.3.0",
+   "en": "Install 2 features in one go. Read each one before approving. “JOURNAL” (version 1.2.0). “LIENS” (version 0.3.0). It comes with: JOURNAL.",
+   "fr": "Installer 2 fonctionnalités d'un coup. Lisez chacune avant d'approuver. « JOURNAL » (version 1.2.0). « LIENS » (version 0.3.0). Elle arrive avec : JOURNAL."
+  },
+  {
+   "action": "skin_install",
+   "audit": "aurore 1.0.0",
+   "en": "Install the “Aurore” skin (version 1.0.0). It will not be in use right away.",
+   "fr": "Installer le skin « Aurore » (version 1.0.0). Il ne sera pas utilisé tout de suite."
+  },
+  {
+   "action": "skin_activate",
+   "audit": "aurore",
+   "en": "Use the “Aurore” skin for your site. Your color adjustments are set aside: you will be able to undo in Appearance.",
+   "fr": "Utiliser le skin « Aurore » pour votre site. Vos retouches de couleurs sont mises de côté : vous pourrez annuler dans Apparence."
+  },
+  {
+   "action": "skin_remove",
+   "audit": "aurore",
+   "en": "Remove the “Aurore” skin. Your content does not change.",
+   "fr": "Retirer le skin « Aurore ». Votre contenu ne change pas."
+  },
+  {
+   "action": "font_set",
+   "audit": "titles: Lora",
+   "en": "Change the fonts of your site: titles: Lora.",
+   "fr": "Changer les polices de votre site : titles: Lora."
+  },
+  {
+   "action": "skin_set_options",
+   "audit": "aurore: colours (dark mode): accent #112233, background skin's own; fonts: text: system serif",
+   "en": "Change the colors and fonts of your site: main color #112233, background the skin's own (dark mode); text: system serif.",
+   "fr": "Changer les couleurs et les polices de votre site : couleur principale #112233, fond celle du skin (mode sombre); text: system serif."
+  },
+  {
+   "action": "skin_set_options",
+   "audit": "aurore: colours: textColor #ffffff",
+   "en": "Change the colors and fonts of your site: aim.req.color.textColor #ffffff.",
+   "fr": "Changer les couleurs et les polices de votre site : aim.req.color.textColor #ffffff."
+  },
+  {
+   "action": "skin_set_options",
+   "audit": "titles: the skin's own",
+   "en": "Change the colors and fonts of your site: titles: the skin's own.",
+   "fr": "Changer les couleurs et les polices de votre site : titles: the skin's own."
+  },
+  {
+   "action": "skin_customize",
+   "audit": "aurore",
+   "en": "Customize your site's skin: look soir.",
+   "fr": "Personnaliser le skin de votre site : look soir."
+  },
+  {
+   "action": "instance_add",
+   "audit": "journal \"Actus\"",
+   "en": "Add another one of the feature \"JOURNAL\", named \"Actus\".",
+   "fr": "Ajouter un exemplaire de plus de la fonctionnalité « JOURNAL », nommé « Actus »."
+  },
+  {
+   "action": "entry_publish",
+   "audit": "actus/e1,e2 fr",
+   "en": "Publish in \"actus\" (2): “Bonjour” (with the skin aurore), “e2”. The text does not change.",
+   "fr": "Publier dans « actus » (2) : “Bonjour” (avec le skin aurore), “e2”. Le texte ne change pas."
+  },
+  {
+   "action": "entry_unpublish",
+   "audit": "actus/e1",
+   "en": "Return to draft in \"actus\" (1): “Bonjour”.",
+   "fr": "Remettre en brouillon dans « actus » (1) : “Bonjour”."
+  },
+  {
+   "action": "site_settings_set",
+   "audit": "name, tagline",
+   "en": "Change the settings of your site: name, tagline.",
+   "fr": "Changer les réglages de votre site : name, tagline."
+  },
+  {
+   "action": "navigation_set",
+   "audit": "navigation: 3 > 5",
+   "en": "Change the menu of your site: 3 entries now, 5 afterwards. Added: Accueil, Contact. Removed: Ancien. Changed: Blog. The order changes.",
+   "fr": "Changer le menu de votre site : 3 entrées aujourd'hui, 5 ensuite. Ajouté : Accueil, Contact. Retiré : Ancien. Modifié : Blog. L'ordre change."
+  },
+  {
+   "action": "navigation_set",
+   "audit": "navigation: 3 > 3",
+   "en": "Change the menu of your site: 3 entries now, 3 afterwards. Nothing changes.",
+   "fr": "Changer le menu de votre site : 3 entrées aujourd'hui, 3 ensuite. Rien ne change."
+  },
+  {
+   "action": "home_sections_set",
+   "audit": "home: 2 > 4",
+   "en": "Change the home page of your site: 2 sections now, 4 afterwards. Added: Intro, Actus.",
+   "fr": "Changer la page d'accueil de votre site : 2 sections aujourd'hui, 4 ensuite. Ajouté : Intro, Actus."
+  }
+ ]
+}

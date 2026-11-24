@@ -9,7 +9,8 @@ import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf, type ActiveInstance }
 import { SECTION_SIZES, localized, type JsonSchemaLite, type SettingField } from "@/core/modules/types";
 import { deleteSetting, getSetting, getSiteConfig, setSetting, type HomeSection } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { auditListChange, defineLevel3, summarizeListChange, wholeListArgs } from "./level3";
 import { redactSecrets } from "./redact";
 import type { Plan } from "./requests";
 import { clearUndoPoint, fingerprintOf, loadUndoPoint, saveUndoPoint } from "./undoPoint";
@@ -306,3 +307,14 @@ export async function restoreHome(actorEmail: string): Promise<{ ok: true } | { 
   try { revalidatePath("/", "layout"); } catch { /* outside a request */ }
   return { ok: true };
 }
+
+export const homeSectionsSet = defineLevel3({
+  name: "home_sections_set", input: HOME_SET_INPUT, slot: "content",
+  fromTool: wholeListArgs("sections", (m) => new McpToolError(m)),
+  prepare: (args) => prepareHomeSectionsSet({ sections: args.sections }),
+  // `executeHomeSectionsSet` starts by comparing the fingerprint of the home page the plan was made from with the home page now.
+  recheck: () => ({ kind: "inside" }),
+  execute: ({ plan, by }) => executeHomeSectionsSet(plan, by),
+  audit: auditListChange,
+  summarize: summarizeListChange("home_sections_set"),
+});

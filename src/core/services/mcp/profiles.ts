@@ -10,10 +10,11 @@
  *              always wait for the owner)
  *
  * Each profile includes the ones before it. A tool is either assigned to the profile that first allows it, or explicitly EXCLUDED (never part of a preset:
- * the owner ticks it one by one). A test compares this file with the real tool catalogue: a new core tool must be assigned or excluded here.
+ * the owner ticks it one by one). The assignment is the `profile` / `excluded` field of the tool's row in coreTools.ts; a test compares it with the real tool catalogue: a new core tool must be assigned or excluded there.
  * Never in a profile: anything that reads or writes a secret (no such tool exists), deletions, uninstalling, updating the core.
  */
 import { setGrant, withinCeiling, type Grants, type Scope, type ToolAccessInfo } from "./access";
+import { CORE_TOOL_ROWS } from "./coreTools";
 
 export const ACCESS_PROFILES = ["read", "assistant", "full"] as const;
 export type AccessProfile = (typeof ACCESS_PROFILES)[number];
@@ -22,39 +23,11 @@ export const DEFAULT_PROFILE: AccessProfile = "read";
 
 export const isAccessProfile = (v: unknown): v is AccessProfile => ACCESS_PROFILES.includes(v as AccessProfile);
 
-/** Core tools (not bound to a module instance), by the profile that first allows them. */
-export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = {
-  read: [
-    "site_info",
-    "maintenance_status", "maintenance_health", "maintenance_modules", "maintenance_updates", "maintenance_diagnose", "maintenance_audit",
-    "maintenance_request_status", "maintenance_legacy", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_skin_status",
-    "maintenance_skin_list", "maintenance_content_check", "maintenance_my_access", "maintenance_available_operations", "maintenance_catalog_plan", "maintenance_places",
-    "navigation_get", "home_sections_list",
-    "redirects_list", "redirects_stats", "redirects_summary",
-    "media_list", "site_settings_get",
-    "overlay_skins_list", "overlay_skin_rules_list",
-  ],
-  assistant: [
-    "maintenance_check_updates", "maintenance_backup_run", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_content_check_run",
-    "maintenance_module_settings", "maintenance_place_settings", "maintenance_module_configure",
-    "navigation_set", "home_sections_set",
-    "redirects_create", "redirects_update",
-    "media_upload", "media_set_alt", "site_settings_set",
-  ],
-  full: ["overlay_skin_rules_create", "overlay_skin_rules_update", "media_import", "maintenance_module_install", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_activate", "maintenance_font_set", "maintenance_skin_set_options", "maintenance_skin_customize"],
-};
+/** Core tools (not bound to a module instance), by the profile that first allows them: derived from the one list of core tools (coreTools.ts; its row order is the order here). */
+export const PROFILE_TOOLS: Record<AccessProfile, readonly string[]> = Object.fromEntries(ACCESS_PROFILES.map((p) => [p, CORE_TOOL_ROWS.filter((r) => r.profile === p).map((r) => r.name)])) as unknown as Record<AccessProfile, readonly string[]>;
 
-/** Core tools that no profile allows, each with the reason. They stay one-by-one choices (the risky ones behind a confirmation). */
-export const PROFILE_EXCLUDED: Record<string, string> = {
-  log_list: "The site journal can show names and addresses of people: granted knowingly.",
-  maintenance_module_configure_advanced: "Technical settings: only for an AI the owner trusts with them.",
-  maintenance_skin_remove: "Removes files: a deliberate choice.",
-  maintenance_module_update: "Updating is upkeep, not setup.",
-  maintenance_modules_update_all: "Updating is upkeep, not setup.",
-  maintenance_core_update: "Updating the core is upkeep, not setup.",
-  maintenance_module_uninstall: "Uninstalling can lose data.",
-  redirects_delete: "Deletes short links.",
-};
+/** Core tools that no profile allows, each with the reason. They stay one-by-one choices (the risky ones behind a confirmation). Derived from the same list. */
+export const PROFILE_EXCLUDED: Record<string, string> = Object.fromEntries(CORE_TOOL_ROWS.flatMap((r) => (r.excluded === undefined ? [] : [[r.name, r.excluded] as const])));
 
 export type ProfileTool = Pick<ToolAccessInfo, "name" | "readOnly" | "default"> & { destructive: boolean; instanceId?: string };
 

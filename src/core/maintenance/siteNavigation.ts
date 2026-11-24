@@ -14,7 +14,8 @@ import { existingRefs, loadMenu, saveMenu } from "@/core/menuStore";
 import { getSiteConfig } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { isSafeExternalUrl } from "@/core/url";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { auditListChange, defineLevel3, summarizeListChange, wholeListArgs } from "./level3";
 import { redactSecrets } from "./redact";
 import type { Plan } from "./requests";
 import { clearUndoPoint, fingerprintOf, loadUndoPoint, saveUndoPoint } from "./undoPoint";
@@ -308,3 +309,14 @@ export async function restoreNavigation(actorEmail: string): Promise<RestoreResu
   try { revalidatePath("/", "layout"); } catch { /* outside a request */ }
   return { ok: true };
 }
+
+export const navigationSet = defineLevel3({
+  name: "navigation_set", input: NAVIGATION_SET_INPUT, slot: "content",
+  fromTool: wholeListArgs("entries", (m) => new McpToolError(m)),
+  prepare: (args) => prepareNavigationSet({ entries: args.entries }),
+  // `executeNavigationSet` starts by comparing the fingerprint of the menu the plan was made from with the menu now.
+  recheck: () => ({ kind: "inside" }),
+  execute: ({ plan, by }) => executeNavigationSet(plan, by),
+  audit: auditListChange,
+  summarize: summarizeListChange("navigation_set"),
+});

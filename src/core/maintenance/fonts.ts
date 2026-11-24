@@ -5,7 +5,8 @@ import { uploadFamilies, uploadWeights } from "@/core/fonts/registry";
 import { choiceValue, fontAdvice, parseChoice, SYSTEM_KEYS, type AdviceCode, type AdviceInfo, type Role, type UploadedFont } from "@/core/fonts/types";
 import { saveFontChoices } from "@/core/skins/appearance";
 import { loadAppearanceView } from "@/core/skins/appearanceView";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import type { Plan } from "./requests";
 
 /**
@@ -97,3 +98,13 @@ export async function executeFont(plan: Plan, actorLabel: string): Promise<Outco
   const tips = [describe(v.raw.fontHeading, "heading", list), describe(v.raw.fontBody, "body", list)].flatMap((d, i) => d.advice.map((c) => `${i === 0 ? "titles" : "text"}: ${ADVICE_TEXT[c]}`));
   return { ok: true, message: `Fonts changed (${plan.fonts?.names ?? ""}). The site shows them now; the owner can go back with "Back to the skin" in ${WHERE}${tips.length ? ` Tips (advice only, the fonts are applied): ${tips.join(" ")}` : ""}` };
 }
+
+export const fontSet = defineLevel3({
+  name: "font_set", input: FONT_SET_ARG, slot: "content",
+  prepare: (args) => prepareFont({ titles: args.titles, text: args.text }),
+  // The values are prepared again as they were asked ("" is the skin's own font, asked as "skin").
+  recheck: (plan) => ({ kind: "again", args: { titles: plan.fonts?.titles === undefined ? undefined : plan.fonts.titles || "skin", text: plan.fonts?.text === undefined ? undefined : plan.fonts.text || "skin" }, gated: true }),
+  execute: ({ plan, by }) => executeFont(plan, by),
+  audit: (plan) => plan.fonts!.names,
+  summarize: (p, t) => t("aim.req.font_set", { list: p.fonts?.names ?? "?" }),
+});

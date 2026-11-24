@@ -460,3 +460,19 @@ Cause: a module that lives in a folder of a repository with many modules was che
 ## Addendum: AI accesses belong to a person (core 0.46.0 backend, 0.47.0 screens and owner rule, English)
 
 Every access belongs to a person (`ApiToken.ownerId`). It can see and call a tool only if its owner may do what the tool does **right now** (ceiling checked on every request, `services/mcp/ownerCeiling.ts`), on top of the usual scope and grants. A new access never has full powers or a secret address; every access is paused when its owner signs out everywhere or changes the password, and revoked when the owner is deleted. Its requests are decided by its owner or by a holder of `core:mcp.tokens`, with the owner's rights checked again at approval. **The owner is permanent (0.47.1): it is set at creation and never changes; no screen and no tool hands an access to another person, and an access whose owner disappears (account deleted, backup restored without them) is revoked automatically, its pending requests expire.** An access that existed before the rule and has never had an owner keeps working exactly as before and shows "No owner" until a person is chosen, once (a single-account site assigns it automatically at start-up; temporary, removed in 0.49.0). `maintenance_my_access` reports `access.owner`, `above_owner_rights` and `personalAssistant`; `maintenance_health` reports `accessesWithoutOwner` (never had an owner; no count for a removed owner any more: that access is revoked). Screens: Account > "My AI accesses", Admin > AI assistants > "By person", Admin > Users > person menu. Details: [PERSONAL-AI.md](PERSONAL-AI.md).
+
+## Addendum: a level 3 action is defined once (English, for developers)
+
+A level 3 action (what an AI asks and a person approves: prepare, then, when it runs, prepare again and compare, then execute) used to be described by tables kept in step by hand
+(names, rate-limit class, background set, tool input, destructive chip, rights of the tool, profile, the sentence of the owner, the journal text). They are derived now:
+
+| What | Where |
+|---|---|
+| The rights of the tool (what a personal AI needs from its owner, its starting profile or the reason it has none) and the NAME of the action it asks for | one row in `src/core/services/mcp/coreTools.ts` (pure data; `ownerCeiling.ts` and `profiles.ts` derive `CORE_REQUIREMENTS`, `requirementOfAction`, `PROFILE_TOOLS`, `PROFILE_EXCLUDED` from it) |
+| Everything else: `input`, `slot` (rate-limit class), `background`, `destructive`, `alwaysHuman`, `prepare`, `recheck`, `execute`, `audit` (journal text), `summarize` (the sentence the owner reads) | one `defineLevel3({...})` next to the code it runs (`coreUpdates.ts`, `install.ts`, `skins.ts`, `fonts.ts`, `instances.ts`, `publish.ts`, `siteNavigation.ts`, `siteHome.ts`, `siteSettings.ts`), listed in `level3Registry.ts` (it does not compile when an action of `coreTools.ts` has no definition) |
+| The tool itself (title, long description) | `DEFS` in `maintenance/tools.ts`: `run: level3("name")` and `input: LEVEL3_INPUT.name`, both from the registry |
+
+`executeLevel3` (`level3Registry.ts`) is the only function that calls `execute`, and it calls `recheck` of the definition first. A definition says HOW its plan is checked again:
+`again` (the runner prepares the action again with the arguments the plan gives, refuses with `Not done: <reason>` when the preparation refuses, and `same` may refuse when the new plan is not the approved one),
+`inside` (the plan froze a fingerprint of what it changes and `execute` starts by comparing it: menu, home page, site settings, skin options) or `stepwise` (a bundle of installations: each step is prepared again just before it runs, because the steps depend on each other).
+`tests/services/level3-registry.test.mjs` pins the derived tables against the ones they replaced (`tests/fixtures/level3-golden.json`) and the structure of the approval path.
