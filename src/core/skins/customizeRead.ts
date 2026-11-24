@@ -8,7 +8,7 @@
  * The limits are fixed by the core (CUSTOMIZE_LIMITS): a skin cannot raise them, which keeps the generic page inside the ergonomics budgets whatever it declares.
  */
 import { parseColor } from "./colorParse";
-import { makeIssue, type Params, type SkinIssue } from "./messages";
+import { makeIssue, type IssueCode, type Params, type SkinIssue } from "./messages";
 import { validateTokenValue } from "./tokens";
 import {
   CONTROL_ID_RE, CUSTOMIZE_LIMITS as LIM, CUSTOMIZE_VERSION, PALETTE_REF_RE, SLIDER_UNITS, VALUE_ID_RE,
@@ -41,7 +41,7 @@ export function wordingProblem(text: string, max: number): string | null {
 }
 
 type Ctx = { issues: SkinIssue[]; ids: Set<string>; vars: Set<string> };
-const add = (c: Ctx, code: string, params: Params = {}, severity?: "error" | "warning") => { c.issues.push(makeIssue(code, params, severity)); };
+const add = (c: Ctx, code: IssueCode, params: Params = {}, severity?: "error" | "warning") => { c.issues.push(makeIssue(code, params, severity)); };
 const warn = (c: Ctx, what: string) => add(c, "customize-unknown", { what: what.slice(0, 40) }, "warning");
 
 /** A label or hint in both languages. null (with an issue) when it breaks a rule. */
@@ -331,7 +331,7 @@ export function readCustomize(raw: unknown): { decl: CustomizeDecl | null; issue
 /** Checks a read declaration against the skin it belongs to: pictures are declared assets, text colours parse, variables read by the sheet are declared. */
 export function checkCustomizeAgainstSkin(decl: CustomizeDecl, skin: { contract: number; imageFiles: ReadonlySet<string>; css: string }): SkinIssue[] {
   const issues: SkinIssue[] = [];
-  const push = (code: string, params: Params, sev?: "error" | "warning") => issues.push(makeIssue(code, params, sev));
+  const push = (code: IssueCode, params: Params, sev?: "error" | "warning") => issues.push(makeIssue(code, params, sev));
   if (skin.contract < 4) push("customize-contract", { need: 4 });
   const declared = new Set<string>();
   for (const g of decl.groups) for (const ctl of g.controls) {

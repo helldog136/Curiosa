@@ -8,7 +8,7 @@
 import { VAR_NAME_RE } from "./allowlist";
 import { checkDeclaration, type DeclContext } from "./declarations";
 import { DEFAULT_LIMITS } from "./allowlist";
-import { makeIssue, type SkinIssue } from "./messages";
+import { makeIssue, type IssueCode, type SkinIssue } from "./messages";
 import { tokenizeValue, type Tok } from "./valueTokens";
 
 export type TokenType =
@@ -255,7 +255,7 @@ export function validateTokenValue(name: string, value: unknown, options: { skin
   if (!type || !VAR_NAME_RE.test(name)) return { ok: false, unknown: true, issues };
   if (typeof value !== "string") return { ok: false, issues: [makeIssue("value-syntax", { prop: name.slice(0, 40) })] };
   const skinId = options.skinId && options.skinId !== "basic" ? options.skinId : "skin-check";
-  const report = (code: string, params?: Record<string, string | number>, severity?: "error" | "warning") => issues.push(makeIssue(code, params, severity));
+  const report = (code: IssueCode, params?: Record<string, string | number>, severity?: "error" | "warning") => issues.push(makeIssue(code, params, severity));
   // (1) sûreté générale : le jeton est une variable CSS, validée comme n'importe quelle variable de la feuille
   const generic = checkDeclaration(name, value, false, newCtx(skinId), report);
   if (!generic) return { ok: false, issues };

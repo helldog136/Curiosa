@@ -1,0 +1,7 @@
+{
+  "animateContract": 4,
+  "patterns": { "panes": [ { "file": "patterns/wide.json" }, { "file": "patterns/square.json" } ] },
+  "genres": {
+    "gauge": { "body": { "draw": "mosaic", "pattern": "file", "source": "panes", "seed": 3 } }
+  }
+}

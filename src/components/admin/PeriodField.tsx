@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { HelpBelow, HelpTip } from "./HelpTip";
-import { FieldErrorText, ERROR_BORDER, useFieldErrorsContext } from "./FieldErrors";
+import { FieldErrorText, useFieldErrorsContext } from "./FieldErrors";
+import { ERROR_BORDER } from "./errorBorder";
 import { isLongHelp } from "./helpRule";
 import { describePeriod, monthName } from "@/core/adminkit/values";
 import { monthInputs, monthShown, periodSent, periodState, toInputs } from "@/core/adminkit/periodInputs";

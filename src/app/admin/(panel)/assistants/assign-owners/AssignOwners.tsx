@@ -1,8 +1,7 @@
 // TEMPORARY (SUNSET 0.49.0): the page "Choose who owns each access" exists only to migrate sites that have several accounts. It is NOT shown when every access has an owner.
-// Deleting this folder (and its import in ../OwnersTab.tsx, the locale keys `owners.assign.*`, its sunset test in tests/services/access-owners.test.mjs) removes it; the row menu "Choose an owner" stays.
+// Deleting this folder (and its import in ../OwnersTab.tsx, the locale keys `owners.assign.*`, its sunset test in tests/services/access-owners.test.mjs) removes it.
 import type { Translator } from "@/core/i18n/dictionary";
 import { accessesWithoutOwner, eligibleOwners, ownerOptions } from "@/core/personalAi/owners";
-import { Badge } from "@/components/admin/Badge";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { Panel } from "@/components/admin/Page";
 import { RowTable, type TableRow } from "@/components/admin/RowTable";
@@ -18,9 +17,9 @@ export async function AssignOwners({ t, viewerId }: { t: Translator; viewerId: s
   const rows = await accessesWithoutOwner();
   if (rows.length === 0) return null;
   const owners = ownerOptions(await eligibleOwners(viewerId));
-  const labels = { choose: t("owners.assign.choose"), assign: t("owners.assign.assign"), failed: t("owners.assign.failed"), done: t("owners.assign.done"), pick: t("owners.assign.pick") };
+  const labels = { choose: t("owners.assign.choose"), assign: t("owners.assign.assign"), failed: t("owners.assign.failed"), owned: t("owners.assign.owned"), done: t("owners.assign.done"), pick: t("owners.assign.pick") };
   const tableRows: TableRow[] = rows.map((r) => ({
-    key: r.id, testid: "assign-row", search: [r.name, r.ownerGone ? t("owners.state.gone") : ""], cells: { access: <><span className="block break-words font-medium">{r.name}</span>{r.ownerGone && <Badge tone="danger" title={t("owners.state.goneWhy")}>{t("owners.state.gone")}</Badge>}</> },
+    key: r.id, testid: "assign-row", search: [r.name], cells: { access: <span className="block break-words font-medium">{r.name}</span> },
     actions: <OwnerSelect tokenId={r.id} owners={owners} assign={assignOwnerAction} labels={labels} />,
   }));
   return (

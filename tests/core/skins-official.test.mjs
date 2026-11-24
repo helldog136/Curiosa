@@ -169,7 +169,12 @@ test("la commande : tableau, codes de sortie 0 / 1 / 2, --json, --update-baselin
 });
 
 test("le niveau navigateur est dit « sauté » quand on le saute, et la détection ne lève jamais", async () => {
+  const report = await run({});
+  assert.deepEqual(report.browser, { ran: false, reason: "--no-visual" }, "visual: false is reported as a skipped level with its reason");
+  assert.match(O.toText(report, "fr"), /Contrôle dans un navigateur : SAUTÉ \(--no-visual\)\./);
+  assert.match(O.toText(report, "en"), /In-browser check: SKIPPED \(--no-visual\)\./);
+  // the detection itself never throws and answers { ok } or { ok:false, reason } with a one-line reason
   const b = await O.browserAvailable();
-  assert.equal(typeof b.ok, "boolean");
-  if (!b.ok) assert.ok(b.reason);
+  assert.deepEqual(Object.keys(b), b.ok ? ["ok"] : ["ok", "reason"]);
+  if (!b.ok) assert.match(b.reason, /^[^\n]{1,200}$/);
 });

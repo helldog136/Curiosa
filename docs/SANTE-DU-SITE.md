@@ -60,7 +60,7 @@ Les liens externes visités sont ceux des textes, des champs d'adresse des entr�
 | Paquets | un paquet s'arrête à 100 liens ou 45 s ; reprise avec la barre de progression (`OperationProgress`, opération suivie `content-check`, `opUnit` lien par lien) |
 | « Trop de demandes » (429, 503 + `Retry-After`) | le site n'est **plus contacté** pendant la vérification (et le client réseau le met en pause pour les suivantes) |
 
-**Adresses refusées, sans la moindre demande** (`hostProblem`, `src/core/url.ts`) : autre schéma que http(s), identifiants dans l'adresse, port autre que 443, adresse numérique sous toute écriture (127.1, 2130706433, 0x7f000001, IPv6…), nom interne (`localhost`, `.local`, `.lan`, `.internal`, `.home.arpa`, nom sans point).
+**Adresses refusées, sans la moindre demande** (`fetchTargetProblem`, `src/core/host.ts`) : autre schéma que http(s), identifiants dans l'adresse, port autre que 443, adresse numérique sous toute écriture (127.1, 2130706433, 0x7f000001, IPv6…), nom interne (`localhost`, `.local`, `.lan`, `.internal`, `.home.arpa`, nom sans point).
 
 **Rebinding.** `content/net.ts` résout le nom **une seule fois**, refuse si UNE des adresses est privée, locale, partagée ou réservée (`addressIsPrivate`), puis ouvre la connexion avec une fonction `lookup` qui **ne rend que ces adresses vérifiées** (le nom reste celui du certificat : SNI et vérification normale). Un nom absent de la table des adresses vérifiées n'est jamais résolu : la visite échoue. Il n'y a pas de seconde résolution. Les adresses sont revalidées de la même façon à chaque redirection.
 

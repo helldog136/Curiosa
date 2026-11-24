@@ -227,8 +227,8 @@ test("trou noir après quelques lignes : les premières lignes arrivent, puis le
   const reader = stream.getReader();
   const first = await reader.read().catch((e) => e);
   // Le morceau peut être livré avant ou avec l'erreur : dans tous les cas la lecture finit par échouer.
-  if (first instanceof Error) return;
-  await assert.rejects(async () => { for (;;) { const { done } = await reader.read(); if (done) return; } });
+  const failure = first instanceof Error ? first : await (async () => { for (;;) { const { done } = await reader.read(); if (done) return null; } })().catch((e) => e);
+  assert.ok(failure instanceof Error, "the read must end in an error, never in a clean end of file");
 });
 
 test("durée totale dépassée : coupé", async () => {

@@ -250,6 +250,25 @@ test("setup wizard: a language without text for an extension shows English, neve
   assert.equal(initialSetupLanguage(null, known), "en", "never French by default");
 });
 
+test("setup wizard: the browser language picks the starting language (q-values, regions, wildcard), and the tab title follows it", () => {
+  const known = Object.keys(KNOWN_LOCALES);
+  assert.equal(initialSetupLanguage("fr-CA,fr;q=0.9,en;q=0.8", known), "fr");
+  assert.equal(initialSetupLanguage("en-GB,en;q=0.9,fr;q=0.8", known), "en");
+  assert.equal(initialSetupLanguage("fr;q=0.4,en;q=0.9", known), "en", "the highest q wins");
+  assert.equal(initialSetupLanguage("fr;q=0,en;q=0.1", known), "en", "q=0 means refused");
+  assert.equal(initialSetupLanguage("*", known), "en");
+  assert.equal(initialSetupLanguage("", known), "en");
+  // The tab title is a text of both languages (setup.title), set by the page for the starting language and by the wizard when the language changes.
+  const strings = getAllSetupStrings();
+  assert.equal(strings.en["setup.title"], "Set up your site");
+  assert.equal(strings.fr["setup.title"], "Configurez votre site");
+  const page = read("src/app/admin/(auth)/setup/page.tsx");
+  assert.match(page, /generateMetadata/);
+  assert.match(page, /setup\.title/);
+  assert.match(page, /initialSetupLanguage\(\(await headers\(\)\)\.get\("accept-language"\)/);
+  assert.match(read("src/app/admin/(auth)/setup/SetupWizard.tsx"), /document\.title = ui18n\["setup\.title"\]/);
+});
+
 test("setup wizard: no hard-coded text in the component; every text key exists in English and French", () => {
   const src = read("src/app/admin/(auth)/setup/SetupWizard.tsx");
   const hard = [...src.matchAll(/>\s*([A-Za-zÀ-ÿ][A-Za-zÀ-ÿ' ,.!?-]{3,})\s*</g)].map((m) => m[1]);

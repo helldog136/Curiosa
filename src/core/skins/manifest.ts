@@ -18,7 +18,7 @@ const TOKEN_NAME_RE = /^--(sk|v)-[a-z0-9][a-z0-9-]{0,60}$/;
 
 const asset = z.object({
   file: z.string().min(1).max(100),
-  kind: z.enum(["font", "image"]),
+  kind: z.enum(["font", "image", "pattern"]),
   license: z.string().max(LICENSE_TEXT_MAX).optional(),
   licenseFile: z.string().max(100).optional(),
   author: z.string().trim().min(1).max(120).optional(),

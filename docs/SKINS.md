@@ -481,6 +481,10 @@ Même logique que le catalogue des modules (`catalogue/README.md` du cœur, `cur
 
 ---
 
+### 5.7 Pattern files (overlay skins, core 0.48.0)
+
+An overlay skin may ship its own mosaic pieces as JSON files under `patterns/` (`assets` of kind `pattern`, skin contract 7). The principle of section 0 holds and is made explicit here: **a skin gets more power over how an element is drawn, never over data.** A pattern file carries only numbers (polygons and tones); it is never served as a file, holds no code and no URL, and cannot read or change the data of the site. The core checks it, normalises it and hands the page the numbers, the way it hands the colours of a recipe. The format, the limits, the issue codes and the example skin are in [OVERLAY-SKINS.md](OVERLAY-SKINS.md) ("Patterns") and [OVERLAY-ANIMATIONS.md](OVERLAY-ANIMATIONS.md) ("Patterns").
+
 ## 6. La feuille de style : sécurité par liste blanche
 
 **Aucune exécution de code** : pas de JavaScript, pas de composant React, pas d'expression CSS (`expression()`, `behavior`, `-moz-binding`), pas de `@import`. Le skin est de la **donnée** (JSON + CSS assaini). L'assainissement se fait avec un vrai analyseur CSS (PostCSS, **dépendance directe du cœur** : il n'était que transitif via Tailwind) **à l'installation et de nouveau à chaque rendu mis en cache** (la sortie assainie est ce qui est écrit dans la page ; le fichier source n'est jamais servi).

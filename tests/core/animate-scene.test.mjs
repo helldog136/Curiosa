@@ -87,7 +87,7 @@ test("scene checker (contracts): written for a later contract it reads what it k
   const later = SC.checkScene({ ...rawScene, animateContract: 4 }, infos);
   assert.equal(later.ok, true); assert.equal(later.scene, null); assert.equal(later.newer, true);
   assert.equal(SC.checkScene({ ...rawScene, animateMinContract: 2 }, infos).ok, false);
-  assert.equal(S.ANIMATE_CONTRACT, 2, "recipes keep their own contract");
+  assert.equal(S.ANIMATE_CONTRACT, 4, "recipes keep their own contract (4 since core 0.48.0; 3 is skipped: it is the scene contract)");
   assert.equal(S.SCENE_CONTRACT, 3);
 });
 

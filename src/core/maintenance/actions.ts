@@ -5,29 +5,23 @@ import { getPersonalPolicy } from "@/core/personalAi/policy";
 import fs from "node:fs";
 import { prisma } from "@/core/db";
 import { getInstanceByKey } from "@/core/instances";
-import { dependentsOf } from "@/core/modules/dependencies";
 import { classify, compareVersions } from "@/core/updates/versions";
 import { dockerUpdatePlan, getInstallInfo, readVersion } from "@/core/updates/service";
 import { McpToolError } from "@/core/services/mcp/validate";
 import { deps } from "./deps";
-import { isStableVersion, moduleUpdateRefusal, updateRunning } from "./inspect";
+import { isStableVersion } from "./inspect";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { notifyOwner } from "./notify";
 import { redactSecrets } from "./redact";
 import { claimRequest, createRequest, denyRequest, getRequest, finishRequest, reopenRequest, setRequestProgress, type Level3Action, type Plan } from "./requests";
 import { openRun, resetLock, runInBackground, takeLock, type Outcome, type RecordStore, type RunContext, type RunDone, type Started } from "./background";
-import { within } from "./within";
 import { getApprovalMode } from "./settings";
 import { DEFAULT_LIMITS, resetAllSlots, takeSlot, type SlotClass } from "./slots";
 import { runContentCheck } from "./content/service";
-import { executeInstall, executeInstallBundle, prepareInstall, prepareInstallBundle, samePlan } from "./install";
-import { executeInstanceAdd, prepareInstanceAdd } from "./instances";
-import { executeEntryPublish, prepareEntryPublish } from "./publish";
-import { executeNavigationSet, prepareNavigationSet } from "./siteNavigation";
-import { executeHomeSectionsSet, prepareHomeSectionsSet } from "./siteHome";
 import { applyConfigure, parseConfigureArgs } from "./moduleSettings";
-import { executeFont, prepareFont } from "./fonts";
-import { executeSiteSettings, prepareSiteSettings } from "./siteSettings";
-import { executeSkin, executeSkinCustomize, executeSkinOptions, isSkinAction, prepareSkin, prepareSkinCustomize, prepareSkinOptions } from "./skins";
+import { moduleId, reason } from "./common";
+import type { Params } from "./level3";
+import { ALWAYS_HUMAN, BACKGROUND_LEVEL3, executeLevel3, level3Def, prepareLevel3 } from "./level3Registry";
 
 /**
  * ACTIONS de maintenance : niveau 2 (sans risque : revérifier, sauvegarder, réinstaller, relancer) et niveau 3 (à risque : mises à jour, désinstallation).
@@ -43,23 +37,13 @@ import { executeSkin, executeSkinCustomize, executeSkinOptions, isSkinAction, pr
  */
 export type { Outcome } from "./background";
 export type Level2Tool = "check_updates" | "backup_run" | "module_reinstall" | "module_restart" | "content_check_run";
-export type Params = { module?: string; instance?: string; /** Skins : l'identifiant du skin. */ skin?: string; /** Polices (`font_set`) : choix des titres et du texte. */ titles?: unknown; text?: unknown; /** Installation : clé facultative de la première instance. */ instanceKey?: string; /** Contrôle du contenu : reprendre la vérification commencée au lieu d'en commencer une. */ continue?: boolean; /** Désinstallation : garder (défaut) ou effacer les données. */ keepData?: boolean;
-  /** Installation de plusieurs modules en une demande (`module_install`) : la liste d'identifiants. */ modules?: unknown;
-  /** `instance_add`: the nickname of the new instance. */ nickname?: unknown;
-  /** `entry_publish` / `entry_unpublish`: the entry (or entries) of the instance named by `instance`, and the language to insist on. */ id?: unknown; ids?: unknown; locale?: unknown;
-  /** `skin_set_options`: colours and fonts, as given to the tool. */ options?: Record<string, unknown>;
-  /** `skin_customize`: values, look and reset, as given to the tool. */ customize?: Record<string, unknown>;
-  /** `navigation_set`: the whole menu; `home_sections_set`: the whole home page, as given to the tool. */ entries?: unknown; sections?: unknown;
-  /** `site_settings_set`: the arguments, as given to the tool. */ site?: Record<string, unknown> };
+export type { Params };
+export { ALWAYS_HUMAN };
 
 /* ───────────── Verrou et cadence ───────────── */
 
 /** Which counter an action uses (slots.ts): what brings code or changes the whole site is "risky"; the day-to-day setup and content work is "content". */
 const LEVEL2_CLASS: Record<Level2Tool, SlotClass> = { check_updates: "content", backup_run: "content", content_check_run: "content", module_reinstall: "risky", module_restart: "risky" };
-const LEVEL3_CLASS: Record<Level3Action, SlotClass> = {
-  module_update: "risky", modules_update_all: "risky", core_update: "risky", module_uninstall: "risky", module_install: "risky", skin_install: "risky", skin_activate: "risky", skin_remove: "risky", instance_add: "risky",
-  font_set: "content", skin_set_options: "content", skin_customize: "content", entry_publish: "content", entry_unpublish: "content", site_settings_set: "content", navigation_set: "content", home_sections_set: "content",
-};
 /** Kept for compatibility: the default limit of the "risky" class (see slots.ts for the two classes). */
 export const MAX_ACTIONS_PER_HOUR = DEFAULT_LIMITS.risky;
 
@@ -77,7 +61,6 @@ async function withLock<T extends Outcome>(name: string, by: string, fn: () => P
  * background and answered "started" with a requestId when they are not over within a few seconds: see background.ts. Everything else answers when it is done.
  */
 const BACKGROUND_LEVEL2: ReadonlySet<Level2Tool> = new Set(["check_updates", "module_reinstall"]);
-const BACKGROUND_LEVEL3: ReadonlySet<Level3Action> = new Set(["module_update", "modules_update_all", "module_install", "skin_install"]);
 
 /** Where the record of an approved request is kept up to date. */
 const requestStore = (id: string): RecordStore => ({ setPlan: async () => {}, setProgress: (p) => setRequestProgress(id, p), finish: (r) => finishRequest(id, r, deps.now()) });
@@ -98,24 +81,6 @@ async function launch(o: { action: string; actor: { name: string; tokenId?: stri
 }
 
 /* ───────────── Messages ───────────── */
-
-const REASONS: Record<string, string> = {
-  "modules.error.notfound": "unknown module", "modules.error.requiredBy": "other modules need it", "modules.error.core": "it needs a newer core version",
-  "modules.error.catalogue": "the module catalogue is unreachable", "modules.error.clone": "the module source could not be downloaded", "modules.error.uptodate": "already up to date",
-  "modules.error.pinned": "it is pinned to a fixed commit", "modules.error.reinstallBusy": "an update or reinstall is already running", "modules.error.reinstallNoSource": "it was installed by hand: there is no source to reinstall from",
-  "modules.error.reinstallPerms": "the new version asks for new permissions: only a human can accept that", "modules.error.migration": "its data conversion failed", "modules.error.requires": "it lacks a module it needs",
-  "modules.error.nomanifest": "the new version has no valid description file", "modules.error.size": "the new version is too large", "modules.error.unknownSource": "its source is unknown", "modules.error.incompatible": "it is not compatible with this version",
-  "modules.error.noSpace": "not enough disk space for a safety copy of the database (nothing was updated)", "modules.error.copyFailed": "the safety copy of the database failed (nothing was updated)",
-  "modules.error.exists": "it is already installed", "modules.error.nomain": "its main file is missing", "modules.error.idmismatch": "the repository serves another module than announced",
-  "modules.error.loadCheck": "the new code does not load on this site, so it was refused before being put in place (the previous version stays in service and nothing changed; maintenance_diagnose gives the reason)",
-  "error.generic": "the action failed",
-};
-const reason = (code: string | undefined) => (code && REASONS[code]) || (code && /^[\w.-]{1,60}$/.test(code) ? `failed (${code})` : "the action failed");
-
-const moduleId = (v: unknown): string => {
-  if (typeof v !== "string" || !/^[a-z0-9][a-z0-9_-]{0,63}$/.test(v)) throw new McpToolError('argument "module" must be a module identifier (see maintenance_modules)');
-  return v;
-};
 
 /* ───────────── Audit ───────────── */
 
@@ -141,6 +106,11 @@ async function doBackup(): Promise<Outcome> {
 }
 
 async function doReinstall(id: string): Promise<Outcome> {
+  // A module of a personal catalogue is renewed from its repository (private, with the owner's access code): only the owner does that. The origin is written on the module
+  // itself (it stays when the catalogue is removed); if it cannot be read, the module is treated as personal.
+  const row = await prisma.module.findUnique({ where: { id }, select: { id: true, repoUrl: true } });
+  const personal = await personalIndex();
+  if (row && (!personal || personal.has(row))) return { ok: false, message: `"${id}" comes from a personal catalogue of the owner: only a human can reinstall it (Admin > Extensions).` };
   const r = await deps.reinstall(id);
   if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.${r.loadError ? ` Cause: ${redactSecrets(r.loadError, 200)}.` : ""}` };
   const bad = r.migrations.some((x) => x.status === "failed" || x.status === "newer");
@@ -234,148 +204,22 @@ export async function runConfigure(advanced: boolean, rawArgs: Record<string, un
   return reply;
 }
 
-/* ───────────── Niveau 3 : préparation (lecture seule, ne change rien) ───────────── */
+/* ───────────── Niveau 3 : préparation (lecture seule, ne change rien) et exécution (revérifie tout) ───────────── */
 
 /**
+ * Prepares a level 3 action (read only, changes nothing): the definition of the action does the work (level3.ts, level3Registry.ts).
  * `patient`: wait for the real check of every module (the work runs in the background, nobody is waiting). Otherwise (the plan of a request, built while the AI
  * waits) the check has `2 x checkTimeoutMs`; past that the last report saved is used (it is re-verified when the request is executed), or the AI is told to ask again.
  */
-export async function prepare(action: Level3Action, args: Params, opts: { patient?: boolean } = {}): Promise<Plan> {
-  const refuse = (m: string): never => { throw new McpToolError(m); };
-  if (action !== "module_uninstall" && updateRunning()) refuse("A core update is running. Wait for it to finish (maintenance_status).");
-
-  if (action === "core_update") {
-    const info = getInstallInfo(deps.appDir ?? process.cwd());
-    if (info.kind === "docker") refuse("This site runs in a container image: it is updated by replacing the image, never from the admin. Call maintenance_core_update to get the exact commands for the owner.");
-    if (!info.canUpdate) refuse("This installation cannot be updated from the admin (manual install). Tell the owner.");
-    const latest = await deps.latestStable().catch(() => null);
-    if (!latest) refuse("No stable release was found (the release list may be unreachable). Try again later.");
-    const tag = latest!.tag;
-    const current = readVersion(deps.appDir ?? process.cwd());
-    if (!isStableVersion(tag)) refuse("Only a stable release can be installed by an AI.");
-    if (compareVersions(tag, current) <= 0) refuse(`Nothing to do: the site is on ${current} and the highest stable release is ${tag.replace(/^v/, "")}. Release candidates and snapshots are never installed by an AI, and the core is never downgraded.`);
-    return { from: current, to: tag.replace(/^v/, ""), level: classify(current, tag) ?? undefined };
-  }
-
-  if (action === "module_install") {
-    if (args.modules !== undefined) {
-      if (args.module !== undefined || args.instanceKey !== undefined) refuse('Use either "module" (one module) or "modules" (a list), not both, and no "instanceKey" with a list.');
-      return prepareInstallBundle(args.modules);
-    }
-    return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
-  }
-  if (action === "instance_add") return prepareInstanceAdd({ module: args.module, nickname: args.nickname });
-  if (action === "skin_set_options") return prepareSkinOptions(args.options ?? {});
-  if (action === "skin_customize") return prepareSkinCustomize(args.customize ?? {});
-  if (action === "navigation_set") return prepareNavigationSet({ entries: args.entries });
-  if (action === "home_sections_set") return prepareHomeSectionsSet({ sections: args.sections });
-  if (action === "site_settings_set") return prepareSiteSettings(args.site ?? {});
-  if (action === "entry_publish" || action === "entry_unpublish") return prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale });
-  if (isSkinAction(action)) return prepareSkin(action, { skin: args.skin });
-  if (action === "font_set") return prepareFont({ titles: args.titles, text: args.text });
-
-  if (action === "module_update" || action === "module_uninstall") {
-    const id = moduleId(args.module);
-    const row = await prisma.module.findUnique({ where: { id } });
-    if (!row) return refuse(`Unknown module "${id}" (see maintenance_modules).`);
-    if (action === "module_uninstall") {
-      const need = await dependentsOf(id).catch(() => []);
-      if (need.length) refuse(`Module "${id}" is needed by: ${need.join(", ")}. It cannot be uninstalled.`);
-      // Garder les données (non destructif) est le défaut ; les effacer doit être demandé en toutes lettres.
-      return { module: id, from: row.version, keepData: args.keepData !== false };
-    }
-    const { check, failed } = await deps.checkModule(id);
-    if (failed) refuse(`The update of "${id}" could not be checked (network or repository unreachable). Try again later.`);
-    if (!check.available || !check.target) refuse(`Module "${id}" is already up to date.`);
-    const why = moduleUpdateRefusal({ id: row.id, ref: row.ref, source: row.source, target: check.target!, needsCore: check.needsCore });
-    if (why) refuse(`Module "${id}" cannot be updated by an AI: ${why}.`);
-    return { module: id, from: row.version, to: check.target!.replace(/^v/, ""), level: check.level };
-  }
-
-  // modules_update_all
-  let report: Awaited<ReturnType<typeof deps.modulesReport>>;
-  if (opts.patient) report = await deps.modulesReport(false);
-  else {
-    const got = await within(deps.checkTimeoutMs * 2, () => deps.modulesReport(false));
-    const saved = got.ok ? null : await deps.savedModulesReport();
-    if (!got.ok && !saved) refuse("The check of the module versions is still running (it goes on in the background). Ask again in a minute.");
-    report = got.ok ? got.value : saved!;
-  }
-  const rows = new Map((await prisma.module.findMany()).map((r) => [r.id, r]));
-  const modules: NonNullable<Plan["modules"]> = [];
-  for (const o of report.outdated) {
-    const row = rows.get(o.id);
-    if (!row || moduleUpdateRefusal({ id: o.id, ref: row.ref, source: row.source, target: o.target, needsCore: o.needsCore })) continue;
-    modules.push({ id: o.id, from: o.current, to: o.target.replace(/^v/, "") });
-  }
-  if (!modules.length) refuse("No module can be updated by an AI right now (everything is up to date, or the remaining updates need a human or a newer core).");
-  return { modules };
+export function prepare(action: Level3Action, args: Params, opts: { patient?: boolean } = {}): Promise<Plan> {
+  return prepareLevel3(action, args, opts);
 }
 
-/* ───────────── Niveau 3 : exécution (revérifie tout) ───────────── */
+/** Les conditions sont relues maintenant (la demande a pu attendre des heures) : `executeLevel3` revérifie le plan, puis seulement exécute. */
+const execute = (action: Level3Action, plan: Plan, actorLabel: string, ctx?: RunContext): Promise<Outcome> => executeLevel3(action, plan, actorLabel, ctx);
 
-async function execute(action: Level3Action, plan: Plan, actorLabel: string, ctx?: RunContext): Promise<Outcome> {
-  // These re-read and compare by themselves (see publish.ts, install.ts, instances.ts, skins.ts).
-  if (action === "entry_publish" || action === "entry_unpublish") return executeEntryPublish(action, plan, actorLabel);
-  if (action === "skin_set_options") return executeSkinOptions(plan, actorLabel);
-  if (action === "skin_customize") return executeSkinCustomize(plan, actorLabel);
-  if (action === "navigation_set") return executeNavigationSet(plan, actorLabel);
-  if (action === "home_sections_set") return executeHomeSectionsSet(plan, actorLabel);
-  if (action === "site_settings_set") return executeSiteSettings(plan, actorLabel);
-  if (action === "module_install" && plan.bundle) return executeInstallBundle(plan, actorLabel);
-  if (action === "instance_add") {
-    try { await prepareInstanceAdd({ module: plan.module, nickname: plan.newInstance?.nickname }); } catch (error) {
-      if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
-      throw error;
-    }
-    return executeInstanceAdd(plan, actorLabel);
-  }
-  // Les conditions sont relues maintenant : la demande a pu attendre des heures.
-  let fresh: Plan;
-  try { fresh = await prepare(action, { module: plan.module, keepData: plan.keepData, instanceKey: plan.instanceKey, skin: plan.skin, ...(action === "font_set" ? { titles: plan.fonts?.titles === undefined ? undefined : plan.fonts.titles || "skin", text: plan.fonts?.text === undefined ? undefined : plan.fonts.text || "skin" } : {}) }, { patient: true }); } catch (error) {
-    if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
-    throw error;
-  }
-  if (action === "core_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the highest stable release changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
-  if (action === "module_update" && fresh.to !== plan.to) return { ok: false, message: `Not done: the available version of "${plan.module}" changed since the request (was ${plan.to}, now ${fresh.to}). Ask again.` };
-
-  if (isSkinAction(action)) return executeSkin(action, plan, actorLabel);
-  if (action === "font_set") return executeFont(plan, actorLabel);
-  if (action === "module_install") {
-    // Le plan relu doit être celui qui a été demandé : même version, mêmes fournisseurs (la personne propriétaire a approuvé CETTE liste, pas une autre).
-    if (!samePlan(plan, fresh)) return { ok: false, message: `Not done: what the installation of "${plan.module}" would do changed since the request (version, or the modules that come with it). Ask again.` };
-    return executeInstall(plan, actorLabel);
-  }
-  if (action === "core_update") {
-    const started = await deps.startCoreUpdate(`v${plan.to}`, actorLabel);
-    return started.ok ? { ok: true, message: `Update to ${plan.to} started in the background; the site will restart. Check maintenance_status in a few minutes.` } : { ok: false, message: `Update not started: ${started.error === "running" ? "an update is already running" : started.error === "not-newer" ? "no newer stable release" : started.error === "unsupported" ? "this installation cannot be updated from the admin" : "invalid version"}.` };
-  }
-  if (action === "module_uninstall") {
-    const keepData = plan.keepData !== false;
-    const r = await deps.uninstall(plan.module!, { keepData });
-    return r.ok
-      ? { ok: true, message: keepData ? `Module "${plan.module}" was uninstalled. Its settings and data were kept aside: reinstalling the module brings them back.` : `Module "${plan.module}" was uninstalled and ALL its instances and data were erased.` }
-      : { ok: false, message: `Uninstall of "${plan.module}" failed: ${reason(r.error)}.` };
-  }
-  // module_update, modules_update_all
-  const wanted = action === "module_update" ? [{ id: plan.module!, to: plan.to! }] : (plan.modules ?? []);
-  const still = new Map((action === "module_update" ? [{ id: plan.module!, to: fresh.to! }] : (fresh.modules ?? [])).map((m) => [m.id, m.to]));
-  const ids = wanted.filter((m) => still.get(m.id) === m.to).map((m) => m.id);
-  const changed = wanted.filter((m) => still.get(m.id) !== m.to).map((m) => m.id);
-  if (!ids.length) return { ok: false, message: "Not done: the available versions changed since the request. Ask again." };
-  const s = await deps.updateModules(ids, (d) => ctx?.step(ids.length, { id: d.id, status: d.ok ? "updated" : "failed", ...(d.error ? { reason: reason(d.error) } : {}) }));
-  const parts = [s.updated.length ? `updated: ${s.updated.join(", ")}` : "", s.failed.length ? `failed: ${s.failed.map((f) => `${f.id} (${reason(f.error)})`).join(", ")}` : "", s.incompatible?.length ? `needs a newer core: ${s.incompatible.map((i) => i.id).join(", ")}` : "", s.skipped.length ? `not tried: ${s.skipped.join(", ")}` : "", changed.length ? `skipped (changed since the request): ${changed.join(", ")}` : ""].filter(Boolean);
-  return { ok: s.failed.length === 0 && !s.stoppedOn && s.updated.length > 0, message: parts.join("; ") || "Nothing was updated.", details: {
-    updated: s.updated,
-    ...(s.failed.length ? { failed: s.failed.map((f) => ({ id: f.id, reason: reason(f.error) })) } : {}),
-    ...(s.incompatible?.length ? { needsNewerCore: s.incompatible.map((i) => i.id) } : {}),
-    ...(s.skipped.length ? { notTried: s.skipped } : {}),
-    ...(changed.length ? { changedSinceRequest: changed } : {}),
-  } };
-}
-
-const paramsText = (plan: Plan): string => plan.change ? `${plan.change.target}: ${plan.change.summary.beforeCount} > ${plan.change.summary.afterCount}` : plan.site ? plan.site.names : plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : plan.entry ? `${plan.entry.instance}/${plan.entry.items.map((i) => i.id).join(",")}${plan.entry.locale ? ` ${plan.entry.locale}` : ""}` : plan.newInstance ? `${plan.module} "${plan.newInstance.nickname}"` : plan.options ? `${plan.skin}: ${plan.options.names}${plan.fonts ? `; fonts: ${plan.fonts.names}` : ""}` : paramsTextOther(plan);
-const paramsTextOther = (plan: Plan) => plan.fonts ? plan.fonts.names : plan.skin ? `${plan.skin}${plan.to ? ` ${plan.to}` : ""}` : (plan.adds ? `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}` : plan.module ? (plan.keepData === undefined ? plan.module : `${plan.module}${plan.keepData ? " keepData" : " erase"}`) : null) ?? (plan.modules ? plan.modules.map((m) => `${m.id} ${m.from}>${m.to}`).join(", ") : plan.to ? `${plan.from}>${plan.to}` : "");
+/** What the journal and the owner's notice keep of a plan: short, no secret (defined by the action). */
+const paramsText = (action: Level3Action, plan: Plan): string => level3Def(action).audit(plan);
 
 const executedBy = (who: { tokenName: string }) => `mcp:${who.tokenName}`;
 
@@ -386,8 +230,8 @@ const executedBy = (who: { tokenName: string }) => `mcp:${who.tokenName}`;
  */
 async function runGuarded(action: Level3Action, plan: Plan, who: { tokenName: string; tokenId?: string; via: "direct" | "approved"; requestId?: string }): Promise<Outcome | Started> {
   const after = async (outcome: Outcome) => {
-    await record(who.tokenName, action, paramsText(plan), outcome, who.via);
-    await notifyOwner({ kind: "executed", tokenName: who.tokenName, actionKey: action, detail: paramsText(plan), ok: outcome.ok });
+    await record(who.tokenName, action, paramsText(action, plan), outcome, who.via);
+    await notifyOwner({ kind: "executed", tokenName: who.tokenName, actionKey: action, detail: paramsText(action, plan), ok: outcome.ok });
   };
   const work = async (ctx?: RunContext): Promise<Outcome> => {
     try { return await execute(action, plan, executedBy(who), ctx); } catch (error) {
@@ -428,8 +272,8 @@ async function callDirectInBackground(action: Level3Action, args: Params, actor:
     },
     after: async (outcome) => {
       if (!plan) return;
-      await record(actor.name, action, paramsText(plan), outcome, "direct");
-      await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: action, detail: paramsText(plan), ok: outcome.ok });
+      await record(actor.name, action, paramsText(action, plan), outcome, "direct");
+      await notifyOwner({ kind: "executed", tokenName: actor.name, actionKey: action, detail: paramsText(action, plan), ok: outcome.ok });
     },
   });
   if ("busy" in run) throw new McpToolError(run.outcome.message);
@@ -442,9 +286,6 @@ async function callDirectInBackground(action: Level3Action, args: Params, actor:
  * Appel d'une action de niveau 3 par une IA. « Validation humaine » (défaut) : seule une DEMANDE est créée. « Exécution directe » (choix explicite de l'administrateur
  * pour ce jeton) : exécutée tout de suite.
  */
-/** Requests that wait for the owner even when the access is set to "act without asking": they bring code or a public page onto the site. */
-export const ALWAYS_HUMAN: readonly Level3Action[] = ["module_install", "skin_install", "instance_add"];
-
 /**
  * `core_update` on a Docker install: nothing can be executed (the image is replaced by the owner), so no request is created and no approval is asked.
  * The answer is the plan: the target, the image tags to pass through in order (several below the support floor) and the exact commands.
@@ -467,7 +308,7 @@ async function dockerCoreUpdateGuide(): Promise<unknown> {
 
 export async function callLevel3(action: Level3Action, args: Params, actor: { name: string; tokenId?: string }): Promise<unknown> {
   if (action === "core_update" && getInstallInfo(deps.appDir ?? process.cwd()).kind === "docker") return dockerCoreUpdateGuide();
-  await takeSlot(actor.tokenId, LEVEL3_CLASS[action]);
+  await takeSlot(actor.tokenId, level3Def(action).slot);
   // Installer du code sur le site n'est JAMAIS exécuté sans l'accord de la personne propriétaire, même pour un jeton en « exécution directe » : le réglage vaut pour
   // les mises à jour et désinstallations, et rien dans le modèle ne dit quel module est « sans danger ».
   // Same for a new instance (it may get a public page).
@@ -487,8 +328,8 @@ export async function callLevel3(action: Level3Action, args: Params, actor: { na
   const created = await createRequest({ action, plan, tokenId: actor.tokenId ?? "unknown", tokenName: actor.name, ...(ownerId ? { ownerId } : {}) });
   if (!created.ok) throw new McpToolError(created.error);
   if (!created.existing) {
-    await prisma.auditLog.create({ data: { actor: `mcp:${redactSecrets(actor.name, 80)}`, action: "mcp.maintenance.request", target: redactSecrets(`${created.request.id} ${action} [${paramsText(plan)}]`, 300) } }).catch(() => {});
-    await notifyOwner({ kind: "pending", tokenName: actor.name, actionKey: action, detail: paramsText(plan) });
+    await prisma.auditLog.create({ data: { actor: `mcp:${redactSecrets(actor.name, 80)}`, action: "mcp.maintenance.request", target: redactSecrets(`${created.request.id} ${action} [${paramsText(action, plan)}]`, 300) } }).catch(() => {});
+    await notifyOwner({ kind: "pending", tokenName: actor.name, actionKey: action, detail: paramsText(action, plan) });
   }
   return {
     status: "pending_approval", requestId: created.request.id, action, plan, expiresAt: new Date(created.request.expiresAt).toISOString(),

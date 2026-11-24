@@ -122,17 +122,17 @@ async function lab(t, o = {}) {
 const BASE_ARGS = ["--site", "monsite", "--no-domain"];
 const tokenOf = (L, site = "monsite") => /^SETUP_TOKEN="(.+)"$/m.exec(fs.readFileSync(path.join(L.root, "var/www", site, ".env"), "utf8"))[1];
 
-test("le script est du bash valide, avec set -euo pipefail ; shellcheck propre s'il est installé", () => {
+test("le script est du bash valide, avec set -euo pipefail", () => {
   const src = fs.readFileSync(SCRIPT, "utf8");
   assert.match(src, /^#!\/usr\/bin\/env bash\n/);
   assert.match(src, /^set -euo pipefail$/m);
   assert.equal(bash(["-n", SCRIPT]).status, 0, bash(["-n", SCRIPT]).stderr);
-  const sc = spawnSync("shellcheck", ["--version"], { encoding: "utf8" });
-  if (sc.error) { t_skip("shellcheck n'est pas installé ici : contrôle ignoré (la CI de développement peut l'installer)"); return; }
+});
+const HAS_SHELLCHECK = !spawnSync("shellcheck", ["--version"], { encoding: "utf8" }).error;
+test("shellcheck est propre sur le script", { skip: HAS_SHELLCHECK ? false : "shellcheck is not installed on this machine (the CI can install it)" }, () => {
   const r = spawnSync("shellcheck", ["-x", "-S", "warning", SCRIPT], { encoding: "utf8" });
   assert.equal(r.status, 0, r.stdout);
 });
-function t_skip(msg) { console.log(`# SKIP ${msg}`); }
 
 test("le script est livré : empaqueté dans l'archive (dossier scripts) ET publié seul à côté d'elle", () => {
   const pack = fs.readFileSync("scripts/release-pack.mjs", "utf8");

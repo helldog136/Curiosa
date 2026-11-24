@@ -13,7 +13,19 @@ import { PRESET_PROPS, MOTION_TIMING, emptyExpansion, expandPreset, layerDecls, 
  * values. No at-rule (the motion presets are the core's), no `url()`, no `!important`, no class, id or tag selector, nothing that hides content.
  * Every selector is RE-WRITTEN from what was understood under `html[data-ov-skin="<id>"]`: nothing is copied as is.
  */
-export type OverlayCssIssue = { code: string; line?: number; detail?: string };
+/**
+ * Every code this sheet check can report. These are the overlay check's OWN codes (not the `IssueCode`s of
+ * `core/skins/messages.ts`): `validate.ts` folds them into the single `overlay-css` message, with the code as detail.
+ */
+export type OverlayCssCode =
+  | "not-text" | "bad-id" | "too-large" | "invalid-character" | "syntax"
+  | "import-forbidden" | "at-rule-forbidden" | "outside-rule" | "too-many-rules" | "selector" | "nested"
+  | "too-many-declarations" | "important-forbidden" | "preset-on-pseudo" | "preset-value" | "preset-conflict"
+  | "property-forbidden" | "property-unknown" | "deco-only" | "deco-needs-content"
+  | "value-empty" | "value-forbidden" | "var-forbidden" | "value-keyword" | "value-bad"
+  | "font-undeclared" | "font-fallback" | "rule-contrast" | "text-too-faint";
+
+export type OverlayCssIssue = { code: OverlayCssCode; line?: number; detail?: string };
 export type OverlayCssResult = { ok: boolean; css: string; issues: OverlayCssIssue[]; rules: number; /** (0.11.0) Number of `font-size` declarations that make text smaller than the element's own (below 100 % / 1em): a warning, because overlays are watched like TV (docs/OVERLAY-SKINS.md). */ shrinks?: number; /** The sheet uses contract-3 vocabulary (presets or layout properties): the skin must declare `skinContract: 3`. */ v3?: boolean };
 
 export const OVERLAY_CSS_LIMITS = { maxBytes: 24 * 1024, maxRules: 90, maxDeclarations: 18, maxSelectors: 8 } as const;
@@ -99,7 +111,7 @@ function fontOk(v: string): boolean {
 }
 
 /** Is this declaration allowed? Returns the value to write or a code. */
-function checkValue(prop: string, kind: Kind, value: string, deco: boolean, fonts?: FontCtx): string | { code: string; detail?: string } {
+function checkValue(prop: string, kind: Kind, value: string, deco: boolean, fonts?: FontCtx): string | { code: OverlayCssCode; detail?: string } {
   const v = value.trim().replace(/\s+/g, " ");
   if (!v || v.length > 300) return { code: "value-empty" };
   if (/[;{}<>\\\u0000-\u001f\u007f]|(^|[^a-z-])(url|expression|attr|image-set|element|paint)\s*\(|!important|@/i.test(v)) return { code: "value-forbidden" };
@@ -108,7 +120,7 @@ function checkValue(prop: string, kind: Kind, value: string, deco: boolean, font
   const good = [...v.matchAll(VAR_RE)].length;
   if (vars !== good) return { code: "var-forbidden" };
   if (/^(inherit|initial|unset|revert|revert-layer)$/i.test(v)) return { code: "value-keyword" };
-  const bad = { code: "value-bad" };
+  const bad: { code: OverlayCssCode } = { code: "value-bad" };
   switch (kind) {
     case "color": return okColor(v) ? v : bad;
     case "bg": {
@@ -202,7 +214,7 @@ export function rewriteSelectors(list: string, skinId: string): { selectors: str
 /** `fonts` (core 0.47.0): only for a skin of contract 6, see skinFonts.ts; without it the sheet is read exactly as before. */
 export function sanitizeOverlayCss(css: unknown, skinId: string, fonts?: FontCtx): OverlayCssResult {
   const issues: OverlayCssIssue[] = [];
-  const fail = (code: string, line?: number, detail?: string) => { if (issues.length < 60) issues.push({ code, line, detail }); };
+  const fail = (code: OverlayCssCode, line?: number, detail?: string) => { if (issues.length < 60) issues.push({ code, line, detail }); };
   if (typeof css !== "string") return { ok: false, css: "", issues: [{ code: "not-text" }], rules: 0 };
   if (!/^[a-z][a-z0-9-]{1,40}$/.test(skinId)) return { ok: false, css: "", issues: [{ code: "bad-id" }], rules: 0 };
   const source = (css.charCodeAt(0) === 0xfeff ? css.slice(1) : css).replace(/\r\n?/g, "\n");

@@ -285,7 +285,7 @@ export type ModuleManifest = {
   /** Modules activés dès le départ (défaut : oui). */
   defaultEnabled?: boolean;
   /** Déclaratif et informatif : affiché à l'administrateur avant activation. */
-  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation" | "files" | "instances.setup")[];
+  permissions: ("slots" | "routes" | "storage" | "filters" | "sections" | "pages" | "topics" | "overlay" | "mcp" | "admin" | "mail" | "rawg" | "privacy" | "visitor.geolocation" | "files" | "instances.setup" | "secrets")[];
 };
 
 export type EntrySummary = {
@@ -469,6 +469,29 @@ export type ModuleApi = {
     send(message: { to: "owner" | string; subject: string; text: string; replyTo?: string }): Promise<{ ok: true } | { ok: false; reason: "not_configured" | "no_recipient" | "invalid" | "rate_limited" | "failed" }>;
   };
   /**
+   * (core 0.48.0, permission "secrets", `"minCore": "0.48.0"`) A sealed place for the values this instance must not leave readable in the database, such as the token of a bot.
+   * The value is encrypted with the site secret (AES-256-GCM, bound to this instance and the name); only THIS instance reads it, with `get`. No admin page, assistant tool,
+   * journal, audit line, readable backup summary or module list shows it (the audit log gets the name only). The backup keeps the sealed text only: restored on another server it cannot
+   * be opened, `get` answers null and `state` answers "unreadable", so ask the owner for the value again. Removing the instance or the module erases it. Nothing throws; without the permission
+   * every call is a refusal (`set` answers `no-permission`, `get` null, `has` false, `state` "absent", `remove` false, `names` `[]`).
+   * Bounds: a name of 1 to 48 characters (letters, digits, `_`, `-`; starts with a letter), a value of 1 to 4096 characters, 20 names, 20 writes and 600 reads per minute and instance.
+   * Never copy the value into a setting, the store, a log, a page, an answer of a service or an assistant tool: that would undo the protection.
+   */
+  secrets: {
+    /** Seals and stores `value` under `name` (replaces it). `invalid-name` / `invalid-value` (empty, not a string, too long), `too-many` (20 names), `rate-limited`, `failed`. */
+    set(name: string, value: string): Promise<{ ok: true } | { ok: false; reason: "no-permission" | "invalid-name" | "invalid-value" | "too-many" | "rate-limited" | "failed" }>;
+    /** The value, or null when there is none, it cannot be opened on this server, the name is invalid, the permission is missing or the rate limit is reached. */
+    get(name: string): Promise<string | null>;
+    /** True only when a value is stored AND can be opened here. */
+    has(name: string): Promise<boolean>;
+    /** "set", "absent", or "unreadable" (stored but sealed by another server: ask for it again). */
+    state(name: string): Promise<"set" | "unreadable" | "absent" | "rate-limited">;
+    /** Deletes it; true when something was deleted. */
+    remove(name: string): Promise<boolean>;
+    /** The names stored for this instance (never values), 20 at most, sorted. */
+    names(): Promise<string[]>;
+  };
+  /**
    * Fichiers que ce module garde et supprime (cœur 0.2.13 ; permission « files », `minCore: "0.2.13"`). Un fichier envoyé par /api/admin/upload appartient au cœur, sauf si
    * ce module le REVENDIQUE : seul ce propriétaire peut alors le supprimer (original et dérivés en cache). Aucune de ces fonctions ne lève ; sans la permission, elles
    * répondent `no-permission` (usage : zéros). Les fichiers envoyés avant la 0.2.13 ne sont pas revendiquables.
@@ -586,8 +609,23 @@ export type ModuleApi = {
   };
 };
 
+/**
+ * (core 0.48.0, `"minCore": "0.48.0"`) WHO CALLS a service method, as the CORE saw it. Delivered to the method as its third argument and as `ctx.caller`; an older method that only
+ * takes `(ctx, args)` is unaffected. It is set by the core from its own registry: it is never read from the arguments, so the calling module cannot choose it.
+ *   - `{ kind: "module", id, instance, instanceId }`: another module's instance called `ctx.api.services.call` or `callAll`, from ANY of its contexts (page, route, admin action, task,
+ *     hook, migration, MCP action...). `id` = the module id, `instanceId` = the STABLE id of the instance (store this to remember an owner: a deleted and re-created instance gets a
+ *     new one), `instance` = its key (readable, for logs and messages).
+ *   - `{ kind: "core" }`: the core itself called the method (the legacy `ctx.api.rawg` relay and the backup conversion). No module is behind it.
+ * There is no other way to reach a service method: the assistant (MCP) only reaches a module's own `mcp` actions, and a person only reaches `adminActions`.
+ */
+export type ServiceCaller =
+  | Readonly<{ kind: "module"; id: string; instance: string; instanceId: string }>
+  | Readonly<{ kind: "core" }>;
+
 export type ModuleContext = {
   moduleId: string;
+  /** (core 0.48.0) ONLY inside a method of `services`: who called it (see `ServiceCaller`). Read-only; `undefined` in every other context and on an older core. */
+  readonly caller?: ServiceCaller;
   /** L'instance pour laquelle le module s'exécute : un module tourne une fois par instance. */
   instance: { id: string; key: string; basePath: string | null; name: string };
   /** Langue du visiteur (ou de l'admin, dans le panneau d'admin). */
@@ -834,7 +872,7 @@ export type ModuleDefinition = {
    * Services offerts aux autres modules (déclarés dans `offers` du manifeste) : `services["contact.store"].add(ctx, args)`. `ctx` est celui de
    * l'instance qui FOURNIT le service. Un module qui `requires` ce service l'appelle par `ctx.api.services.call(…)`.
    */
-  services?: Record<string, Record<string, (ctx: ModuleContext, args: unknown) => unknown | Promise<unknown>>>;
+  services?: Record<string, Record<string, (ctx: ModuleContext, args: unknown, caller: ServiceCaller) => unknown | Promise<unknown>>>;
   hooks?: {
     onInstanceCreate?(ctx: ModuleContext): void | Promise<void>;
     onInstanceDelete?(ctx: ModuleContext): void | Promise<void>;

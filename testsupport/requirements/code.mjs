@@ -13,6 +13,7 @@ const API_USE = [
   { permission: "mail", re: /\bapi\s*\??\.\s*mail\b|\{[^}]*\bmail\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "l'envoi d'e-mails (ctx.api.mail)" },
   { permission: "rawg", re: /\bapi\s*\??\.\s*rawg\b(?!\.io\b)|\{[^}]*\brawg\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les jaquettes de jeux (ctx.api.rawg)" },
   { permission: "privacy", re: /\bapi\s*\??\.\s*privacy\b|\{[^}]*\bprivacy\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les déclarations de vie privée des modules (ctx.api.privacy)" },
+  { permission: "secrets", re: /\bapi\s*\??\.\s*secrets\b|\{[^}]*\bsecrets\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les valeurs scellées de l'instance (ctx.api.secrets)" },
   { permission: "files", re: /\bapi\s*\??\.\s*files\b|\{[^}]*\bfiles\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les fichiers envoyés à garder et à supprimer (ctx.api.files)" },
   { permission: "visitor.geolocation", re: /\bnavigator\s*\??\.\s*geolocation\b|\bgeolocation\s*\??\.\s*(?:getCurrentPosition|watchPosition)\b/, label: "la position de la personne qui visite (navigator.geolocation)" },
   { permission: "topics", re: /\bapi\s*\??\.\s*topics\b|\{[^}]*\btopics\b[^}]*\}\s*=\s*[\w.]*\bapi\b/, label: "les sujets d'échange (ctx.api.topics)" },

@@ -47,12 +47,20 @@ test("saisie : bornée à 100 caractères, 6 mots, 40 caractères par mot, sans 
 });
 
 test("saisie : les caractères spéciaux sont du texte ordinaire (jamais une expression régulière, jamais du HTML)", () => {
+  const TEXT = "Du texte avec <b>balises</b> et (a|b)+ et .* et {n}";
+  const joined = (parts) => parts.map((p) => p.text).join("");
   for (const s of [".*", "(a|b)+", "[a-z", "\\", "a{2,", "<script>alert(1)</script>", "'; DROP TABLE Entry; --", "%00", "${x}", "{n}", "$&", "^$"]) {
     const q = T.parseQuery(s);
     if (q.kind === "empty") continue; // « .* » ne contient aucune lettre
-    assert.doesNotThrow(() => T.highlight("Du texte avec <b>balises</b> et (a|b)+ et .* et {n}", q.words), s);
-    assert.doesNotThrow(() => T.snippet("Du texte avec (a|b)+", q.words), s);
+    // la saisie n'est jamais interprétée : le texte ressort octet pour octet, rien n'est ajouté ni retiré, et seule une occurrence LITTÉRALE est mise en évidence
+    const parts = T.highlight(TEXT, q.words);
+    assert.equal(joined(parts), TEXT, s);
+    for (const p of parts.filter((x) => x.hit)) assert.ok(q.words.some((w) => T.fold(p.text).includes(w)), `${s} : « ${p.text} » n'est pas une occurrence littérale`);
+    assert.equal(joined(T.snippet("Du texte avec (a|b)+", q.words)), "Du texte avec (a|b)+", s);
   }
+  assert.deepEqual(T.highlight(TEXT, ["(a|b)+"]).filter((p) => p.hit).map((p) => p.text), ["(a|b)+"], "« (a|b)+ » est cherché comme du texte, pas comme « a ou b »");
+  assert.deepEqual(T.highlight(TEXT, ["{n}"]).filter((p) => p.hit).map((p) => p.text), ["{n}"]);
+  assert.deepEqual(T.highlight(TEXT, ["[a-z"]).filter((p) => p.hit), [], "une classe de caractères non fermée ne trouve rien et ne casse rien");
 });
 
 test("mise en évidence : les accents et la casse d'ORIGINE sont conservés, les occurrences qui se chevauchent sont fusionnées", () => {

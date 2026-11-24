@@ -1,4 +1,5 @@
 import type { SearchDoc } from "./index";
+import { sameHost } from "../host";
 
 /**
  * RECHERCHE DANS LE SITE — le classement (pur). Simple et prévisible, dit tel quel aux personnes qui gèrent le site :
@@ -12,9 +13,6 @@ import type { SearchDoc } from "./index";
  */
 export const MAX_RESULTS = 200;
 
-/** Nom de domaine sans « www. » ni majuscules : `www.monsite.be` et `monsite.be` sont le même site. */
-const bareHost = (h: string) => h.toLowerCase().replace(/^www\./, "");
-
 /**
  * Cette adresse reste-t-elle sur le site ? Oui : adresse relative (`/fr/blog/x`) ou même nom de domaine que le site (à « www. » près, port ignoré).
  * Non : toute autre adresse absolue. Un SOUS-domaine (`boutique.monsite.be`) est un AUTRE domaine : il peut être un service à part (boutique, forum,
@@ -24,7 +22,7 @@ export function isOwnAddress(url: string, siteUrl: string): boolean {
   if (url.startsWith("/")) return !url.startsWith("//");
   try {
     const u = new URL(url), site = new URL(siteUrl);
-    return (u.protocol === "http:" || u.protocol === "https:") && bareHost(u.hostname) === bareHost(site.hostname);
+    return (u.protocol === "http:" || u.protocol === "https:") && sameHost(u.hostname, site.hostname);
   } catch { return false; }
 }
 

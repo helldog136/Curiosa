@@ -1,0 +1,1 @@
+CC0 1.0 Universal. The pattern files of this test skin are neutral geometry invented for the tests. The preview was rendered in Chromium by the core animation engine from those pattern files, so it contains nothing from any other skin. All of it is released to the public domain.

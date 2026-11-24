@@ -14,6 +14,7 @@ import { qrSvg } from "@/core/services/qr";
 import { relayedCandidates, relayedConfigured, relayedCover } from "@/core/services/rawgRelay";
 import { renderPng, type PngSpec } from "@/core/services/render";
 import { createStore } from "@/core/services/store";
+import { createSecrets } from "@/core/services/secrets";
 import { beginUpload, cancelUpload, finishUpload, uploadChunk } from "@/core/services/assistantUploads";
 import { claimFile, filesUsage, FILES_QUOTA_BYTES, FILES_QUOTA_COUNT, ownsFile, removeFile, type FileOwner } from "@/core/services/files";
 import { collect, collectPage } from "@/core/services/topics";
@@ -38,6 +39,7 @@ import { instanceHref } from "@/core/adminLinks";
  *     png     rendu d'une image PNG à partir d'une arborescence de boîtes
  *     store   stockage privé de l'instance
  *     mail    envoi d'e-mails au nom du site (SMTP réglé dans l'admin)
+ *     secrets valeurs scellées de l'instance, lisibles par elle seule (permission « secrets », cœur 0.48.0 ; services/secrets.ts)
  *     files   fichiers que le module revendique et supprime (permission « files », cœur 0.2.13 ; services/files.ts)
  *     rawg    (DÉPRÉCIÉ depuis la 0.3.0 ; permission « rawg ») simple relais vers le service `game.cover` du module « Jaquettes de jeux » pour les anciens modules ; préférez ce service
  *     topics  échange d'informations typées entre modules
@@ -149,6 +151,8 @@ export function makeApi(instance: InstanceView, locale: string, permissions: rea
       },
     },
     store: createStore(instance.id),
+    // (core 0.48.0) Sealed values of THIS instance (permission « secrets »): the instance comes from the core's own closure, never from an argument (services/secrets.ts).
+    secrets: createSecrets({ moduleId: instance.moduleId, instanceId: instance.id, instanceKey: instance.key }, permissions.includes("secrets")),
     // Sans la permission « files » : rien n'est revendiqué ni supprimé (jamais d'erreur levée). La revendication exige la personne de l'action d'administration en cours (caller), ou celle dont une méthode de service listée dans `callerRights` porte les droits (caller.uploader, cœur 0.14.0).
     files: {
       claim: async (url) => {

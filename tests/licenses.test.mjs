@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { execFileSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 const L = await import("../scripts/licenses.mjs");
 
 test("le projet a sa licence (Curiosa License) et la déclare ; chaque module livré déclare la sienne", () => {
@@ -32,7 +32,8 @@ test("le crédit « développé par » est affiché sur toutes les pages publiqu
 });
 
 test("THIRD-PARTY-NOTICES.md est à jour avec package-lock.json (npm run licenses)", () => {
-  execFileSync("node", ["scripts/licenses.mjs", "--check"], { stdio: "pipe" });
+  const r = spawnSync("node", ["scripts/licenses.mjs", "--check"], { encoding: "utf8" });
+  assert.equal(r.status, 0, `scripts/licenses.mjs --check failed (run: npm run licenses)\n${r.stdout}${r.stderr}`);
 });
 
 test("le texte de chaque licence de dépendance de production est reproduit quand le paquet en fournit un", () => {

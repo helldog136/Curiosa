@@ -128,3 +128,7 @@ Appearance settings (`theme.*`, `header.layout`) and skin settings (`skin.active
 ## Private repositories (core 0.42.0)
 
 The access code of a private repository (a skin or a module installed from a private GitHub repository) is a setting named `git.secret.access`. It is kept **sealed** with the site secret (`AUTH_SECRET`, or `data/auth-secret`), so the backup holds only ciphertext, and the readable summary (`site.txt`) shows it masked. The site secret is **not** in the backup: after a restore on another server the ciphertext cannot be opened, the page says "Access code to enter again" next to the repository, and the owner pastes a new code (Appearance or Extensions, "Edit"). Skins and modules of that repository are reinstalled as usual once the code is entered again.
+
+## Sealed secrets of modules (core 0.48.0)
+
+A module that uses `ctx.api.secrets` (a bot token, for example) has its values stored **sealed** in the settings of its instance (`instance.<id>.__secret.<name>`), so the backup holds only ciphertext, like the access code of a private repository. The readable summary (`site.txt`) lists no instance setting, so it never shows them. The site secret is **not** in the backup: after a restore on another server those values cannot be opened, the module's page asks the owner to enter them again, and nothing else is lost. On the same server a restore opens them again.

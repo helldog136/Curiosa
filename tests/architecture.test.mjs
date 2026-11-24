@@ -41,6 +41,8 @@ test("les services du cœur sont génériques : chacun n'importe que ce qu'il a 
     "src/core/services/qr.ts": [],
     "src/core/services/render.ts": [],
     "src/core/services/store.ts": ["@/core/db"],
+    // Sealed values of a module instance: the database and the sealing primitive, nothing else (no module, no settings cache, no session).
+    "src/core/services/secrets.ts": ["@/core/db", "@/core/seal"],
     "src/core/services/uploads.ts": ["@/core/config", "@/core/audioTypes", "@/core/uploadLimits"],
     "src/core/services/index.ts": [],
     // Le client réseau ne connaît rien du cœur (ni modules, ni réglages, ni base) : il est aussi chargé seul par le kit de test.
@@ -175,6 +177,28 @@ test("mises à jour : le redémarrage n'est jamais supposé — sans commande ni
   assert.ok(/else if \(supervised\) \{[\s\S]*stopSite\(/.test(lib), "arrêt du site seulement s'il est supervisé");
   assert.ok(!/process\.kill\(serverPid/.test(lib), "plus d'arrêt d'UN seul pid : tout le site est arrêté (scripts/update-proc.mjs)");
   assert.ok(lib.includes('restart: "needed"') || lib.includes('save({ restart: "needed" })'));
+});
+
+test("un fichier « use client » n'exporte pas de valeur lue côté serveur : côté serveur ce n'est qu'une référence client, pas la valeur (le build de production échoue : « is not iterable »)", () => {
+  const files = [...code("src/app"), ...code("src/components")].filter((f) => /\.tsx?$/.test(f));
+  const isClient = (f) => /^\s*["']use client["']/.test(read(f));
+  const resolve = (from, spec) => {
+    const base = spec.startsWith("@/") ? `src/${spec.slice(2)}` : spec.startsWith(".") ? path.posix.normalize(path.posix.join(path.posix.dirname(from), spec)) : null;
+    return base ? [".tsx", ".ts", "/index.tsx", "/index.ts"].map((e) => base + e).find((c) => fs.existsSync(c)) : null;
+  };
+  // Valeurs (tableaux, objets, textes, nombres) exportées par un fichier client : un composant ou une fonction est bien une référence utilisable.
+  const values = new Map();
+  for (const f of files.filter(isClient)) for (const m of read(f).matchAll(/^export const (\w+)(?::[^=\n]+)?\s*=\s*(?=[\[{"'`\d])/gm)) { if (!values.has(f)) values.set(f, new Set()); values.get(f).add(m[1]); }
+  const bad = [];
+  for (const f of files.filter((x) => !isClient(x))) {
+    for (const m of read(f).matchAll(/import\s+(?!type\b)\{([^}]+)\}\s+from\s+["']([^"']+)["']/g)) {
+      const target = resolve(f, m[2]);
+      const names = target && values.get(target);
+      if (!names) continue;
+      for (const n of m[1].split(",").map((x) => x.trim().split(/\s+as\s+/)[0])) if (names.has(n)) bad.push(`${f} importe « ${n} » de ${target} (fichier « use client »)`);
+    }
+  }
+  assert.deepEqual(bad, [], "mettez la valeur dans un module sans « use client » (ex. accessLabelKeys.ts) et importez-la des deux côtés");
 });
 
 test("pages d'admin : aucune fonction anonyme passée à un formulaire client (React la refuse) — on passe l'action serveur elle-même", () => {

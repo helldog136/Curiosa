@@ -12,6 +12,7 @@ import { languageLabel } from "@/core/i18n/audit.mjs";
 import { i18nStatus } from "@/core/i18n/status";
 import { moduleI18nReport, readModuleTexts } from "@/core/i18n/moduleStatus";
 import { sourceKind } from "@/core/modules/reinstall";
+import { personalIndex } from "@/core/modules/personalCatalogues";
 import { dockerUpdatePlan, getInstallInfo, getUpdateChannel, getUpdateCheck, readUpdateLog, readUpdateState, readVersion } from "@/core/updates/service";
 import { compareVersions } from "@/core/updates/versions";
 import type { ModulesReport } from "@/core/modules/bulkUpdate";
@@ -153,11 +154,8 @@ export async function health() {
     /** Automatic backup by e-mail: read-only. State, frequency, last result and a masked recipient; never the passphrase, never an address in full. */
     autoBackup: auto,
     instancesSetAside: instances.length,
-    /** (0.47.0) Read-only, counts only (no name): AI accesses that never had an owner (they work as before) and those whose owner no longer exists (they are stopped). A human chooses an owner in Admin > AI assistants. */
-    ...(await (async () => {
-      const list = await import("@/core/personalAi/owners").then((m) => m.accessesWithoutOwner()).catch(() => []);
-      return { accessesWithoutOwner: list.filter((r) => !r.ownerGone).length, accessesOwnerRemoved: list.filter((r) => r.ownerGone).length };
-    })()),
+    /** (0.47.0) Read-only, count only (no name): AI accesses that never had an owner (they work as before). A human chooses their owner, once, in Admin > AI assistants. An access whose owner disappeared is revoked (0.47.1), so it is not counted. */
+    accessesWithoutOwner: await import("@/core/personalAi/owners").then((m) => m.neverOwnedAccesses()).then((l) => l.length).catch(() => 0),
     recentErrors: errors,
     updateRunning: updateRunning(),
   };
@@ -257,7 +255,8 @@ export type UpdatesView = {
 };
 
 /** Pourquoi une IA ne peut pas mettre ce module à jour elle-même (undefined : elle peut, avec l'accord prévu). */
-export function moduleUpdateRefusal(o: { id: string; ref: string | null | undefined; source: string; target: string; needsCore?: string }): string | undefined {
+export function moduleUpdateRefusal(o: { id: string; ref: string | null | undefined; source: string; target: string; needsCore?: string; /** Installed from a personal catalogue (a repository the owner registered). */ personal?: boolean }): string | undefined {
+  if (o.personal) return "this module comes from a personal catalogue of the owner: only a human can update it (Admin > Extensions > Personal catalogues)";
   if (o.needsCore) return `needs core ${o.needsCore} or newer: update the core first`;
   if (o.source === "git" && !isStableTagRef(o.ref, o.id)) return "this module follows a branch or a fixed commit, not stable release tags: only a human can update it";
   // `<id>/vX.Y.Z` (a repository that tags each module with its own series) is a stable release like `vX.Y.Z`; the core's own tags stay plain (isStableVersion).
@@ -298,6 +297,7 @@ export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: 
   } catch { core.note = "the release list could not be reached"; }
 
   const rows = new Map((await listModuleRows()).map((r) => [r.id, r]));
+  const personal = await personalIndex();
   const { report, stale } = await updating;
   const blocked = new Map<string, BlockedUpdate>();
   for (const o of report?.outdated ?? []) { const b = await readBlockedUpdate(o.id); if (b) blocked.set(o.id, b); }
@@ -305,7 +305,7 @@ export async function updates(opts: { updates?: Promise<UpdateReport>; waitMs?: 
     core,
     modules: (report?.outdated ?? []).map((o) => {
       const row = rows.get(o.id);
-      const base = moduleUpdateRefusal({ id: o.id, ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore });
+      const base = moduleUpdateRefusal({ id: o.id, ref: row?.ref, source: row?.source ?? "git", target: o.target, needsCore: o.needsCore, personal: !personal || personal.has({ id: o.id, repoUrl: row?.repoUrl }) });
       // Cette version précise a déjà été refusée (elle ne se charge pas) : la réessayer ne sert à rien tant que l'auteur n'en a pas publié une autre.
       const again = blocked.get(o.id);
       const alreadyRefused = again && again.to === o.target ? { at: again.at, cause: redactSecrets(again.reason, 200) } : undefined;
@@ -364,8 +364,7 @@ export async function diagnose() {
     if (!h.lastBackup.at) add({ severity: "warning", problem: "No backup has ever been made.", probableCause: "backups are manual", proposedAction: "Make a server-side copy of the database now.", tool: "maintenance_backup_run", needsHuman: false });
     else if (!h.lastBackup.recent) add({ severity: "warning", problem: `The last backup is old (${h.lastBackup.at.slice(0, 10)}).`, probableCause: "backups are manual", proposedAction: "Make a fresh copy of the database before any update.", tool: "maintenance_backup_run", needsHuman: false });
     if (h.autoBackup?.enabled && h.autoBackup.state === "degraded") add({ severity: "warning", problem: `The automatic backup by e-mail is degraded (${(h.autoBackup.reason ?? "unknown").replace(/_/g, " ")}).`, probableCause: "the last run failed or the e-mail settings changed", proposedAction: "Tell the owner: Admin > Backup shows the reason and what to do. You cannot change this feature.", tool: null, needsHuman: true });
-    if (h.accessesWithoutOwner > 0) add({ severity: "info", problem: `AI accesses without an owner: ${h.accessesWithoutOwner}.`, probableCause: "they were created before every access belonged to a person, and no account that may own one has been chosen yet", proposedAction: "Tell the owner: they work as before, but only a person can choose their owner (Admin > AI assistants > By person). You cannot do it, and these accesses cannot be given new rights until then.", tool: null, needsHuman: true });
-    if (h.accessesOwnerRemoved > 0) add({ severity: "warning", problem: `AI accesses stopped because their owner no longer exists: ${h.accessesOwnerRemoved}.`, probableCause: "the person who owned them was removed, or the site was restored without that person", proposedAction: "Tell the owner: these accesses answer nothing until a person is chosen as owner (Admin > AI assistants > By person). You cannot do it.", tool: null, needsHuman: true });
+    if (h.accessesWithoutOwner > 0) add({ severity: "info", problem: `AI accesses without an owner: ${h.accessesWithoutOwner}.`, probableCause: "they were created before every access belonged to a person, and no account that may own one has been chosen yet", proposedAction: "Tell the owner: they work as before, but only a person can choose their owner, once and for good (Admin > AI assistants > By person). You cannot do it, and these accesses cannot be given new rights until then.", tool: null, needsHuman: true });
     if (h.updateRunning) add({ severity: "info", problem: "A core update is running.", probableCause: "an update was started recently", proposedAction: "Wait a few minutes, then call maintenance_status again. Do not start anything else meanwhile.", tool: "maintenance_status", needsHuman: false });
   }
   const state = readUpdateState(dataDir());

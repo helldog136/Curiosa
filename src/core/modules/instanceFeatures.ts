@@ -1,6 +1,7 @@
 import { prisma } from "@/core/db";
 import { FEATURES } from "@/core/instances";
 import { setSetting } from "@/core/settings";
+import { seenFeaturesKey } from "@/core/instanceKeys";
 import { getModule, listModuleRows } from "./registry";
 import type { ParsedManifest } from "./manifest";
 
@@ -19,7 +20,7 @@ import type { ParsedManifest } from "./manifest";
  * features minus "skin"; "skin" is then the only new feature, and is added. Run at start-up, before any later module update, so a legacy instance never meets another feature
  * as "new" by mistake. Idempotent: a second run finds nothing new and writes nothing.
  */
-export const seenFeaturesKey = (instanceId: string) => `instance.${instanceId}.__seenFeatures`;
+export { seenFeaturesKey };
 
 /** The features declared by a manifest that this core knows. */
 export const manifestFeatures = (manifest: Pick<ParsedManifest, "content">): string[] =>

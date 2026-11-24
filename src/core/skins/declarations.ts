@@ -9,11 +9,12 @@ import {
   OVERFLOW_VALUES, POSITION_VALUES, SAFE_AREA_ENV, STRING_PROPERTIES, TINY_FONT_SIZE_KEYWORDS, VAR_NAME_RE, type SkinLimits,
 } from "./allowlist";
 import { parseColor } from "./colorParse";
+import type { IssueCode } from "./messages";
 import type { Subject } from "./selectors";
-import { serializeTokens, tokenizeValue, type Tok } from "./valueTokens";
+import { serializeTokens, tokenizeValue, type LexError, type Tok } from "./valueTokens";
 
 export type Params = Record<string, string | number>;
-export type Report = (code: string, params?: Params, severity?: "error" | "warning") => void;
+export type Report = (code: IssueCode, params?: Params, severity?: "error" | "warning") => void;
 
 export type DeclContext = {
   skinId: string;
@@ -124,7 +125,7 @@ const KEYFRAME_PROPERTIES: ReadonlySet<string> = new Set([
 const OFFSET_PROPS = new Set(["top", "right", "bottom", "left", "inset", "inset-block", "inset-inline", "inset-block-start", "inset-block-end", "inset-inline-start", "inset-inline-end"]);
 const BOX_PROPS = new Set(["width", "height", "max-width", "max-height"]);
 
-export function lexErrorCode(error: string): string {
+export function lexErrorCode(error: LexError["error"]): IssueCode {
   switch (error) {
     case "too-long": case "too-many-tokens": return "value-too-long";
     case "nesting-too-deep": return "value-too-nested";

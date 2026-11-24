@@ -1,4 +1,6 @@
-# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 2; scenes, contract 5)
+# Animated gauges, levels and counters (animation recipes, contract 4; recipe contract 4; scenes, contract 5)
+
+> Core 0.48.0 lets a mosaic use the skin's **own pieces** (section 11, `animateContract` 4): a pattern file of numbers that says where each pane of glass is. The recipes of sections 1 to 10 keep working exactly as they are.
 
 > Core 0.40.0 adds a second way to skin these bars: a **scene** (section 10) that places the skin's own pictures on the abstract bar. The recipes of sections 1 to 9 keep working exactly as they are.
 
@@ -148,7 +150,8 @@ The simple reference skin `night-neon` uses the same contract with three primiti
 | Parameter | Value |
 |---|---|
 | `shape` | `rect` · `arch` · `roundArch` · `capsule` · `ellipse` (default `arch`) |
-| `pattern` | `voronoi` · `grid` · `bricks` (default `voronoi`) |
+| `pattern` | `voronoi` · `grid` · `bricks` · `file` (default `voronoi`) |
+| `source` | a name of the recipe's `patterns` table, used with `pattern: "file"` (default none) |
 | `cells` | integer 4 to 90, default 28 |
 | `jitter` | number 0 to 1, default 0.7 |
 | `seed` | seed, integer 0 to 999999 (default 7) |
@@ -537,7 +540,7 @@ PNG, WebP (lossless or lossy) and **sanitised SVG** only. Not allowed: GIF, APNG
 - The engine loads the pictures with `fetch` then `createImageBitmap`, **not** with an `<img>`: an element page may forbid images in its security policy (`stream-goals` does: `default-src 'none'; connect-src 'self'`) and a bitmap decoded from a fetched blob is not an image load. Five seconds, 400 KB and the decoded caps are enforced again in the browser. Without `fetch` or `createImageBitmap`, every picture fails.
 - A layer whose picture is loading, failed, missing or unknown is **skipped**. A role (`track`, `fill`) with no layer left is drawn by the **basic look** of the core in its place (a flat track, a flat fill from the page's colours); the texts and the countdown line are always there. A kit the scene does not draw (`levels` and `counter` in this contract) uses the basic recipe. A failure is remembered for the session; nothing blanks and nothing shows an error.
 - **Tolerant reader**: an anchor, a reveal mode, an event, a property, a kit or a key this core does not know is skipped with a warning (`scene-ignored`), never an error. A known word with a value out of its bounds, an undeclared picture or a timeline that does not exist is refused with its path (`scene-invalid`). A scene written for a later contract (`animateContract` above 3, `animateMinContract` not above 3) is read as far as this core knows it and only warns (`scene-contract-ahead`); a minimum above 3 installs the skin without its scene (`scene-contract-newer`).
-- A skin with `scene` must declare `skinContract: 5` (`overlay-contract-v5`); an older core refuses it cleanly ("contract newer"). The images gate (`overlay-no-assets`) stays for every skin without a scene. Fonts need contract 6 (OVERLAY-SKINS.md, "Fonts"). If a skin has both `animation` and `scene`, this core uses the scene.
+- A skin with `scene` must declare `skinContract: 5` (`overlay-contract-v5`); an older core refuses it cleanly ("contract newer"). The images gate (`overlay-no-assets`) stays for every skin without a scene. Fonts need contract 6 and patterns contract 7 (OVERLAY-SKINS.md, "Fonts" and "Patterns"). If a skin has both `animation` and `scene`, this core uses the scene.
 
 ### Calm mode, effects levels, cost
 
@@ -558,3 +561,94 @@ PNG, WebP (lossless or lossy) and **sanitised SVG** only. Not allowed: GIF, APNG
 
 - **OBS**: `createImageBitmap` and `fetch` exist in the Chromium used for the tests (153); the CEF of the OBS you run is **not verified**. If either is missing, the skin shows its basic look.
 - **One catalogue entry per skin id**: the catalogue picks no version by core version (`requires.core` and `skinContract` mark the entry incompatible on an older core, `minCore` refuses the install). A skin that must keep working on older cores needs another id, or a `ref` the owner chooses.
+
+## 11. Patterns: the skin's own pieces for a mosaic (animateContract 4, core 0.48.0)
+
+A `mosaic` normally cuts its window with seeded sites (`voronoi`, `grid`, `bricks`). With `pattern: "file"` the **skin says where each pane is**: it ships a pattern file, a list of polygons drawn by hand in its own units, and the engine lights them, leads them and glows them like any other pane. L-shaped, T-shaped and long straight leads become possible; the window is no longer a cut of a convex shape.
+
+**The principle: presentation only, never data.** A skin gets more power over HOW an element is drawn, never over DATA. A pattern file carries **only numbers** (the geometry of the pieces and a tone each); it is never served as a file, contains no code and no address, and cannot read or change anything of the site (not a value, not a count, not a text). The core reads it, checks it, welds it into a graph of numbers (`src/core/animate/patternGraph.ts`) and the engine re-checks that graph (`SPEC.pattern`, the same table the installer used) before drawing. A pattern that does not pass is not drawn: the voronoi mosaic stands in. The same rule holds for every future way a skin gets more control: numbers and names from closed tables, never a script, a URL or a way to reach data.
+
+### In the recipe (`animation.json`, `animateContract: 4`)
+
+```json
+{
+  "animateContract": 4,
+  "patterns": {
+    "arch": [ { "file": "patterns/arch-wide.json" }, { "file": "patterns/arch-narrow.json" } ]
+  },
+  "genres": { "gauge": { "body": { "draw": "mosaic", "pattern": "file", "source": "arch", "order": "x", "palette": ["#c98c51", "#8a3a1d"] } } }
+}
+```
+
+- `patterns` (top level) is a table `{ name: variant | [variants] }` with at most 12 names and 4 variants per name. A **variant** is `{ "file": "patterns/<name>.json" }` (lower case, one folder, `.json`); every file is declared in `skin.json` (section "Pattern files" of `docs/SKINS.md`). Unknown keys of a variant are warnings.
+- The mosaic's `pattern: "file"` and `source: "<name>"` use an entry of the table. `shape` is **ignored**: the union of the pieces is the window. Everything else (`palette`, `order`, `lead`, `leadWidth`, `irregularity`, `glow`, `thickness`, `seed`…) works as for the other patterns; `cells` and `jitter` do nothing.
+- **Variants** exist for bodies of different shapes (a wide bar, a narrow one): the engine picks the variant whose domain ratio (width over height) is the nearest to the body's, in log scale (the first on a tie), then stretches it to the body box. A warning (`pattern-stretch`) says when two neighbouring variants are so far apart that the body would be stretched by more than 1.4 (or squeezed under 0.7).
+- **Contract negotiation.** Contract 4 is additive over 2 (contract 3 is skipped: it is the scene contract). A core older than 0.48.0 reads a contract-4 recipe as "written for a later contract": the skin installs there too (with a skin of contract 7 it does not, see `docs/SKINS.md`), the mosaic falls back to voronoi, and a skin that cannot do without its pieces says `animateMinContract: 4` (the animation is then off on those cores, the basic rendering applies). In a recipe of contract 2 or lower `source` is an unknown parameter and `pattern: "file"` an error; `patterns` is a warning.
+
+### The pattern file (`patterns/<name>.json`, `patternContract: 1`)
+
+```json
+{
+  "$comment": "free text, ignored",
+  "patternContract": 1,
+  "domain": [120, 60],
+  "cells": [
+    { "p": [[0, 0], [60, 0], [60, 20], [20, 20], [20, 60], [0, 60]], "tone": 0.12 },
+    { "p": [[60, 0], [120, 0], [120, 20], [60, 20]], "tone": 0.8, "rank": 1 }
+  ]
+}
+```
+
+| Key | Meaning |
+|---|---|
+| `patternContract` | `1`. A later number is skipped with a warning (`pattern-contract-newer`), the skin installs. |
+| `domain` | `[width, height]` in the file's own units (never pixels), each from 50 to 20000, width over height from 0.2 to 20. The origin is the top left, `y` goes down. |
+| `cells` | 1 to 160 pieces (the engine draws at most 120: above, a warning `pattern-cells-cap` and the simple pattern applies), 1500 vertices in all. |
+| `cells[].p` | 3 to 12 vertices `[x, y]`, finite numbers inside the domain (a 0.5 % overshoot is clamped), rounded to 2 decimals. Either winding; the core makes it counter-clockwise. A piece may be concave (an L, a T). |
+| `cells[].tone` | 0 to 1: which colour of `palette` the pane takes (and how its details are seeded). |
+| `cells[].rank` | Optional number: the lighting order, art-directed (lowest first). Used only when **every** piece has one; otherwise the order comes from the area centroids and `order`. |
+
+Every unknown key is a warning and is dropped; `$comment` is allowed. The pieces must **tile** (touch along sides, never overlap), and a side may be shared by pieces of different sizes (a T-junction): the core splits the sides there, so a shared lead is drawn once, and a straight lead that runs along several pieces is **one stroke** (bowed once by `irregularity`, not edge by edge).
+
+### What is checked
+
+| Refused (error) | Code |
+|---|---|
+| not an object, an unreadable file, a domain out of bounds, a number that is not finite or is outside the domain, a bad `tone` or `rank` | `pattern-unreadable`, `pattern-invalid` |
+| more than 32 KB in a file | `pattern-too-large` |
+| more than 48 pattern files, or more than 96 KB of pieces handed to the page for a whole skin | `patterns-too-many`, `patterns-total-too-large` |
+| no piece, more than 160 pieces, more than 1500 vertices | `pattern-cells` |
+| a piece with fewer than 3 or more than 12 vertices, a repeated vertex, under 0.05 % of the domain, a corner under 3 degrees, a side that crosses another of the same piece, a split that more than quadruples the vertices | `pattern-polygon` |
+| two pieces on top of each other (a crossing, or a vertex, a side middle or an inner point of one strictly inside the other) | `pattern-overlap` |
+| a recipe that names a file that is missing or unusable, or a `source` that is not a name of `patterns` | `pattern-missing`, `pattern-source`, `patterns-shape` |
+
+| Warned only | Code |
+|---|---|
+| a corner under 12 degrees | `pattern-angle` |
+| a window that covers under 97 % of its domain | `pattern-coverage` |
+| more than 120 pieces; a rank on some pieces only; an unknown key | `pattern-cells-cap`, `pattern-ignored` |
+| two variants too far apart in shape | `pattern-stretch` |
+| a pattern written for a later contract (that variant is skipped; a name with no variant left stays valid and the mosaic draws the simple pattern) | `pattern-contract-newer` |
+
+### At drawing time
+
+- The engine draws **the window as the union of the pieces**; the outline of the biggest outer loop is the silhouette (what a pulse or a ray is cut by, what a `lead` frame follows).
+- **Concave pieces are drawn safely**: the gradient, the mottle, the bubbles and the glow start at the piece's *label point* (the point farthest from its sides, always inside) with its *inradius* instead of the convex centroid and radius, and the mottle, bubbles and streak are cut by the piece's own outline.
+- The geometry is the **same at every effects level and in calm mode**: only the details change, as for the other patterns.
+- A pattern is not drawn when the engine cannot trust it (an unknown `source`, a graph out of bounds, more than 120 pieces): the voronoi mosaic is drawn with the same other parameters, and nothing breaks.
+
+### Variants by proportions, and what a pattern costs
+
+- **Variants.** A name of the `patterns` table lists one to four files of different proportions. At drawing time the engine takes the variant whose width over height is nearest to the element's (compared on a log scale, so 2:1 and 1:2 are equally far from 1:1) and stretches it to the element; it never mixes two variants. Give a wide bar, an ultra-wide bar and a square element each a file of their own when the drawing matters; `pattern-stretch` warns when two neighbouring variants are so far apart that the nearer one would still be stretched by more than 1.4 in each direction.
+- **The cap of 120 pieces** comes from a measurement in real Chromium (headless, software rendering, so slower than a computer with a graphics card). One mosaic is made of about 10.5 drawing operations per piece, and the frame (`frame()` then `draw()`, 150 frames while the value climbs, then holds) cost:
+
+  | Pieces | 1764 x 717, light | 3440 x 1440, light | 1764 x 717, full | 3440 x 1440, full |
+  |---|---|---|---|---|
+  | 60 | avg 3.3 ms, p95 6.9 | avg 3.4, p95 6.2 | avg 3.6, p95 6.5 | avg 2.7, p95 5.0 |
+  | 90 | avg 4.4, p95 8.1 | avg 4.4, p95 7.9 | avg 5.2, p95 15.1 | avg 6.2, p95 20.9 |
+  | 120 | avg 6.2, p95 12.5 | avg 6.0, p95 11.3 | avg 6.5, p95 18.8 | avg 5.9, p95 10.3 |
+  | 160 | avg 6.2, p95 11.8 | avg 8.8, p95 19.3 | avg 6.9, p95 15.8 | avg 8.8, p95 21.9 |
+
+  The first frame of a new size costs 30 to 90 ms once (the pieces are cut and cached); a resize pays it again. The averages are far below one 60 Hz frame (16.7 ms), but the 95th percentile is not: at 120 pieces it reaches 18.8 ms at 1764 x 717 with full effects, above one frame, so a frame in twenty can be late on this software-rendered machine (the other three columns stay at or under 12.5 ms). At 160 pieces it goes over the frame in three columns out of four. The cost grows with the pieces, not with the pixels. The cap stays at 120: a file may hold up to 160 (a skin can keep one drawing for several uses), a pattern above 120 draws the simple mosaic and says so (`pattern-cells-cap`). Re-measure with `node --import ./tests/helpers/register.mjs scripts/visual/pattern-bench.mjs` (`COUNTS=60,120 QUALITY=full` to narrow it); the script is the source of the table.
+
+- **Checking a skin costs CPU once, not at every read** (core 0.48.0): reading a skin with the most files the contract allows (48 pattern files of 120 twelve-vertex pieces) takes about 350 to 600 ms of the server's main thread. The installed-skin list (admin pages, MCP tools, the page-save check) reuses that check while the files of the folder keep the same names, sizes and dates, so a skin is read again only when something on disk changes. The page of a skin on a stream is read through its own 10-minute cache.

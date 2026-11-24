@@ -86,10 +86,14 @@ test("catalogue de modules : réponse illisible ou en erreur → liste vide, jam
   const realFetch = globalThis.fetch;
   process.env.MODULES_INDEX_URL = "https://catalogue.example/x.json";
   try {
-    // le cache du test précédent peut subsister : on le contourne en observant seulement l'absence d'exception
-    for (const impl of [async () => new Response("pas du json", { status: 200 }), async () => new Response("", { status: 500 }), async () => { throw new Error("réseau"); }, async () => Response.json({ pas: "un tableau" })]) {
+    for (const [mode, impl] of [
+      ["corps illisible", async () => new Response("pas du json", { status: 200 })],
+      ["réponse en erreur", async () => new Response("", { status: 500 })],
+      ["réseau coupé", async () => { throw new Error("réseau"); }],
+      ["JSON qui n'est pas un tableau", async () => Response.json({ pas: "un tableau" })],
+    ]) {
       globalThis.fetch = impl;
-      assert.ok(Array.isArray(await getRecognized()));
+      assert.deepEqual(await getRecognized(), [], mode);
     }
   } finally { globalThis.fetch = realFetch; delete process.env.MODULES_INDEX_URL; }
 });

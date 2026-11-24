@@ -1,7 +1,9 @@
 /**
  * CONTRÔLE DU CONTENU — lire les liens et les images d'un texte, sans toucher au réseau ni à la base (fonctions pures, testées seules).
- * La visite des liens est dans probe.ts ; les règles d'adresses refusées sont dans core/url.ts (`hostProblem`, `addressIsPrivate`).
+ * La visite des liens est dans probe.ts ; les règles d'adresses refusées sont `fetchTargetProblem` (core/host.ts) et `addressIsPrivate` (core/url.ts).
  */
+
+import { bareHostOf } from "@/core/host";
 
 /** Texte court, sur une ligne, sans caractère de contrôle (pour les listes et pour les journaux). */
 export const clip = (v: unknown, max = 100): string => {
@@ -98,8 +100,8 @@ export function stripLocale(path: string, locales: readonly string[] = []): stri
   return m && locales.some((l) => l.toLowerCase() === m[1]) ? (m[2] || "/") : path;
 }
 
-/** Nom de domaine d'une adresse, en minuscules et sans « www. » (clé de « un même site »). */
-export const hostKey = (url: string): string => { try { return new URL(url).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; } };
+/** Domain name of an address, lower case and without "www." (the key of "the same site"). */
+export const hostKey = bareHostOf;
 
 /** Une adresse sans identifiants ni paramètres ni fragment : ce qu'on montre et ce qu'on garde dans le rapport (un lien privé peut porter un jeton dans ses paramètres). */
 export function displayUrl(url: string, max = 200): string {
@@ -112,8 +114,6 @@ export function displayUrl(url: string, max = 200): string {
 /** Les sites que la personne ne veut jamais voir visiter (réglage avancé) : une liste de noms ou d'adresses, séparés par des espaces, virgules ou retours à la ligne. */
 export function parseSkipHosts(text: unknown): Set<string> {
   return new Set(
-    String(text ?? "").slice(0, 10_000).split(/[\s,;]+/).map((h) => {
-      try { return new URL(/^[a-z]+:\/\//i.test(h) ? h : `https://${h}`).hostname.toLowerCase().replace(/^www\./, ""); } catch { return ""; }
-    }).filter(Boolean).slice(0, 200),
+    String(text ?? "").slice(0, 10_000).split(/[\s,;]+/).map((h) => bareHostOf(/^[a-z]+:\/\//i.test(h) ? h : `https://${h}`)).filter(Boolean).slice(0, 200),
   );
 }

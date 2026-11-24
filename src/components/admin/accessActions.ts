@@ -5,7 +5,7 @@ import { adminCtx } from "@/core/admin";
 import type { ActionState } from "@/components/admin/ActionForm";
 import { accessState, type AccessState } from "@/core/gitAccess";
 import { removeAccessCode, saveAccessCode } from "@/core/gitAccessAdmin";
-import { APPEARANCE_HREF } from "@/core/adminLinks";
+import { APPEARANCE_HREF, PERSONAL_HREF } from "@/core/adminLinks";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 
 /**
@@ -13,7 +13,7 @@ import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
  * repository, stored sealed, and is never sent back: the answers carry words, never the code. The assistant (MCP) has no tool that reaches these actions.
  */
 
-const refresh = () => { revalidatePath(APPEARANCE_HREF); revalidatePath(EXTENSIONS_ADD_HREF); };
+const refresh = () => { revalidatePath(APPEARANCE_HREF); revalidatePath(EXTENSIONS_ADD_HREF); revalidatePath(PERSONAL_HREF); };
 
 /** What is saved for the repository at this address (no secret): none, configured, or to enter again. */
 export async function accessViewAction(url: string): Promise<AccessState> {

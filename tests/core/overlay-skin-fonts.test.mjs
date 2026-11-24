@@ -230,11 +230,12 @@ test("twinOf in the catalogue: a fixed field list, validated as a skin id, only 
   assert.equal(read([entry({ twinOf: "lune-douce", surprise: 1 })], "overlay")[0].surprise, undefined, "unknown fields are ignored");
   // contract 6 is listed as compatible for this core, and an older core (ceiling 5) lists it as incompatible, never installable
   assert.equal(read([entry({})], "overlay")[0].compatible, true);
-  assert.equal(read([entry({ skinContract: 7 })], "overlay")[0].compatible, false);
+  assert.equal(read([entry({ skinContract: 8 })], "overlay")[0].compatible, false);
+  assert.equal(read([entry({ skinContract: 7 })], "overlay")[0].compatible, true, "contract 7 (patterns) is understood since 0.48.0");
 });
 
 test("an older core refuses a contract 6 overlay skin cleanly as \"contract newer\" (its ceiling was 5)", () => {
-  assert.equal(K.OVERLAY_SKIN_CONTRACT_V6, 6); assert.equal(K.maxSkinContract("overlay"), 6); assert.equal(K.maxSkinContract("site"), 4);
+  assert.equal(K.OVERLAY_SKIN_CONTRACT_V6, 6); assert.equal(K.maxSkinContract("overlay"), 7); assert.equal(K.maxSkinContract("site"), 4);
   // the refusal rule of every core, written as the previous core had it: the contract of the manifest above the ceiling of the skin's kind
   const PREVIOUS_CEILING = 5;
   const previousCore = (raw) => (Number.isInteger(raw.skinContract) && raw.skinContract > (raw.kind === "overlay" ? PREVIOUS_CEILING : 4) ? "manifest-contract-newer" : "parsed");
@@ -242,7 +243,7 @@ test("an older core refuses a contract 6 overlay skin cleanly as \"contract newe
   assert.equal(previousCore(JSON.parse(fs.readFileSync(path.join(dir, "skin.json"), "utf8"))), "manifest-contract-newer");
   assert.equal(previousCore({ skinContract: 5, kind: "overlay" }), "parsed");
   // and the refusal this core gives for a contract one more than its own ceiling is the same message, so the wording is the one an older core shows
-  const r = Mf.parseSkinManifest({ skinContract: 7, kind: "overlay", id: "emma-skin" });
+  const r = Mf.parseSkinManifest({ skinContract: 8, kind: "overlay", id: "emma-skin" });
   assert.deepEqual(r.issues.map((i) => i.code), ["manifest-contract-newer"]);
   assert.match(r.issues[0].message.en, /newer|more recent/i);
   assert.equal(Cat.sanitizeSkinEntries({ skins: [{ id: "emma-skin", name: "E", description: "d", repo: "https://github.com/test/curiosa-skins", skinContract: 6 }] }, "0.46.1", "official", "overlay")[0].compatible, true, "(the current core)");

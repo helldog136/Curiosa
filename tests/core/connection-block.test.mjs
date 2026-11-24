@@ -210,11 +210,12 @@ test("the block is wired in the admin panel of an instance only, with the setup 
 test("places: a module with `places` and no `settings` (contacts-like) does not crash the place functions or the kit", async () => {
   const P = await import("@/core/modules/places");
   const man = { id: "contacts-like", places: [{ id: "main", place: "people.contacts", blocks: true }] };
-  assert.doesNotThrow(() => P.placeAdvice(man));
-  assert.doesNotThrow(() => P.placeIssues(man));
-  assert.doesNotThrow(() => P.moduleSections(man));
-  assert.doesNotThrow(() => P.moduleTopics(man));
-  assert.doesNotThrow(() => P.fullyPlaced(man, P.moduleSections(man)));
+  assert.deepEqual(P.placeAdvice(man), [], "nothing to advise: the module declares no setting");
+  assert.deepEqual(P.placeIssues(man), [], "nothing wrong: the module declares no setting");
+  const sections = P.moduleSections(man);
+  assert.deepEqual(sections.map((s) => [s.id, s.declared, s.settings, s.blocks]), [["main", "people.contacts", [], true]]);
+  assert.deepEqual(P.moduleTopics(man), ["people.contacts"]);
+  assert.equal(P.fullyPlaced(man, sections), false, "a module with no setting is not 'fully placed' by its settings");
 });
 
 /* ───────────── regression: a query-only address ("?edit=app") reached the page as href="#" and the button did nothing ───────────── */

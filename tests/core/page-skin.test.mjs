@@ -286,7 +286,7 @@ test("publishing a draft: the owner's request names the skin and is bound to it"
   const before = plan.entry.items[0].fp;
   await db.prisma.entry.update({ where: { id: made.id }, data: { skin: "duo" } });
   assert.notEqual((await prepareEntryPublish("entry_publish", { instance: inst.key, id: made.id })).entry.items[0].fp, before, "a skin changed after the request is not what the owner approved");
-  const summary = read("src/app/admin/(panel)/assistants/requestsShared.ts");
+  const summary = read("src/core/maintenance/publish.ts");
   assert.match(summary, /aim\.req\.entry_skin/);
 });
 

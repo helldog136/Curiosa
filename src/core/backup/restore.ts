@@ -21,6 +21,7 @@ import { audit } from "@/core/permissions";
 import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
+import { sweepOrphanedAccesses } from "@/core/personalAi/lifecycle";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup, decryptBackupAsync } from "./crypto";
 import { runAsync, runSync, sha256Steps, tick, type Steps } from "./steps";
@@ -156,7 +157,8 @@ async function planModulesBase(modules: BackupModule[]): Promise<ModulePlan[]> {
     if (installed.has(m.id)) return { ...base, status: "installed", needsConfirmation: false };
     const entry = market.find((e) => e.id === m.id);
     // Une sauvegarde d'une version où les modules de base étaient « intégrés » les nomme « builtin » : ce sont aujourd'hui des modules du catalogue.
-    if ((m.origin === "catalogue" || m.origin === "builtin") && entry?.compatible) return { ...base, status: "catalogue", needsConfirmation: false, ...(entry.needsNewerCore ? { needsCore: entry.needsNewerCore } : {}) };
+    // Whatever origin the backup claims, a module of a personal catalogue (or of an unverified index) is never reinstalled without the owner confirming it, module by module.
+    if ((m.origin === "catalogue" || m.origin === "builtin") && entry?.compatible && !entry.personal && entry.origin !== "extra") return { ...base, status: "catalogue", needsConfirmation: false, ...(entry.needsNewerCore ? { needsCore: entry.needsNewerCore } : {}) };
     if (m.repoUrl) return { ...base, status: "custom", needsConfirmation: true };
     return { ...base, status: "unavailable", needsConfirmation: false };
   });
@@ -274,7 +276,7 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
     if (!result?.ok) result = m.status === "catalogue" ? await installers.fromCatalogue(m.id) : await installers.fromRepo(`${m.repoUrl}${m.ref || m.subdir ? `#${m.ref ?? ""}${m.subdir ? `:${m.subdir}` : ""}` : ""}`);
     if (result.ok) installedNow.push(m.id);
     outcomes.push(result.ok ? { id: m.id, outcome: "installed" } : { id: m.id, outcome: "failed", error: result.error, ...(result.needsCore ? { needsCore: result.needsCore } : {}) });
-    if (!result.ok) rep.failed.push({ id: `module.${m.id}`, note: "moduleInstall", params: { module: m.id }, path });
+    if (!result.ok) rep.failed.push({ id: `module.${m.id}`, note: result.error === "modules.error.access" ? "moduleAccess" : "moduleInstall", params: { module: m.id }, path });   // a private repository: the sealed access code of a backup cannot be read on another server, so it asks for it again
   }
   const undoModules = async () => { for (const id of installedNow) await purgeModule(id).catch(() => {}); };
 
@@ -346,6 +348,12 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   resetModuleRegistry();
   opStep("finish");
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
+  // AI accesses are not part of a backup but their owners are people, and the people were just replaced: an access whose owner is not in this backup is revoked (the owner of an access is
+  // permanent, nobody takes it over), one journal line each, and the report says how many. Never fails the restore.
+  try {
+    const revoked = await sweepOrphanedAccesses(opts.actor);
+    if (revoked.length) rep.converted.push({ id: "core.aiAccessesRevoked", note: "aiAccessesRevoked", params: { count: revoked.length } });
+  } catch (e) { console.error("[backup] AI access sweep failed:", (e as Error)?.message); }
 
   // Données des modules : chacun converti avec le code de sa version ; les erreurs sont toutes dans le bilan.
   const migrations: MigrationOutcome[] = [];

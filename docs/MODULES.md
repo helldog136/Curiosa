@@ -140,6 +140,8 @@ A module can say **where its settings and lists go** instead of having a page of
 
 **Since core 0.34.0:** sections placed on core pages (`site.general.privacy`, `site.appearance.colors`, `obs.pages.addresses`…) show on those pages; the settings search finds every section and setting; `?…` links, `redirect: "?…"` answers and field ids are per module on a shared page (your code does not change: you still read `query.edit`); more than 3 sections of one module on one page only warns (the vocabulary can justify it); the catalogue index may carry `"places": ["live.alerts"]` so the module shows as a facet ("Adds settings to"); `adminBadge` shows on every place page that hosts your sections. Details: [PLACES.md](PLACES.md).
 
+**Since core 0.47.0:** the owner can register a git repository (public or private) as a **personal catalogue**; its extensions are merged into the catalogue with a Personal tag, never verified, never installed by an assistant. See [PERSONAL-CATALOGUES.md](PERSONAL-CATALOGUES.md).
+
 A module that places everything it shows leaves the sidebar on a core 0.31.0 or later (its page stays in Extensions, with "Where its settings are" at the top); on an older core it keeps its `adminMenu` entry: ship both during the transition. Settings of `sources` and `general` are never placed. `rare` and `advanced` settings fold into one « Réglages avancés » per section.
 
 **Familles (Extensions > Installées).** Chaque module est rangé dans une famille, déduite elle aussi du manifeste seul (`extensionFamily`) : **Outils pour OBS** (type ou permission `overlay`) ; **Outils** (seulement par `menuGroup`) ; **Réseaux et connexions** (type `social` ou `integration`, `platform` déclarée,
@@ -261,6 +263,7 @@ fidèlement (le test de l'exemple vérifie qu'elles correspondent au code), elle
 | `privacy` | (cœur 0.2.6) le module appelle `ctx.api.privacy.declarations()` (lire ce que les autres modules déclarent récolter) |
 | `instances.setup` | (cœur 0.15.0, déclarez `"minCore": "0.15.0"` : un cœur plus ancien refuse le manifeste) le module peut mettre en place d'un clic (action d'administration, administrateur seulement) un module **déjà installé** dont il a besoin, via `ctx.api.instances.pending` et `setUp`. Texte montré à l'administrateur : « Mettre en place les extensions dont elle a besoin, seulement après un clic de votre part ». |
 | `files` | (cœur 0.2.13, déclarez `"minCore": "0.2.13"`) le module appelle `ctx.api.files` : il garde (revendique) les fichiers que la personne envoie par l'administration et peut les supprimer. Voir « Fichiers envoyés : garder et supprimer ». Texte montré à l'administrateur : « Garder et supprimer les fichiers que vous envoyez via ce module ». |
+| `secrets` | (core 0.48.0, declare `"minCore": "0.48.0"`: an older core refuses the manifest) the module calls `ctx.api.secrets`: it keeps a value (a bot token, a password) **sealed**, readable only by its own instance. See "Sealed secrets". |
 | `visitor.geolocation` | (cœur 0.2.12, déclarez `"minCore": "0.2.12"`) le code de la page appelle `navigator.geolocation` (« Près de moi »). **Seule permission qui change vraiment ce que le navigateur autorise** : voir ci-dessous |
 
 #### Permission `visitor.geolocation` (cœur 0.2.12)
@@ -1315,6 +1318,53 @@ Exemple court : *Contacts* offre `contact.store` et possède le carnet ; *Parten
 
   **Keeping an uploaded file through a service (core 0.14.0, `minCore: "0.14.0"` to rely on it).** `ctx.api.files.claim` needs the person who uploaded the file, and a service method runs in the provider's own context, where that person is unknown (`no-person`). The same four conditions above now ALSO carry the person to the provider's `ctx.api.files.claim` (and the actor of its `remove` in the audit log), and nothing else: the provider keeps declaring `"callerRights": ["saveAlertImages"]` for the method, the consumer calls `ctx.api.services.call("alert.overlay", "saveAlertImages", { files }, { asCaller: true })` from its admin action, and the provider's method calls `ctx.api.files.claim(url)` as usual (it needs the `files` permission itself; the file then belongs to the PROVIDER's instance). `services/files.ts` still checks that the person is the one who uploaded the file, within 30 minutes, on an unowned file. Not carried: an undeclared method, a panel, a route, a task, a service called by another service, the MCP, a replica of the provider (only the master answers a call that carries the person), and any call without `asCaller: true`. A provider must still check its own right with `ctx.can`, and revalidate the addresses it keeps. On an older core `claim` answers `no-person`: tell the person to upload the file in the module that owns it.
 
+#### Who calls a service: the caller identity (core 0.48.0, `"minCore": "0.48.0"`)
+
+A service method is `(ctx, args, caller)`. The core tells it **which module instance called**, so that a provider can enforce rules such as "only the module that created this resource may change it". An older method written as `(ctx, args)` keeps working unchanged: it simply ignores the third argument.
+
+```js
+services: { "chat.messages": {
+  edit: async (ctx, args, caller) => {            // the same object is also `ctx.caller`
+    if (caller.kind !== "module") return { ok: false, reason: "denied" };
+    const row = await ctx.api.store.get(args.id);
+    if (!row || row.data.ownerInstance !== caller.instanceId) return { ok: false, reason: "denied" };   // compare the STABLE id
+    // ...
+  },
+} },
+```
+
+`caller` is one of (type `ServiceCaller` in `types.ts`):
+
+| Value | Meaning |
+|---|---|
+| `{ kind: "module", id, instance, instanceId }` | an instance of another module called `ctx.api.services.call` or `callAll`. `id` is the module id, `instanceId` the **stable** id of the instance (store this to remember an owner: an instance deleted and created again with the same key gets a new `instanceId`, so it does not inherit anything), `instance` its key (readable: logs and messages only). |
+| `{ kind: "core" }` | the core itself called the method: the legacy `ctx.api.rawg` relay and the backup conversion. No module is behind it. |
+
+Who is the caller on each path that reaches a service method (the only code that does it is `src/core/modules/dependencies.ts`, and a test fails if another file does):
+
+| Path | Caller |
+|---|---|
+| `ctx.api.services.call` from any context of module A: page, route, section, overlay, admin panel, admin action (with or without `asCaller`), task, hook, migration, MCP action of A | `{ kind: "module", ... }` of the **calling instance of A**. The person behind an admin action, and the assistant behind an MCP call, are **not** the caller: they are not identities of a module. Use `callerRights` and `ctx.can` for a person. |
+| `ctx.api.services.callAll` | the calling instance, the same for every provider instance |
+| replicas of a write method (master + replicas) | the same calling instance as the master call |
+| a `choice` setting resolving its list or creating a choice on the fly | the instance of the module that declares the setting |
+| `callProvider` (core only): the legacy `ctx.api.rawg` relay, the backup conversion | `{ kind: "core" }` |
+| the assistant (MCP) | no path: it reaches only the `mcp` actions of a module, whose code may then call a service as that module |
+| a person in the admin | no path: it reaches only `adminActions` |
+
+Rules the core keeps (all covered by `tests/modules-mgmt/service-caller.test.mjs`):
+
+- **Set by the core, from its own registry.** It is never read from the arguments, from the options of `call`, from a returned value or from a header. A module that puts `caller`, `kind: "core"` or anything else in its arguments only sends data: the method still sees the real caller.
+- **Not carried through chains.** If X calls A and A calls B, B sees A (never X). If A calls B and B calls C, C sees B. A provider that relays on behalf of another module must say so itself in its arguments, and the provider that receives it decides whether to trust B for that.
+- **Never grant privileges to `kind: "core"`.** It means "the core itself called" (legacy relay, backup conversion), not "trusted". A provider must treat it like any other fact and never open an owner-level action to it just because of the kind.
+- **Method lookup (core 0.48.0).** The service and the method name come from the caller. Only an own function of the provider's own `services` table with a plain name (`^[A-Za-z][A-Za-z0-9_]{0,63}$`) is ever run; `constructor`, `__proto__`, `toString` and the like answer `no_method`, on every path (`call`, `callAll`, replicas, `callProvider`).
+- **Cannot be tampered with.** The object is frozen, has **no prototype** (a polluted `Object.prototype` adds nothing to it) and is built fresh for every call; `ctx.caller` is read-only and not configurable.
+- Absent outside a service method (`"caller" in ctx` is false in a page, a task...) and on an older core: in a module that must also run on an older core, check `typeof caller === "object"` and refuse the sensitive operation when it is missing.
+- It is **not** a permission. It does not stop a consumer from calling a service; it lets the provider decide. A provider that ignores it is exactly as open as before.
+- Residual risk: a module's code runs inside the site process (see "Sécurité : à lire avant d'installer"). A module that is willing to run arbitrary code can read the database or patch the runtime, so the caller identity protects against a module that uses the **API** to claim to be someone else, not against code the owner chose to install and trust. The provider's rule is only as strong as that trust.
+
+The conformance kit asks for `"minCore": "0.48.0"` when a service method takes a third parameter or reads `ctx.caller` (`compat.minCore`), and `fakeCtx({ caller })` sets `ctx.caller` in a unit test.
+
 #### Dire ses services dans l'index du catalogue
 
 Pour qu'un module d'un dépôt reconnu puisse être choisi comme fournisseur (ou annonce ses besoins) **avant d'être téléchargé**, son entrée de `catalogue/index.json` peut porter, en plus de ses champs habituels, deux listes facultatives : `"offers": ["contact.store"]` et `"requires": ["contact.store"]` — chaque élément est un nom de service, ou un objet `{ "service": "contact.store", "version": 2 }` (offres ; `"each": true` possible, voir plus haut : `{ "service": "twitch.live", "each": true }`) / `{ "service": "contact.store", "min": 2 }` (besoins). Valeurs validées (noms de services, entiers ≥ 1, 10 au plus, doublons écartés) ; un cœur plus ancien ignore ces clés. À ne pas confondre avec `"requires": { "core": "0.1.10" }` (version minimale du cœur, un objet) : le cœur distingue les deux par la forme. Un besoin peut porter `"optional": true` (`{ "service": "contact.store", "optional": true }`) : il faut le recopier dans l'index (le script qui génère l'index du dépôt de modules doit le transporter), sans quoi un cœur 0.2.0 le prendrait pour un besoin dur. Ces listes ne servent qu'à **choisir et annoncer** ; à l'installation c'est le `module.json` réel qui fait foi. Un module dont l'entrée n'annonce rien n'a rien à ajouter : son manifeste est lu à l'installation.
@@ -2063,6 +2113,42 @@ Garde-fous du cœur : texte brut uniquement (20 000 caractères au plus), objet 
 `replyTo` doit être une adresse valide, 10 envois par heure et par instance et 40 par heure pour tout le site (`rate_limited` au-delà),
 chaque envoi consigné dans le journal d'audit (sans contenu).
 
+
+## Sealed secrets: `ctx.api.secrets` (core 0.48.0, permission `secrets`, `"minCore": "0.48.0"`)
+
+**What it is for.** A value your instance must be able to use but that nobody should be able to read from a copy of the database: the token of a bot, an API password. Until now a module kept such a value in a `secret` setting or in `ctx.api.store`: both are stored as readable text in the database, so a copy of the database (or an unencrypted backup of it) shows them. `ctx.api.secrets` stores the value **sealed** instead.
+
+**What exactly is protected.** The value is encrypted with AES-256-GCM, with a key derived from the **site secret** (`AUTH_SECRET`, or `data/auth-secret`) and the purpose `module-secret-seal` (the primitive of `src/core/seal.ts`, also used for the access code of a private repository). The ciphertext is bound to the instance id and the name. The site secret is not in the database and not in the backup, so a database copy, a database backup and the encrypted backup file all show only ciphertext. It does **not** protect against someone who holds the running server (files, process, the site secret), nor against a module that is hostile: module code runs inside the site process, so a module you install and trust can read its **own** secrets (that is the point) and, if it is malicious, much more. See `docs/SECURITE.md`.
+
+```json
+{ "permissions": ["secrets"], "minCore": "0.48.0" }
+```
+
+```js
+await ctx.api.secrets.set("botToken", value);          // { ok: true } | { ok: false, reason }
+const token = await ctx.api.secrets.get("botToken");   // string | null
+```
+
+| Call | Answer |
+|---|---|
+| `set(name, value)` | `{ ok: true }` (replaces) or `{ ok: false, reason }`: `no-permission`, `invalid-name`, `invalid-value` (empty, not a string, over 4096 characters), `too-many` (20 names), `rate-limited`, `failed` |
+| `get(name)` | the value, or `null` (absent, not openable here, bad name, no permission, rate limit) |
+| `has(name)` | `true` only when a value is stored **and** can be opened on this server |
+| `state(name)` | `"set"`, `"absent"`, `"unreadable"` (stored, but sealed by another server: ask the owner for it again) or `"rate-limited"` (too many reads this minute: try again later). `get` answers `null` for all three non-set cases, so a caller that must tell them apart uses `state`. One read is charged per call (`has` is one `state`); `names` is one read |
+| `remove(name)` | `true` when something was removed |
+| `names()` | the names stored for this instance (never values), 20 at most |
+
+Rules:
+
+- **Per instance, decided by the core.** The instance comes from the core, not from an argument; a module can never read another module's or another instance's names or values (a ciphertext copied to another instance or name does not open).
+- **A name** starts with a letter, then letters, digits, `_` or `-` (48 characters at most). A value is 1 to 4096 characters. Bounds: 20 names per instance, 20 writes (`set`, `remove`) and 600 reads (`get`, `has`, `state`, `names`) per minute and instance; over the limit the call answers a refusal, it never throws.
+- **Nothing in the core shows it**: not the admin, the assistant (MCP) tools, the central journal, the audit log (it records `module.secret.set` / `remove` with the instance and the **name** only), the readable summary of a backup, the module list or the diagnostics. A test checks each of them.
+- **Backup and restore.** The backup carries the sealed text only. Restored on the same server it opens again; restored on **another** server (another site secret) it cannot be opened: `get` answers `null` and `state` answers `"unreadable"`, exactly like the access code of a private repository. Your admin page then asks the owner for the value again, and `set` replaces it. Check `state` (not only `get`) so that your page can say "enter it again".
+- **Removal.** Deleting an instance, or uninstalling a module without keeping its data, removes its sealed values with the rest of the instance. When the data is **kept** (the owner chose "keep my data"), the sealed rows are kept with the other settings of the instance and **come back with it** when the module is installed again; only erasing the kept data removes them.
+- **The `secret` setting kind is not sealed.** A manifest setting `"type": "secret"` is still stored as readable text (it is only hidden in the admin and never given to an assistant). Use it for a value the owner types in the admin AND that you can accept in the database, or, better, read what the owner typed from the setting once and move it to `ctx.api.secrets.set` (then clear the setting). Moving the existing kind to sealed storage is a separate change.
+- **Never copy the value elsewhere**: not into a setting, `ctx.api.store`, a log, `ctx.api.log`, a page, the answer of a service or of an assistant tool. A secret you echo is no longer sealed.
+
+Unit tests: `fakeCtx({ permissions: ["secrets"] })` gives the same API in memory with the same rules (names, bounds, `unreadable` through the `secretsUnreadable` option); without the permission it answers the refusals above and `ctx.calls.denied` records it. The conformance kit asks for the permission when the code uses `ctx.api.secrets` (`perm.declared`) and for `"minCore": "0.48.0"` (`compat.minCore`).
 
 ## Appeler une API externe : `ctx.api.net`
 

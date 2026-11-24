@@ -15,7 +15,7 @@
  */
 import { buildPalette, contrast as hexContrast, gradientTextOn, mix as hexMix } from "../color";
 import { parseColor, toHex, type Rgba } from "./colorParse";
-import { catalogEntry, makeText, type Params, type Text } from "./messages";
+import { catalogEntry, makeText, type IssueCode, type Params, type Text } from "./messages";
 
 export type Mode = "light" | "dark";
 export type Tokens = Readonly<Record<string, string>>;
@@ -114,7 +114,7 @@ export type ModulePair = {
 };
 
 export type ReadabilityIssue = {
-  code: string;
+  code: IssueCode;
   /** `error` : sous le seuil AA, le skin est refusé à l'installation. `advice` : AAA conseillé. */
   severity: "error" | "advice";
   pair: number;
@@ -213,16 +213,16 @@ function makeIssue(pair: number, severity: "error" | "advice", mode: Mode, fgTok
   if (severity === "error") {
     const s = suggestColor(fgColor, againstAll, required);
     example = s?.hex;
-    const e = catalogEntry(s ? "read-hint-example" : "read-hint-plain")!;
+    const e = catalogEntry(s ? "read-hint-example" : "read-hint-plain");
     const dir: Text = s?.dir === "lighter" ? { fr: "claire", en: "lighter" } : { fr: "foncée", en: "darker" };
     hint = makeText(e.fr, e.en, { ...params, dir, example: s?.hex ?? "" });
   } else {
-    const e = catalogEntry("read-advice")!;
+    const e = catalogEntry("read-advice");
     hint = { fr: e.hintFr, en: e.hintEn };
   }
   const label = READABILITY_PAIRS.find((p) => p.id === pair)!.label;
-  const code = severity === "error" ? `read-low-${pair}` : "read-advice";
-  const e = catalogEntry(code)!;
+  const code = (severity === "error" ? `read-low-${pair}` : "read-advice") as IssueCode; // read-low-1..12 exist: checked by tests/core/skins-issue-codes.test.mjs
+  const e = catalogEntry(code);
   const message = makeText(e.fr, e.en, { ...params, what: label });
   return { code, severity, pair, mode, fgToken, bgToken, ratio: round2(ratio), required, message, hint, ...(example ? { example } : {}) };
 }
@@ -243,8 +243,8 @@ export function checkReadability(tokens: Tokens, mode: Mode, options: Readabilit
   }
 }
 
-function plainIssue(code: string, mode: Mode, token: string): ReadabilityIssue {
-  const e = catalogEntry(code)!;
+function plainIssue(code: IssueCode, mode: Mode, token: string): ReadabilityIssue {
+  const e = catalogEntry(code);
   const params: Params = { token, mode: modeText(mode) };
   return { code, severity: "error", pair: 0, mode, fgToken: token, bgToken: "", ratio: 0, required: 0, message: makeText(e.fr, e.en, params), hint: makeText(e.hintFr, e.hintEn, params) };
 }
@@ -346,7 +346,7 @@ function gradientInkRatio(a: Rgba, b: Rgba): number {
 
 function gradientIssue(mode: Mode, ratio: number, required: number): ReadabilityIssue {
   const params: Params = { mode: modeText(mode), ratio: round2(ratio), min: required, token: "--sk-gradient" };
-  const e = catalogEntry("read-low-14")!;
+  const e = catalogEntry("read-low-14");
   return { code: "read-low-14", severity: "error", pair: 14, mode, fgToken: "--v-accent", bgToken: "--v-accent2", ratio: round2(ratio), required, message: makeText(e.fr, e.en, params), hint: makeText(e.hintFr, e.hintEn, params), example: "flat" };
 }
 
@@ -472,7 +472,7 @@ export function correctReadability(tokens: Tokens, mode: Mode, options: Readabil
 
     // (4) suspension
     if (hasReadabilityErrors(issues)) return { tokens: original, changes: [], suspended: true, remaining: issues, notice: suspendedNotice(mode) };
-    const e = catalogEntry("read-adjusted")!;
+    const e = catalogEntry("read-adjusted");
     return { tokens: work, changes, suspended: false, remaining: [], notice: changes.length ? { fr: e.fr, en: e.en } : null };
   } catch {
     return { tokens: original, changes: [], suspended: true, remaining: [], notice: suspendedNotice(mode) };
@@ -480,7 +480,7 @@ export function correctReadability(tokens: Tokens, mode: Mode, options: Readabil
 }
 
 function suspendedNotice(mode: Mode): Text {
-  const e = catalogEntry("read-suspended")!;
+  const e = catalogEntry("read-suspended");
   return makeText(e.fr, e.en, { mode: modeText(mode) });
 }
 
@@ -602,12 +602,12 @@ export function probableIllegibility(colors: RetouchColors, mode: Mode | null): 
     const sfx = mode ? "-mode" : "";
     const where: Params = { mode: mode ? modeText(mode) : "" };
 
-    const add = (field: ProbableField, pair: number, code: string, key: Key, advise: number, recommend: number, forWhat: Text, fixField: ProbableField, fixKeys: readonly Key[], hintCode: string) => {
+    const add = (field: ProbableField, pair: number, code: IssueCode, key: Key, advise: number, recommend: number, forWhat: Text, fixField: ProbableField, fixKeys: readonly Key[], hintCode: IssueCode) => {
       const value = r[key];
       if (value >= advise) return;
-      const e = catalogEntry(code)!;
-      const d = catalogEntry("probable-detail")!;
-      const a = catalogEntry("probable-advice")!;
+      const e = catalogEntry(code);
+      const d = catalogEntry("probable-detail");
+      const a = catalogEntry("probable-advice");
       const message = makeText(e.fr, e.en, where);
       const detail = makeText(d.fr, d.en, { ratio: round2(value), rec: recommend, for: forWhat });
       const item: ProbableIssue = {
@@ -616,7 +616,7 @@ export function probableIllegibility(colors: RetouchColors, mode: Mode | null): 
       };
       const s = suggestFor(base, fixField, fixKeys, recommend);
       if (s) {
-        const h = catalogEntry(hintCode)!;
+        const h = catalogEntry(hintCode);
         item.example = s.hex;
         const light = s.dir === "lighter";
         const dir: Text = hintCode === "probable-hint-color" ? { fr: light ? "claire" : "foncée", en: s.dir } : { fr: light ? "clair" : "foncé", en: s.dir };

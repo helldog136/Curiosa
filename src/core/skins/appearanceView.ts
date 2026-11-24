@@ -41,7 +41,7 @@ export type SkinCardModel = {
   swatches: Partial<Record<Mode, Swatch>>;
 };
 
-export type CreditModel = { file: string; kind: "font" | "image"; license?: string; author?: string; source?: string };
+export type CreditModel = { file: string; kind: "font" | "image" | "pattern"; license?: string; author?: string; source?: string };
 
 export type AppearanceView = {
   /** Le skin réglé (`skin.active`) n'est pas utilisable (fichiers absents ou abîmés) : basic s'applique en attendant. */

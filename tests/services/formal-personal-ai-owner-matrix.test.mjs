@@ -55,7 +55,7 @@ async function personWithEverythingTicked(name, level) {
   return { user, code, tokenId: await T.findTokenId(code) };
 }
 
-const NONE_TOOLS = ["site_info", "maintenance_my_access", "maintenance_request_status"];
+const NONE_TOOLS = ["site_info", "maintenance_my_access", "maintenance_available_operations", "maintenance_request_status"];
 const EDITOR_TOOLS = ["redirects_list", "redirects_stats", "redirects_summary", "redirects_create", "redirects_update", "redirects_delete", "media_list", "media_upload", "media_import", "media_set_alt"];
 const RESERVED_TOOLS = ["maintenance_check_updates", "maintenance_core_update", "maintenance_module_update", "maintenance_modules_update_all", "maintenance_backup_run", "maintenance_module_install", "maintenance_module_uninstall", "maintenance_module_reinstall", "maintenance_module_restart", "maintenance_instance_add", "maintenance_skin_install", "maintenance_skin_remove", "maintenance_skin_activate", "maintenance_catalog_list", "maintenance_catalog_get", "maintenance_catalog_plan"];
 

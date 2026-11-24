@@ -31,7 +31,8 @@ async function movedTo(url: string): Promise<string | undefined> {
 
 const KEY_OF: Record<Exclude<GitFailureKind, "redirect">, SaveAccessError> = { address: "address", notFound: "notFound", rejected: "rejected", tooOld: "tooOld", unreachable: "unreachable", unknown: "unknown" };
 
-export async function saveAccessCode(url: string, code: string, actor: string): Promise<SaveAccessResult> {
+/** Tries a code on the repository WITHOUT keeping it (same answers as `saveAccessCode`). The code stays in memory for this one test. */
+export async function verifyAccessCode(url: string, code: string, actor: string): Promise<SaveAccessResult> {
   const target = accessTarget(url);
   if (!target) return { ok: false, error: "address" };
   const format = checkCodeFormat(code);
@@ -47,6 +48,13 @@ export async function saveAccessCode(url: string, code: string, actor: string): 
     const plain = (x: string) => x.replace(/\/+$/, "").replace(/\.git$/, "");
     return address && plain(address) !== plain(url) ? { ok: false, error: "redirectTo", address } : { ok: false, error: "redirect" };
   }
+  return { ok: true, repo: target.repo };
+}
+
+export async function saveAccessCode(url: string, code: string, actor: string): Promise<SaveAccessResult> {
+  const target = accessTarget(url);
+  const checked = await verifyAccessCode(url, code, actor);
+  if (!checked.ok || !target) return checked;
   if (!(await storeAccess(url, code))) return { ok: false, error: "format" };
   await audit(actor, "git.access.set", target.repo);
   return { ok: true, repo: target.repo };

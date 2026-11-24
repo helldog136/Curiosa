@@ -61,7 +61,8 @@ test("tokens: the closed table (4 springs, 3 durations, 3 tempos) with the value
   assert.deepEqual(S.MOTION.durations, { fast: 150, standard: 300, considered: 600 });
   assert.deepEqual(S.MOTION.tempos, { brisk: 0.8, steady: 1, stately: 1.35 });
   for (const v of Object.values(S.MOTION.tempos)) assert.ok(v >= S.MOTION.tempoRange[0] && v <= S.MOTION.tempoRange[1]);
-  assert.equal(S.ANIMATE_CONTRACT, 2); assert.equal(OK.overlayKit.animateContract, 2);
+  // contract 4 (core 0.48.0, the skin's own pieces) is additive over 2; 3 is skipped (the scene contract has that number)
+  assert.equal(S.ANIMATE_CONTRACT, 4); assert.equal(OK.overlayKit.animateContract, 4);
   assert.equal(OK.overlayKit.animateMotion, S.MOTION);
   assert.ok(K.animateScript().includes(JSON.stringify(S.MOTION)), "the table travels with the engine");
 });
@@ -215,20 +216,20 @@ test("tolerant reader: in contract 2 an unknown role, primitive, parameter, effe
 
 test("contract negotiation: written for a later contract but readable by this one -> read tolerantly with a warning; a minimum above ours -> the animation is off, the skin installs", () => {
   const body = { genres: { gauge: { body: { draw: "bar" }, backdrop: { draw: "mesh" } } } };
-  const ahead = RC.checkAnimation({ animateContract: 3, animateMinContract: 2, ...body });
-  assert.equal(ahead.ok, true); assert.ok(ahead.recipe); assert.equal(ahead.recipe.animateContract, 2, "read as the contract this core understands");
+  const ahead = RC.checkAnimation({ animateContract: 5, animateMinContract: 2, ...body });
+  assert.equal(ahead.ok, true); assert.ok(ahead.recipe); assert.equal(ahead.recipe.animateContract, 4, "read as the contract this core understands");
   assert.ok(ahead.issues.some((i) => i.code === "contract-ahead" && i.severity === "warning")); assert.ok(ahead.issues.some((i) => i.code === "role" && i.severity === "warning"));
-  assert.equal(RC.checkAnimation({ animateContract: 3, genres: {} }).recipe, null, "no minimum: the minimum is the written contract");
-  assert.equal(RC.checkAnimation({ animateContract: 3, genres: {} }).newer, true);
-  assert.equal(RC.checkAnimation({ animateContract: 5, animateMinContract: 3, genres: {} }).recipe, null);
+  assert.equal(RC.checkAnimation({ animateContract: 5, genres: {} }).recipe, null, "no minimum: the minimum is the written contract");
+  assert.equal(RC.checkAnimation({ animateContract: 5, genres: {} }).newer, true);
+  assert.equal(RC.checkAnimation({ animateContract: 7, animateMinContract: 5, genres: {} }).recipe, null);
   // a later contract tolerates even a value out of today's bounds (a later core may widen them); the engine clamps
-  const wide = RC.checkAnimation({ animateContract: 3, animateMinContract: 2, genres: { gauge: { body: { draw: "mosaic", cells: 500 } } } });
+  const wide = RC.checkAnimation({ animateContract: 5, animateMinContract: 2, genres: { gauge: { body: { draw: "mosaic", cells: 500 } } } });
   assert.equal(wide.ok, true); assert.ok(wide.issues.some((i) => i.code === "param" && i.severity === "warning"));
   assert.equal(A.frame(STATES.gauge, wide.recipe, T0, SIZE, {}).skin, true);
   for (const bad of [{ animateMinContract: 0 }, { animateMinContract: 3 }, { animateMinContract: "2" }]) assert.equal(RC.checkAnimation({ animateContract: 2, genres: {}, ...bad }).ok, false, JSON.stringify(bad));
   assert.equal(RC.checkAnimation({ animateContract: 1, animateMinContract: 1, genres: {} }).issues.some((i) => i.path === "animateMinContract"), true, "contract 1 does not know the key (warning)");
   // the engine itself accepts contracts 1 and 2 and refuses (basic rendering) what is neither
-  assert.equal(A.usable({ animateContract: 1, genres: {} }), true); assert.equal(A.usable({ animateContract: 2, genres: {} }), true); assert.equal(A.usable({ animateContract: 3, genres: {} }), false);
+  assert.equal(A.usable({ animateContract: 1, genres: {} }), true); assert.equal(A.usable({ animateContract: 2, genres: {} }), true); assert.equal(A.usable({ animateContract: 5, genres: {} }), false);
 });
 
 // ── D. skin folders ──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -252,9 +253,9 @@ test("skin folder: a skin with motion installs and keeps its motion; a typo is r
   const typo = check(skinFolder("typo", withMotion(mosaic, { value: "wobbly" })));
   assert.equal(typo.ok, false); const i = typo.issues.find((x) => x.code === "animation-motion-name"); assert.ok(i && JSON.stringify(i).includes("motion.value"), JSON.stringify(typo.issues));
   assert.ok(codes(check(skinFolder("shape", withMotion(mosaic, 42)))).includes("animation-motion-shape"));
-  const ahead = check(skinFolder("ahead", { animateContract: 3, animateMinContract: 2, genres: { gauge: { backdrop: { draw: "mesh" }, body: mosaic.genres.gauge.body } } }));
+  const ahead = check(skinFolder("ahead", { animateContract: 5, animateMinContract: 2, genres: { gauge: { backdrop: { draw: "mesh" }, body: mosaic.genres.gauge.body } } }));
   assert.equal(ahead.ok, true, JSON.stringify(ahead.issues)); assert.ok(ahead.animation); assert.ok(codes(ahead).includes("animation-contract-ahead") && codes(ahead).includes("animation-ignored"));
-  const later = check(skinFolder("later", { animateContract: 4, genres: {} }));
+  const later = check(skinFolder("later", { animateContract: 6, genres: {} }));
   assert.equal(later.ok, true); assert.equal(later.animation, null); assert.ok(codes(later).includes("animation-contract-newer"));
   const tolerant2 = check(skinFolder("tol2", { animateContract: 2, genres: { gauge: { wings: { draw: "bar" } } } }));
   assert.equal(tolerant2.ok, true); assert.ok(codes(tolerant2).includes("animation-ignored"));

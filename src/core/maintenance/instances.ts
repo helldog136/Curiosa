@@ -1,11 +1,12 @@
 import { prisma } from "@/core/db";
 import { checkNickname } from "@/core/instanceLabel";
-import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
+import { addInstance } from "@/core/instanceLifecycle";
 import { getModule } from "@/core/modules/registry";
 import { localized, type JsonSchemaLite } from "@/core/modules/types";
 import { getSiteConfig } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import type { Plan } from "./requests";
 import { redactSecrets } from "./redact";
 
@@ -52,8 +53,19 @@ export async function executeInstanceAdd(plan: Plan, actorLabel: string): Promis
   if (!mod) return { ok: false, message: `Not done: module "${id}" cannot be loaded. Check maintenance_modules.` };
   const nickname = plan.newInstance?.nickname ?? "";
   const { locales } = await getSiteConfig();
-  const created = await createInstance(prisma, { manifest: mod.manifest, nickname, names: defaultNames(mod.manifest, locales, nickname) });
-  await runInstanceCreateHook(created.id);
+  const { instance: created, afterCommit } = await addInstance(mod.manifest, { nickname, locales });
+  await afterCommit();
   await prisma.auditLog.create({ data: { actor: actorLabel, action: "instance.create", target: created.key } }).catch(() => {});
   return { ok: true, message: `Instance "${created.key}" of "${id}" was created with default settings. Next: maintenance_module_settings {instance: "${created.key}"} to see what is left to fill in. The owner decides where it shows in the menu.`, details: { instance: created.key, module: id } };
 }
+
+export const instanceAdd = defineLevel3({
+  name: "instance_add", input: INSTANCE_ADD_ARG, slot: "risky",
+  // Like an installation: a new instance may get a public page, so it always waits for the owner.
+  alwaysHuman: true,
+  prepare: (args) => prepareInstanceAdd({ module: args.module, nickname: args.nickname }),
+  recheck: (plan) => ({ kind: "again", args: { module: plan.module, nickname: plan.newInstance?.nickname }, gated: false }),
+  execute: ({ plan, by }) => executeInstanceAdd(plan, by),
+  audit: (plan) => `${plan.module} "${plan.newInstance!.nickname}"`,
+  summarize: (p, t, name) => t("aim.req.instance_add", { name: name(p.module ?? ""), nickname: p.newInstance?.nickname ?? "?" }),
+});

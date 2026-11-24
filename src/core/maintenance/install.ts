@@ -9,9 +9,10 @@ import { getModule } from "@/core/modules/registry";
 import { listRetired } from "@/core/modules/retired";
 import { hardNeeds } from "@/core/modules/serviceVersions";
 import { getSiteConfig } from "@/core/settings";
-import { localized } from "@/core/modules/types";
+import { localized, type JsonSchemaLite } from "@/core/modules/types";
 import { McpToolError } from "@/core/services/mcp/validate";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import { installability, readCatalogue, withTimeout } from "./catalog";
 import { deps } from "./deps";
 import type { Plan } from "./requests";
@@ -212,3 +213,51 @@ export async function executeInstallBundle(plan: Plan, actorLabel: string): Prom
   }
   return { ok: true, message: `${done.length} modules installed: ${done.join(", ")}. ${notes.join(" ")}`.slice(0, 1800), details: { modules: done } };
 }
+
+/* ───────────── The level 3 action ───────────── */
+
+export const INSTALL_ARG: JsonSchemaLite = {
+  type: "object",
+  properties: {
+    module: { type: "string", maxLength: 40, description: "Module identifier from maintenance_catalog_list (for example blog). Use module OR modules." },
+    modules: { type: "array", items: { type: "string" }, description: `Several module identifiers (${MAX_BUNDLE} at most) asked in ONE request that the owner approves as a whole; plan them first with maintenance_catalog_plan. No instanceKey with a list.` },
+    instanceKey: { type: "string", maxLength: 31, description: "Optional, only for a module that allows several instances: the key of its first instance (lowercase letters, digits and dashes, for example blog-news). Default: derived from the module identifier." },
+  },
+};
+
+export const moduleInstall = defineLevel3({
+  name: "module_install", input: INSTALL_ARG, slot: "risky", background: true,
+  // Installing code is never done without the owner's approval, whatever the approval setting of the access: nothing in the model says which module is harmless.
+  alwaysHuman: true,
+  async prepare(args) {
+    if (args.modules !== undefined) {
+      if (args.module !== undefined || args.instanceKey !== undefined) throw new McpToolError('Use either "module" (one module) or "modules" (a list), not both, and no "instanceKey" with a list.');
+      return prepareInstallBundle(args.modules);
+    }
+    return prepareInstall({ module: args.module, instanceKey: args.instanceKey });
+  },
+  // A bundle is checked module by module, each just before it is installed (the modules that come with the previous one are in place by then).
+  recheck: (plan) => plan.bundle ? { kind: "stepwise" } : {
+    kind: "again", args: { module: plan.module, instanceKey: plan.instanceKey }, gated: true,
+    // The plan read again must be the one that was asked: same version, same providers (the owner approved THIS list, not another one).
+    same: (fresh) => (samePlan(plan, fresh) ? null : `Not done: what the installation of "${plan.module}" would do changed since the request (version, or the modules that come with it). Ask again.`),
+  },
+  execute: ({ plan, by }) => (plan.bundle ? executeInstallBundle(plan, by) : executeInstall(plan, by)),
+  audit: (plan) => (plan.bundle ? plan.bundle.map((p) => `${p.module} ${p.to}`).join(", ") : `${plan.module} ${plan.to}${plan.instanceKey ? ` key=${plan.instanceKey}` : ""}${plan.adds?.length ? ` + ${plan.adds.map((a) => a.id).join(", ")}` : ""}`),
+  summarize(p, t, name) {
+    // The permissions the module asks for, in words (a permission without a text is not shown).
+    const perms = (list: string[] | undefined) => (list ?? []).map((x) => t(`perm.${x}`)).filter((x, i) => x !== `perm.${(list ?? [])[i]}`);
+    if (p.bundle) {
+      // One request for several features: the owner reads every one of them, with what comes along and what it asks for.
+      const lines = p.bundle.map((b) => {
+        const also = (b.adds ?? []).map((a) => a.name ?? name(a.id));
+        const ask = perms(b.permissions);
+        return `${t("aim.req.bundle.item", { name: b.name ?? name(b.module ?? ""), version: b.to ?? "?" })}${also.length ? ` ${t("aim.req.module_install.also", { list: also.join(", ") })}` : ""}${ask.length ? ` ${t("aim.req.module_install.perms", { list: ask.join(" · ") })}` : ""}`;
+      });
+      return `${t("aim.req.bundle", { n: p.bundle.length })} ${lines.join(" ")}`;
+    }
+    const also = (p.adds ?? []).map((a) => a.name ?? name(a.id));
+    const ask = perms(p.permissions);
+    return t("aim.req.module_install", { name: p.name ?? name(p.module ?? ""), version: p.to ?? "?" }) + (also.length ? ` ${t("aim.req.module_install.also", { list: also.join(", ") })}` : "") + (ask.length ? ` ${t("aim.req.module_install.perms", { list: ask.join(" · ") })}` : "");
+  },
+});
