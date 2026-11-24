@@ -21,6 +21,7 @@ import { audit } from "@/core/permissions";
 import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
+import { sweepOrphanedAccesses } from "@/core/personalAi/lifecycle";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup, decryptBackupAsync } from "./crypto";
 import { runAsync, runSync, sha256Steps, tick, type Steps } from "./steps";
@@ -347,6 +348,12 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   resetModuleRegistry();
   opStep("finish");
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
+  // AI accesses are not part of a backup but their owners are people, and the people were just replaced: an access whose owner is not in this backup is revoked (the owner of an access is
+  // permanent, nobody takes it over), one journal line each, and the report says how many. Never fails the restore.
+  try {
+    const revoked = await sweepOrphanedAccesses(opts.actor);
+    if (revoked.length) rep.converted.push({ id: "core.aiAccessesRevoked", note: "aiAccessesRevoked", params: { count: revoked.length } });
+  } catch (e) { console.error("[backup] AI access sweep failed:", (e as Error)?.message); }
 
   // Données des modules : chacun converti avec le code de sa version ; les erreurs sont toutes dans le bilan.
   const migrations: MigrationOutcome[] = [];

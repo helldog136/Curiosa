@@ -192,7 +192,10 @@ export async function setPersonAiOverrideAction(userId: string, value: string): 
   return true;
 }
 
-/** (0.47.0) Choose the owner of an access (permanent: the row menu "Choose an owner" and the Assign owners page both use it). Only `core:mcp.tokens`; the person must be allowed to own an access. */
+/**
+ * (0.47.0) Gives the owner to an access that NEVER had one (the temporary Assign owners page only; there is no other entry point). The owner of an access never changes (0.47.1): for an
+ * access that has an owner the core answers `already_owned` and nothing is written. Only `core:mcp.tokens`; the person must be allowed to own an access.
+ */
 export async function assignOwnerAction(tokenId: string, ownerId: string): Promise<{ ok: boolean; reason?: string }> {
   const { user } = await adminCtx({ right: "core:mcp.tokens" });
   const r = await assignOwner(String(tokenId), String(ownerId), user.email, user.id);

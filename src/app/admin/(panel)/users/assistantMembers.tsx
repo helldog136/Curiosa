@@ -1,3 +1,4 @@
+import { sweepOrphanedAccesses } from "@/core/personalAi/lifecycle";
 import { prisma } from "@/core/db";
 import { listMcpToolCatalogue } from "@/core/platform";
 import { canUse, parseGrants } from "@/core/services/mcp/access";
@@ -24,6 +25,7 @@ import { revokeTokenAction } from "../assistants/actions";
  */
 export async function assistantMembers({ t, locale, canHistory }: { t: Translator; locale: string; canHistory: boolean }) {
   const now = new Date();
+  await sweepOrphanedAccesses().catch(() => []); // an access whose owner disappeared is revoked before the list is read (0.47.1)
   const [enabled, rows, catalogue, requests, modes, fullIds] = await Promise.all([isMcpEnabled(), prisma.apiToken.findMany({ orderBy: { createdAt: "asc" } }), listMcpToolCatalogue(), listRequests(), getApprovalModes(), fullPowersIds()]);
   const { active, inactive } = splitAccesses(rows, now);
   const people = await ownerNames();

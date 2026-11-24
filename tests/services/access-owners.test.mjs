@@ -86,7 +86,10 @@ test("several accounts, no account, or an owner that does not exist: nothing is 
   await db.prisma.user.delete({ where: { email: "lune_douce@example.org" } });
   assert.deepEqual(await LEG.assignLegacyOwners(), { assigned: 1, marked: 0 }, "only the one with no ownerId");
   assert.equal((await db.prisma.apiToken.findUnique({ where: { id: orphan.id } })).ownerId, "gone");
-  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => r.name), ["Orphan"], "No owner on screen, not an error");
+  // CHANGED (0.47.1): the old assertion said the orphan showed as "No owner" (and could be given to someone). The owner is permanent now: reading the list revokes the orphan instead.
+  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => r.name), [], "an orphan is no longer listed as 'No owner': it is revoked");
+  const after = await db.prisma.apiToken.findUnique({ where: { id: orphan.id } });
+  assert.ok(after.revokedAt && after.ownerId === "gone", "revoked, and its owner is untouched");
 });
 
 test("the coarse ceiling: a migrated access keeps EXACTLY the tools list it had (owner level), and for an administrator only the reserved-right core tools leave", async () => {
@@ -213,12 +216,13 @@ test("assigning an owner: only a person who may own one; an unowned access becom
   assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email, owner.id), { ok: true, changed: true });
   const row = await db.prisma.apiToken.findUnique({ where: { id } });
   assert.deepEqual([row.ownerId, row.coarseCeiling], [admin.id, true]);
-  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email, owner.id), { ok: true, changed: false });
-  // reassigning never changes the kind of ceiling
-  assert.deepEqual(await OW.assignOwner(id, owner.id, owner.email, owner.id), { ok: true, changed: true });
-  assert.equal((await db.prisma.apiToken.findUnique({ where: { id } })).coarseCeiling, true);
+  // CHANGED (0.47.1): these two calls used to succeed ("changed: false" for the same person, then a reassignment to another one). The owner is permanent: both are refused and nothing moves.
+  assert.deepEqual(await OW.assignOwner(id, admin.id, owner.email, owner.id), { ok: false, reason: "already_owned" }, "even the same person: the access has an owner");
+  assert.deepEqual(await OW.assignOwner(id, owner.id, owner.email, owner.id), { ok: false, reason: "already_owned" });
+  const kept = await db.prisma.apiToken.findUnique({ where: { id } });
+  assert.deepEqual([kept.ownerId, kept.coarseCeiling], [admin.id, true], "owner and ceiling kind unchanged");
   const rows = await audits("mcp.personal.assign");
-  assert.equal(rows.length, 2);
+  assert.equal(rows.length, 1, "only the first assignment is journalled");
   assert.equal(rows[0].actor, owner.email);
   assert.equal(rows[0].target, "Claude -> camille@example.org");
   assert.ok(!JSON.stringify(rows).includes(code));
@@ -227,7 +231,7 @@ test("assigning an owner: only a person who may own one; an unowned access becom
   await T.createToken("A", "read", "o"); await T.createToken("B", "read", "o");
   assert.deepEqual(await OW.assignAllWithoutOwner(editor.id, owner.email, owner.id), { ok: false, changed: 0, reason: "owner_not_allowed" });
   assert.deepEqual(await OW.assignAllWithoutOwner(admin.id, owner.email, owner.id), { ok: true, changed: 2 });
-  assert.equal(await OW.countOwned(admin.id), 2);
+  assert.equal(await OW.countOwned(admin.id), 3, "Claude (kept) plus the two given in bulk");
 });
 
 test("authorisation of the actions: assigning, pausing and removing are for core:mcp.tokens; the account actions read the person from the session", () => {
@@ -249,18 +253,21 @@ test("authorisation of the actions: assigning, pausing and removing are for core
   assert.match(admin, /v === false/);
 });
 
-test("the owner of a deleted account no longer exists: the access says 'No owner' and can be given to someone; it is not adopted silently", async () => {
+test("the owner of a deleted account no longer exists: the access is REVOKED (journal, no code), never adopted, never given to someone else", async () => {
+  // CHANGED (0.47.1): this test used to check that such an access showed "No owner" and could be given to another person (and then worked again). The owner is permanent: the access goes with them.
   const owner = await mk("etoile_nord", "owner");
   const admin = await mk("camille", "admin");
   const made = await PA.createPersonalAccess(admin.id, { password: PASSWORD, name: "Claude" });
   await db.prisma.$executeRawUnsafe(`DELETE FROM "UserRole" WHERE "userId" = '${admin.id}'`);
   await db.prisma.$executeRawUnsafe(`DELETE FROM "User" WHERE "id" = '${admin.id}'`);
+  assert.equal((await rpc(made.code, "tools/list")).status, 401, "refused at once, even before the sweep");
+  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => r.name), [], "not listed as 'No owner'");
+  assert.ok((await db.prisma.apiToken.findUnique({ where: { id: made.id } })).revokedAt, "revoked");
+  assert.deepEqual(await OW.assignOwner(made.id, owner.id, owner.email, owner.id), { ok: false, reason: "access_missing" }, "and it cannot be given to anyone");
   assert.equal((await rpc(made.code, "tools/list")).status, 401);
-  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => r.name), ["Claude"]);
-  assert.equal((await OW.assignOwner(made.id, owner.id, owner.email, owner.id)).ok, true);
-  assert.equal((await rpc(made.code, "tools/list")).status, 200);
-  assert.equal((await db.prisma.apiToken.findUnique({ where: { id: made.id } })).coarseCeiling, false, "a newer access that lost its owner stays fail-closed (B1)");
-  assert.equal(await FP.setFullPowers(made.id, true), false, "and never holds full powers");
+  const lines = await audits("mcp.personal.revoke");
+  assert.deepEqual(lines.map((l) => [l.actor, l.target]), [["system", "Claude: owner removed"]]);
+  assert.ok(!JSON.stringify(lines).includes(made.code), "no code in the journal");
 });
 
 test("the single-account step and its page are temporary: SUNSET 0.49.0, the permanent code stays", () => {
@@ -271,7 +278,8 @@ test("the single-account step and its page are temporary: SUNSET 0.49.0, the per
   for (const f of temporary) if (due) assert.ok(!fs.existsSync(f), `${f} must be deleted: it was due in 0.49.0 (docs/PERSONAL-AI.md, "Choosing owners")`);
   if (due) assert.ok(!fs.readFileSync("src/instrumentation.ts", "utf8").includes("legacyOwners"));
   const sourceOfPermanent = fs.readFileSync("src/app/admin/(panel)/assistants/OwnersTab.tsx", "utf8");
-  assert.match(sourceOfPermanent, /<OwnerSelect compact/, "the row menu 'Choose an owner' is permanent");
+  // CHANGED (0.47.1): the row menu "Choose an owner" was called permanent here. It is gone: the owner never changes.
+  assert.ok(!/OwnerSelect|assignOwner/.test(sourceOfPermanent), "the By person table has no control that changes an owner");
   // everything temporary lives in one folder and one locale prefix
   const folder = fs.readdirSync("src/app/admin/(panel)/assistants/assign-owners");
   assert.deepEqual(folder.sort(), ["AssignOwners.tsx", "BulkAssign.tsx", "actions.ts"]);
@@ -475,29 +483,32 @@ test("B2: the sheet of an owned access: no secret-address switch that does nothi
   assert.match(action, /!row\.ownerId \|\| !row\.coarseCeiling/);
 });
 
-test("I6: 'never had an owner' (works) and 'owner no longer exists' (stopped) are two states, counted and worded apart", async () => {
+test("I6: 'never had an owner' works and is the ONLY ownerless state; an owner that no longer exists means the access is revoked", async () => {
+  // CHANGED (0.47.1): there used to be two states ("No owner" and the stopped "Owner removed"), counted and worded apart. The second cannot exist any more.
   const owner = await mk("etoile_nord", "owner");
   const admin = await mk("camille", "admin");
   const never = await T.createToken("Never", "read", "o");
   const made = await PA.createPersonalAccess(admin.id, { password: PASSWORD, name: "Gone" });
   await db.prisma.$executeRawUnsafe(`DELETE FROM "UserRole" WHERE "userId" = '${admin.id}'`);
   await db.prisma.$executeRawUnsafe(`DELETE FROM "User" WHERE "id" = '${admin.id}'`);
-  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => [r.name, r.ownerGone]), [["Never", false], ["Gone", true]]);
-  assert.equal((await rpc(never, "tools/list")).status, 200);
   assert.equal((await rpc(made.code, "tools/list")).status, 401);
+  assert.deepEqual((await OW.accessesWithoutOwner()).map((r) => [r.name, r.ownerGone]), [["Never", false]]);
+  assert.equal((await rpc(never, "tools/list")).status, 200, "the legacy one is untouched");
   const src = fs.readFileSync("src/core/maintenance/inspect.ts", "utf8");
-  assert.match(src, /accessesOwnerRemoved/);
+  assert.ok(!/accessesOwnerRemoved/.test(src), "no count of 'owner removed' accesses: they are revoked");
+  assert.match(src, /neverOwnedAccesses/, "the health report counts the never-owned ones with a pure read");
   const t = makeTranslator("en", "en");
   const { OwnersTab } = await import("../../src/app/admin/(panel)/assistants/OwnersTab.tsx");
   const page = await renderAsync(React.createElement(OwnersTab, { t, viewerId: owner.id }));
   assert.match(page, /No owner/);
-  assert.match(page, /Owner removed/);
+  assert.ok(!/Owner removed/.test(page), "the state cannot exist any more");
+  assert.ok(!page.includes(">Gone<"), "the revoked access is not listed");
   const { AssignOwners } = await import("../../src/app/admin/(panel)/assistants/assign-owners/AssignOwners.tsx");
   const panel = await renderAsync(React.createElement(AssignOwners, { t, viewerId: owner.id }));
-  assert.match(panel, /Owner removed/);
+  assert.ok(!/Owner removed/.test(panel));
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8")), en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8"));
-  for (const k of ["owners.state.gone", "owners.state.goneWhy", "owners.pendingGone"]) assert.ok(fr[k] && en[k], k);
-  assert.ok(!/works as before/.test(en["owners.state.goneWhy"]), "a stopped access is never said to work");
+  for (const k of ["owners.state.gone", "owners.state.goneWhy", "owners.pendingGone", "owners.choose"]) assert.ok(!(k in fr) && !(k in en), `${k} is gone`);
+  for (const k of ["owners.assign.owned", "backup.report.aiAccessesRevoked"]) assert.ok(fr[k] && en[k], k);
 });
 
 test("I8: the visible word is 'access code', not 'connection key'; no description paragraph duplicating the tip", () => {

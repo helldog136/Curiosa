@@ -74,6 +74,7 @@ export const RESTORE_KEYS: readonly string[] = [
   "report.rawgRefused",
   "report.moduleData",
   "report.moduleChain",
+  "report.aiAccessesRevoked",
   "report.moduleFloor",
   "report.moduleNewer",
   "report.moduleMissing",
