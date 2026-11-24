@@ -19,6 +19,7 @@ import { ui } from "@/components/admin/ui";
 import Link from "next/link";
 import { CatalogueDetailsLink } from "@/components/admin/CatalogueDetailsLink";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
+import { OriginFilter } from "@/components/admin/OriginFilter";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { discoverModules, isTruncated, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
@@ -76,14 +77,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         <TopicPicker options={facets.map((f) => ({ ...f, href: `${EXTENSIONS_ADD_HREF}?topic=${f.id}` }))} current={topic} allHref={EXTENSIONS_ADD_HREF}
           labels={{ label: t("catalogue.addsTo"), search: t("catalogue.topicSearch"), none: t("catalogue.topicNoMatch"), all: t("catalogue.topicAll"), remove: t("catalogue.topicRemove", { name: "{name}" }), list: t("catalogue.addsTo") }} />
       </div>
-      {hasPersonal && (
-        <div role="group" aria-label={t("catalogue.filter.label")} className="flex flex-wrap gap-2" data-testid="origin-filter">
-          {([[null, "catalogue.filter.all", entries.length], ["official", "catalogue.filter.official", entries.filter((e) => !e.source).length], ["personal", "catalogue.filter.personal", entries.filter((e) => e.source).length]] as const).map(([o, key, n]) => (
-            <a key={String(o)} href={originHref(o)} aria-current={origin === o ? "true" : undefined}
-              className={`inline-flex min-h-11 items-center gap-1.5 rounded-full border px-4 text-sm font-medium transition-colors ${origin === o ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface hover:border-accent hover:text-accent"}`}>{t(key)}<span className={origin === o ? "opacity-80" : "text-muted"}>{n}</span></a>
-          ))}
-        </div>
-      )}
+      {hasPersonal && <OriginFilter t={t} current={origin} href={originHref} counts={{ all: entries.length, official: entries.filter((e) => !e.source).length, personal: entries.filter((e) => e.source).length }} />}
       {advanced && source.source !== "none" && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" data-testid="catalogue-freshness">
           <span title={new Date(source.fetchedAt ?? 0).toLocaleString(locale)}>{t(source.source === "cache" ? "catalogue.source.cache" : "catalogue.updatedAgo", { when: relativeAge(source.fetchedAt, locale) })}</span>

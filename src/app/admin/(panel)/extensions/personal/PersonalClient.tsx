@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { FieldErrorText } from "@/components/admin/FieldErrors";
 import { TextField } from "@/components/admin/Field";
-import { CodeField, AccessSummary } from "@/components/admin/PrivateAccess";
+import { CodeField, EditForm, RemoveForm } from "@/components/admin/PrivateAccess";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { RowDialog } from "@/components/admin/RowDialog";
 import { RowMenu } from "@/components/admin/RowMenu";
@@ -141,7 +141,11 @@ export function CatalogueActions({ id, name, address, installed, access, needsAc
 
       {canAccess && (
         <RowDialog open={open === "access"} title={fill(labels["access.edit.title"], { repo: state.repo ?? name })} onClose={close} closeLabel={labels["modal.close"] ?? ""}>
-          <AccessSummary compact url={address} access={state} labels={labels} onChanged={reload} />
+          <div className="space-y-4" data-testid="personal-access-dialog">
+            {state.state === "reenter" && <p className="text-sm text-muted">{labels["access.reenter.why"]}</p>}
+            <EditForm url={address} state={state.state} labels={labels} onChanged={reload} />
+            <div className="border-t border-line pt-3"><RemoveForm url={address} repo={state.repo ?? name} labels={labels} onChanged={reload} /></div>
+          </div>
         </RowDialog>
       )}
       <RowDialog open={open === "remove"} title={fill(labels["personal.remove.title"], { name })} onClose={close} closeLabel={labels["modal.close"] ?? ""}>
