@@ -20,6 +20,7 @@ import { accessState, accessTarget, failureOf, isGitAccessError, type AccessStat
 import { removeAccessCode } from "../gitAccessAdmin";
 import { getSetting, setSetting } from "../settings";
 import { readRows as readSkinRows } from "../skins/registry";
+import { incompatWithThisCore } from "./compat";
 import { git, parseRepoUrl, sameRepo } from "./installer";
 import { fetchCatalogueFromRepo, sanitizeEntries, clearRecognizedCache, type RecognizedItem } from "./recognized";
 import { listSources } from "./sources";
@@ -74,7 +75,7 @@ export const fromPersonal = (repoUrl: string | null | undefined, catalogues: rea
 /** Why an entry of an index is not offered. `elsewhere`: it points to another repository. `clash`: the official catalogue has this id. `duplicate`: a catalogue registered before offers it. */
 export type RefusalReason = "elsewhere" | "clash" | "duplicate";
 export type Refusal = { id: string; reason: RefusalReason; /** The catalogue that already offers it (`duplicate`). */ by?: string };
-export type Offer = { id: string; name: string; version?: string; /** Minimal core announced by the index. */ core?: string };
+export type Offer = { id: string; name: string; version?: string; icon?: string; /** Set when this site runs an older core than the one the index asks for: the extension is listed but cannot be installed here. */ needsCore?: string };
 export type ReadReport = { offered: RecognizedItem[]; refused: Refusal[] };
 /** `index`: no readable `catalogue/index.json`. `access`: the repository refuses the reading (no code, wrong or expired code, or no such repository). */
 export type ReadFailure = "access" | "unreachable" | "tooOld" | "index" | "unknown";
@@ -153,7 +154,7 @@ export async function personalItems(official: ReadonlySet<string>): Promise<Reco
 export type Checked = { ok: true; address: string; ref?: string; id: string; name: string; offers: Offer[]; installable: number; refused: Refusal[]; access: AccessState; alreadyAdded: boolean }
   | { ok: false; error: string; failure?: ReadFailure; needsCode?: boolean };
 
-const offerOf = (e: RecognizedItem): Offer => ({ id: e.id, name: e.name, ...(e.version ? { version: e.version } : {}), ...(e.requires?.core ? { core: e.requires.core } : {}) });
+const offerOf = (e: RecognizedItem): Offer => ({ id: e.id, name: e.name, ...(e.version ? { version: e.version } : {}), ...(e.icon ? { icon: e.icon } : {}), ...(incompatWithThisCore(e.requires)?.needs ? { needsCore: incompatWithThisCore(e.requires)!.needs } : {}) });
 
 /** Looks at an address WITHOUT registering it: how many modules it offers, which are refused and why. A saved access code is used by git alone. */
 export async function checkCatalogue(input: string): Promise<Checked> {
@@ -169,9 +170,9 @@ export async function checkCatalogue(input: string): Promise<Checked> {
   for (const e of all) if (e.catalogueSource && e.catalogueSource.id !== id) taken.set(e.id, e.catalogueSource.id);
   const read = await readCatalogue({ id, url, ref: parsed.repo.ref }, { official: new Set(all.filter((e) => !e.catalogueSource).map((e) => e.id)), taken });
   const access = await accessState(url);
-  if (!read.ok) return { ok: false, error: read.failure === "access" ? "modules.error.access" : read.failure === "index" ? "personal.error.index" : read.failure === "unreachable" ? "access.error.unreachable" : read.failure === "tooOld" ? "access.error.tooOld" : "personal.error.read", failure: read.failure, needsCode: read.failure === "access" && !!accessTarget(url) };
+  if (!read.ok) return { ok: false, error: read.failure === "access" ? "personal.error.access" : read.failure === "index" ? "personal.error.index" : read.failure === "unreachable" ? "access.error.unreachable" : read.failure === "tooOld" ? "access.error.tooOld" : "personal.error.read", failure: read.failure, needsCode: read.failure === "access" && !!accessTarget(url) };
   const offers = read.report.offered.map(offerOf);
-  return { ok: true, address: addressOfCatalogue({ url, ref: parsed.repo.ref }), ...(parsed.repo.ref ? { ref: parsed.repo.ref } : {}), id, name: catalogueLabel(url).split("/").pop()!, offers, installable: offers.length, refused: read.report.refused, access, alreadyAdded: list.some((c) => c.id === id) };
+  return { ok: true, address: addressOfCatalogue({ url, ref: parsed.repo.ref }), ...(parsed.repo.ref ? { ref: parsed.repo.ref } : {}), id, name: catalogueLabel(url).split("/").pop()!, offers, installable: offers.filter((o) => !o.needsCore).length, refused: read.report.refused, access, alreadyAdded: list.some((c) => c.id === id) };
 }
 
 export type AddResult = { ok: true; catalogue: PersonalCatalogue; offered: number } | { ok: false; error: string };
@@ -183,16 +184,16 @@ export async function addCatalogue(input: string, name: string, actor: string): 
   if (!checked.ok) return { ok: false, error: checked.error };
   if (checked.alreadyAdded) return { ok: false, error: "personal.error.exists" };
   if (list.length >= MAX_CATALOGUES) return { ok: false, error: "personal.error.max" };
-  if (checked.installable === 0) return { ok: false, error: "personal.error.empty" };
+  if (checked.offers.length === 0) return { ok: false, error: "personal.error.empty" };
   const parsed = parseRepoUrl(input);
   if (!parsed.ok) return { ok: false, error: parsed.error };
   const catalogue: PersonalCatalogue = { id: checked.id, name: cleanName(name) || checked.name, url: plainUrl(parsed.repo.url), ...(parsed.repo.ref ? { ref: parsed.repo.ref } : {}) };
   await setSetting(KEY, [...list, catalogue].map(stored));
   clearRecognizedCache();
   record(catalogue.id, { ok: true, report: { offered: [], refused: checked.refused } });
-  states().set(catalogue.id, { state: "configured", at: Date.now(), offered: checked.installable, refused: checked.refused });
+  states().set(catalogue.id, { state: "configured", at: Date.now(), offered: checked.offers.length, refused: checked.refused });
   void actor;
-  return { ok: true, catalogue, offered: checked.installable };
+  return { ok: true, catalogue, offered: checked.offers.length };
 }
 
 export async function renameCatalogue(id: string, name: string): Promise<boolean> {

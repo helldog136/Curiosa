@@ -2,11 +2,12 @@
 import { APPEARANCE_HREF } from "@/core/adminLinks";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ActionForm, type ActionState } from "@/components/admin/ActionForm";
 import { EditForm, RemoveForm, ACCESS_LABEL_KEYS } from "@/components/admin/PrivateAccess";
 import type { AccessState } from "@/core/gitAccess";
 import { RowMenu } from "@/components/admin/RowMenu";
+import { RowDialog as SharedRowDialog } from "@/components/admin/RowDialog";
 import { ui } from "@/components/admin/ui";
 import { useAL } from "./AppearanceLabels";
 import { BigCheckbox } from "./Controls";
@@ -16,27 +17,10 @@ export type ManagedSkin = { id: string; name: string; version: string; source: "
 
 export type Which = "update" | "access" | "revert" | "remove";
 
-/** A window above the page (native <dialog>: Escape closes, the keyboard is enough); its content exists only while it is open, so each opening starts clean. */
-function RowDialog({ open, title, onClose, children }: { open: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
+/** The window is shared with the other row tables (src/components/admin/RowDialog.tsx); here the close label comes from the Appearance texts. */
+function RowDialog(props: { open: boolean; title: string; onClose: () => void; children: React.ReactNode }) {
   const al = useAL();
-  const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  useEffect(() => { const d = ref.current; if (!d) return; if (open && !d.open) d.showModal(); if (!open && d.open) d.close(); }, [open]);
-  useEffect(() => { const d = ref.current; if (!d) return; d.addEventListener("close", onClose); return () => d.removeEventListener("close", onClose); }, [onClose]);
-  return (
-    <dialog ref={ref} aria-labelledby={titleId} onClick={(e) => { if (e.target === ref.current) ref.current?.close(); }}
-      className="m-auto max-h-[90vh] w-[min(94vw,34rem)] overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-2xl backdrop:bg-black/60">
-      {open && (
-        <div className="space-y-4 p-5 sm:p-6">
-          <div className="flex items-start justify-between gap-3">
-            <h2 id={titleId} className="min-w-0 text-lg font-semibold [overflow-wrap:anywhere]">{title}</h2>
-            <button type="button" onClick={() => ref.current?.close()} aria-label={al("modal.close")} title={al("modal.close")} className="-mr-2 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-xl text-muted hover:text-fg"><span aria-hidden>×</span></button>
-          </div>
-          {children}
-        </div>
-      )}
-    </dialog>
-  );
+  return <SharedRowDialog {...props} closeLabel={al("modal.close")} />;
 }
 
 const MENU = "flex min-h-11 w-full items-center justify-start gap-2 px-4 text-left text-sm transition hover:bg-bg";
