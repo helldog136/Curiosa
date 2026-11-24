@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Les liens internes d'une page du site fonctionnent.** Un lien comme « voir le lexique » (vers un titre de la même page) mène maintenant au bon titre, y compris avec des accents, et le titre n'est plus caché par un en-tête fixe.
+- **(English) In-page links on site pages work.** A link such as "see the lexicon" (to a heading on the same page) now jumps to the right heading, accents included, and the heading is no longer hidden by a fixed header.
 - **Un assistant IA voit tout ce que le site pourrait lui permettre de faire.** Il connaît la liste à jour des opérations, même celles qu'il n'a pas, et lesquelles demandent votre validation. Il peut vous dire « si vous m'accordez ceci, je pourrais le faire moi-même », ou signaler ce que vos propres droits ne permettent pas.
 - **(English) An AI assistant can see everything the site could let it do.** It knows the up-to-date list of every operation, even those not granted to it, and whether they need your approval. It can tell you "if you grant me this, I could do it myself", or warn you that an operation is above your own rights.
 

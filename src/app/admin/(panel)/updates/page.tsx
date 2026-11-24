@@ -168,7 +168,7 @@ export default async function UpdatesPage() {
               <h2 className="text-base font-semibold">{t("updates.whatChanges")}</h2>
               {check.notes ? (
                 <div className="max-h-80 overflow-auto rounded-xl border border-line bg-bg p-4 text-sm" data-testid="update-notes" aria-label={t("updates.whatsNew", { version: check.latest ?? "" })}>
-                  <Markdown text={check.notes} />
+                  <Markdown text={check.notes} anchors={false} />
                 </div>
               ) : <p className="text-sm text-muted">{t("updates.noNotes")}</p>}
             </div>

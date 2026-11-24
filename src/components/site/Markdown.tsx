@@ -1,6 +1,7 @@
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { isExternalHref } from "@/core/url";
+import { rehypeHeadingIds } from "@/core/headingId";
 import { CodeBlock } from "./CodeBlock";
 
 const components: Components = {
@@ -13,16 +14,16 @@ const components: Components = {
       </a>
     );
   },
-  h1: ({ children }) => <h2 data-skin-part="heading" data-level="2" className="mt-8 text-2xl font-semibold">{children}</h2>,
-  h2: ({ children }) => <h2 data-skin-part="heading" data-level="2" className="mt-8 text-2xl font-semibold">{children}</h2>,
-  h3: ({ children }) => <h3 data-skin-part="heading" data-level="3" className="mt-6 text-xl font-semibold">{children}</h3>,
+  h1: ({ id, children }) => <h2 id={id} data-skin-part="heading" data-level="2" className="scroll-mt-24 mt-8 text-2xl font-semibold">{children}</h2>,
+  h2: ({ id, children }) => <h2 id={id} data-skin-part="heading" data-level="2" className="scroll-mt-24 mt-8 text-2xl font-semibold">{children}</h2>,
+  h3: ({ id, children }) => <h3 id={id} data-skin-part="heading" data-level="3" className="scroll-mt-24 mt-6 text-xl font-semibold">{children}</h3>,
   p: ({ children }) => <p className="mt-4 leading-[var(--sk-leading-body,1.75rem)]">{children}</p>,
   ul: ({ children }) => <ul className="mt-4 list-disc space-y-1 pl-6">{children}</ul>,
   ol: ({ children }) => <ol className="mt-4 list-decimal space-y-1 pl-6">{children}</ol>,
   blockquote: ({ children }) => <blockquote data-skin-part="quote" className="mt-4 rounded-r-lg border-l-4 border-accent/60 bg-surface/60 py-1 pl-4 pr-3 text-muted">{children}</blockquote>,
-  h4: ({ children }) => <h4 data-skin-part="heading" data-level="4" className="mt-5 text-lg font-semibold">{children}</h4>,
-  h5: ({ children }) => <h5 data-skin-part="heading" data-level="5" className="mt-4 font-semibold">{children}</h5>,
-  h6: ({ children }) => <h6 data-skin-part="heading" data-level="6" className="mt-4 text-sm font-semibold uppercase tracking-wide text-muted">{children}</h6>,
+  h4: ({ id, children }) => <h4 id={id} data-skin-part="heading" data-level="4" className="scroll-mt-24 mt-5 text-lg font-semibold">{children}</h4>,
+  h5: ({ id, children }) => <h5 id={id} data-skin-part="heading" data-level="5" className="scroll-mt-24 mt-4 font-semibold">{children}</h5>,
+  h6: ({ id, children }) => <h6 id={id} data-skin-part="heading" data-level="6" className="scroll-mt-24 mt-4 text-sm font-semibold uppercase tracking-wide text-muted">{children}</h6>,
   li: ({ children }) => <li className="leading-[var(--sk-leading-body,1.75rem)] marker:text-muted">{children}</li>,
   hr: () => <hr data-skin-part="divider" className="my-8 border-line" />,
   strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
@@ -54,11 +55,12 @@ const untrustedComponents: Components = {
   img: ({ alt }) => <span className="text-muted">[{alt || "image"}]</span>,
 };
 
-/** Markdown sans HTML brut : un éditeur ne peut pas injecter de script. `untrusted` : texte d'un tiers (voir ci-dessus). */
-export function Markdown({ text, untrusted = false }: { text: string; untrusted?: boolean }) {
+/** Markdown sans HTML brut : un éditeur ne peut pas injecter de script. `untrusted` : texte d'un tiers (voir ci-dessus).
+ * `anchors` : chaque titre reçoit un `id` stable (voir core/headingId.ts) ; désactivé par défaut pour un texte de tiers, qui ne doit pas pouvoir viser un élément de la page. */
+export function Markdown({ text, untrusted = false, anchors = !untrusted }: { text: string; untrusted?: boolean; anchors?: boolean }) {
   return (
     <div data-skin-part="prose" className="max-w-none">
-      <ReactMarkdown remarkPlugins={[remarkGfm]} components={untrusted ? untrustedComponents : components}>
+      <ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={anchors ? [rehypeHeadingIds] : []} components={untrusted ? untrustedComponents : components}>
         {text}
       </ReactMarkdown>
     </div>
