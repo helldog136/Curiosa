@@ -1,6 +1,6 @@
 import { prisma } from "../db";
 import { getSiteConfig } from "../settings";
-import { createInstance, defaultNames, runInstanceCreateHook } from "../instanceService";
+import { addInstance, eraseInstanceRows } from "../instanceLifecycle";
 import { getModule } from "./registry";
 import { restoreModuleInstances, retireInstance } from "./retired";
 
@@ -34,17 +34,14 @@ async function ensureOnce(moduleId: string, opts: { key?: string }): Promise<Ens
   const kept = await restoreModuleInstances(moduleId);
   if (kept.restored.length) return { kind: "restored", instanceIds: kept.restored.map((r) => r.id) };
   const { locales } = await getSiteConfig();
-  const created = await createInstance(prisma, { manifest: mod.manifest, ...(opts.key ? { key: opts.key } : {}), names: defaultNames(mod.manifest, locales) });
-  await runInstanceCreateHook(created.id);
-  return { kind: "created", instanceId: created.id };
+  const { instance, afterCommit } = await addInstance(mod.manifest, { ...(opts.key ? { key: opts.key } : {}), locales });
+  await afterCommit();
+  return { kind: "created", instanceId: instance.id };
 }
 
 /** Défait `ensureDefaultInstance` (échec de la cascade) : l'instance créée est supprimée avec ses réglages, celles retrouvées sont rangées de nouveau (leurs données ne sont JAMAIS effacées). */
 export async function undoDefaultInstance(outcome: EnsureOutcome): Promise<void> {
   if (outcome.kind === "restored") { for (const id of outcome.instanceIds) await retireInstance(id, "uninstall").catch(() => {}); return; }
   if (outcome.kind !== "created") return;
-  const id = outcome.instanceId;
-  await prisma.setting.deleteMany({ where: { key: { startsWith: `instance.${id}.` } } });
-  await prisma.moduleRecord.deleteMany({ where: { instanceId: id } });
-  await prisma.moduleInstance.delete({ where: { id } }).catch(() => {});
+  await eraseInstanceRows([outcome.instanceId]);
 }

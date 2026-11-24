@@ -1,4 +1,5 @@
 import { prisma } from "../db";
+import { dataStatusKey } from "../instanceKeys";
 import { hardNeeds, normalizeNeeds, offerIsEach, offerVersionOf, satisfiesVersion } from "./serviceVersions";
 import { boxedInner, isStalled, ModuleStalled, STALLED } from "./budget";
 import { buildContext, forViewer } from "./context";
@@ -27,7 +28,7 @@ export async function liveProviders(except?: string): Promise<{ manifest: Parsed
     if (!mod) continue;
     const keys: string[] = [];
     for (const inst of await prisma.moduleInstance.findMany({ where: { moduleId: row.id }, orderBy: { key: "asc" } })) {
-      if (!(await getSetting<{ status?: string }>(`instance.${inst.id}.__dataStatus`))?.status) keys.push(inst.key);
+      if (!(await getSetting<{ status?: string }>(dataStatusKey(inst.id)))?.status) keys.push(inst.key);
     }
     if (keys.length) out.push({ manifest: mod.manifest, instanceKeys: keys });
   }

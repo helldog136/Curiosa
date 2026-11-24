@@ -6,6 +6,7 @@ import { deleteSetting, setSetting, getSetting } from "@/core/settings";
 import { buildContext } from "./context";
 import { getModule, listModuleRows, type LoadedModule } from "./registry";
 import { openSeedSession } from "./seeding";
+import { dataStatusKey, dataVersionKey, instanceSettingsWhere } from "@/core/instanceKeys";
 import { adoptModuleFeatures } from "./instanceFeatures";
 import type { InstanceView } from "@/core/instances";
 
@@ -24,8 +25,8 @@ import type { InstanceView } from "@/core/instances";
  * Les données plus récentes que le code du module (restauration dans un module plus ancien) sont aussi mises à l'écart : mieux vaut ne rien
  * faire tourner que lire des données qu'on ne comprend pas.
  */
-const versionKey = (id: string) => `instance.${id}.__dataVersion`;
-const statusKey = (id: string) => `instance.${id}.__dataStatus`;
+const versionKey = dataVersionKey;
+const statusKey = dataStatusKey;
 
 export type MigrationOutcome = { key: string; from: number; to: number; status: "none" | "ok" | "failed" | "newer"; error?: string };
 
@@ -80,7 +81,7 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
   if (!hasRecentBulkCopy()) safetyCopy("pre-migration");
   const generationBefore = await readGenerations([instance.id]);
   const records = await prisma.moduleRecord.findMany({ where: { instanceId: instance.id } });
-  const settings = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${instance.id}.` } } });
+  const settings = await prisma.setting.findMany({ where: instanceSettingsWhere(instance.id) });
   let reached = from;
   const seeds = openSeedSession(mod, instance);
   try {
@@ -99,7 +100,7 @@ export async function migrateInstance(mod: LoadedModule, instance: InstanceView)
     console.error(`[modules] migration of ${instance.key} failed at v${reached + 1}:`, message);
     await prisma.$transaction([
       prisma.moduleRecord.deleteMany({ where: { instanceId: instance.id } }),
-      prisma.setting.deleteMany({ where: { key: { startsWith: `instance.${instance.id}.` } } }),
+      prisma.setting.deleteMany({ where: instanceSettingsWhere(instance.id) }),
       prisma.moduleRecord.createMany({ data: records }),
       prisma.setting.createMany({ data: settings }),
     ]);

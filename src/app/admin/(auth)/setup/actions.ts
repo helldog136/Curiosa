@@ -10,7 +10,7 @@ import { makeTranslator } from "@/core/i18n/dictionary";
 import { isKnownLocale } from "@/core/i18n/locales";
 import { createSampleDrafts, installChosenModules } from "@/core/modules/starter";
 import type { ParsedManifest } from "@/core/modules/manifest";
-import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
+import { addInstance } from "@/core/instanceLifecycle";
 import { audit } from "@/core/permissions";
 import { createEntry } from "@/core/content/service";
 import type { HomeSection } from "@/core/settings";
@@ -62,7 +62,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   const linkIcons = formData.getAll("linkIcon").map(String);
   const shortcutRows = new Set(formData.getAll("linkShortcut").map(String));
 
-  const createdIds: string[] = [];
+  const afterCommit: (() => Promise<void>)[] = [];
   // Les modules choisis (parmi ceux que le catalogue suggère : une valeur envoyée à la main n'en ajoute aucun) sont installés avant la transaction
   // (leur ligne est ce qu'attendent les instances), depuis le catalogue, version épinglée. Jamais de copie locale : catalogue injoignable → le site
   // se crée quand même, sans ces modules, et le tableau de bord le dit.
@@ -90,15 +90,15 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
       const home: HomeSection[] = [];
       const created: { manifest: ParsedManifest; instance: { id: string; key: string } }[] = [];
       for (const manifest of wanted) {
-        const instance = await createInstance(tx, {
-          manifest,
-          names: defaultNames(manifest, locales),
+        const { instance, afterCommit: hook } = await addInstance(manifest, {
+          tx,
+          locales,
           descriptions: Object.fromEntries(locales.map((l) => [l, localizedText(manifest.description, l)])),
           // Le menu de départ du site : les pages que leur module suggère d'y mettre (ensuite, plus rien n'y entre sans la décision de la personne).
           menu: "suggested",
         });
         created.push({ manifest, instance });
-        createdIds.push(instance.id);
+        afterCommit.push(hook);
         const h = manifest.onboarding?.home;
         if (h) home.push({ id: manifest.id, instance: instance.key, section: h.section, options: h.count ? { count: h.count } : {} });
       }
@@ -155,7 +155,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
     return { error: t("setup.error.generic") };
   }
 
-  for (const id of createdIds) await runInstanceCreateHook(id);
+  for (const run of afterCommit) await run();
   await audit(email, "setup.completed", failed.length ? `modules not installed (catalogue): ${failed.join(", ")}` : "");
   try {
     await signIn("credentials", { email, password, redirectTo: !failed.length ? SETUP_NEXT : wanted.length ? `${SETUP_NEXT}?modules=partial` : `${SETUP_NEXT}?modules=failed` });

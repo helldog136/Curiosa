@@ -9,7 +9,7 @@ import { forgetModulesReport } from "@/core/modules/updateStatus";
 import { audit } from "@/core/permissions";
 import { getModule } from "@/core/modules/registry";
 import { prisma } from "@/core/db";
-import { createInstance, defaultNames, runInstanceCreateHook } from "@/core/instanceService";
+import { addInstance as addCoreInstance } from "@/core/instanceLifecycle";
 import { checkNickname } from "@/core/instanceLabel";
 import { duplicateServices, isEachService, providerInstances, setRouting } from "@/core/modules/dependencies";
 import { cleanupSuggestions, forgetAuto } from "@/core/modules/autoInstalled";
@@ -192,8 +192,8 @@ export async function addInstance(moduleId: string, formData: FormData): Promise
     for (const e of existing) if (!e.nickname) await prisma.moduleInstance.update({ where: { id: e.id }, data: { nickname: assigned.get(e.id) } });
   }
 
-  const created = await createInstance(prisma, { manifest: mod.manifest, nickname, names: nickname ? defaultNames(mod.manifest, config.locales, nickname) : defaultNames(mod.manifest, config.locales) });
-  await runInstanceCreateHook(created.id);
+  const { instance: created, afterCommit } = await addCoreInstance(mod.manifest, { nickname, locales: config.locales });
+  await afterCommit();
   await audit(user.email, "instance.create", created.key);
   revalidatePath("/", "layout");
   if ((await duplicateServices()).some((d) => !d.resolved)) redirect(`${EXTENSIONS_HREF}?notice=services`);

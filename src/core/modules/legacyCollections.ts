@@ -1,4 +1,5 @@
 import { prisma } from "@/core/db";
+import { DATA_STATUS_NAME, DATA_VERSION_NAME, instanceKeyPrefix } from "@/core/instanceKeys";
 import { readGitManifest } from "./registry";
 
 /**
@@ -24,12 +25,12 @@ export async function inertDeclared(instanceKey: string, collection: string): Pr
   if (!manifest || !(manifest.legacyCollections ?? []).includes(collection)) return { ok: false, reason: "not-declared" };
   if (!(manifest.inertLegacyCollections ?? []).includes(collection)) return { ok: false, reason: "not-inert" };
   // La reprise doit être FINIE : tant que les données de l'instance sont en retard ou mises à l'écart, ou qu'une reprise (`seeds`) n'est pas faite, la copie peut encore servir de source.
-  const rows = await prisma.setting.findMany({ where: { key: { startsWith: `instance.${inst.id}.__` } }, select: { key: true, value: true } });
-  const own = new Map(rows.map((r) => [r.key.slice(`instance.${inst.id}.`.length), r.value]));
+  const rows = await prisma.setting.findMany({ where: { key: { startsWith: `${instanceKeyPrefix(inst.id)}__` } }, select: { key: true, value: true } });
+  const own = new Map(rows.map((r) => [r.key.slice(instanceKeyPrefix(inst.id).length), r.value]));
   let version = 1;
-  try { const v = Number(JSON.parse(own.get("__dataVersion") ?? "1")); if (Number.isInteger(v) && v >= 1) version = v; } catch { /* illisible : version 1 */ }
+  try { const v = Number(JSON.parse(own.get(DATA_VERSION_NAME) ?? "1")); if (Number.isInteger(v) && v >= 1) version = v; } catch { /* illisible : version 1 */ }
   let status: { status?: string } | null = null;
-  try { status = own.has("__dataStatus") ? JSON.parse(own.get("__dataStatus")!) : null; } catch { status = null; }
+  try { status = own.has(DATA_STATUS_NAME) ? JSON.parse(own.get(DATA_STATUS_NAME)!) : null; } catch { status = null; }
   const behind = version < (manifest.dataVersion ?? 1) || status?.status === "failed";
   const seedsPending = Boolean(manifest.seeds?.length) && ![...own.keys()].some((k) => k.startsWith("__seeds."));
   if (behind || seedsPending) return { ok: false, reason: "not-converted" };
