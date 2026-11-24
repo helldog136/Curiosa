@@ -145,3 +145,20 @@ export function checkPattern(raw: unknown, opts: { bytes?: number } = {}): Patte
 /** What a recipe needs to know about each pattern file it names (the caller read and checked the files): its domain and its pieces, or that it is written for a newer contract. */
 export type PatternFileInfo = { w: number; h: number; cells: number } | { newer: true };
 export const patternInfoOf = (c: PatternCheck): PatternFileInfo | null => (c.newer ? { newer: true } : c.ok && c.pattern ? { w: c.pattern.domain[0], h: c.pattern.domain[1], cells: c.pattern.cells.length } : null);
+
+/**
+ * The hand-off to the page: the recipe's `patterns` table with each `{ file }` replaced by the numbers of that file (its normalised graph), so the page never fetches a pattern
+ * file (they are never served). A variant whose file has no usable graph (written for a newer contract) is left out; a name with no variant left is dropped, and the mosaic that
+ * names it draws the simple pattern. `bytes` is the size of what is handed over, checked against `PATTERN.totalBytes` by the caller.
+ */
+export function inlinePatterns(recipe: Record<string, unknown>, graphs: ReadonlyMap<string, PatternGraph>): { recipe: Record<string, unknown>; bytes: number } {
+  const table = recipe.patterns;
+  if (!table || typeof table !== "object" || Array.isArray(table)) return { recipe, bytes: 0 };
+  const out: Record<string, PatternGraph[]> = {};
+  for (const [name, list] of Object.entries(table as Record<string, unknown>)) {
+    const picked: PatternGraph[] = [];
+    if (Array.isArray(list)) for (const v of list) { const g = graphs.get((v as { file?: string }).file ?? ""); if (g) picked.push(g); }
+    if (picked.length) out[name] = picked;
+  }
+  return { recipe: { ...recipe, patterns: out }, bytes: JSON.stringify(out).length };
+}

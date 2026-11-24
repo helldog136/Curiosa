@@ -21,13 +21,16 @@ import { sanitizeSkinCss, sanitizeTokenValue } from "./sanitize";
 import { checkToken } from "../overlays/skinTokens";
 import { sanitizeOverlayCss } from "../overlays/skinCss";
 import { checkSkinTokens } from "../overlays/skinSheet";
-import { OVERLAY_FONTS_MIN_CORE, OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4, OVERLAY_SKIN_CONTRACT_V5, OVERLAY_SKIN_CONTRACT_V6 } from "./constants";
+import { OVERLAY_FONTS_MIN_CORE, OVERLAY_PATTERNS_MIN_CORE, OVERLAY_SKIN_CONTRACT, OVERLAY_SKIN_CONTRACT_V3, OVERLAY_SKIN_CONTRACT_V4, OVERLAY_SKIN_CONTRACT_V5, OVERLAY_SKIN_CONTRACT_V6, OVERLAY_SKIN_CONTRACT_V7 } from "./constants";
 import { fontCtx } from "../overlays/skinFonts";
 import { checkWoff2 } from "../fonts/woff2";
 import { checkScene, type SceneAssetInfo } from "../animate/scene";
 import { probeImage } from "../animate/imageProbe";
 import { checkAnimation } from "../animate/recipe";
-import { RECIPE_LIMITS, SCENE } from "../animate/spec";
+import { checkPattern, inlinePatterns, patternInfoOf, type PatternFileInfo } from "../animate/pattern";
+import type { PatternGraph } from "../animate/patternGraph";
+import { PATTERN, PATTERN_PATH_RE, RECIPE_LIMITS, SCENE } from "../animate/spec";
+import { patternFileIssues, patternUnreadable, recipePatternIssue } from "./patternIssues";
 import { coreSatisfies } from "./semver";
 import { checkCustomizeAgainstSkin } from "./customizeRead";
 
@@ -55,7 +58,7 @@ export type ValidateOptions = {
   advice?: boolean;
 };
 
-export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme" | "animation" | "scene";
+export type FileKind = "manifest" | "tokens" | "stylesheet" | "font" | "image" | "preview" | "license" | "readme" | "animation" | "scene" | "pattern";
 export type ValidatedFile = { path: string; bytes: number; sha256: string; kind: FileKind };
 
 export type SkinTokens = {
@@ -102,7 +105,7 @@ const PREVIEW_PATH_RE = /^previews\/[a-z0-9][a-z0-9._-]{0,63}\.webp$/;
 const LICENSE_FILE_RE = /^LICENSES\/[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.(txt|md)$/;
 const README_RE = /^README(\.[a-z]{2})?\.md$/;
 const OWN_LICENSE_RE = /^LICENSE(\.md|\.txt)?$/;
-const SUBDIRS = ["fonts", "images", "previews", "LICENSES"] as const;
+const SUBDIRS = ["fonts", "images", "previews", "patterns", "LICENSES"] as const;
 const MAX_TOKENS = 400;
 /** (core 0.9.0) An overlay skin may ship ONE animated preview (`previews/*-anim.webp`, looping 640 x 360): the gallery plays it, the site serves it. */
 export const ANIMATED_PREVIEW_BYTES = 450 * 1024;
@@ -178,6 +181,7 @@ function run(dir: string, opts: ValidateOptions): SkinValidation {
   if (m.kind === "overlay" && m.skinContract < OVERLAY_SKIN_CONTRACT) add("overlay-contract");
   if (m.kind !== "overlay" && m.animation) add("animation-overlay-only");
   if (m.kind !== "overlay" && m.scene) add("scene-overlay-only");
+  if (m.kind !== "overlay" && m.assets.some((a) => a.kind === "pattern")) add("pattern-overlay-only");
   if (m.kind !== "overlay" && m.twinOf) add("twin-overlay-only");
   if (m.twinOf && (m.twinOf === m.id || m.twinOf === BASIC_ID)) add("twin-self");
   if (hasErrors(issues)) return fail();   // le reste dépend d'un manifeste sain
@@ -339,7 +343,7 @@ function scan(dir: string, add: (code: IssueCode, params?: Params) => void): Fou
       }
       if (!e.isFile()) { refuse("skin-file-unlisted", { file: r }); continue; }
       if (depth === 0 && IGNORED_ROOT_FILE_RE.test(e.name)) continue;
-      const strict = rel === "fonts" || rel === "images" || rel === "previews";
+      const strict = rel === "fonts" || rel === "images" || rel === "previews" || rel === "patterns";
       if (!(strict ? ASSET_NAME_RE : ROOT_NAME_RE).test(e.name)) { refuse("skin-file-name", { file: r }); continue; }
       const size = fs.lstatSync(p).size;
       out.push({ rel: r, abs: p, size });
@@ -455,6 +459,20 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     if (!a.family) { add("overlay-font-family-missing", { file: a.file }); continue; }
     if (declare(a.file, "font", FONT_PATH_RE, "asset-missing")) fontFiles.push(a);
   }
+  // (core 0.48.0) the skin's own mosaic pieces: JSON files under patterns/, numbers only, one declaration each (the licence is free text and never judged)
+  const patternFiles: SkinManifest["assets"] = [];
+  const patternDecls = m.assets.filter((a) => a.kind === "pattern");
+  if (patternDecls.length) {
+    if (m.skinContract < OVERLAY_SKIN_CONTRACT_V7) add("overlay-contract-v7");
+    else if (!m.minCore || !coreSatisfies(OVERLAY_PATTERNS_MIN_CORE, m.minCore)) add("overlay-pattern-mincore");
+    if (patternDecls.length > PATTERN.maxFiles) add("patterns-too-many", { max: PATTERN.maxFiles });
+    const seenPatterns = new Set<string>();
+    for (const a of patternDecls) {
+      if (seenPatterns.has(a.file)) { add("asset-duplicate", { file: a.file }); continue; }
+      seenPatterns.add(a.file);
+      if (declare(a.file, "pattern", PATTERN_PATH_RE, "asset-missing")) patternFiles.push(a);
+    }
+  }
   for (const f of found) {
     if (kinds.has(f.rel)) continue;
     if (README_RE.test(f.rel) || OWN_LICENSE_RE.test(f.rel) || LICENSE_FILE_RE.test(f.rel)) kinds.set(f.rel, README_RE.test(f.rel) ? "readme" : "license");
@@ -504,6 +522,20 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
     }
   }
   // (core 0.30.0) the animation recipe: data checked with the closed grammar of animate/spec.ts
+  // (core 0.48.0) read every pattern file first (numbers only, never trusted): what the recipe may name, and the graphs handed to the page
+  const patternInfo = new Map<string, PatternFileInfo>();
+  const graphs = new Map<string, PatternGraph>();
+  for (const a of patternFiles.slice(0, PATTERN.maxFiles)) {
+    const size = sizeOf(a.file);
+    if (size > PATTERN.fileBytes) { issues.push(...patternFileIssues(a.file, checkPattern(null, { bytes: size }), size, PATTERN.fileBytes)); continue; }
+    let rawPattern: unknown;
+    try { rawPattern = JSON.parse(read(a.file).toString("utf8").replace(/^\uFEFF/, "")); } catch { issues.push(patternUnreadable(a.file)); continue; }
+    const c = checkPattern(rawPattern, { bytes: size });
+    issues.push(...patternFileIssues(a.file, c, size, PATTERN.fileBytes).slice(0, 6));
+    const info = patternInfoOf(c);
+    if (info) patternInfo.set(a.file, info);
+    if (c.ok && c.graph) graphs.set(a.file, c.graph);
+  }
   let animation: Record<string, unknown> | null = null;
   if (hasAnimation) {
     if (sizeOf(m.animation!) > RECIPE_LIMITS.bytes) add("file-too-large", { file: m.animation!, size: kb(sizeOf(m.animation!)), max: kb(RECIPE_LIMITS.bytes) });
@@ -511,8 +543,11 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
       let raw: unknown;
       try { raw = JSON.parse(read(m.animation!).toString("utf8").replace(/^\uFEFF/, "")); } catch { add("animation-unreadable"); }
       if (raw !== undefined) {
-        const r = checkAnimation(raw);
+        const r = checkAnimation(raw, patternInfo);
         for (const i of r.issues.slice(0, 12)) {
+          const pi = recipePatternIssue(i);
+          if (pi) { issues.push(pi); continue; }
+          if (i.code === "pattern-newer") continue;   // that variant is skipped; its own file already carries the warning
           if (i.code === "contract-newer") add("animation-contract-newer");
           else if (i.code === "contract-ahead") add("animation-contract-ahead");
           else if (i.severity === "warning") add("animation-ignored", { detail: i.path });
@@ -520,6 +555,11 @@ function runOverlay(m: SkinManifest, found: Found[], byRel: Map<string, Found>, 
           else add(i.code === "text-contrast" ? "animation-text-contrast" : "animation-invalid", { detail: `${i.code} ${i.path}` });
         }
         animation = r.ok ? r.recipe : null;
+        if (animation && graphs.size) {
+          const inl = inlinePatterns(animation, graphs);
+          if (inl.bytes > PATTERN.totalBytes) { add("patterns-total-too-large", { size: kb(inl.bytes), max: kb(PATTERN.totalBytes) }); animation = null; }
+          else animation = inl.recipe;
+        }
       }
     }
   }

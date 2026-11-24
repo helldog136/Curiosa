@@ -281,7 +281,7 @@ export const PATTERN = {
   /** A window covering less of its domain than this is warned about. */
   coverage: 0.97,
   /** Variants of one pattern name, names in a `patterns` table, and the largest stretch between two neighbouring variants (the body is stretched by at most about this). */
-  maxVariants: 4, maxNames: 12, stretch: 1.4,
+  maxVariants: 4, maxNames: 12, maxFiles: 48, stretch: 1.4,
 } as const;
 
 /** Where a skin's pattern file may be: one folder, a lower-case name (the same shape as the other skin files; the folder is declared in `assets` with `kind: "pattern"`). */

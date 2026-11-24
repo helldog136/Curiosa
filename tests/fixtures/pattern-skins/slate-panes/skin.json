@@ -1,0 +1,21 @@
+{
+  "skinContract": 7,
+  "kind": "overlay",
+  "id": "slate-panes",
+  "name": { "fr": "Dalles d'ardoise", "en": "Slate panes" },
+  "description": { "fr": "Une barre en panneaux irréguliers dessinés par le skin (skin d'essai du cœur).", "en": "A bar made of irregular panes drawn by the skin (core test skin)." },
+  "version": "1.0.0",
+  "minCore": "0.48.0",
+  "license": "CC0-1.0",
+  "author": "Curiosa tests",
+  "tags": ["dark"],
+  "tokens": "tokens.json",
+  "animation": "animation.json",
+  "previews": [
+    { "file": "previews/overview.webp", "width": 640, "alt": { "fr": "Une barre de panneaux irréguliers", "en": "A bar of irregular panes" } }
+  ],
+  "assets": [
+    { "file": "patterns/wide.json", "kind": "pattern", "license": "CC0-1.0", "licenseFile": "LICENSES/CC0.txt", "author": "Curiosa tests", "source": "Neutral geometry invented for the tests" },
+    { "file": "patterns/square.json", "kind": "pattern", "license": "CC0-1.0", "licenseFile": "LICENSES/CC0.txt", "author": "Curiosa tests", "source": "Neutral geometry invented for the tests" }
+  ]
+}

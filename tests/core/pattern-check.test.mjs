@@ -190,11 +190,11 @@ test("recipe words: errors with their path (a file that is not there, a source t
   bad(recipe({ source: "bad name" }), "param", "genres.gauge.body.source");
   const many = Object.fromEntries(Array.from({ length: 13 }, (_, i) => [`n${i}`, { file: "patterns/wide.json" }]));
   bad(recipe({}, many), "patterns", "patterns");
-  // a file written for a newer pattern contract: that variant is skipped; with no variant left, the name is dropped and the mosaic needs another source
+  // a file written for a newer pattern contract: that variant is skipped; with no variant left, the name stays a valid source and the mosaic draws the simple pattern
   const newer = RC.checkAnimation(recipe({}, { arch: [{ file: "patterns/future.json" }, { file: "patterns/wide.json" }] }), info);
   assert.equal(newer.ok, true); assert.ok(newer.issues.some((i) => i.code === "pattern-newer")); assert.deepEqual(newer.recipe.patterns.arch, [{ file: "patterns/wide.json" }]);
   const gone = RC.checkAnimation(recipe({}, { arch: { file: "patterns/future.json" } }), info);
-  assert.equal(gone.ok, false); assert.ok(gone.issues.some((i) => i.code === "pattern-source"));
+  assert.equal(gone.ok, true); assert.deepEqual(gone.issues.map((i) => i.code), ["pattern-newer"]); assert.equal(gone.recipe.patterns, undefined);
   // unknown keys of a variant are warnings
   const extra = RC.checkAnimation(recipe({}, { arch: [{ file: "patterns/wide.json", url: "http://x.example" }] }), info);
   assert.equal(extra.ok, true); assert.ok(extra.issues.some((i) => i.code === "patterns" && i.severity === "warning")); assert.equal(JSON.stringify(extra.recipe).includes("example"), false);
@@ -260,4 +260,11 @@ test("animateContract 3 is the scene contract, never a recipe's: refused, so a s
   assert.equal(RC.checkAnimation({ animateContract: 4, animateMinContract: 3, ...body }).ok, false);
   assert.equal(RC.checkAnimation({ animateContract: 2, ...body }).ok, true);
   assert.equal(RC.checkAnimation({ animateContract: 4, ...body }).ok, true);
+});
+
+test("a name whose variants are all written for a newer pattern contract stays a valid source: the mosaic draws the simple pattern", () => {
+  const r = RC.checkAnimation({ animateContract: 4, patterns: { arch: [{ file: "patterns/a.json" }] }, genres: { gauge: { body: { draw: "mosaic", pattern: "file", source: "arch" } } } }, new Map([["patterns/a.json", { newer: true }]]));
+  assert.equal(r.ok, true, JSON.stringify(r.issues));
+  assert.deepEqual(r.issues.map((i) => i.code), ["pattern-newer"]);
+  assert.equal(r.recipe.patterns, undefined, "no variant is left to hand over");
 });

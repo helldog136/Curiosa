@@ -30,8 +30,16 @@ export const OVERLAY_SKIN_CONTRACT_V5 = 5;
 export const OVERLAY_SKIN_CONTRACT_V6 = 6;
 /** (core 0.47.0) The core that introduces contract 6: a skin that embarks fonts must ask for at least this `minCore`. */
 export const OVERLAY_FONTS_MIN_CORE = "0.47.0";
+/**
+ * (core 0.48.0) Contract of overlay skins that SHIP THEIR OWN MOSAIC PIECES (`assets` of kind `pattern` in skin.json, docs/OVERLAY-ANIMATIONS.md "Patterns"): JSON files under `patterns/` that
+ * hold numbers only (geometry and tone), named by the `patterns` table of the animation recipe. They are never served: the core checks them and hands the engine their numbers.
+ * Older cores refuse such a skin cleanly ("contract newer").
+ */
+export const OVERLAY_SKIN_CONTRACT_V7 = 7;
+/** (core 0.48.0) The core that introduces contract 7: a skin that ships patterns must ask for at least this `minCore`. */
+export const OVERLAY_PATTERNS_MIN_CORE = "0.48.0";
 /** The highest contract this core understands for a skin of this kind. */
-export const maxSkinContract = (kind: unknown): number => (kind === "overlay" ? OVERLAY_SKIN_CONTRACT_V6 : SKIN_CONTRACT);
+export const maxSkinContract = (kind: unknown): number => (kind === "overlay" ? OVERLAY_SKIN_CONTRACT_V7 : SKIN_CONTRACT);
 
 /**
  * Longest `license` text a skin manifest may carry (skin and assets). The licence is FREE TEXT shown to the owner as information only: the core never validates it

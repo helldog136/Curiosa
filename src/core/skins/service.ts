@@ -517,7 +517,7 @@ export function readInstalledPreview(id: string, version: string, file: string):
 // ---------------------------------------------------------------------------------------------------------------------
 // Aperçu avant installation
 
-export type InspectAsset = { file: string; kind: "font" | "image"; license?: string; author?: string; source?: string; family?: string };
+export type InspectAsset = { file: string; kind: "font" | "image" | "pattern"; license?: string; author?: string; source?: string; family?: string };
 export type InspectSummary = {
   id: string;
   name: Text;

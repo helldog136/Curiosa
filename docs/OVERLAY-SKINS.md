@@ -200,6 +200,26 @@ An overlay skin may ship up to four **woff2** fonts. The skin never writes `@fon
 - **Loading**: the overlay page fetches the font bytes itself (`connect-src 'self'`, unchanged) and hands them to each element frame as a `FontFace`, so an element page with a strict policy (`default-src 'none'`) needs no `font-src`. The frame stays hidden until its sheet and fonts are ready, for 2.5 s at most: if a font cannot be fetched, the frame is shown with the fallback stack and nothing shows an error. The page policy is unchanged (`font-src 'none'`); the gallery sample page gets the fonts as `data:` addresses and `font-src data:` only when it has any.
 - **Check**: `npm run skin:check -- <folder> --core-version 0.47.0`.
 
+## Patterns: the skin's own mosaic pieces (core 0.48.0, skin contract 7)
+
+A skin gets more power over HOW an element is drawn, never over DATA. A `mosaic` (the stained-glass drawing of the animation recipe, docs/OVERLAY-ANIMATIONS.md "Patterns") may take its pieces from files of the skin: a **pattern file** is a list of polygons and tones, **numbers only**. It has no code, no URL and no text; it is never served as a file; and it cannot read or change anything of the site: the engine reads the numbers and draws, nothing else.
+
+```json
+{
+  "skinContract": 7, "kind": "overlay", "minCore": "0.48.0", "animation": "animation.json",
+  "assets": [
+    { "file": "patterns/wide.json", "kind": "pattern", "license": "CC0-1.0", "author": "Your name", "source": "Drawn by hand" }
+  ]
+}
+```
+
+- **Contract and core**: a skin that ships a pattern declares `skinContract: 7` (`overlay-contract-v7`) and `minCore` of at least `0.48.0` (`overlay-pattern-mincore`). An older core refuses it cleanly as "contract newer". Only an overlay skin may ship patterns (`pattern-overlay-only`).
+- **Files**: `patterns/<name>.json` only (lower case, `[a-z0-9._-]`), each declared in `assets` with `kind: "pattern"`, 48 files at most (`patterns-too-many`), 32 KB each (`pattern-too-large`). `license`, `author` and `source` are free text for the credits: the core never judges a licence. A file under `patterns/` that is not declared is refused like any unlisted file (`skin-file-unlisted`).
+- **The recipe names them**: the `patterns` table of `animation.json` (recipe contract 4) maps a name to one to four variants of different proportions, and a mosaic asks for `"pattern": "file"` with `"source": "<name>"`. The engine picks the variant whose proportions are closest to the element and stretches it to fit. A pattern the recipe names but the skin does not ship is refused (`pattern-missing`).
+- **Checks**: every file goes through the pattern checker (docs/OVERLAY-ANIMATIONS.md "Patterns" lists the limits and the codes). Errors refuse the skin; warnings (very sharp corners, less than 97 % coverage, more than 120 pieces, extra keys) keep it and say what will look wrong. A file written for a newer pattern contract is skipped with a warning: the simple pattern draws instead.
+- **Hand-off**: the validated numbers (the normalised pieces, at most 96 KB for all the patterns of a skin, `patterns-total-too-large`) travel inside the recipe handed to the overlay page. The page never fetches a pattern file, and `/skins/<id>/<version>/patterns/...` is not served.
+- **Check**: `npm run skin:check -- <folder> --core-version 0.48.0`. A complete example skin (neutral geometry invented for the tests) is `tests/fixtures/pattern-skins/slate-panes`.
+
 ## `twinOf`: a twin of a site skin (core 0.47.0)
 
 An overlay skin may name the **site skin** it was drawn to go with: `"twinOf": "<site skin id>"` in `skin.json`, and the same field in its entry of `catalogue/overlay-skins.json`. It is metadata only: no contract change, an older core ignores it (unknown keys are warnings), and it is refused only on a site skin (`twin-overlay-only`) or when it names the skin itself or `basic` (`twin-self`).
