@@ -9,7 +9,7 @@ import { resolvePersonalOwner } from "./owner";
  * 1. MARKER, ONCE. The first start-up after the migration marks `coarseCeiling` (see ownerCeiling.ts, COARSE_FALLBACK) on the accesses that have no owner and were created
  *    before that moment (`ai.legacyCutoff`, written before marking so that a retry after a crash reuses it): they predate the owners. Then `ai.legacyMarked` is written, and
  *    NEVER AGAIN is anything marked: an ownerless access created later (a helper, a downgrade and upgrade) stays fail-closed. This file is the ONLY writer of the flag (a later
- *    reassignment never touches it).
+ *    assignment never touches it: the owner of an access never changes, see owners.ts).
  * 2. Single-account sites: every live MARKED access that has no owner is given to the ONLY account of the site, but only if that account may own an access and is not locked
  *    (otherwise every automation would stop): then the accesses stay without an owner and keep working, and maintenance_diagnose says so.
  *    "Account" = a row of the user table: an invited person who has not signed in yet is a row too, so a site with an owner and a pending invitation has TWO accounts and
@@ -19,7 +19,7 @@ import { resolvePersonalOwner } from "./owner";
  * fallback, their secret address and full powers) until they are revoked: nothing else reads the settings.
  * Rollback by hand, only for the rows this step touched: `UPDATE ApiToken SET ownerId = NULL, pausedAt = NULL WHERE coarseCeiling = 1;`
  * (`pausedAt` too: an access without an owner ignores it, so a paused one would start working again; revoke the paused ones first if that is not wanted).
- * Accesses created later, or reassigned after losing their owner, are not marked and are not affected.
+ * Accesses created later are not marked and are not affected.
  */
 export const LEGACY_OWNERS_SUNSET = "0.49.0";
 

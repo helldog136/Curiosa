@@ -14,6 +14,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un assistant IA voit tout ce que le site pourrait lui permettre de faire.** Il connaît la liste à jour des opérations, même celles qu'il n'a pas, et lesquelles demandent votre validation. Il peut vous dire « si vous m'accordez ceci, je pourrais le faire moi-même », ou signaler ce que vos propres droits ne permettent pas.
 - **(English) An AI assistant can see everything the site could let it do.** It knows the up-to-date list of every operation, even those not granted to it, and whether they need your approval. It can tell you "if you grant me this, I could do it myself", or warn you that an operation is above your own rights.
 
+### Corrections
+
+- **La personne propriétaire d'un accès IA ne change plus jamais.** Elle est fixée à la création, sans transfert possible. Si elle disparaît (compte supprimé, sauvegarde restaurée sans elle), son accès est retiré et ses demandes en attente expirent.
+- **(English) The owner of an AI access never changes.** It is set at creation, with no transfer. If that person disappears (account deleted, backup restored without them), the access is removed and its pending requests expire.
+
 ## 0.47.0 — 2026-11-23
 
 **En bref.** Chaque accès d'un assistant IA appartient maintenant à une personne : un propriétaire obligatoire, des droits au plus égaux aux siens, un écran « Mes accès IA », un onglet « Par personne » et un panneau temporaire « Attribuer les propriétaires ». Une sauvegarde chiffrée peut vous être envoyée par e-mail. Les skins d'overlay peuvent embarquer leurs polices et dire quel skin de site ils accompagnent. Ajouter un skin est plus simple, l'adresse privée d'un skin fonctionne, et les gestionnaires de mots de passe ne s'invitent plus dans les champs ordinaires.

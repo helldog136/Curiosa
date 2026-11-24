@@ -45,6 +45,14 @@ export async function register() {
   // Rôles (0.2.0) : les trois rôles prédéfinis existent et chaque personne a celui de son niveau (`User.role`). Idempotent, ne lève jamais.
   const { initRoles } = await import("@/core/auth/roles");
   await initRoles();
+  // The owner of an AI access is permanent (0.47.1): an access whose owner has no user row any more is revoked, with a journal line. Idempotent, cheap, never throws.
+  try {
+    const { sweepOrphanedAccesses } = await import("@/core/personalAi/lifecycle");
+    const gone = await sweepOrphanedAccesses();
+    if (gone.length) console.log(`[ai] AI accesses revoked because their owner no longer exists: ${gone.length}`);
+  } catch (error) {
+    console.error("[ai] owner sweep failed:", (error as Error)?.message);
+  }
   // TEMPORARY (sunset 0.49.0, src/core/personalAi/legacyOwners.ts): on a site with a single account, every access without an owner is given to that account. Idempotent, never throws.
   try {
     const { assignLegacyOwners } = await import("@/core/personalAi/legacyOwners");

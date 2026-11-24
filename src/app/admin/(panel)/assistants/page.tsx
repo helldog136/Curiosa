@@ -62,10 +62,10 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
           </ul>
         </div>
       )}
-      {/* Only when something waits for input (R33): at least one access has no owner. It keeps working as before. */}
+      {/* Only when something waits for input (R33): at least one access never had an owner. It keeps working as before. */}
       {unowned.length > 0 && tab !== "owners" && (
         <Callout tone="warn" testid="owners-pending">
-          <span className="flex flex-wrap items-center justify-between gap-3"><span>{[unowned.some((u) => !u.ownerGone) && t("owners.pending", { n: unowned.filter((u) => !u.ownerGone).length }), unowned.some((u) => u.ownerGone) && t("owners.pendingGone", { n: unowned.filter((u) => u.ownerGone).length })].filter(Boolean).join(" · ")}</span><a href={assistantsTabHref("owners")} className={ui.btn} data-testid="owners-pending-open">{t("owners.pendingOpen")}</a></span>
+          <span className="flex flex-wrap items-center justify-between gap-3"><span>{t("owners.pending", { n: unowned.length })}</span><a href={assistantsTabHref("owners")} className={ui.btn} data-testid="owners-pending-open">{t("owners.pendingOpen")}</a></span>
         </Callout>
       )}
       <AssistantTabs t={t} current={tab} pending={pending} />
