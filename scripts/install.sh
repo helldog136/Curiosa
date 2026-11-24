@@ -63,8 +63,6 @@ NODE_MAJOR_WANTED=24
 MARKER_NAME=".install-curiosa"
 # Langues proposées (un bloc catalog_XX par langue, en fin de fichier). La première est la langue par défaut.
 LANGS="en fr"
-# Langue de l'assistant /admin/setup tant qu'on n'en choisit pas une autre (voir SetupWizard.tsx) : sert à l'indice de la page finale.
-WIZARD_LANG=fr
 
 SITE="" DOMAIN="" SITE_USER="" PORT="" DIR="" TAG="" NO_DOMAIN=0
 YES=0 DRY=0 SKIP_DNS=0 SKIP_PROXY=0 UNINSTALL=0 PURGE=0 APPLY=0 CHANGE_DOMAIN="" CERTBOT=0 EMAIL="" CERT_DONE=0
@@ -1130,7 +1128,6 @@ final_page() {
   sub f.step2_note
   blank
   info f.step3
-  [ "$LANG_CODE" = "$WIZARD_LANG" ] || sub f.wizard_lang
   if [ "$PUBLIC_OK" -eq 0 ] && [ "$NO_DOMAIN" -eq 0 ] && [ "$SKIP_PROXY" -eq 0 ]; then
     blank; say f.todo "$Y" "$N"
     [ -n "$PROXY_MANUAL" ] && printf '  - %s\n' "$PROXY_MANUAL"
@@ -1522,7 +1519,6 @@ f.step2 2. Le site vous demande un « code d'installation ». Il est enregistré
 f.step2b Pour le lire, tapez cette commande VOUS-MÊME dans votre terminal (le code s'affiche, recopiez-le dans la page) :
 f.step2_note (Je ne l'écris pas ici volontairement : il ne doit apparaître ni dans un journal, ni dans une conversation avec une IA.)
 f.step3 3. Suivez ensuite l'assistant de première installation.
-f.wizard_lang L'assistant s'ouvre en français par défaut : choisissez votre langue à la question « Dans quelle langue sera votre site ? ».
 f.todo {1}À régler pour que l'adresse publique fonctionne :{2}
 f.todo_dns Le DNS de {1} doit pointer vers {2} (enregistrement A). Caddy obtiendra alors le certificat tout seul (quelques minutes).
 f.this_server ce serveur
@@ -1943,7 +1939,6 @@ f.step2 2. The site asks for a "setup code". It is stored on this server.
 f.step2b To read it, type this command YOURSELF in your terminal (the code is shown, copy it into the page):
 f.step2_note (I do not write it here on purpose: it must not appear in a log, nor in a conversation with an AI.)
 f.step3 3. Then follow the first-time setup assistant.
-f.wizard_lang The assistant opens in French by default: pick your language at the question "What language will your site be in?" and the page changes right away.
 f.todo {1}To do so that the public address works:{2}
 f.todo_dns The DNS of {1} must point to {2} (A record). Caddy will then get the certificate by itself (a few minutes).
 f.this_server this server
