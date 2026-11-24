@@ -140,6 +140,8 @@ A module can say **where its settings and lists go** instead of having a page of
 
 **Since core 0.34.0:** sections placed on core pages (`site.general.privacy`, `site.appearance.colors`, `obs.pages.addresses`…) show on those pages; the settings search finds every section and setting; `?…` links, `redirect: "?…"` answers and field ids are per module on a shared page (your code does not change: you still read `query.edit`); more than 3 sections of one module on one page only warns (the vocabulary can justify it); the catalogue index may carry `"places": ["live.alerts"]` so the module shows as a facet ("Adds settings to"); `adminBadge` shows on every place page that hosts your sections. Details: [PLACES.md](PLACES.md).
 
+**Since core 0.47.0:** the owner can register a git repository (public or private) as a **personal catalogue**; its extensions are merged into the catalogue with a Personal tag, never verified, never installed by an assistant. See [PERSONAL-CATALOGUES.md](PERSONAL-CATALOGUES.md).
+
 A module that places everything it shows leaves the sidebar on a core 0.31.0 or later (its page stays in Extensions, with "Where its settings are" at the top); on an older core it keeps its `adminMenu` entry: ship both during the transition. Settings of `sources` and `general` are never placed. `rare` and `advanced` settings fold into one « Réglages avancés » per section.
 
 **Familles (Extensions > Installées).** Chaque module est rangé dans une famille, déduite elle aussi du manifeste seul (`extensionFamily`) : **Outils pour OBS** (type ou permission `overlay`) ; **Outils** (seulement par `menuGroup`) ; **Réseaux et connexions** (type `social` ou `integration`, `platform` déclarée,

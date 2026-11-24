@@ -27,6 +27,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Vous pouvez ajouter un dépôt privé qui propose ses propres extensions.** Dans *Extensions > Mes catalogues*, vous collez l'adresse (et un code d'accès si le dépôt est privé) : le site dit combien d'extensions il propose, puis elles rejoignent le catalogue avec la pastille « Personnel ». Rien n'est installé sans votre clic.
+- **(English) You can add a private repository that offers its own extensions.** In *Extensions > My catalogues*, paste the address (and an access code if the repository is private): the site says how many extensions it offers, then they join the catalogue with a "Personal" tag. Nothing is installed without your click.
+- **Retirer un catalogue personnel ne désinstalle rien.** Les extensions déjà installées continuent de fonctionner avec leurs données ; elles ne reçoivent simplement plus de mises à jour. Une sauvegarde ne garde le code d'accès que chiffré et illisible ailleurs : sur un nouveau serveur, le site vous le redemande.
+- **(English) Removing a personal catalogue uninstalls nothing.** Extensions already installed keep working with their data; they just stop receiving updates. A backup keeps the access code only sealed and unreadable elsewhere: on a new server, the site asks for it again.
 - **Les skins d'overlay peuvent avoir leur propre police.** Un skin peut embarquer jusqu'à quatre polices (fichiers woff2) : vos alertes et vos objectifs gardent la même allure partout, même sur un ordinateur qui n'a pas la police. Si une police ne se charge pas, l'overlay s'affiche quand même avec une police de remplacement.
 - **(English) Overlay skins can ship their own font.** A skin can bring up to four fonts (woff2 files): your alerts and goals look the same everywhere, even on a computer without that font. If a font does not load, the overlay is still shown with a fallback font.
 - **Un skin d'overlay peut dire quel skin de site il accompagne.** Dans la galerie, un badge « Assorti à votre skin de site » apparaît quand le skin de site actif est le bon. Quand vous changez de skin de site, un bouton propose le skin d'overlay assorti ; rien n'est appliqué sans votre clic.
@@ -64,6 +68,9 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Each failure says what to change.** Instead of one message, you see whether the code is rejected or expired, the repository is not found, it was renamed (with its new address), GitHub cannot be reached or Git is too old.
 
 ### Pour les développeurs
+
+- **Catalogues personnels (0.47.0).** `personalCatalogues.ts` lit `catalogue/index.json` d'un dépôt enregistré par `git()` ; `recognized.ts` fusionne les entrées en `catalogueOrigin: "extra"`. L'origine est écrite sur le module (réglage `modules.personal`) : les IA ne l'installent, ne le mettent à jour ni ne le réinstallent, même catalogue retiré. Voir `docs/PERSONAL-CATALOGUES.md`.
+- **(English) Personal catalogues (0.47.0).** `personalCatalogues.ts` reads `catalogue/index.json` of a registered repository through `git()`; `recognized.ts` merges the entries as `catalogueOrigin: "extra"`. The origin is written on the module (setting `modules.personal`): assistants never install, update or reinstall it, even once the catalogue is removed. See `docs/PERSONAL-CATALOGUES.md`.
 
 - Accès IA et propriétaire (0.47.0) : colonne `ApiToken.coarseCeiling`, repli `COARSE_FALLBACK`, `personalAi/owners.ts` ; `legacyOwners.ts` et `assign-owners/` sont **temporaires (à supprimer en 0.49.0)**. Voir [docs/PERSONAL-AI.md](docs/PERSONAL-AI.md).
 - Sauvegarde automatique par e-mail (`src/core/backup/auto/`) : horaire pur, phrase secrète scellée (`seal.ts`), 5 copies dans `data/backups/auto/`, envoi par `sendCoreMailWithAttachment` (cœur seulement), état en lecture seule dans `maintenance_health`. Réglages `autobackup.*` hors sauvegardes. Voir [docs/BACKUP.md](docs/BACKUP.md).

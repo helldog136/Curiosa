@@ -19,6 +19,7 @@ import { ui } from "@/components/admin/ui";
 import Link from "next/link";
 import { CatalogueDetailsLink } from "@/components/admin/CatalogueDetailsLink";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
+import { OriginFilter } from "@/components/admin/OriginFilter";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { discoverModules, isTruncated, listSources, sourceAddress, type SourceModule } from "@/core/modules/sources";
@@ -33,12 +34,13 @@ export const dynamic = "force-dynamic";
 
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 
-export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string }> }) {
+export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string; origin?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
-  const { error, topic: rawTopic } = await searchParams;
+  const { error, topic: rawTopic, origin: rawOrigin } = await searchParams;
   const topic = parseTopic(rawTopic);
   const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
-  const entries = await getCatalogue();
+  // (0.47.0) The entries of personal catalogues are shown only to those who may install (the names of a private repository are not for everyone).
+  const entries = (await getCatalogue()).filter((e) => isOwner || !e.personal);
   const source = await getCatalogueSource();
   const installed = new Set((await listModuleRows()).map((r) => r.id));
   // Données gardées d'extensions retirées : on le dit sur leur carte, et on les liste (pour les effacer ou réinstaller) tant que l'extension n'est pas revenue.
@@ -56,7 +58,12 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const manifests = new Map((await getInstalledModules()).map((m) => [m.manifest.id, m.manifest] as const));
   const topicsByEntry = new Map(entries.map((e) => [e.id, entryTopics(e, manifests.get(e.id), vocab.aliases)] as const));
   const facets = facetList(topicsByEntry, vocab, locale);
-  const shown = filterByTopic(entries, topic, topicsByEntry);
+  // (0.47.0) Personal catalogues: one table of cards, a quick filter by origin (only when there is something personal to tell apart).
+  const hasPersonal = entries.some((e) => e.personal);
+  const origin = hasPersonal && (rawOrigin === "personal" || rawOrigin === "official") ? rawOrigin : null;
+  const shown = filterByTopic(entries, topic, topicsByEntry).filter((e) => !origin || (origin === "personal") === !!e.personal);
+  const originHref = (o: "personal" | "official" | null) => withQuery(EXTENSIONS_ADD_HREF, { ...(topic ? { topic } : {}), ...(o ? { origin: o } : {}) });
+  const personalCount = new Set(entries.filter((e) => e.personal).map((e) => e.personal!.id)).size;
   const groups = [{ id: "recognized", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: shown }];
   // Sans réseau ni dernière copie reçue, la liste est vide : on le dit (jamais une copie locale), et « Actualiser » réessaie.
   const unreachable = source.source === "none" && entries.length === 0;
@@ -71,6 +78,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         <TopicPicker options={facets.map((f) => ({ ...f, href: `${EXTENSIONS_ADD_HREF}?topic=${f.id}` }))} current={topic} allHref={EXTENSIONS_ADD_HREF}
           labels={{ label: t("catalogue.addsTo"), search: t("catalogue.topicSearch"), none: t("catalogue.topicNoMatch"), all: t("catalogue.topicAll"), remove: t("catalogue.topicRemove", { name: "{name}" }), list: t("catalogue.addsTo") }} />
       </div>
+      {hasPersonal && <OriginFilter t={t} current={origin} href={originHref} counts={{ all: entries.length, official: entries.filter((e) => !e.personal).length, personal: entries.filter((e) => e.personal).length }} />}
       {advanced && source.source !== "none" && (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted" data-testid="catalogue-freshness">
           <span title={new Date(source.fetchedAt ?? 0).toLocaleString(locale)}>{t(source.source === "cache" ? "catalogue.source.cache" : "catalogue.updatedAgo", { when: relativeAge(source.fetchedAt, locale) })}</span>
@@ -103,7 +111,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                 {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
                 {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
                 <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex flex-wrap items-center gap-2">{e.origin === "extra" && <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
+                  <span className="flex flex-wrap items-center gap-2">{e.personal ? <span className={ui.chipWarn} data-testid={`origin-${e.id}`}>⚠ {t(personalCount > 1 ? "catalogue.pill.personalNamed" : "catalogue.pill.personal", { name: e.personal.name })}</span> : e.origin === "extra" && <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
                   {installed.has(e.id) ? (
                     <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
                   ) : !e.compatible ? (

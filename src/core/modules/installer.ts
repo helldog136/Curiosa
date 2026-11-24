@@ -244,6 +244,14 @@ export async function git(args: string[], cwd?: string, env?: Record<string, str
   return runGit(args, cwd, env, timeoutMs);
 }
 
+/**
+ * (0.47.0) A git command with a code that is NOT saved yet (reading the catalogue of a repository the owner is about to add): the code goes to the child environment
+ * exactly like a saved one, and is stored by nobody. With no `code`, the saved code of the repository is used, as for `git()`.
+ */
+export async function gitWithCode(args: string[], cwd: string | undefined, timeoutMs: number, override?: { url: string; code: string }): Promise<string> {
+  return runGit(args, cwd, undefined, timeoutMs, override);
+}
+
 /** `git ls-remote` of one repository with a code that is NOT saved yet (the check of a code the owner has just pasted). Nothing is stored here. */
 export async function gitCheckAccess(url: string, code: string): Promise<void> {
   await runGit(["ls-remote", "--", url, "HEAD"], undefined, undefined, 30_000, { url, code });
@@ -281,7 +289,7 @@ export function dirSize(dir: string): number {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     if (entry.name === ".git") continue;
     const full = path.join(dir, entry.name);
-    if (entry.isSymbolicLink()) throw new Error("symlinks are not allowed in a module");
+    if (entry.isSymbolicLink()) throw Object.assign(new Error("symlinks are not allowed in a module"), { code: "modules.error.symlink" });
     total += entry.isDirectory() ? dirSize(full) : fs.statSync(full).size;
   }
   return total;
@@ -302,7 +310,7 @@ export function copyModuleFiles(from: string, target: string): void {
   try {
     fs.rmSync(staging, { recursive: true, force: true });
     fs.cpSync(from, staging, { recursive: true, filter: (src) => path.basename(src) !== ".git" && path.basename(src) !== "node_modules" });
-    if (dirSize(staging) > MAX_MODULE_BYTES) throw new Error("size");
+    if (dirSize(staging) > MAX_MODULE_BYTES) throw Object.assign(new Error("size"), { code: "modules.error.size" });
     fs.rmSync(target, { recursive: true, force: true });
     fs.renameSync(staging, target);
   } catch (error) {
@@ -455,6 +463,9 @@ export async function installModule(input: string, opts: {
     if (error instanceof CoreTooOld) return coreRefusal(error);
     if (error instanceof LoadCheckFailed) { await noteBlocked(candidate?.id ?? "?", "", candidate?.version ?? "?", error, "install"); return loadCheckRefusal(error, false); }
     if (isGitAccessError(error)) return { ok: false, error: "modules.error.access" };
+    // (0.47.0) A refusal that has its own plain sentence (a link inside the module, a module that is too large) is said as such, not as "could not be downloaded".
+    const known = (error as { code?: unknown })?.code;
+    if (known === "modules.error.symlink" || known === "modules.error.size") return { ok: false, error: known };
     console.error("[modules] install failed:", error);
     return { ok: false, error: "modules.error.clone" };
   } finally {
@@ -1043,6 +1054,7 @@ export async function purgeModule(id: string): Promise<void> {
   await prisma.moduleRecord.deleteMany({ where: { instanceId: { in: ids } } });
   await prisma.moduleInstance.deleteMany({ where: { moduleId: id } });
   await prisma.module.delete({ where: { id } });
+  try { await (await import("./personalCatalogues")).unmarkPersonal(id); } catch { /* the mark of a module that is gone is harmless */ }
   forgetModule(id);
   await clearBlockedUpdate(id);
   await reconcileManaged();   // les adresses courtes de ses instances partent avec elles
@@ -1064,7 +1076,10 @@ export async function installFromCatalogue(id: string, opts: { dependencies?: bo
   const fragment = entry.ref || entry.subdir ? `#${entry.ref ?? ""}${entry.subdir ? `:${entry.subdir}` : ""}` : "";
   const { confirmExtra: _confirmed, ...rest } = opts;
   void _confirmed;
-  return installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  const result = await installModule(`${entry.repo}${fragment}`, { expectId: id, ...rest });
+  // (0.47.0) The origin is written on the module itself: it stays "personal" if the catalogue is removed later, and an assistant can never update it.
+  if (result.ok && entry.personal) await (await import("./personalCatalogues")).markPersonal(id, entry.personal).catch(() => { /* the registered repository still marks it (personalIndex) */ });
+  return result;
 }
 
 /**

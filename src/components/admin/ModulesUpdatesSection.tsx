@@ -1,4 +1,6 @@
 import type { Translator } from "@/core/i18n/dictionary";
+import { personalIndex } from "@/core/modules/personalCatalogues";
+import { listModuleRows } from "@/core/modules/registry";
 import { getModulesReport, moduleNames } from "@/core/modules/updateStatus";
 import { ActionForm } from "./ActionForm";
 import { Callout } from "./Page";
@@ -12,7 +14,10 @@ export async function loadModulesUpdates(t: Translator, locale: string, defaultL
   const report = await getModulesReport();
   const names = await moduleNames(locale, defaultLocale);
   const nameOf = (id: string) => names.get(id) ?? id;
-  const rows: ModuleUpdateRow[] = report.outdated.map((o) => ({ id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "", ...(o.needsCore ? { needsCore: o.needsCore } : {}) }));
+  // (0.47.0) A module of a personal catalogue is updated one by one, on purpose; never by "Update all". Unreadable origin = personal.
+  const personal = await personalIndex();
+  const installed = new Map((await listModuleRows().catch(() => [])).map((r) => [r.id, r]));
+  const rows: ModuleUpdateRow[] = report.outdated.map((o) => ({ ...(!personal || personal.has(installed.get(o.id) ?? { id: o.id }) ? { personal: true as const } : {}), id: o.id, name: nameOf(o.id), icon: "🧩", current: o.current, target: o.target, major: o.level === "major", levelLabel: o.level ? t(`updates.level.${o.level}`) : "", ...(o.needsCore ? { needsCore: o.needsCore } : {}) }));
   return { report, rows, nameOf };
 }
 export type ModulesUpdatesData = Awaited<ReturnType<typeof loadModulesUpdates>>;

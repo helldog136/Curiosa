@@ -22,7 +22,7 @@ export type FicheProps = {
   embedded: boolean;
   advanced: boolean;
   /** Catalogue officiel (vérifié), index supplémentaire ou dépôt personnel (non vérifiés). */
-  origin: "official" | "extra" | "custom";
+  origin: "official" | "extra" | "custom" | "personal";
   name: string; icon: string;
   version?: string; author?: string; license?: string;
   /** Adresse du dépôt, montrée en mode avancé seulement. */
@@ -77,7 +77,7 @@ export type FicheProps = {
  */
 export function ExtensionFiche(p: FicheProps) {
   const { t, bar } = p;
-  const originText = p.origin === "official" ? t("fiche.tech.source.official") : p.origin === "extra" ? t("catalogue.origin.extra") : t("catalogue.origin.custom");
+  const originText = p.origin === "official" ? t("fiche.tech.source.official") : p.origin === "extra" ? t("catalogue.origin.extra") : p.origin === "personal" ? t("catalogue.origin.personal") : t("catalogue.origin.custom");
   return (
     <div className="space-y-7">
       <header className="flex items-start gap-5">
@@ -85,7 +85,7 @@ export function ExtensionFiche(p: FicheProps) {
         <div className="min-w-0">
           <h1 className={ui.pageTitle}>{p.name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {p.origin === "official" ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : <span className={ui.chipWarn}>⚠ {t(p.origin === "extra" ? "catalogue.origin.extra" : "catalogue.origin.custom")}</span>}
+            {p.origin === "official" ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : <span className={ui.chipWarn}>⚠ {t(p.origin === "extra" ? "catalogue.origin.extra" : p.origin === "personal" ? "catalogue.origin.personal" : "catalogue.origin.custom")}</span>}
             {p.advanced && p.version && <span>v{p.version}</span>}
             {p.author && <span>{t("catalogue.by", { author: p.author })}</span>}
             {p.license && p.advanced && <span>· {p.license}</span>}
@@ -114,7 +114,7 @@ export function ExtensionFiche(p: FicheProps) {
       {p.readme && <ReadmeFold summary={p.readmeSummary} open={p.advanced} t={t}>{p.readme}</ReadmeFold>}
 
       {/* Avant d'installer : l'avertissement d'un module non vérifié reste dans la page (la case à cocher est dans la barre du bas). */}
-      {bar.kind === "ready" && bar.confirm && <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid={p.origin === "extra" ? "extra-warning" : "custom-warning"}>{p.origin === "extra" ? t("catalogue.extraWarning") : t("catalogue.customWarning")}</p>}
+      {bar.kind === "ready" && bar.confirm && <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm" data-testid={p.origin === "extra" ? "extra-warning" : p.origin === "personal" ? "personal-warning" : "custom-warning"}>{p.origin === "extra" ? t("catalogue.extraWarning") : p.origin === "personal" ? t("catalogue.personalWarning") : t("catalogue.customWarning")}</p>}
 
       {/* 2. Les détails techniques, en dessous et repliés. */}
       <TechnicalDetails summary={p.summary} open={bar.kind === "blocked" && bar.reason === "deps"} t={t}>

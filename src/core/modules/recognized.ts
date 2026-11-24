@@ -55,6 +55,8 @@ export type RecognizedItem = {
   places?: string[];
   /** « official » : listé par le dépôt du catalogue (ou sa dernière copie reçue) ; « extra » : ajouté par MODULES_INDEX_URL, jamais installé d'office (voir dependencyPlan.ts). */
   catalogueOrigin?: "official" | "extra";
+  /** (core 0.47.0) Set on an entry that comes from a PERSONAL catalogue (a repository the owner registered, possibly private): which one. Always together with `catalogueOrigin: "extra"`. */
+  catalogueSource?: { id: string; name: string };
 };
 
 /** D'où vient la liste affichée : le dépôt du catalogue (à jour), ou la dernière copie reçue de lui ; « none » = catalogue injoignable et jamais reçu (liste vide, jamais une copie locale). */
@@ -221,22 +223,27 @@ export function readRecognizedCacheOffline(): RecognizedItem[] {
 
 /** Un catalogue injoignable n'est retenu que quelques secondes : « réessayez » doit pouvoir réussir sans attendre un quart d'heure. */
 const FAILED_TTL = 20_000;
-let memo: { at: number; key: string; result: RecognizedResult } | null = null;
-export function clearRecognizedCache(): void { memo = null; inflight = null; peeked = null; }
+type Memo = { at: number; key: string; result: RecognizedResult; /** A personal catalogue could not be read: this copy is kept only a few seconds. */ short?: boolean };
+type RecognizedState = { memo: Memo | null; inflight: { key: string; promise: Promise<RecognizedResult> } | null; peeked: { at: number; value: Vocabulary | null } | null; generation: number };
+/** On globalThis (like the other shared states): pages and actions may be separate bundles, and each must see the same memory and the same generation. */
+const STATE = Symbol.for("curiosa.recognized.state");
+const st = (): RecognizedState => ((globalThis as Record<symbol, unknown>)[STATE] ??= { memo: null, inflight: null, peeked: null, generation: 0 }) as RecognizedState;
+/** Drops the memory of the index. A read that started before this call can no longer write its result into the memory (the generation changed). */
+export function clearRecognizedCache(): void { const s = st(); s.memo = null; s.inflight = null; s.peeked = null; s.generation++; }
 
 /**
  * (core 0.31.0) The places vocabulary of the catalogue WITHOUT waiting for the network (the sidebar of every page reads it): the last index read in memory, else the
  * last copy kept on disk (only if it comes from the catalogue configured today), else null. Never throws.
  */
 export function peekPlacesVocabulary(): Vocabulary | null {
-  if (memo?.result.places) return memo.result.places;
-  if (peeked && Date.now() - peeked.at < 60_000) return peeked.value;
+  const s = st();
+  if (s.memo?.result.places) return s.memo.result.places;
+  if (s.peeked && Date.now() - s.peeked.at < 60_000) return s.peeked.value;
   const kept = readPersisted();
   const value = kept?.places && kept.origin && kept.origin === resolveIndexRepo() ? kept.places : null;
-  peeked = { at: Date.now(), value };
+  s.peeked = { at: Date.now(), value };
   return value;
 }
-let peeked: { at: number; value: Vocabulary | null } | null = null;
 
 export type RecognizedOptions = {
   fetchImpl?: typeof fetch; git?: IndexGit; now?: () => number;
@@ -244,7 +251,6 @@ export type RecognizedOptions = {
   staleOk?: boolean;
 };
 /** Relecture en cours : plusieurs demandes en même temps (la page, la fenêtre, le survol) ne lisent l'index qu'une fois. */
-let inflight: { key: string; promise: Promise<RecognizedResult> } | null = null;
 
 /**
  * Index des modules RECONNUS, lu UNIQUEMENT sur le réseau : le cœur ne contient ni module ni copie de l'index. Deux sources, la plus fraîche d'abord :
@@ -258,12 +264,14 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
   const { now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
   const key = `${process.env.CURIOSA_CATALOGUE_REPO ?? ""}|${process.env.CURIOSA_CATALOGUE_REF ?? ""}|${extraUrl ?? ""}`;
-  if (memo && memo.key === key && now() - memo.at < (memo.result.source === "none" ? FAILED_TTL : TTL)) return memo.result;
+  const s = st();
+  const memo = s.memo;
+  if (memo && memo.key === key && now() - memo.at < (memo.result.source === "none" || memo.short ? FAILED_TTL : TTL)) return memo.result;
   // Premier appel depuis le démarrage : la dernière copie reçue (sur disque) est servie tout de suite pour une fiche, et l'index est relu en coulisse.
   const persisted = opts.staleOk && !extraUrl && !(memo && memo.key === key) ? readRecognizedCacheOffline() : [];
-  const reading = inflight && inflight.key === key ? inflight.promise : (() => {
-    const promise = readRecognized(opts, key).finally(() => { if (inflight?.promise === promise) inflight = null; });
-    inflight = { key, promise };
+  const reading = s.inflight && s.inflight.key === key ? s.inflight.promise : (() => {
+    const promise = readRecognized(opts, key).finally(() => { if (s.inflight?.promise === promise) s.inflight = null; });
+    s.inflight = { key, promise };
     return promise;
   })();
   // Copie périmée mais bonne : servie tout de suite, la relecture continue en coulisse (déclenchée par cette demande, aucun minuteur).
@@ -279,6 +287,9 @@ export async function getRecognizedDetailed(opts: RecognizedOptions = {}): Promi
 async function readRecognized(opts: RecognizedOptions, key: string): Promise<RecognizedResult> {
   const { fetchImpl = fetch, git = defaultGit, now = Date.now } = opts;
   const extraUrl = process.env.MODULES_INDEX_URL;
+  const generation = st().generation;
+  // (core 0.47.0) The personal catalogues are read at the same time as the official one, never after it.
+  const personalReads = import("./personalCatalogues").then((m) => m.startPersonalReads()).catch(() => null);
   let base: RecognizedResult = { items: [], source: "none", fetchedAt: null, origin: null, suggested: [], profiles: [] };
   const repo = resolveIndexRepo();
   if (repo) {
@@ -310,8 +321,27 @@ async function readRecognized(opts: RecognizedOptions, key: string): Promise<Rec
       if (res.ok) for (const e of sanitizeEntries(await res.json())) if (!items.some((i) => i.id === e.id)) items.push({ ...e, catalogueOrigin: "extra" });
     } catch { /* index supplémentaire injoignable : on garde le reste */ }
   }
-  const result = { ...base, items: items.slice(0, 300) };
-  memo = { at: now(), key, result };
+  // (core 0.47.0) Personal catalogues: official ids always win, never written to the persisted copy above, never more than MAX_PERSONAL_ITEMS, and never a reason to keep
+  // the official catalogue waiting: after PERSONAL_BUDGET_MS they are left out and the copy is kept only a few seconds. With no official index at all (`none`), a personal
+  // item is not offered: its id cannot be checked against the official ones.
+  const official = items.slice(0, 300);
+  let short = false;
+  let personal: RecognizedItem[] = [];
+  if (base.source === "none") short = true;
+  else {
+    try {
+      const mod = await import("./personalCatalogues");
+      const reads = await Promise.race([personalReads, new Promise<null>((resolve) => setTimeout(() => resolve(null), mod.PERSONAL_BUDGET_MS).unref?.())]);
+      if (reads) {
+        const merged = await mod.mergePersonal(reads, new Set(official.map((i) => i.id)));
+        personal = merged.items;
+        short = merged.failed;
+      } else short = true;
+    } catch { short = true; /* a failing personal catalogue never empties the official one */ }
+  }
+  const result = { ...base, items: [...official, ...personal] };
+  const s = st();
+  if (s.generation === generation) s.memo = { at: now(), key, result, ...(short ? { short: true } : {}) };
   return result;
 }
 
