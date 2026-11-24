@@ -4,7 +4,8 @@ import { getActiveInstances } from "@/core/modules/registry";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { getSiteConfig } from "@/core/settings";
 import { McpToolError } from "@/core/services/mcp/validate";
-import type { Outcome } from "./actions";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import { redactSecrets } from "./redact";
 import { SKIN_ID_RE } from "../skins/allowlist";
 import type { Plan } from "./requests";
@@ -93,17 +94,15 @@ export async function prepareEntryPublish(action: "entry_publish" | "entry_unpub
   return { entry: { instance: instance.key, ...(locale ? { locale } : {}), items } };
 }
 
-/** After the owner's approval (or at once in "act without asking"): re-reads the entries, and flips only the status of those that are still what was requested. */
-export async function executeEntryPublish(action: "entry_publish" | "entry_unpublish", plan: Plan, actorLabel: string): Promise<Outcome> {
+/**
+ * After the owner's approval (or at once in "act without asking"): flips only the status of the entries that are still what was requested. `fresh` is the plan prepared again
+ * just before (the entries as they are now): `executeLevel3` does that, see the definitions below.
+ */
+export async function applyEntryPublish(action: "entry_publish" | "entry_unpublish", plan: Plan, fresh: Plan, actorLabel: string): Promise<Outcome> {
   const publish = action === "entry_publish";
   const wanted = plan.entry!;
   const done: string[] = [];
   const skipped: string[] = [];
-  let fresh: Plan;
-  try { fresh = await prepareEntryPublish(action, { instance: wanted.instance, ids: wanted.items.map((i) => i.id), locale: wanted.locale }); } catch (error) {
-    if (error instanceof McpToolError) return { ok: false, message: `Not done: ${error.message}` };
-    throw error;
-  }
   const active = (await getActiveInstances()).find((a) => a.instance.key === wanted.instance);
   for (const item of wanted.items) {
     const now = fresh.entry!.items.find((i) => i.id === item.id);
@@ -128,3 +127,23 @@ export async function executeEntryPublish(action: "entry_publish" | "entry_unpub
     details: { done, skipped },
   };
 }
+
+/* ───────────── The level 3 actions ───────────── */
+
+const NONE = { type: "object" } as const;
+
+/** The tools `<instance>__publish` and `<instance>__unpublish` are built per instance by the content engine (content/mcp.ts), with `publishInput`: the input here is a placeholder. */
+const entryAction = (action: "entry_publish" | "entry_unpublish") => defineLevel3({
+  name: action, input: NONE, slot: "content",
+  prepare: (args) => prepareEntryPublish(action, { instance: args.instance, id: args.id, ids: args.ids, locale: args.locale }),
+  // The entries are read again; each one that is not what was requested (the texts changed after the request) is skipped, not published.
+  recheck: (plan) => ({ kind: "again", args: { instance: plan.entry!.instance, ids: plan.entry!.items.map((i) => i.id), locale: plan.entry!.locale }, gated: false }),
+  execute: ({ plan, fresh, by }) => applyEntryPublish(action, plan, fresh!, by),
+  audit: (plan) => `${plan.entry!.instance}/${plan.entry!.items.map((i) => i.id).join(",")}${plan.entry!.locale ? ` ${plan.entry!.locale}` : ""}`,
+  summarize(p, t) {
+    const items = p.entry?.items ?? [];
+    return t(`aim.req.${action}`, { n: items.length, list: items.map((i) => `“${i.title || i.id}”${i.skin ? ` (${t("aim.req.entry_skin", { skin: i.skin })})` : ""}`).join(", "), instance: p.entry?.instance ?? "?" });
+  },
+});
+export const entryPublish = entryAction("entry_publish");
+export const entryUnpublish = entryAction("entry_unpublish");

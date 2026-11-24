@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
 import { prisma } from "@/core/db";
+import { LEVEL3_ACTIONS, type Level3Action } from "@/core/services/mcp/coreTools";
 import { redactSecrets } from "./redact";
 import { boundResult, closeInterrupted, INTERRUPTED_MESSAGE, type RunProgress, type RunResult } from "./background";
 
@@ -19,8 +20,9 @@ export const REQUEST_TTL_MS = 24 * 60 * 60_000;
 const KEEP = 50;
 const KEY = "maintenance.requests";
 
-export const LEVEL3_ACTIONS = ["module_update", "modules_update_all", "core_update", "module_uninstall", "module_install", "skin_install", "skin_activate", "skin_remove", "font_set", "skin_set_options", "skin_customize", "instance_add", "entry_publish", "entry_unpublish", "site_settings_set", "navigation_set", "home_sections_set"] as const;
-export type Level3Action = (typeof LEVEL3_ACTIONS)[number];
+/** The names of the level 3 actions come from the list of core tools (services/mcp/coreTools.ts); what each one does is defined in level3Registry.ts. */
+export { LEVEL3_ACTIONS };
+export type { Level3Action };
 
 export type Plan = {
   /** Cœur : version actuelle → visée. */

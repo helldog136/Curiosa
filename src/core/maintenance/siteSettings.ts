@@ -9,8 +9,9 @@ import { audit } from "@/core/permissions";
 import { deleteSetting, getSetting, getSettingByLocale, getSiteConfig, setSetting } from "@/core/settings";
 import type { JsonSchemaLite } from "@/core/modules/types";
 import { uploadNameOf } from "@/core/services/files";
-import { McpToolError } from "@/core/services/mcp/validate";
-import type { Outcome } from "./actions";
+import { McpToolError, validateArgs } from "@/core/services/mcp/validate";
+import type { Outcome } from "./background";
+import { defineLevel3 } from "./level3";
 import { redactSecrets } from "./redact";
 import type { Plan } from "./requests";
 
@@ -230,3 +231,15 @@ export async function executeSiteSettings(plan: Plan, actorLabel: string): Promi
   try { (await import("next/cache")).revalidatePath("/", "layout"); } catch { /* outside a request: nothing to refresh */ }
   return { ok: true, message: `Site settings updated (${plan.site!.names}). The owner can put the old values back in Admin > Settings; they are in the journal.` };
 }
+
+export const siteSettingsSet = defineLevel3({
+  name: "site_settings_set", input: SITE_SETTINGS_INPUT, slot: "content",
+  // The tool (siteMcp.ts) refuses the forbidden keys first (`refuseForbidden`), then the arguments are checked against its schema.
+  fromTool: (raw) => ({ site: validateArgs(SITE_SETTINGS_INPUT, raw) }),
+  prepare: (args) => prepareSiteSettings(args.site ?? {}),
+  // `executeSiteSettings` starts by comparing the fingerprint of every value the plan will change with the value now.
+  recheck: () => ({ kind: "inside" }),
+  execute: ({ plan, by }) => executeSiteSettings(plan, by),
+  audit: (plan) => plan.site!.names,
+  summarize: (p, t) => t("aim.req.site_settings_set", { list: p.site?.names ?? "?" }),
+});

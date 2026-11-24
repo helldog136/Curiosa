@@ -1,15 +1,17 @@
 /**
- * THE CEILING OF A PERSONAL AI (core 0.46.0). Pure logic, no dependency: it decides, on every request, whether an AI that BELONGS to a user may see and call a tool.
+ * THE CEILING OF A PERSONAL AI (core 0.46.0). Pure logic, no dependency (its only import is the pure list of core tools, coreTools.ts): it decides, on every request, whether an AI that BELONGS to a user may see and call a tool.
  *
  *   a personal AI can do a tool only if the OWNER may do what the tool does, RIGHT NOW  (and the ordinary rules of the access still hold: scope and grants)
  *
  * Every tool says what it needs from its owner (`requires`):
- *   - a core tool: the table `CORE_REQUIREMENTS` below (a catalogue test fails when a core tool is missing from it);
+ *   - a core tool: the table `CORE_REQUIREMENTS` below (derived from the list in coreTools.ts; a catalogue test fails when a core tool is missing from it);
  *   - a content tool of an instance: declared where the tool is built (content/mcp.ts);
  *   - a module tool: the optional manifest key `mcp[].right`, a LOCAL right id of that module (validated by `actionRight`, so a module cannot name another module's right).
  * A tool with NO requirement is HIDDEN from personal AIs (fail closed): a module that has not declared `right` yet is invisible to them, never open to them.
  * Independent accesses (no owner) never come through here: their behaviour is exactly the one of access.ts.
  */
+import { CORE_TOOL_ROWS, EDIT, PUBLISH, requirementOfAction } from "./coreTools";
+
 /** The levels of the team (the same as auth/rights.ts; copied here because the MCP mechanism imports nothing of the auth code). */
 type Level = "owner" | "coordinator" | "admin" | "editor" | "none";
 
@@ -60,54 +62,18 @@ export function requirementMet(req: ToolRequirement | undefined, owner: OwnerSta
   return true;
 }
 
-const EDIT = { right: "core:entries.edit" } as const;
-const PUBLISH = { right: "core:entries.publish" } as const;
-const EDITOR = { tier: "editor" } as const;
-const ADMIN = { tier: "admin" } as const;
-const UPDATES = { right: "core:updates" } as const;
-const BACKUP = { right: "core:backup" } as const;
-const INSTALL = { right: "core:modules.install" } as const;
-const NONE = { none: true } as const;
-
 /**
- * The requirement of every CORE tool (not bound to a module instance), by name. It mirrors the gate of the admin page that does the same thing:
- * the editor tier for content, short links and images; the admin tier for the site's look, menu, home page, settings and what is installed; the reserved
- * rights (`core:updates`, `core:backup`, `core:modules.install`) for upkeep, which an administrator does not hold. A test fails for a core tool missing here.
+ * The requirement of every CORE tool (not bound to a module instance), by name: derived from the one list of core tools (coreTools.ts), where each row also says its
+ * profile and its level 3 action. A test fails for a core tool missing from that list.
  */
-export const CORE_REQUIREMENTS: Record<string, ToolRequirement> = {
-  // describe the AI itself
-  site_info: NONE, maintenance_my_access: NONE, maintenance_available_operations: NONE, maintenance_request_status: NONE,
-  // reads of the site's state: the admin tier
-  maintenance_status: ADMIN, maintenance_health: ADMIN, maintenance_modules: ADMIN, maintenance_updates: ADMIN, maintenance_diagnose: ADMIN, maintenance_audit: ADMIN,
-  maintenance_legacy: ADMIN, maintenance_skin_status: ADMIN, maintenance_skin_list: ADMIN, maintenance_places: ADMIN, maintenance_content_check: ADMIN, maintenance_content_check_run: ADMIN,
-  log_list: ADMIN,
-  // settings of installed modules and places
-  maintenance_module_settings: ADMIN, maintenance_place_settings: ADMIN, maintenance_module_configure: ADMIN, maintenance_module_configure_advanced: ADMIN,
-  // updates, backup, installation: the reserved rights
-  maintenance_check_updates: UPDATES, maintenance_core_update: UPDATES, maintenance_module_update: UPDATES, maintenance_modules_update_all: UPDATES,
-  maintenance_backup_run: BACKUP,
-  maintenance_module_install: INSTALL, maintenance_module_uninstall: INSTALL, maintenance_module_reinstall: INSTALL, maintenance_module_restart: INSTALL, maintenance_instance_add: INSTALL,
-  maintenance_skin_install: INSTALL, maintenance_skin_remove: INSTALL, maintenance_skin_activate: INSTALL,
-  maintenance_catalog_list: INSTALL, maintenance_catalog_get: INSTALL, maintenance_catalog_plan: INSTALL,
-  // appearance, menu, home page, site settings: the admin tier
-  maintenance_font_set: ADMIN, maintenance_skin_set_options: ADMIN, maintenance_skin_customize: ADMIN,
-  navigation_get: ADMIN, navigation_set: ADMIN, home_sections_list: ADMIN, home_sections_set: ADMIN, site_settings_get: ADMIN, site_settings_set: ADMIN,
-  overlay_skins_list: ADMIN, overlay_skin_rules_list: ADMIN, overlay_skin_rules_create: ADMIN, overlay_skin_rules_update: ADMIN,
-  // short links and images: the editor tier (like their admin pages)
-  redirects_list: EDITOR, redirects_stats: EDITOR, redirects_summary: EDITOR, redirects_create: EDITOR, redirects_update: EDITOR, redirects_delete: EDITOR,
-  media_list: EDITOR, media_upload: EDITOR, media_import: EDITOR, media_set_alt: EDITOR,
-};
+export const CORE_REQUIREMENTS: Record<string, ToolRequirement> = Object.fromEntries(CORE_TOOL_ROWS.map((r) => [r.name, r.requires]));
 
 /** The content tools of an instance (content/mcp.ts) declare their requirement where they are built; these are the two they use. */
 export const CONTENT_EDIT: ToolRequirement = EDIT;
 export const CONTENT_PUBLISH: ToolRequirement = PUBLISH;
 
-/** The requirement of a LEVEL 3 request when it runs (re-checked at execution): `entry_*` is publishing, the rest is the table (bare tools keep their name, the others are `maintenance_<action>`). */
-export function requirementOfAction(action: string): ToolRequirement | undefined {
-  if (action === "entry_publish" || action === "entry_unpublish") return PUBLISH;
-  const bare = action === "navigation_set" || action === "home_sections_set" || action === "site_settings_set";
-  return CORE_REQUIREMENTS[bare ? action : `maintenance_${action}`];
-}
+/** The requirement of a LEVEL 3 request when it runs (re-checked at execution): the row of the tool that asked for it (coreTools.ts; `entry_*` is publishing). */
+export { requirementOfAction };
 
 /** What a tool needs, or `undefined` for a tool nobody classified (hidden from personal AIs). Only a tool that belongs to no instance and no module can use the core table. */
 export function requirementOf(tool: { name: string; requires?: ToolRequirement; instanceId?: string; moduleId?: string }): ToolRequirement | undefined {
