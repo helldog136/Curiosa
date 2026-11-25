@@ -22,7 +22,7 @@ import { formatOf } from "@/core/overlays/model";
 import { HISTORY_MAX, record, redo, replace, startHistory, undo, type History } from "@/core/compose/history";
 import { nearEdge, safeLines, sameDoc } from "@/core/overlays/editorView";
 import type { ElementStyle } from "@/core/overlays/appearance";
-import { CvdFilters, PreviewToolbar, SafeOverlay, usePreviewView } from "./OverlayPreviewTools";
+import { CvdFilters, LivePreview, PreviewToolbar, SafeOverlay, usePreviewView } from "./OverlayPreviewTools";
 import { catalogKey, type OptionValue, type OverlayStyle, type PageElement } from "@/core/overlays/model";
 
 /** Éditeur d'une page d'overlay (navigateur de PC). Aperçu à l'échelle avec cadres nommés, glisser-déposer + poignées, champs précis, ancrages, ordre, options, style. Tout est faisable au clavier. */
@@ -357,10 +357,7 @@ export function OverlayEditor({ initial, available, resolutions, limits, preview
           {live ? (
             <div className="space-y-2">
               <div ref={stage} className="overflow-auto rounded-xl">
-                <div className="relative mx-auto overflow-hidden rounded-xl border border-line" data-testid="overlay-live" data-backdrop={pv.view.backdrop} style={{ width: view.width || "100%", aspectRatio: `${size.width} / ${size.height}`, ...pv.style, filter: pv.filter }}>
-                  <iframe title={s("ed.live")} src={previewSrc} sandbox="allow-scripts allow-same-origin" className="h-full w-full border-0" />
-                  <SafeOverlay mode={pv.view.safe} page={page} />
-                </div>
+                <LivePreview v={pv} src={previewSrc} title={s("ed.live")} width={view.width} size={size} page={page} />
               </div>
               <p className={ui.help}>{s("ed.liveHelp")}</p>
             </div>

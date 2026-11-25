@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Corrections
+
+- **Le fond d'aperçu de l'éditeur de page d'overlay s'affiche aussi quand l'administration est en sombre.** Avant, « Damier » et les autres fonds laissaient l'aperçu en direct sur un blanc uni. Le fond choisi apparaît maintenant derrière la page ; la page vue par OBS ne change pas.
+- **(English) The preview background of the overlay page editor now shows when the admin is dark.** Before, "Checkerboard" and the other backgrounds left the live preview on plain white. The chosen background now appears behind the page; the page OBS reads does not change.
+
+### Pour les développeurs
+
+- **Le cadre d'aperçu déclare le même thème de couleurs que la page d'overlay.** Un navigateur peint une feuille opaque derrière un cadre dont le `color-scheme` diffère de celui de la page qu'il contient ; le cadre porte donc `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), comme la page publique (`color-scheme:normal`), qui reste inchangée.
+- **(English) The preview frame declares the same colour scheme as the overlay page.** A browser paints an opaque sheet behind a frame whose `color-scheme` differs from the one of the page it holds; the frame therefore carries `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), like the public page (`color-scheme:normal`), which is unchanged.
+
 ## 0.48.0 — 2026-11-24
 
 **En bref.** Un assistant IA voit tout ce que le site pourrait lui permettre de faire, et la personne propriétaire de son accès ne change plus jamais. Vous pouvez ajouter un dépôt privé qui propose ses propres extensions. Les skins d'overlay peuvent dessiner eux-mêmes les morceaux d'un vitrail, et les liens internes d'une page du site mènent au bon titre. L'assistant d'installation n'annonce plus la mauvaise langue. Pour les développeurs : l'appelant d'un service et des mots de passe chiffrés pour les extensions, et un cœur mieux rangé.

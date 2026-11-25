@@ -11,6 +11,10 @@ import type { Size } from "./layout";
 export const PREVIEW_BACKDROPS = ["checker", "dark", "bright", "game", "own"] as const;
 export type PreviewBackdrop = (typeof PREVIEW_BACKDROPS)[number];
 
+/** The colour scheme the overlay page declares for itself (`color-scheme:normal`, see `BASE_CSS` in render.ts). The editor's preview frame must declare the
+ * same one: if the schemes differ, the browser paints an opaque sheet behind the transparent page and the preview background disappears. */
+export const PREVIEW_FRAME_SCHEME = "light";
+
 /** CSS backgrounds drawn by the core: no file, no address, nothing loaded. The game scene mixes a bright sky, a sun, hills and a dark HUD corner, so a
  * readable element must read over bright AND dark parts. */
 export const BACKDROP_CSS: Record<Exclude<PreviewBackdrop, "own">, { backgroundColor: string; backgroundImage?: string; backgroundSize?: string; backgroundPosition?: string; backgroundRepeat?: string }> = {
