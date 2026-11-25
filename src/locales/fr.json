@@ -3001,6 +3001,8 @@
   "owners.person.may": "Peut avoir des accès IA.",
   "owners.person.mayNot": "Ne peut pas avoir d'accès IA.",
   "owners.person.owned": "En possède {n}.",
+  "owners.assign.failed": "Non attribué. Cette personne ne peut pas avoir d'accès IA.",
+  "owners.assign.done": "Attribué.",
   "users.firstPasswordHelp": "Vide : le site en crée un.",
   "users.addMore": "Plus d'options",
   "users.addMoreSummary": "Nom affiché · mot de passe de départ",

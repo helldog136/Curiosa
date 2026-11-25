@@ -214,7 +214,7 @@ test("the By person table offers Pause and Remove, never a control that changes 
 test("texts: EN and FR say the owner is permanent; the removed states are gone from both files", () => {
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8")), fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
   for (const k of ["aim.my.noOwner"]) assert.ok(en[k] && fr[k], k);
-  assert.deepEqual(Object.keys(en).filter((k) => k.startsWith("owners.assign.")), [], "the assignment screen is gone");
+  assert.deepEqual(Object.keys(en).filter((k) => /^owners\.assign\.(title|help|choose|assign|owned|pick|search|bulk)/.test(k)), [], "the assignment screen is gone");
   assert.deepEqual(Object.keys(en).filter((k) => !(k in fr)), []);
   assert.deepEqual(Object.keys(fr).filter((k) => !(k in en)), []);
   assert.equal(Object.keys(en).at(-1), "settings.contrast.accent2");

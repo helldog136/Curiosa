@@ -3001,6 +3001,8 @@
   "owners.person.may": "May have AI accesses.",
   "owners.person.mayNot": "May not have AI accesses.",
   "owners.person.owned": "Owns {n}.",
+  "owners.assign.failed": "Not assigned. This person may not have AI accesses.",
+  "owners.assign.done": "Assigned.",
   "users.firstPasswordHelp": "Empty: the site creates one.",
   "users.addMore": "More options",
   "users.addMoreSummary": "Display name · starting password",
