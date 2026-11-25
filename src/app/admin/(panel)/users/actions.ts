@@ -155,7 +155,7 @@ export async function setTemporaryPassword(id: string, mode: string, password?: 
   return { name: r.name, mailed: r.mailed, ...(r.password ? { password: r.password } : { chosen: true }) };
 }
 
-/* ───────────── Invitations (core 0.49.0) ───────────── */
+/* ───────────── Invitations (next core version) ───────────── */
 
 const inviteErrors = (reason: InviteFailure, t: (key: string, params?: Record<string, string | number>) => string): ActionState => {
   if (reason === "invalid") return { errors: { email: t("invite.error.email") } };

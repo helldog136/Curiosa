@@ -1,5 +1,5 @@
 /**
- * FORGOT PASSWORD, self-service (core 0.49.0). Only when the site can send e-mail (the login page shows the link, and the server refuses without it).
+ * FORGOT PASSWORD, self-service (next core version). Only when the site can send e-mail (the login page shows the link, and the server refuses without it).
  *
  *  - A request answers the SAME thing and takes about the same time whether the address has an account, has none, is suspended, or is the owner's. The mail, when there is one, is sent
  *    after the answer is ready (never awaited), and the answer waits for a fixed minimum, so the clock tells nothing.

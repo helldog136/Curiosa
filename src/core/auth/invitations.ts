@@ -1,5 +1,5 @@
 /**
- * INVITATIONS (core 0.49.0): the default way to add a person to the team. Every rule is HERE, on the server; the pages and actions only pass the id of the person who is
+ * INVITATIONS (next core version): the default way to add a person to the team. Every rule is HERE, on the server; the pages and actions only pass the id of the person who is
  * signed in (never read from a form) and the values typed. The actor is re-read from the database on every call.
  *
  *  - Who: a person holding `core:team` (the owner, a technical coordinator), not suspended, with no temporary password to replace.

@@ -362,7 +362,7 @@ A module used to keep a value such as the token of a bot in a `secret` setting o
 - **Bounds.** 20 names per instance (checked again after writing, so two simultaneous new names cannot exceed it), 4096 characters per value, 20 writes and 600 reads a minute per instance (answered as refusals, never exceptions).
 - **Residual risks.** (1) Module code runs inside the site process: it can read the database **and** the site secret, so a hostile module can open the sealed values of every instance (and reach much more). Sealing protects copies of the database and backups, not the running server, and not against a module you chose to install. (2) Whoever holds the site secret and a database copy can open everything: protect `AUTH_SECRET` / `data/auth-secret`. (3) A module that echoes the value into a setting, the store, a log, a page or an assistant answer undoes the protection: documented, not enforceable. (4) Changing the site secret makes every sealed value unreadable (the owner is asked again). (5) A module that is uninstalled with its data kept leaves sealed values on disk until the data is erased.
 
-## Onboarding by invitation and password reset (core 0.49.0, threat model)
+## Onboarding by invitation and password reset (next core version, threat model)
 
 Before this change a person was added with a temporary password typed by whoever added them, and nobody could ask for a new password. The decision and the step-0 audit are in [ADR 0010](adr/0010-onboarding-by-invitation.md). Which part already existed: sign-in limits, 2FA, passkeys, `sessionVersion`, anti-elevation (`grantableLevels`, `canManageMember`), the audit journal and the mail sender. New: the links, their limits, the pause (suspend) of an account, and the checks below.
 

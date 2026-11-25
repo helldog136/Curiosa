@@ -1,5 +1,5 @@
 /**
- * ROLE PRESETS (core 0.49.0): ready-made STARTING POINTS for a custom role, nothing more.
+ * ROLE PRESETS (next core version): ready-made STARTING POINTS for a custom role, nothing more.
  *
  * A preset is a named list of existing delegable rights, written here as data. Picking one in the "New role" form only FILLS the form (name, description, rights); what is saved is an
  * ordinary custom role created by `createRole` with the usual checks (anti-elevation, no reserved right, no unknown right). There is no link between a role and the preset it started from:

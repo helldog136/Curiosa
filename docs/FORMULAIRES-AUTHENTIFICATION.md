@@ -45,7 +45,7 @@ A text input that is not a login (a name, a label, a nickname, an address, a URL
 
 Limits: the hints and `autocomplete="off"` are honoured by 1Password, Bitwarden and LastPass on inputs; a manager may still show its own menu on a page that has a real login or sign-up form. A test reads the source and the rendered markup; it does not replace the real extension, which the owner confirms on the real site.
 
-## Invitation, reset and "forgot password" pages (core 0.49.0)
+## Invitation, reset and "forgot password" pages (next core version)
 
 These public pages (`/admin/invitation`, `/admin/forgot-password`, `/admin/reset-password`) set a password that is **the person's own**: the fields carry `autoComplete="new-password"`, **no** `noManager`, and the strength rules of `passwordMin`, so a password manager offers to save it. The e-mail is shown as text (not a field) on the invitation page, and a hidden username field is not needed because the manager reads the address from the page text.
 

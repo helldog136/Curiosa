@@ -7,12 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## 0.49.0 — 2026-11-25
-
-### Nouveautés
-
-- **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays qui marchent seuls) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
-- **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
+## Prochaine version (non publiée)
 
 ### Nouveautés
 
@@ -20,6 +15,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) You invite a person with an e-mail and a role, with no password to hand over.** They get a single-use link (72 hours by default) and choose their own password; you can resend, cancel or suspend an account. With no mail sending, the link is shown once to you.
 - **Vous pouvez demander un nouveau mot de passe quand le site envoie des courriels.** Le lien dure 45 minutes, garde la double vérification et déconnecte les autres appareils. Un compte à droits étendus, comme la coordination, doit avoir une double vérification ; sinon, l'équipe lui donne un mot de passe provisoire.
 - **(English) You can ask for a new password when the site sends e-mail.** The link lasts 45 minutes, keeps two-step verification and signs out the other devices. An account with wide rights, such as coordination, needs two-step verification; otherwise the person who runs the team gives a temporary password.
+
+## 0.49.0 — 2026-11-25
+
+### Nouveautés
+
+- **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays qui marchent seuls) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
+- **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
 
 ### Corrections
 
