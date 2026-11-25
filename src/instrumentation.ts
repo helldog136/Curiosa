@@ -53,7 +53,7 @@ export async function register() {
   } catch (error) {
     console.error("[ai] owner sweep failed:", (error as Error)?.message);
   }
-  // TEMPORARY (sunset 0.49.0, src/core/personalAi/legacyOwners.ts): on a site with a single account, every access without an owner is given to that account. Idempotent, never throws.
+  // TEMPORARY (sunset 0.50.0, src/core/personalAi/legacyOwners.ts): on a site with a single account, every access without an owner is given to that account. Idempotent, never throws.
   try {
     const { assignLegacyOwners } = await import("@/core/personalAi/legacyOwners");
     const r = await assignLegacyOwners();

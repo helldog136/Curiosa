@@ -1,6 +1,6 @@
 "use client";
 
-// TEMPORARY (SUNSET 0.49.0): the whole folder assign-owners/ is deleted in 0.49.0 (docs/PERSONAL-AI.md, "Choosing owners").
+// TEMPORARY (SUNSET 0.50.0): the whole folder assign-owners/ is deleted in 0.50.0 (docs/PERSONAL-AI.md, "Choosing owners").
 import { useState, useTransition } from "react";
 import { askConfirm } from "@/components/admin/confirmDialog";
 import { PendingButton } from "@/components/admin/PendingButton";

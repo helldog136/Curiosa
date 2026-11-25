@@ -5,7 +5,7 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 
 /**
- * Gives an access that NEVER had an owner its owner, ONCE (the rows of the temporary Assign owners page only; SUNSET 0.49.0). The owner of an access never changes (0.47.1): this
+ * Gives an access that NEVER had an owner its owner, ONCE (the rows of the temporary Assign owners page only; SUNSET 0.50.0). The owner of an access never changes (0.47.1): this
  * control is never rendered for an access that has an owner, and the server refuses it anyway (`already_owned`). Only people who may own an access are offered (the server checks again).
  */
 export function OwnerSelect({ tokenId, owners, assign, labels, compact }: {
