@@ -23,7 +23,7 @@ const { handleMcpRequest } = await import("@/core/services/mcp/server");
 const P = await import("@/core/platform");
 const PA = await import("@/core/personalAi/service");
 const OW = await import("@/core/personalAi/owners");
-const LEG = await import("@/core/personalAi/legacyOwners");
+const MIG = await import("@/core/personalAi/ownerMigration");
 const LIFE = await import("@/core/personalAi/lifecycle");
 const RQ = await import("@/core/maintenance/requests");
 const { createAccess } = await import("@/core/mcpAccess");
@@ -77,30 +77,23 @@ test("core: an access that never had an owner is given one ONCE; the write is co
   assert.deepEqual(await OW.assignOwner(id, winner === camille.id ? other.id : camille.id, boss.email, boss.id), { ok: false, reason: "already_owned" }, "and never again");
 });
 
-test("bulk 'give all to this person': only the never-owned ones change; owned ones keep their owner", async () => {
+test("the 0.49 migration: only the never-owned ones change; owned ones keep their owner; a second run has nothing left to give", async () => {
   const boss = await mk("etoile_nord", "owner");
-  const camille = await mk("camille", "admin");
   const other = await mk("lune_douce", "admin");
   const owned = await PA.createPersonalAccess(other.id, { password: PASSWORD, name: "Owned" });
   const a = await T.findTokenId(await T.createToken("A", "read", "o"));
   const b = await T.findTokenId(await T.createToken("B", "read", "o"));
-  assert.deepEqual(await OW.assignAllWithoutOwner(camille.id, boss.email, boss.id), { ok: true, changed: 2 });
+  assert.deepEqual(await MIG.attributeOwnerlessAccesses(), { attributed: 2 });
   assert.equal((await row(owned.id)).ownerId, other.id);
-  assert.deepEqual([(await row(a)).ownerId, (await row(b)).ownerId], [camille.id, camille.id]);
-  assert.deepEqual(await OW.assignAllWithoutOwner(other.id, boss.email, boss.id), { ok: true, changed: 0 }, "a second 'give all' has nothing left to give");
-  assert.equal((await row(a)).ownerId, camille.id);
+  assert.deepEqual([(await row(a)).ownerId, (await row(b)).ownerId], [boss.id, boss.id]);
+  assert.deepEqual(await MIG.attributeOwnerlessAccesses(), { attributed: 0 });
 });
 
 test("every caller goes through the core: the actions hold no write of their own, and every writer of ApiToken.ownerId is listed", () => {
   const act = fs.readFileSync("src/app/admin/(panel)/assistants/actions.ts", "utf8");
-  const body = act.slice(act.indexOf("export async function assignOwnerAction"));
-  assert.match(body.slice(0, 700), /await assignOwner\(/);
-  assert.ok(!/apiToken\./.test(body.slice(0, 700)), "no direct write in the action");
-  const bulk = fs.readFileSync("src/app/admin/(panel)/assistants/assign-owners/actions.ts", "utf8");
-  assert.match(bulk, /assignAllWithoutOwner\(/);
-  assert.ok(!/apiToken\./.test(bulk));
+  assert.ok(!/assignOwner/.test(act), "no screen action gives an owner: only the 0.49 migration does");
   // Every `data: {...}` of a write to the access table that mentions `ownerId`: only creation, the one-time legacy step and the assignment.
-  const ALLOWED = new Set(["src/core/services/mcp/tokens.ts", "src/core/personalAi/owners.ts", "src/core/personalAi/legacyOwners.ts"]);
+  const ALLOWED = new Set(["src/core/services/mcp/tokens.ts", "src/core/personalAi/owners.ts"]);
   const offenders = [];
   for (const file of walk("src").filter((f) => /\.(ts|tsx|mjs|js)$/.test(f))) {
     const src = fs.readFileSync(file, "utf8");
@@ -115,8 +108,6 @@ test("every caller goes through the core: the actions hold no write of their own
   const owners = fs.readFileSync("src/core/personalAi/owners.ts", "utf8");
   assert.match(owners, /updateMany\(\{ where: \{ id: row\.id, ownerId: null, revokedAt: null \}, data: \{ ownerId: target\.id \} \}\)/);
   assert.match(owners, /if \(row\.ownerId\) return \{ ok: false, reason: "already_owned" \}/);
-  const legacy = fs.readFileSync("src/core/personalAi/legacyOwners.ts", "utf8");
-  assert.match(legacy, /updateMany\(\{ where: \{ id: r\.id, ownerId: null \}, data: \{ ownerId: only\.id \} \}\)/);
   // no other module exports a way to change the owner (no `setOwner`, `transfer`, `reassign`)
   for (const file of walk("src")) assert.ok(!/(setOwnerOf|transferAccess|reassignOwner|changeOwner)\b/.test(fs.readFileSync(file, "utf8")), file);
 });
@@ -179,7 +170,7 @@ test("reading the accesses list sweeps first: no 'Owner removed' state can be sh
   const camille = await mk("camille", "admin");
   const legacy = await T.createToken("Legacy", "write", "o", { grants: {} });
   const legacyId = await T.findTokenId(legacy);
-  await LEG.assignLegacyOwners(); // several accounts: marks the legacy one (coarse ceiling), assigns nothing
+  await db.prisma.apiToken.updateMany({ where: { ownerId: null, coarseCeiling: false }, data: { coarseCeiling: true } }); // test setup: what the 0.47.0 start-up step marked (gone in 0.49.0)
   assert.equal((await row(legacyId)).coarseCeiling, true);
   const made = await PA.createPersonalAccess(camille.id, { password: PASSWORD, name: "Gone" });
   await db.prisma.$executeRawUnsafe(`DELETE FROM "User" WHERE "id" = '${camille.id}'`); // test setup: raw delete, no hook
@@ -200,7 +191,7 @@ test("reading the accesses list sweeps first: no 'Owner removed' state can be sh
   assert.equal((await audits("mcp.personal.revoke")).length, 1);
 });
 
-test("the By person table offers Pause and Remove, never a control that changes the owner; the panel lists only the never-owned and says the choice is final", async () => {
+test("the By person table offers Pause and Remove, never a control that changes the owner; there is no assignment panel", async () => {
   const boss = await mk("etoile_nord", "owner");
   const camille = await mk("camille", "admin");
   const made = await PA.createPersonalAccess(camille.id, { password: PASSWORD, name: "Claude" });
@@ -214,25 +205,16 @@ test("the By person table offers Pause and Remove, never a control that changes 
   assert.ok(!table.includes(`id="owner-${made.id}"`) && !/Choose an owner|Change the owner|Another owner/.test(table));
   assert.match(table, /data-testid="owners-pause"/);
   assert.match(table, /Remove the access/);
-  assert.equal((panel.match(/data-testid="assign-row"/g) ?? []).length, 1, "the panel lists the one that never had an owner");
-  assert.match(panel, /final|never be changed/i);
-  assert.ok(!panel.includes("Claude"), "an owned access never appears in the assignment panel");
+  assert.ok(!panel.includes('data-testid="assign-row"') && !panel.includes("assign-owners"), "no assignment panel: the 0.49 migration gives the owner");
   // the person menu of the team page and the sheet carry no owner picker either
-  for (const f of walk("src/app/admin").filter((x) => /\.tsx$/.test(x))) {
-    if (f.includes("assign-owners") || f.endsWith("OwnerSelect.tsx")) continue;
-    assert.ok(!/OwnerSelect/.test(fs.readFileSync(f, "utf8")), `${f} does not use the owner picker`);
-  }
-  const select = fs.readFileSync("src/app/admin/(panel)/assistants/OwnerSelect.tsx", "utf8");
-  assert.ok(!/current/.test(select.replace(/\/\*[\s\S]*?\*\//g, "")), "the picker never starts from an existing owner");
+  for (const f of walk("src/app/admin").filter((x) => /\.tsx$/.test(x))) assert.ok(!/OwnerSelect/.test(fs.readFileSync(f, "utf8")), `${f} does not use the owner picker`);
+  assert.ok(!fs.existsSync("src/app/admin/(panel)/assistants/OwnerSelect.tsx") && !fs.existsSync("src/app/admin/(panel)/assistants/assign-owners"));
 });
 
 test("texts: EN and FR say the owner is permanent; the removed states are gone from both files", () => {
   const en = JSON.parse(fs.readFileSync("src/locales/en.json", "utf8")), fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
-  for (const k of ["owners.assign.help", "owners.assign.bulkConfirm", "owners.assign.owned", "aim.my.noOwner"]) assert.ok(en[k] && fr[k], k);
-  assert.match(en["owners.assign.help"], /never be changed/);
-  assert.match(fr["owners.assign.help"], /ne change jamais/);
-  assert.match(en["owners.assign.bulkConfirm"], /never be changed/);
-  assert.match(fr["owners.assign.bulkConfirm"], /plus jamais changer/);
+  for (const k of ["aim.my.noOwner"]) assert.ok(en[k] && fr[k], k);
+  assert.deepEqual(Object.keys(en).filter((k) => k.startsWith("owners.assign.")), [], "the assignment screen is gone");
   assert.deepEqual(Object.keys(en).filter((k) => !(k in fr)), []);
   assert.deepEqual(Object.keys(fr).filter((k) => !(k in en)), []);
   assert.equal(Object.keys(en).at(-1), "settings.contrast.accent2");
@@ -295,11 +277,11 @@ test("sweep safety: one failing revoke does not stop the others, stays retryable
   assert.equal((await RQ.listRequests()).filter((r) => r.status === "pending").length, 0);
 });
 
-test("the start-up sweep is wired in instrumentation.ts, before the legacy step", () => {
+test("the start-up sweep is wired in instrumentation.ts, before the 0.49 migration", () => {
   const src = fs.readFileSync("src/instrumentation.ts", "utf8");
   const sweep = src.indexOf("sweepOrphanedAccesses()");
   assert.ok(sweep > 0, "sweepOrphanedAccesses is called at start-up");
-  assert.ok(src.indexOf("personalAi/lifecycle") > 0 && sweep < src.indexOf("assignLegacyOwners()"));
+  assert.ok(src.indexOf("personalAi/lifecycle") > 0 && sweep < src.indexOf("attributeOwnerlessAccesses()"));
 });
 
 test("source scan, strict: no apiToken write takes `data` from a variable or spread; no raw tagged template touches the table (src and scripts)", () => {

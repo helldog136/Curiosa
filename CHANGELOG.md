@@ -13,6 +13,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays qui marchent seuls) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
 - **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
+- **Les accès IA sans propriétaire passent à la personne propriétaire du site.** À la mise à jour, chacun lui est attribué, une seule fois, avec les mêmes droits. L'écran « Choisir qui possède chaque accès » disparaît.
+- **(English) AI accesses without an owner go to the site owner.** On update, each one is given to the owner, once, with the same rights. The "Choose who owns each access" screen is gone.
 
 ### Corrections
 
@@ -25,8 +27,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) The `obs` group is called "Overlays" (0.49.0).** Its id and the `/admin/obs/...` and `/admin/overlay-pages` addresses do not change; a path `OBS.…` or `Overlays.…` lands in this group. A place page can have a short menu name (`menuTitles`, see `docs/PLACES.md`).
 - **Le cadre d'aperçu déclare le même thème de couleurs que la page d'overlay.** Un navigateur peint une feuille opaque derrière un cadre dont le `color-scheme` diffère de celui de la page qu'il contient ; le cadre porte donc `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), comme la page publique (`color-scheme:normal`), qui reste inchangée.
 - **(English) The preview frame declares the same colour scheme as the overlay page.** A browser paints an opaque sheet behind a frame whose `color-scheme` differs from the one of the page it holds; the frame therefore carries `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), like the public page (`color-scheme:normal`), which is unchanged.
-- **L'étape pour un site à un seul compte reste jusqu'à la 0.50.0.** Elle donne un propriétaire aux accès IA qui n'en ont pas ; sa suppression, prévue en 0.49.0, est reportée (`src/core/personalAi/legacyOwners.ts` et la page `assign-owners/`).
-- **(English) The single-account step stays until 0.50.0.** It gives an owner to AI accesses that have none; its removal, planned for 0.49.0, is postponed (`src/core/personalAi/legacyOwners.ts` and the `assign-owners/` page).
+- **Migration du propriétaire des accès IA (0.49.0).** `ownerMigration.ts` tourne au démarrage : idempotente, une ligne de journal par accès, reportée s'il n'y a pas de compte propriétaire. `legacyOwners.ts`, `assign-owners/` et `owners.assign.*` sont supprimés.
+- **(English) AI access owner migration (0.49.0).** `ownerMigration.ts` runs at start-up: idempotent, one journal line per access, postponed when there is no owner account. `legacyOwners.ts`, `assign-owners/` and `owners.assign.*` are removed.
 
 ## 0.48.0 — 2026-11-24
 

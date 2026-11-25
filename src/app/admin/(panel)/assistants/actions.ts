@@ -14,7 +14,7 @@ import { prisma } from "@/core/db";
 import { getPersonalPolicy, setPersonalPolicy, setPersonOverride, isOverride } from "@/core/personalAi/policy";
 import { revokeAccess } from "@/core/personalAi/revoke";
 import { pausePersonalAccessById, revokePersonalAccessById } from "@/core/personalAi/service";
-import { actorMayGiveTo, assignOwner, mayOwnAccess } from "@/core/personalAi/owners";
+import { actorMayGiveTo, mayOwnAccess } from "@/core/personalAi/owners";
 import { accessHref, ASSISTANTS_HREF, TEAM_HREF } from "@/core/services/mcp/assistantsLinks";
 import { addTrustedSource, MAX_SOURCES, parseSource, PRESET_SOURCE, removeTrustedSource, sourceLabel } from "@/core/trustedImageSources";
 import type { ActionState } from "@/components/admin/ActionForm";
@@ -190,18 +190,6 @@ export async function setPersonAiOverrideAction(userId: string, value: string): 
   await audit(user.email, "mcp.personal.policy", `${target.email}: ${value}`);
   revalidatePath(TEAM_HREF);
   return true;
-}
-
-/**
- * (0.47.0) Gives the owner to an access that NEVER had one (the temporary Assign owners page only; there is no other entry point). The owner of an access never changes (0.47.1): for an
- * access that has an owner the core answers `already_owned` and nothing is written. Only `core:mcp.tokens`; the person must be allowed to own an access.
- */
-export async function assignOwnerAction(tokenId: string, ownerId: string): Promise<{ ok: boolean; reason?: string }> {
-  const { user } = await adminCtx({ right: "core:mcp.tokens" });
-  const r = await assignOwner(String(tokenId), String(ownerId), user.email, user.id);
-  revalidatePath(ASSISTANTS_HREF);
-  revalidatePath(TEAM_HREF);
-  return r.ok ? { ok: true } : { ok: false, reason: r.reason };
 }
 
 /** Remove one person's AI access (revoked for good). */

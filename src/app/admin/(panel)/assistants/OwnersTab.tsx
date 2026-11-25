@@ -12,7 +12,6 @@ import { RowMenu } from "@/components/admin/RowMenu";
 import { RowTable, type TableRow } from "@/components/admin/RowTable";
 import type { BadgeTone } from "@/core/blocks";
 import { pauseAccessAction, revokeTokenAction } from "./actions";
-import { AssignOwners } from "./assign-owners/AssignOwners";
 
 /** The few filter pills for the owners: more than this many people and the search does the job (R19: never a wall of pills). */
 const OWNER_PILLS_MAX = 6;
@@ -25,7 +24,7 @@ const TONE: Record<State, BadgeTone> = { active: "ok", paused: "warn", stopped: 
  * had one) works as before and says so ("No owner"; the temporary panel above gives it one, once); an access whose owner disappeared is revoked and is not listed (the sweep runs
  * first). Only holders of `core:mcp.tokens` see this page (the page and every action check it).
  */
-export async function OwnersTab({ t, viewerId }: { t: Translator; viewerId: string }) {
+export async function OwnersTab({ t }: { t: Translator }) {
   await sweepOrphanedAccesses().catch(() => []);
   const [rows, users] = await Promise.all([
     prisma.apiToken.findMany({ where: { revokedAt: null }, orderBy: { createdAt: "asc" } }),
@@ -74,7 +73,6 @@ export async function OwnersTab({ t, viewerId }: { t: Translator; viewerId: stri
   ];
   return (
     <div className="space-y-8" data-testid="assistants-owners">
-      <AssignOwners t={t} viewerId={viewerId} />
       <Panel title={t("owners.title")} testid="owners-table">
         {rows.length === 0 ? <EmptyState icon="🤖" title={t("owners.empty.title")}>{t("owners.empty.body")}</EmptyState> : (
           <>
