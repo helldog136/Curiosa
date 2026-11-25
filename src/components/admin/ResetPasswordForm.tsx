@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActionForm, type ActionState } from "./ActionForm";
 import { TextField } from "./Field";
-import { useFragmentToken } from "./FragmentToken";
+import { forgetTokenAfter, useFragmentToken } from "./FragmentToken";
 
 export type ResetLabels = { loading: string; missing: string; invalid: string; rate: string; title: string; intro: string; password: string; confirm: string; help: string; submit: string; pending: string };
 
@@ -15,6 +15,7 @@ export function ResetPasswordForm({ peek, action, labels, minLength }: {
   minLength: number;
 }) {
   const token = useFragmentToken();
+  const wrapped = useMemo(() => forgetTokenAfter(action), [action]);
   const [look, setLook] = useState<{ ok: boolean; rate?: boolean } | null>(null);
   useEffect(() => {
     if (!token) return;
@@ -31,7 +32,7 @@ export function ResetPasswordForm({ peek, action, labels, minLength }: {
         <h1 className="text-2xl font-bold">{labels.title}</h1>
         <p className="text-sm leading-6 text-muted">{labels.intro}</p>
       </div>
-      <ActionForm action={action} submitLabel={labels.submit} pendingLabel={labels.pending}>
+      <ActionForm action={wrapped} submitLabel={labels.submit} pendingLabel={labels.pending}>
         <input type="hidden" name="token" value={token} />
         <TextField name="password" type="password" label={labels.password} required passwordMin={minLength} autoComplete="new-password" help={labels.help} />
         <TextField name="confirm" type="password" label={labels.confirm} required passwordMin={minLength} autoComplete="new-password" />

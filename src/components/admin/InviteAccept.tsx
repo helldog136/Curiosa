@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ActionForm, type ActionState } from "./ActionForm";
 import { TextField } from "./Field";
 import { UsernameHint } from "./UsernameHint";
-import { useFragmentToken } from "./FragmentToken";
+import { forgetTokenAfter, useFragmentToken } from "./FragmentToken";
 
 export type InviteAcceptLabels = { loading: string; missing: string; invalid: string; rate: string; title: string; intro: string; account: string; name: string; nameExample: string; password: string; confirm: string; help: string; submit: string; pending: string };
 type Look = { ok: true; email: string; role: string } | { ok: false; reason: "invalid" | "rate" };
@@ -17,6 +17,7 @@ export function InviteAccept({ peek, action, labels, minLength }: {
   minLength: number;
 }) {
   const token = useFragmentToken();
+  const wrapped = useMemo(() => forgetTokenAfter(action), [action]);
   const [look, setLook] = useState<Look | null>(null);
   useEffect(() => {
     if (!token) return;
@@ -36,7 +37,7 @@ export function InviteAccept({ peek, action, labels, minLength }: {
         <p className="text-sm leading-6 text-muted" data-testid="invite-intro">{labels.intro.replace("{role}", ok.role)}</p>
         <p className="break-all text-sm font-medium" data-testid="invite-email">{labels.account.replace("{email}", ok.email)}</p>
       </div>
-      <ActionForm action={action} submitLabel={labels.submit} pendingLabel={labels.pending}>
+      <ActionForm action={wrapped} submitLabel={labels.submit} pendingLabel={labels.pending}>
         <input type="hidden" name="token" value={token} />
         <UsernameHint value={ok.email} />
         <TextField name="name" label={labels.name} required example={labels.nameExample} autoComplete="name" />

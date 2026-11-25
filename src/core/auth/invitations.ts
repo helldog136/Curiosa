@@ -20,6 +20,7 @@ import { getSiteConfig } from "../settings";
 import { makeTranslator } from "../i18n/dictionary";
 import { isValidEmail, sendCoreMail } from "../services/mail";
 import { accessOf, currentCatalogue } from "./access";
+import { lastRestoreAt } from "./restoreMark";
 import { auditAccount } from "./accountAudit";
 import { hashToken, looksLikeToken, newToken, sameDigest } from "./oneTimeToken";
 import { passwordProblem } from "./passwordPolicy";
@@ -37,16 +38,18 @@ const NAME_MAX = 80;
 /** A pending invitation can be sent again at most this many times a day (mail flooding of one address). */
 const RESENDS_PER_DAY = 5;
 
-export type InviteFailure = "denied" | "invalid" | "exists" | "role" | "limit" | "missing" | "state" | "rate";
+export type InviteFailure = "denied" | "invalid" | "exists" | "pending" | "role" | "limit" | "missing" | "state" | "rate";
 export type InviteStatus = "pending" | "accepted" | "revoked" | "expired" | "refused";
 
 type Actor = { id: string; email: string; level: Level; rights: Set<string> };
+/** The database handle: the client, or the one of an open transaction (so a check and the write that depends on it see the same state). */
+type Db = Pick<typeof prisma, "user" | "role" | "userRole" | "invitation">;
 
 /** The actor, re-read from the database: holds `core:team`, is active, has no temporary password to replace. */
-async function teamActor(actorId: string, catalogue: RightInfo[]): Promise<Actor | null> {
-  const row = await prisma.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true, suspendedAt: true } });
+async function teamActor(actorId: string, catalogue: RightInfo[], db: Db = prisma): Promise<Actor | null> {
+  const row = await db.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true, suspendedAt: true } });
   if (!row || row.mustChangePassword || row.suspendedAt) return null;
-  const access = await accessOf(row, catalogue);
+  const access = await accessOf(row, catalogue, db);
   return access.rights.has("core:team") ? { id: row.id, email: row.email, level: access.level, rights: access.rights } : null;
 }
 
@@ -104,12 +107,16 @@ export async function createInvitation(actorId: string, input: { email?: unknown
   if (await prisma.user.findUnique({ where: { email }, select: { id: true } })) return { ok: false, reason: "exists" };
   if (!allowTry(`invite:create:${actor.id}`, 60, HOUR, now.getTime())) return { ok: false, reason: "rate" };
   await expireStale(now);
-  const existing = await prisma.invitation.findFirst({ where: { email, status: "pending" }, select: { id: true } });
-  if (!existing && (await prisma.invitation.count({ where: { status: "pending" } })) >= MAX_PENDING) return { ok: false, reason: "limit" };
 
   const token = newToken();
   const expiresAt = new Date(now.getTime() + ttl * HOUR);
-  const created = await prisma.$transaction(async (tx) => {
+  // The checks that decide (an account appeared, a pending invitation to replace, the cap) and the writes that depend on them run in ONE transaction, on the same state.
+  const made = await prisma.$transaction(async (tx) => {
+    if (await tx.user.findUnique({ where: { email }, select: { id: true } })) return { fail: "exists" as const };
+    const existing = await tx.invitation.findFirst({ where: { email, status: "pending" }, select: { id: true, roleKey: true } });
+    // Replacing a pending invitation revokes it: only a person who could revoke it may do that (same rule as `revokeInvitation`).
+    if (existing && isSystemKey(existing.roleKey) && !(grantableLevels(actor.level) as string[]).includes(existing.roleKey)) return { fail: "pending" as const };
+    if (!existing && (await tx.invitation.count({ where: { status: "pending" } })) >= MAX_PENDING) return { fail: "limit" as const };
     const old = await tx.invitation.updateMany({ where: { email, status: "pending" }, data: { status: "revoked" } });
     const row = await tx.invitation.create({ data: {
       email, tokenHash: hashToken("invite", token), status: "pending", roleId: role.id, roleKey: role.key,
@@ -118,6 +125,8 @@ export async function createInvitation(actorId: string, input: { email?: unknown
     } });
     return { row, replaced: old.count > 0 };
   });
+  if (!("row" in made)) return { ok: false, reason: made.fail };
+  const created = made as { row: { id: string }; replaced: boolean };
   const link = `${input.origin.replace(/\/+$/, "")}${INVITATION_HREF}#t=${token}`;
   const me = await prisma.user.findUnique({ where: { id: actor.id }, select: { name: true } });
   const roleName = role.name;
@@ -209,14 +218,17 @@ async function openToken(token: unknown, ip: string, now: Date) {
   if (!allowTry(`invite:tok:${digest(token)}`, TRIES_PER_TOKEN.max, TRIES_PER_TOKEN.windowMs, now.getTime())) return { reason: "rate" as const };
   const row = await prisma.invitation.findUnique({ where: { tokenHash: hash } });
   if (!row || !sameDigest(row.tokenHash, hash) || row.status !== "pending" || row.expiresAt <= now) return { reason: "invalid" as const };
+  // A link made before the last restore belongs to the timeline the restore replaced: refused here, so this never depends on the cleanup after a restore having worked.
+  const restored = await lastRestoreAt();
+  if (restored && Math.max(row.createdAt.getTime(), row.lastSentAt.getTime()) < restored.getTime()) return { reason: "invalid" as const };
   return { row, hash };
 }
 
 /** The grant, checked again at acceptance. Returns the role and the level it gives, or why it is refused (audited by the caller). */
-async function revalidate(inv: { roleId: string; roleKey: string; rightsSnapshot: string; invitedById: string; email: string }, catalogue: RightInfo[]): Promise<{ role: RoleRow; level: Level } | { refused: string }> {
-  const inviter = await teamActor(inv.invitedById, catalogue);
+async function revalidate(inv: { roleId: string; roleKey: string; rightsSnapshot: string; invitedById: string; email: string }, catalogue: RightInfo[], db: Db = prisma): Promise<{ role: RoleRow; level: Level } | { refused: string }> {
+  const inviter = await teamActor(inv.invitedById, catalogue, db);
   if (!inviter) return { refused: "inviter" };
-  const role = await prisma.role.findUnique({ where: { id: inv.roleId }, select: { id: true, key: true, name: true, system: true, rights: true } });
+  const role = await db.role.findUnique({ where: { id: inv.roleId }, select: { id: true, key: true, name: true, system: true, rights: true } });
   if (!role) return { refused: "role-gone" };
   if (role.key !== inv.roleKey) return { refused: "role-changed" };
   if (role.key === "owner") return { refused: "owner" };
@@ -256,35 +268,38 @@ export async function acceptInvitation(input: { token: unknown; name: unknown; p
   if (passwordProblem(password)) return { ok: false, reason: "password" };
   if (password !== String(input.confirm ?? "")) return { ok: false, reason: "mismatch" };
 
-  const catalogue = await currentCatalogue();
-  const grant = await revalidate(inv, catalogue);
-  if ("refused" in grant) {
-    await prisma.invitation.updateMany({ where: { id: inv.id, status: "pending" }, data: { status: "refused" } });
-    await auditAccount(inv.email, "visitor", "invite.denied", inv.email, { why: grant.refused, role: inv.roleKey });
-    return { ok: false, reason: "invalid" };
-  }
+  // Slow work first (the password hash), then ONE short transaction: the grant is checked again right before the invitation is spent, on the same state the writes use,
+  // so an inviter suspended, a role changed or an account created between the check and the write cannot slip through.
   const passwordHash = await bcrypt.hash(password, 12);
+  const catalogue = await currentCatalogue();
   await ensureSystemRoles();
   let userId = "";
+  let level: Level = "none";
+  let roleSystem = true;
+  let refusal: string | null = null;
   try {
     await prisma.$transaction(async (tx) => {
+      const grant = await revalidate(inv, catalogue, tx);
+      if ("refused" in grant) { refusal = grant.refused; throw new Error("refused"); }
       const spent = await tx.invitation.updateMany({ where: { id: inv.id, status: "pending", expiresAt: { gt: now } }, data: { status: "accepted", acceptedAt: now } });
       if (spent.count !== 1) throw new Error("spent");
-      if (await tx.user.findUnique({ where: { email: inv.email }, select: { id: true } })) throw new Error("exists");
+      if (await tx.user.findUnique({ where: { email: inv.email }, select: { id: true } })) { refusal = "account-exists"; throw new Error("refused"); }
       const user = await tx.user.create({ data: { email: inv.email, name, ...columnsOf(grant.level), passwordHash, mustChangePassword: false } });
       userId = user.id;
+      level = grant.level;
+      roleSystem = grant.role.system;
       if (!grant.role.system) await tx.userRole.create({ data: { userId, roleId: grant.role.id } });
       await tx.invitation.update({ where: { id: inv.id }, data: { acceptedUserId: userId } });
     });
-  } catch (error) {
-    if ((error as Error).message === "exists") {
+  } catch {
+    if (refusal) {
       await prisma.invitation.updateMany({ where: { id: inv.id, status: "pending" }, data: { status: "refused" } });
-      await auditAccount(inv.email, "visitor", "invite.denied", inv.email, { why: "account-exists", role: inv.roleKey });
+      await auditAccount(inv.email, "visitor", "invite.denied", inv.email, { why: refusal, role: inv.roleKey });
     }
     return { ok: false, reason: "invalid" };
   }
-  if (grant.role.system) await assignInitialRole(userId);
-  await auditAccount(inv.email, grant.level, "invite.accept", inv.email, { role: inv.roleKey, inviter: inv.invitedByLevel });
+  if (roleSystem) await assignInitialRole(userId);
+  await auditAccount(inv.email, level, "invite.accept", inv.email, { role: inv.roleKey, inviter: inv.invitedByLevel });
   return { ok: true, userId, email: inv.email };
 }
 

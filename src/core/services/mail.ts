@@ -70,13 +70,18 @@ const PER_SITE = 40;
 const WINDOW = 60 * 60_000;
 const sent = new Map<string, number[]>();
 export function resetMailLimits(): void { sent.clear(); }
+/** Core mail about people ("core.onboarding", "core.reset", "core.notice") has its OWN site-wide bucket, apart from the one every module shares: a module cannot use up the invitations, nor the other way round. */
+const PER_SITE_CORE = 60;
+const isCoreKind = (actor: string) => actor.startsWith("core.");
 function allow(actor: string, perActor = PER_INSTANCE): boolean {
   const now = Date.now();
   const recent = (key: string) => (sent.get(key) ?? []).filter((t) => now - t < WINDOW);
-  const mine = recent(actor), all = recent("*");
-  if (mine.length >= perActor || all.length >= PER_SITE) return false;
+  const bucket = isCoreKind(actor) ? "core:*" : "*";
+  const cap = isCoreKind(actor) ? PER_SITE_CORE : PER_SITE;
+  const mine = recent(actor), all = recent(bucket);
+  if (mine.length >= perActor || all.length >= cap) return false;
   sent.set(actor, [...mine, now]);
-  sent.set("*", [...all, now]);
+  sent.set(bucket, [...all, now]);
   return true;
 }
 

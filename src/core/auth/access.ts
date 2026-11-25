@@ -46,12 +46,12 @@ export async function currentCatalogue(): Promise<RightInfo[]> {
  * Rôles et droits d'une ligne `User`, relus en base. Le niveau prédéfini vient TOUJOURS de `User.role` (même après un passage par un ancien cœur qui l'aurait changé) ;
  * les affectations `UserRole` n'ajoutent que les rôles personnalisés (une affectation prédéfinie qui ne correspond plus à `User.role` est ignorée).
  */
-export async function accessOf(user: { id: string; role: string; coordinator?: boolean }, catalogue?: RightInfo[]): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
+export async function accessOf(user: { id: string; role: string; coordinator?: boolean }, catalogue?: RightInfo[], db: Pick<typeof prisma, "userRole"> = prisma): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
   const level = levelOf(user);
   const cat = catalogue ?? (await currentCatalogue());
   const rights = systemRights(level, cat);
   const roles: string[] = level === "none" ? [] : [level];
-  const custom = await prisma.userRole.findMany({ where: { userId: user.id, role: { system: false } }, include: { role: { select: { key: true, rights: true } } }, orderBy: { roleId: "asc" } });
+  const custom = await db.userRole.findMany({ where: { userId: user.id, role: { system: false } }, include: { role: { select: { key: true, rights: true } } }, orderBy: { roleId: "asc" } });
   for (const ur of custom) {
     roles.push(ur.role.key);
     for (const r of parseStoredRights(ur.role.rights, cat)) rights.add(r);

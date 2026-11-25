@@ -51,4 +51,5 @@ These public pages (`/admin/invitation`, `/admin/forgot-password`, `/admin/reset
 
 - The link token comes from the URL fragment (`#t=`, `useFragmentToken`) and travels only in the form body. Never put it in a query string, a log or an error message.
 - Errors are under the field, with an example; after an error the e-mail stays and the passwords are emptied (rule 9 above).
-- The "forgot password" page and the login link exist only when mail is configured; the answer is the same for every address.
+- The "forgot password" page and the login link exist only when mail is configured; the answer, its time and its wording are the same for every address, including those that get no link (the owner, a suspended account, an account with a reserved right and no second factor). The sentence says what to do when nothing arrives: ask the person who manages the team.
+- The token held in the page is forgotten after a success (`forgetTokenAfter`) and when the page goes away; after an error it stays so the person can correct a field.

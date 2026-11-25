@@ -160,6 +160,7 @@ export async function setTemporaryPassword(id: string, mode: string, password?: 
 const inviteErrors = (reason: InviteFailure, t: (key: string, params?: Record<string, string | number>) => string): ActionState => {
   if (reason === "invalid") return { errors: { email: t("invite.error.email") } };
   if (reason === "exists") return { errors: { email: t("invite.error.exists") } };
+  if (reason === "pending") return { errors: { email: t("invite.error.pending") } };
   if (reason === "role") return { errors: { roleId: t("invite.error.role") } };
   if (reason === "limit") return { error: t("invite.error.limit", { n: MAX_PENDING }) };
   if (reason === "rate") return { error: t("invite.error.rate") };

@@ -444,7 +444,8 @@ test("forgot password: the mail never delays the answer; without e-mail nothing 
 test("forgot password: limits per address, per network address and for the site", async () => {
   await configureMail();
   await mk("lune_douce", "editor");
-  for (let i = 0; i < 6; i++) await ask("lune_douce@example.org");
+  // six minutes apart (a link made in the last five minutes is kept, see below): the address cap, not the freshness rule, stops the fourth
+  for (let i = 0; i < 6; i++) await ask("lune_douce@example.org", { now: new Date(Date.now() + i * 6 * 60_000) });
   await settle();
   assert.equal(sent.length, 3, "three links an hour for one address, the other answers look the same");
   sent.length = 0; resetRateLimits(); Mail.resetMailLimits();
@@ -489,7 +490,7 @@ test("reset: expired link, weak or different passwords, owner and suspended acco
   await ask("lune_douce@example.org"); await settle();
   const first = /#t=([A-Za-z0-9_-]{43})/.exec(sent[0].text)[1];
   resetRateLimits();
-  await ask("lune_douce@example.org"); await settle();
+  await ask("lune_douce@example.org", { now: new Date(Date.now() + 6 * 60_000) }); await settle();
   const second = /#t=([A-Za-z0-9_-]{43})/.exec(sent[1].text)[1];
   assert.equal(await prisma.passwordReset.count(), 1);
   assert.equal(await P.peekReset(first, "192.0.2.1"), false, "old link dead");
@@ -505,9 +506,13 @@ test("reset: expired link, weak or different passwords, owner and suspended acco
   assert.deepEqual(await P.completePasswordReset({ token: second, password: "long-enough-password", confirm: "long-enough-password", ip: IP }), { ok: false, reason: "invalid" });
 });
 
-test("reset: a technical coordinator uses it like anyone else; the owner never does (console recovery)", async () => {
+test("reset: the owner never uses it (console recovery); a coordinator only with a second factor", async () => {
   await configureMail();
   await ask(T.coord.email); await ask(T.owner.email, { ip: "192.0.2.50" }); await settle();
+  assert.deepEqual(sent, [], "coordinator without a second factor and owner: no mail, no link");
+  assert.equal(await prisma.passwordReset.count(), 0);
+  await prisma.user.update({ where: { id: T.coord.id }, data: { totpSecret: "S", totpEnabledAt: new Date() } });
+  await ask(T.coord.email, { ip: "192.0.2.51" }); await settle();
   assert.deepEqual(sent.map((m) => m.to), [T.coord.email]);
 });
 
@@ -568,4 +573,224 @@ test("the one-time link pages are never cached and never send a Referer", async 
     const h = Object.fromEntries(rule.headers.map((x) => [x.key, x.value]));
     assert.equal(h["Referrer-Policy"], "no-referrer"); assert.match(h["Cache-Control"], /no-store/);
   }
+});
+
+
+/* ───────────── Independent review (PR #308): reserved rights, mail, transactions, restore, limiter, token memory ───────────── */
+
+const mailTo = () => sent.map((m) => m.to);
+
+test("review 1: an account with a reserved right gets no public link unless it has an authenticator or a passkey; the answer and the time do not change", async () => {
+  await configureMail();
+  const wide = await customRole("Wide", ["core:entries.edit"]);
+  const plain = await mk("camille", "editor");
+  const times = {}; const answers = {};
+  let n = 10;
+  for (const [label, email] of [["coordinator", T.coord.email], ["admin", T.admin.email], ["editor", plain.email], ["unknown", "nobody@example.org"]]) {
+    const t0 = Date.now(); answers[label] = JSON.stringify(await ask(email, { ip: `192.0.2.${n++}` })); times[label] = Date.now() - t0;
+  }
+  assert.equal(new Set(Object.values(answers)).size, 1, "one generic answer");
+  for (const [label, ms] of Object.entries(times)) assert.ok(ms >= P.REQUEST_FLOOR_MS - 20 && ms < P.REQUEST_FLOOR_MS + 250, `${label} took ${ms} ms`);
+  await settle();
+  // the administration level holds no reserved right: it may use it. The coordinator (core:team, core:roles…) may not, with no second factor.
+  assert.deepEqual(mailTo().sort(), [T.admin.email, plain.email].sort());
+  assert.equal(await prisma.passwordReset.count({ where: { userId: T.coord.id } }), 0);
+  assert.equal(wide.system, false);
+});
+
+test("review 1: with a passkey or an authenticator the coordinator can use it, and the link is refused again if the factor is gone", async () => {
+  await configureMail();
+  await prisma.passkey.create({ data: { userId: T.coord.id, credentialId: "cred-c", publicKey: Buffer.from("k"), counter: 0, name: "phone" } });
+  await prisma.user.update({ where: { id: T.coord2.id }, data: { totpSecret: "S", totpEnabledAt: new Date() } });
+  await ask(T.coord.email, { ip: "192.0.2.21" }); await ask(T.coord2.email, { ip: "192.0.2.22" }); await settle();
+  assert.deepEqual(mailTo().sort(), [T.coord.email, T.coord2.email].sort());
+  const link = /#t=([A-Za-z0-9_-]{43})/.exec(sent.find((m) => m.to === T.coord.email).text)[1];
+  assert.equal(await P.peekReset(link, "192.0.2.1"), true);
+  await prisma.passkey.deleteMany({ where: { userId: T.coord.id } });
+  assert.equal(await P.peekReset(link, "192.0.2.1"), false, "the second factor was removed after the link was made");
+  assert.deepEqual(await P.completePasswordReset({ token: link, password: "long-enough-password", confirm: "long-enough-password", ip: IP }), { ok: false, reason: "invalid" });
+});
+
+test("review 1: a link made before the account gained a reserved right stops working; a reserved right never comes from a custom role", async () => {
+  await configureMail();
+  const u = await mk("lune_douce", "editor");
+  await ask(u.email); await settle();
+  const link = /#t=([A-Za-z0-9_-]{43})/.exec(sent[0].text)[1];
+  await prisma.user.update({ where: { id: u.id }, data: { role: "admin", coordinator: true } });
+  assert.equal(await P.peekReset(link, "192.0.2.1"), false);
+  assert.deepEqual(await P.completePasswordReset({ token: link, password: "long-enough-password", confirm: "long-enough-password", ip: IP }), { ok: false, reason: "invalid" });
+});
+
+test("review 2: suppressed requests do not use the address cap; a fresh link is kept and no second mail is sent; a later request replaces it", async () => {
+  await configureMail();
+  // five requests that lead to nothing (coordinator without a second factor), then the factor is enrolled: the first real request still sends a mail
+  for (let i = 0; i < 5; i++) await ask(T.coord.email, { ip: `192.0.2.${30 + i}`, now: new Date(Date.now() + i * 1000) });
+  await settle(); assert.deepEqual(sent, []);
+  await prisma.user.update({ where: { id: T.coord.id }, data: { totpSecret: "S", totpEnabledAt: new Date() } });
+  const t0 = Date.now();
+  await ask(T.coord.email, { ip: "192.0.2.40", now: new Date(t0) }); await settle();
+  assert.equal(sent.length, 1);
+  const first = /#t=([A-Za-z0-9_-]{43})/.exec(sent[0].text)[1];
+  // a second request two minutes later: same answer, no mail, the first link still works
+  const again = await ask(T.coord.email, { ip: "192.0.2.41", now: new Date(t0 + 2 * 60_000) }); await settle();
+  assert.deepEqual(again, { accepted: true });
+  assert.equal(sent.length, 1, "no second mail");
+  assert.equal(await P.peekReset(first, "192.0.2.1", new Date(t0 + 2 * 60_000)), true, "the fresh link was not replaced");
+  // six minutes later it is replaced
+  await ask(T.coord.email, { ip: "192.0.2.42", now: new Date(t0 + 6 * 60_000) }); await settle();
+  assert.equal(sent.length, 2);
+  assert.equal(await P.peekReset(first, "192.0.2.1", new Date(t0 + 6 * 60_000)), false);
+});
+
+test("review 2: core mail has its own site-wide bucket, apart from the one modules share", async () => {
+  await configureMail();
+  for (let a = 0; a < 4; a++) for (let i = 0; i < 10; i++) assert.deepEqual(await Mail.sendMail({ to: "x@example.org", subject: "s", text: "t" }, `module-${a}`), { ok: true });
+  assert.equal((await Mail.sendMail({ to: "x@example.org", subject: "s", text: "t" }, "module-9")).ok, false, "the module bucket (40 an hour) is full");
+  const r = await invite(T.owner, "etoile_nord@example.org", await roleId("editor"), { mailConfigured: true });
+  assert.equal(r.ok, true); assert.equal(r.mailed, true, "invitations still leave");
+  // and the other way round: the core bucket is not the modules' bucket
+  Mail.resetMailLimits();
+  for (let i = 0; i < 30; i++) assert.equal((await Mail.sendCoreMail({ to: "x@example.org", subject: "s", text: "t" }, "onboarding")).ok, true);
+  for (let i = 0; i < 30; i++) assert.equal((await Mail.sendCoreMail({ to: "x@example.org", subject: "s", text: "t" }, "reset")).ok, true);
+  assert.equal((await Mail.sendCoreMail({ to: "x@example.org", subject: "s", text: "t" }, "notice")).ok, false, "60 core mails an hour in all");
+  assert.equal((await Mail.sendMail({ to: "x@example.org", subject: "s", text: "t" }, "module-1")).ok, true, "modules are not affected");
+});
+
+test("review 3: acceptance checks the grant again INSIDE the transaction, right before the invitation is spent", async () => {
+  const fs = await import("node:fs");
+  const src = fs.readFileSync("src/core/auth/invitations.ts", "utf8");
+  const accept = src.slice(src.indexOf("export async function acceptInvitation"), src.indexOf("export async function withdrawAllLinks") > 0 ? src.indexOf("After a restore") : undefined);
+  const hashAt = accept.indexOf("bcrypt.hash"), txAt = accept.indexOf("$transaction"), revAt = accept.indexOf("revalidate(inv, catalogue, tx)"), spendAt = accept.indexOf("tx.invitation.updateMany");
+  assert.ok(hashAt > 0 && hashAt < txAt, "the slow hash comes before the transaction");
+  assert.ok(txAt < revAt && revAt < spendAt, "revalidate runs in the transaction, before the conditional spend");
+  // and it behaves: an inviter suspended before acceptance refuses it, and nothing is spent as an account
+  const r = await invite(T.coord, "etoile_nord@example.org", await roleId("editor"));
+  await prisma.user.update({ where: { id: T.coord.id }, data: { suspendedAt: new Date() } });
+  assert.deepEqual(await accept_(tokenOf(r.link)), { ok: false, reason: "invalid" });
+  assert.equal(await prisma.user.count({ where: { email: "etoile_nord@example.org" } }), 0);
+});
+const accept_ = (token) => accept(token);
+
+test("review 4: a link made before the last restore is refused even if the cleanup did not run; links made or sent again after it work", async () => {
+  const { markRestore } = await import("@/core/auth/restoreMark");
+  await configureMail();
+  const before = await invite(T.owner, "w@example.org", await roleId("editor"));
+  await mk("lune_douce", "editor"); await ask("lune_douce@example.org"); await settle();
+  const resetLink = /#t=([A-Za-z0-9_-]{43})/.exec(sent[0].text)[1];
+  await new Promise((r) => setTimeout(r, 20));
+  await markRestore(new Date()); // the restore happened; withdrawAllLinks never ran
+  assert.equal((await prisma.invitation.findFirst()).status, "pending", "still pending in the table");
+  assert.deepEqual(await accept(tokenOf(before.link)), { ok: false, reason: "invalid" });
+  assert.equal(await P.peekReset(resetLink, "192.0.2.1"), false);
+  await new Promise((r) => setTimeout(r, 20));
+  const after = await invite(T.owner, "n@example.org", await roleId("editor"));
+  assert.equal((await accept(tokenOf(after.link))).ok, true, "a link made after the restore works");
+  const resent = await I.resendInvitation(T.owner.id, before.id, { origin: ORIGIN, mailConfigured: false });
+  assert.equal(resent.ok, true);
+  assert.equal((await accept(tokenOf(resent.link), { name: "Camille" })).ok, true, "sent again after the restore: works");
+});
+
+test("review 4: a failing cleanup is tried twice and named in the restore report, and the restore still marks the moment", async () => {
+  await invite(T.owner, "w@example.org", await roleId("editor"));
+  const b = await B.createBackup("a-solid-backup-passphrase", { iterations: 1000 });
+  const opened = Rs.openBackup(b.buffer, "a-solid-backup-passphrase", 1000);
+  const original = I.withdrawAllLinks;
+  // The module is an ES module: the cleanup is reached through the prisma calls it makes; make them fail.
+  const proto = Object.getPrototypeOf(prisma.invitation);
+  const keep = prisma.invitation.findMany;
+  let calls = 0;
+  try {
+    Object.defineProperty(prisma.invitation, "findMany", { configurable: true, writable: true, value: async () => { calls++; throw new Error("disk full"); } });
+  } catch { /* not patchable on this client */ }
+  const patched = prisma.invitation.findMany !== keep;
+  if (!patched) { assert.ok(original && proto, "client not patchable here: the retry is covered by the source check below"); }
+  const report = await Rs.applyRestore(opened.backup, { confirmCustom: [], actor: "olive@example.org" });
+  if (patched) {
+    Object.defineProperty(prisma.invitation, "findMany", { configurable: true, writable: true, value: keep });
+    assert.equal(calls >= 2, true, "tried twice");
+    assert.equal(report.ok, true);
+    assert.ok(report.report.failed.some((f) => f.note === "linksWithdraw"), "named in the report");
+  }
+  const fs = await import("node:fs");
+  const src = fs.readFileSync("src/core/backup/restore.ts", "utf8");
+  assert.match(src, /attempt < 2/); assert.match(src, /note: "linksWithdraw"/); assert.match(src, /markRestore\(\)/);
+  const { lastRestoreAt } = await import("@/core/auth/restoreMark");
+  assert.ok(await lastRestoreAt(), "the moment of the restore is stored");
+});
+
+test("review 5: the limiter is a true LRU, keeps site-wide keys out of reach of a flood, and is swept by a timer", async () => {
+  const L = await import("@/core/auth/rateLimit");
+  L.resetRateLimits();
+  const now = Date.now();
+  for (let i = 0; i < 3; i++) assert.equal(L.allowTry("hot", 3, 3_600_000, now), true);
+  assert.equal(L.allowTry("hot", 3, 3_600_000, now), false);
+  assert.equal(L.allowGlobal("site", 2, 3_600_000, now), true); assert.equal(L.allowGlobal("site", 2, 3_600_000, now), true);
+  for (let i = 0; i < 12_000; i++) {
+    L.allowTry(`flood:${i}`, 3, 3_600_000, now);
+    if (i % 2000 === 0) assert.equal(L.allowTry("hot", 3, 3_600_000, now), false, "a key that is being used is never evicted (it would give its tries back)");
+  }
+  assert.ok(L.trackedKeys() <= 5000, "bounded");
+  assert.equal(L.allowTry("hot", 3, 3_600_000, now), false);
+  assert.equal(L.allowGlobal("site", 2, 3_600_000, now), false, "a site-wide limit survives any flood");
+  assert.equal(L.allowTry("flood:0", 3, 3_600_000, now), true, "the least recently used keys were the ones dropped");
+  L.sweepRateLimits(now + 2 * 3_600_000);
+  assert.equal(L.trackedKeys(), 0, "the sweep drops what has aged out");
+  const fs = await import("node:fs");
+  const src = fs.readFileSync("src/core/auth/rateLimit.ts", "utf8");
+  assert.match(src, /setInterval/); assert.match(src, /unref/);
+  assert.doesNotMatch(src.slice(src.indexOf("export function allowTry")), /for \(const \[k, v\] of hits\)/, "no sweep on every call");
+});
+
+test("review 6: inviting again never replaces a pending invitation the actor could not revoke", async () => {
+  const first = await invite(T.owner, "etoile_nord@example.org", await roleId("coordinator"));
+  assert.equal(first.ok, true);
+  const refused = await invite(T.coord2, "etoile_nord@example.org", await roleId("editor"));
+  assert.deepEqual(refused, { ok: false, reason: "pending" });
+  const row = await prisma.invitation.findFirst({ where: { email: "etoile_nord@example.org" } });
+  assert.equal(row.status, "pending"); assert.equal(row.roleKey, "coordinator");
+  assert.equal((await accept(tokenOf(first.link))).ok, true, "the owner's link still works");
+  // for a role the actor can revoke, replacing still works and says so
+  const a = await invite(T.coord, "lune_douce@example.org", await roleId("editor"));
+  const b = await invite(T.coord2, "lune_douce@example.org", await roleId("admin"));
+  assert.equal(b.ok, true); assert.equal(b.replaced, true);
+  assert.deepEqual(await accept(tokenOf(a.link)), { ok: false, reason: "invalid" });
+});
+
+test("review 7: the cap and the replacement are decided inside the transaction, so parallel invitations cannot pass the cap", async () => {
+  const editor = await roleId("editor");
+  // the same address twice at once: one pending invitation remains (it counts as one of the 50)
+  const [x, y] = await Promise.all([invite(T.owner, "dup@example.org", editor).catch(() => ({ ok: false })), invite(T.coord, "dup@example.org", editor).catch(() => ({ ok: false }))]);
+  assert.ok(x.ok || y.ok);
+  assert.equal(await prisma.invitation.count({ where: { email: "dup@example.org", status: "pending" } }), 1);
+  for (let i = 0; i < 46; i++) assert.equal((await invite(T.owner, `p${i}@example.org`, editor)).ok, true);
+  const results = await Promise.all([0, 1, 2, 3, 4, 5].map((i) => invite(T.owner, `q${i}@example.org`, editor)));
+  const made = results.filter((r) => r.ok).length;
+  assert.equal(made, 3, "exactly the three places that were left");
+  assert.equal(await prisma.invitation.count({ where: { status: "pending" } }), 50);
+  assert.ok(results.filter((r) => !r.ok).every((r) => r.reason === "limit"));
+});
+
+test("review 8: only an owner or coordinator account is protected by the last-operator guard, and the owner is never suspended by anyone", async () => {
+  assert.equal((await M.suspendMember(T.owner.id, T.owner.id)).ok, false, "not oneself");
+  assert.equal((await M.suspendMember(T.coord.id, T.owner.id)).ok, false, "nobody suspends the owner");
+  assert.equal((await M.suspendMember(T.owner.id, T.coord.id)).ok, true, "the owner can suspend the last coordinator: the owner always remains");
+  assert.equal((await reload(T.owner)).suspendedAt, null);
+});
+
+test("review 9: the page forgets the one-time token after a success and keeps it after an error", async () => {
+  globalThis.window = { location: { hash: "#t=" + "a".repeat(43), pathname: "/admin/invitation", search: "" }, history: { replaceState() {} } };
+  try {
+    const F = await import("@/components/admin/FragmentToken");
+    assert.equal(F.hasCapturedToken(), true);
+    const failing = F.forgetTokenAfter(async () => ({ errors: { password: "x" } }));
+    await failing(null, new FormData());
+    assert.equal(F.hasCapturedToken(), true, "an error keeps it, so the person can correct and send again");
+    const ok = F.forgetTokenAfter(async () => ({ ok: "done" }));
+    await ok(null, new FormData());
+    assert.equal(F.hasCapturedToken(), false, "a success forgets it");
+    globalThis.window.location.hash = "";
+    const redirecting = F.forgetTokenAfter(async () => { const e = new Error("redirect"); e.digest = "NEXT_REDIRECT;replace;/admin"; throw e; });
+    await assert.rejects(redirecting(null, new FormData()));
+    assert.equal(F.hasCapturedToken(), false, "a redirect is a success too");
+  } finally { delete globalThis.window; }
 });
