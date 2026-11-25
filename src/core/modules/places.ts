@@ -68,7 +68,14 @@ export type VocabPage = Texts & {
   /** (0.34.0) More than 3 sections of one module on this page is allowed with a written reason (owner decision 2026-11-18: the limit is a soft guideline). */
   sectionsReason?: string;
 };
-export type Vocabulary = { version: 1; groups: VocabGroup[]; pages: VocabPage[]; aliases: Record<string, string>; deprecated: Record<string, string> };
+export type Vocabulary = {
+  version: 1; groups: VocabGroup[]; pages: VocabPage[]; aliases: Record<string, string>; deprecated: Record<string, string>;
+  /**
+   * (0.49.0) Short names of pages in the sidebar, by page id (built-in vocabulary only; never read from the catalogue). A page that sits in a group which already says what it is
+   * ("Overlays" > "Ready-made") shows this name there; its own title stays the heading of the page and the name everywhere else.
+   */
+  menuTitles?: Record<string, Texts>;
+};
 
 /** Soft guideline (owner decision E15): more tabs on a page only warns. */
 export const TABS_SOFT_MAX = 5;
@@ -89,7 +96,8 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
     { id: "live", en: "Live", fr: "En direct", icon: "🔴", status: "open" },
     { id: "calendar", en: "Calendar", fr: "Agenda", icon: "📅", status: "open" },
     { id: "community", en: "Community", fr: "Communauté", icon: "🙌", status: "open" },
-    { id: "obs", en: "OBS", fr: "OBS", icon: "🎥", status: "open" },
+    // (0.49.0) The group is called « Overlays »: its ready-made page (catalogue) and the custom overlay pages (core entry, `menuTitles`) sit under that one word.
+    { id: "obs", en: "Overlays", fr: "Overlays", icon: "🎥", status: "open" },
     { id: "networks", en: "Networks", fr: "Réseaux", icon: "🌐", status: "open" },
     { id: "site", en: "Site", fr: "Site", icon: "🏠", status: "additive" },
     { id: "admin", en: "Administration", fr: "Administration", icon: "🛠️", status: "reserved" },
@@ -109,6 +117,7 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
   ],
   aliases: {},
   deprecated: {},
+  menuTitles: { "obs.overlays": { en: "Ready-made", fr: "Prédéfinis" } },
 };
 
 /** Pages of the core that are additive: modules may add labelled sections to their listed tabs, never new tabs. */
@@ -186,7 +195,7 @@ export function mergeVocabulary(builtin: Vocabulary, catalogue: Vocabulary | nul
   }
   // A damaged table never breaks an address: loops, chains over 3 steps and reserved groups are dropped here (the vocabulary test reports them).
   for (const bad of aliasProblems(aliases)) delete aliases[bad.from];
-  return { version: 1, groups, pages, aliases, deprecated: { ...(catalogue?.deprecated ?? {}), ...builtin.deprecated } };
+  return { version: 1, groups, pages, aliases, deprecated: { ...(catalogue?.deprecated ?? {}), ...builtin.deprecated }, ...(builtin.menuTitles ? { menuTitles: builtin.menuTitles } : {}) };
 }
 
 /** Follows the alias table (3 steps at most, no loop): a renamed page or tab keeps working. The tab of an aliased page is kept. */
@@ -456,6 +465,8 @@ export type IndexedSection = Contribution & { anchor: string; title: string };
 export type IndexedTab = { id: string; title: string; sections: IndexedSection[] };
 export type IndexedPage = {
   id: string; group: string; page: string; title: string; intro: string | null; href: string;
+  /** (0.49.0) The name of the page in the sidebar when its group says the rest (`Vocabulary.menuTitles`); the title otherwise. */
+  menuTitle: string;
   /** A core page that keeps its own address (its sections show there from core 0.32.0). */
   core: boolean;
   /** No vocabulary entry: the page was defined by a module (origin always shown). */
@@ -568,7 +579,7 @@ export function buildPlaceIndex(contribs: readonly Contribution[], vocab: Vocabu
       tabs[0] = { ...tabs[0]!, sections: [...tabs[0]!.sections, ...extra.flatMap((t) => t.sections.map((s) => ({ ...s, title: `${t.title} · ${s.title}` })))] };
     }
     groups.get(shownGroup)!.pages.push({
-      id, group: gid, page: pid, title, intro: introDef ? L(introDef, locale) : null, href: vp?.href ?? placeHref(gid, pid), core: !!vp?.href, inline: !vp, tabs, modules,
+      id, group: gid, page: pid, title, menuTitle: vocab.menuTitles?.[id] ? L(vocab.menuTitles[id]!, locale) : title, intro: introDef ? L(introDef, locale) : null, href: vp?.href ?? placeHref(gid, pid), core: !!vp?.href, inline: !vp, tabs, modules,
     });
   }
   const order = (g: string) => { const i = knownGroups.indexOf(g); return g === OTHER_GROUP.id ? 1e7 : i === -1 ? 1e6 : i; };

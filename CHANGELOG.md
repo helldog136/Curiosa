@@ -9,6 +9,11 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays qui marchent seuls) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
+- **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
+
 ### Corrections
 
 - **Le fond d'aperçu de l'éditeur de page d'overlay s'affiche aussi quand l'administration est en sombre.** Avant, « Damier » et les autres fonds laissaient l'aperçu en direct sur un blanc uni. Le fond choisi apparaît maintenant derrière la page ; la page vue par OBS ne change pas.
@@ -16,6 +21,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- **Le groupe `obs` s'appelle « Overlays » (0.49.0).** Son id et les adresses `/admin/obs/...` et `/admin/overlay-pages` ne changent pas ; un chemin `OBS.…` ou `Overlays.…` tombe dans ce groupe. Une page de place peut avoir un nom court dans le menu (`menuTitles`, voir `docs/PLACES.md`).
+- **(English) The `obs` group is called "Overlays" (0.49.0).** Its id and the `/admin/obs/...` and `/admin/overlay-pages` addresses do not change; a path `OBS.…` or `Overlays.…` lands in this group. A place page can have a short menu name (`menuTitles`, see `docs/PLACES.md`).
 - **Le cadre d'aperçu déclare le même thème de couleurs que la page d'overlay.** Un navigateur peint une feuille opaque derrière un cadre dont le `color-scheme` diffère de celui de la page qu'il contient ; le cadre porte donc `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), comme la page publique (`color-scheme:normal`), qui reste inchangée.
 - **(English) The preview frame declares the same colour scheme as the overlay page.** A browser paints an opaque sheet behind a frame whose `color-scheme` differs from the one of the page it holds; the frame therefore carries `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), like the public page (`color-scheme:normal`), which is unchanged.
 
