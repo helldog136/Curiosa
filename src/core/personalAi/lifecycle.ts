@@ -23,7 +23,7 @@ export async function revokePersonalAccessesOf(userId: string, actorEmail: strin
  * SAFETY SWEEP (0.47.1): every live access whose `ownerId` is set but points to NO user row is revoked, its pending requests expire (`revokeAccess`), and the journal gets one
  * `mcp.personal.revoke` line per access: the NAME and the reason, never a code. How such a row appears: a restore replaces the people but not the accesses, or a person removed by hand
  * in the database. Cheap (two small reads) and idempotent: a revoked access is not looked at again, and two sweeps at the same moment share one run (one journal line). An access that
- * NEVER had an owner (`ownerId` null, the legacy ones) is NEVER touched: it keeps working as before until the migration ends (legacyOwners.ts).
+ * NEVER had an owner (`ownerId` null, the legacy ones) is NEVER touched: it keeps working as before until the 0.49 migration attributes it to the site owner (ownerMigration.ts).
  * Called at start-up, when the accesses list is read (assistants page, team page, the By person tab) and at the end of a restore (`actor` then names the person who restored).
  */
 let sweeping: Promise<string[]> | null = null;

@@ -7,6 +7,29 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.49.0 — 2026-11-25
+
+### Nouveautés
+
+- **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays qui marchent seuls) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
+- **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
+- **Les accès IA sans propriétaire passent à la personne propriétaire du site.** À la mise à jour, chacun lui est attribué, une seule fois, avec les mêmes droits. L'écran « Choisir qui possède chaque accès » disparaît.
+- **(English) AI accesses without an owner go to the site owner.** On update, each one is given to the owner, once, with the same rights. The "Choose who owns each access" screen is gone.
+
+### Corrections
+
+- **Le fond d'aperçu de l'éditeur de page d'overlay s'affiche aussi quand l'administration est en sombre.** Avant, « Damier » et les autres fonds laissaient l'aperçu en direct sur un blanc uni. Le fond choisi apparaît maintenant derrière la page ; la page vue par OBS ne change pas.
+- **(English) The preview background of the overlay page editor now shows when the admin is dark.** Before, "Checkerboard" and the other backgrounds left the live preview on plain white. The chosen background now appears behind the page; the page OBS reads does not change.
+
+### Pour les développeurs
+
+- **Le groupe `obs` s'appelle « Overlays » (0.49.0).** Son id et les adresses `/admin/obs/...` et `/admin/overlay-pages` ne changent pas ; un chemin `OBS.…` ou `Overlays.…` tombe dans ce groupe. Une page de place peut avoir un nom court dans le menu (`menuTitles`, voir `docs/PLACES.md`).
+- **(English) The `obs` group is called "Overlays" (0.49.0).** Its id and the `/admin/obs/...` and `/admin/overlay-pages` addresses do not change; a path `OBS.…` or `Overlays.…` lands in this group. A place page can have a short menu name (`menuTitles`, see `docs/PLACES.md`).
+- **Le cadre d'aperçu déclare le même thème de couleurs que la page d'overlay.** Un navigateur peint une feuille opaque derrière un cadre dont le `color-scheme` diffère de celui de la page qu'il contient ; le cadre porte donc `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), comme la page publique (`color-scheme:normal`), qui reste inchangée.
+- **(English) The preview frame declares the same colour scheme as the overlay page.** A browser paints an opaque sheet behind a frame whose `color-scheme` differs from the one of the page it holds; the frame therefore carries `color-scheme: light` (`PREVIEW_FRAME_SCHEME`), like the public page (`color-scheme:normal`), which is unchanged.
+- **Migration du propriétaire des accès IA (0.49.0).** `ownerMigration.ts` tourne au démarrage : idempotente, une ligne de journal par accès, reportée s'il n'y a pas de compte propriétaire. `legacyOwners.ts`, `assign-owners/` et `owners.assign.*` sont supprimés.
+- **(English) AI access owner migration (0.49.0).** `ownerMigration.ts` runs at start-up: idempotent, one journal line per access, postponed when there is no owner account. `legacyOwners.ts`, `assign-owners/` and `owners.assign.*` are removed.
+
 ## 0.48.0 — 2026-11-24
 
 **En bref.** Un assistant IA voit tout ce que le site pourrait lui permettre de faire, et la personne propriétaire de son accès ne change plus jamais. Vous pouvez ajouter un dépôt privé qui propose ses propres extensions. Les skins d'overlay peuvent dessiner eux-mêmes les morceaux d'un vitrail, et les liens internes d'une page du site mènent au bon titre. L'assistant d'installation n'annonce plus la mauvaise langue. Pour les développeurs : l'appelant d'un service et des mots de passe chiffrés pour les extensions, et un cœur mieux rangé.

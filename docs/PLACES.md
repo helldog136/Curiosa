@@ -178,6 +178,10 @@ its places (groups, core pages): it never needs the network for them. Offline or
 
 The catalogue can never set an address, a status, or a page of a reserved or additive core group.
 
+### The Overlays group (0.49.0)
+
+The group `obs` is titled **Overlays** (it was « OBS »; the id and the addresses `/admin/obs/...` are unchanged, and a menu path or a place that says `OBS` or `Overlays` lands in it). In the sidebar it is one collapsible group, like Networks, with two entries: **Ready-made / Prédéfinis** (the place page `obs.overlays` of the catalogue, « Overlays prédéfinis » as the heading of the page) and **Custom / Personnalisés** (the core entry `/admin/overlay-pages`, which used to be « Overlay pages » under Administration). The short name comes from `menuTitles` of the core vocabulary (`BUILTIN_VOCABULARY`, by page id, never read from the catalogue): a page shows its short name next to the other entries of its group and its full title as the heading of the page, in the group-of-one case (only that page is visible: it is shown directly, without heading, under its full title) and in the settings search. « Custom » comes after the pages of the group; it exists while the person may manage overlay pages, and the group disappears when it has no visible entry.
+
 ## 8. Stability
 
 1. An id of the vocabulary is never deleted, only aliased or marked deprecated; an alias whose old id is still a page is ignored (an id is never reused).

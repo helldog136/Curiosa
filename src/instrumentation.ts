@@ -53,13 +53,13 @@ export async function register() {
   } catch (error) {
     console.error("[ai] owner sweep failed:", (error as Error)?.message);
   }
-  // TEMPORARY (sunset 0.49.0, src/core/personalAi/legacyOwners.ts): on a site with a single account, every access without an owner is given to that account. Idempotent, never throws.
+  // 0.49.0 migration: every AI access without an owner goes to the site owner, once. Idempotent, skipped (and retried at the next start) when there is no owner account. Never throws.
   try {
-    const { assignLegacyOwners } = await import("@/core/personalAi/legacyOwners");
-    const r = await assignLegacyOwners();
-    if (r.assigned) console.log(`[ai] AI accesses given to the only account: ${r.assigned}`);
+    const { attributeOwnerlessAccesses } = await import("@/core/personalAi/ownerMigration");
+    const r = await attributeOwnerlessAccesses();
+    if (r.attributed) console.log(`[ai] AI accesses attributed to the owner by the 0.49 migration: ${r.attributed}`);
   } catch (error) {
-    console.error("[ai] owner assignment failed:", (error as Error)?.message);
+    console.error("[ai] owner migration failed:", (error as Error)?.message);
   }
   // Une mise à jour interrompue pendant le redémarrage (la tâche a été arrêtée avec l'ancien serveur) est conclue ici, sur la version qui tourne vraiment.
   try {

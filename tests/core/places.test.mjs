@@ -217,7 +217,7 @@ test("helldog136.be (35 modules): pages named after tasks, none twice", () => {
     live: ["Alertes", "Récompenses", "Chat", "Participation", "Raid", "Passage en direct"],
     calendar: ["Planning", "Story d'annonce"],
     community: ["Contacts", "Partenaires", "Jeux"],
-    obs: ["Overlays tout prêts"],
+    obs: ["Overlays prédéfinis"],
     networks: ["Twitch", "YouTube", "Discord", "Autres comptes", "Chiffres"],
   });
   // The banners of three hero instances land on the core page « Accueil et menu », which keeps its own address (sections there from core 0.32.0).
@@ -228,7 +228,7 @@ test("helldog136.be (35 modules): pages named after tasks, none twice", () => {
 
 test("Rosaliax (14 modules): nothing about alerts, rewards or chat; Live holds one page (shown without heading)", () => {
   const { menu, idx } = siteMenu("rosaliax");
-  assert.deepEqual(menu, { content: ["Kit presse"], live: ["Passage en direct"], community: ["Contacts"], obs: ["Overlays tout prêts"], networks: ["Twitch", "YouTube", "Autres comptes", "Chiffres"] });
+  assert.deepEqual(menu, { content: ["Kit presse"], live: ["Passage en direct"], community: ["Contacts"], obs: ["Overlays prédéfinis"], networks: ["Twitch", "YouTube", "Autres comptes", "Chiffres"] });
   const twitch = P.findPage(idx, "networks", "twitch");
   assert.deepEqual(twitch.tabs[0].sections.map((s) => s.instanceKey), ["twitch-connector", "twitch-channel", "twitch-rascane"], "the connection first, then the two channels, on one page");
   assert.ok(twitch.tabs[0].sections.every((s) => s.moduleId !== "twitch-channel" || s.siblings), "sibling instances: the origin line names the instance");

@@ -113,6 +113,64 @@ test("real browser: the SVG filter the editor draws turns red and green into clo
   } finally { await browser.close(); }
 });
 
+// ── Live preview over the chosen background (real Chromium) ───────────────────────────────────────────────────────────
+test("live preview markup: the frame declares the page's own colour scheme; the editor draws the frame only through that component", async () => {
+  const { LivePreview } = await import("@/components/admin/OverlayPreviewTools");
+  assert.equal(V.PREVIEW_FRAME_SCHEME, "light", "the public page declares color-scheme:normal (light)");
+  assert.match(fs.readFileSync("src/core/overlays/render.ts", "utf8"), /html,body\{[^}]*color-scheme:normal/, "the scheme of the public page, which the frame has to match");
+  const pv = { view: { backdrop: "checker", safe: "none", cvd: "none" }, style: V.BACKDROP_CSS.checker, filter: undefined };
+  const html = renderToStaticMarkup(React.createElement(LivePreview, { v: pv, src: "/x", title: "Preview", width: 600, size: PAGE, page: PAGE }));
+  assert.match(html, /<iframe [^>]*style="color-scheme:light"/);
+  assert.match(html, /data-testid="overlay-live"[^>]*data-backdrop="checker"/);
+  assert.doesNotMatch(fs.readFileSync("src/components/admin/OverlayEditor.tsx", "utf8"), /<iframe/, "no second, hand-made frame in the editor");
+});
+
+const RED_PNG = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8DwHwAFBQIAX8jx0gAAAABJRU5ErkJggg==";
+test("real browser: the preview background shows through the transparent page, for every choice, safe margins and colour-blind view, in the light AND the dark admin theme", { skip: skipBrowser, timeout: 120000 }, async () => {
+  const React_ = React;
+  const { LivePreview, CvdFilters } = await import("@/components/admin/OverlayPreviewTools");
+  const { renderPage } = await import("@/core/overlays/render");
+  const { adminThemeCss } = await import("@/core/adminTheme");
+  const { makeTranslator } = await import("@/core/i18n/dictionary");
+  const layout = { iframeW: 640, iframeH: 260, scale: 1, offsetX: 0, offsetY: 0, boxW: 640, boxH: 260 };
+  const el = { uid: "aaaaaa1111", instance: "al", element: "alerts", x: 320, y: 400, w: 640, h: 260, visible: true, options: {} };
+  const pg = { id: "p", name: "Alerts page", width: 1280, height: 720, active: true, style: { text: "light", background: "transparent", corners: "round" },
+    look: { skin: null, byContext: { enabled: false, instance: null, context: null, rules: [] } }, elements: [el], rev: 1, testUntil: null };
+  const pageHtml = renderPage({ page: pg, elements: [{ el, title: "Alerts", status: "ok", layout, follows: true, src: "/frame" }], t: makeTranslator("en"), lang: "en", test: false, now: 1, nonce: "N0nce", stateUrl: "/state", fit: true, skin: null, contextual: false });
+  const frameHtml = "<!doctype html><html><body style=\"margin:0;background:transparent\"><div style=\"margin:20px;height:200px;border-radius:16px;background:#141828\"></div></body></html>";
+  const own = { backgroundColor: "#000", backgroundImage: `url("${RED_PNG}")`, backgroundSize: "cover", backgroundPosition: "center" };
+  const choices = [...Object.entries(V.BACKDROP_CSS), ["own", own]];
+  const view = (backdrop, style, safe, cvd) => ({ view: { backdrop, safe, cvd }, style, filter: cvd === "none" ? undefined : `url(#ovp-cvd-${cvd})` });
+  const shell = (body, theme) => `<!doctype html><html data-admin-theme="${theme}"><head><meta charset="utf-8"><style>${adminThemeCss()}body{margin:0;background:var(--v-bg)}.relative{position:relative}.overflow-hidden{overflow:hidden}.absolute{position:absolute}.inset-0{inset:0}.h-full{height:100%}.w-full{width:100%}.border-0{border:0}iframe{display:block}</style></head><body>${body}</body></html>`;
+  const browser = await pw.chromium.launch({ executablePath: pw.path, args: pw.args });
+  try {
+    const shoot = async (theme, pv, withFrame) => {
+      const body = renderToStaticMarkup(React_.createElement(React_.Fragment, null, React_.createElement(CvdFilters), React_.createElement(LivePreview, { v: pv, src: "http://x.test/preview", title: "Preview", width: 640, size: { width: 1280, height: 720 }, page: { width: 1280, height: 720 } })));
+      const ctx = await browser.newContext({ viewport: { width: 700, height: 420 }, colorScheme: theme });
+      try {
+        await ctx.route("http://x.test/**", (r) => { const u = new URL(r.request().url()).pathname; r.fulfill({ contentType: "text/html", body: u === "/" ? shell(body, theme) : u === "/preview" ? pageHtml : frameHtml }); });
+        const page = await ctx.newPage();
+        await page.goto("http://x.test/");
+        await page.waitForSelector("[data-testid=overlay-live-frame]");
+        if (withFrame) { await page.waitForFunction(() => { const f = document.querySelector("[data-testid=overlay-live-frame]"); return f.contentDocument && f.contentDocument.readyState === "complete" && f.contentDocument.querySelector("iframe"); }); await page.waitForTimeout(700); }
+        else await page.evaluate(() => document.querySelector("[data-testid=overlay-live-frame]").remove());
+        const top = await page.screenshot({ clip: { x: 0, y: 0, width: 700, height: 150 } });   // above the element: nothing but the background
+        const full = await page.screenshot({ clip: { x: 0, y: 0, width: 700, height: 420 } });
+        return { top, full };
+      } finally { await ctx.close(); }
+    };
+    for (const theme of ["light", "dark"]) {
+      const cases = choices.map(([b, css]) => [b, view(b, css, "none", "none")]);
+      cases.push(["game+margins+colour-blind", view("game", V.BACKDROP_CSS.game, "broadcast", "deuteranopia")], ["checker+margins+colour-blind", view("checker", V.BACKDROP_CSS.checker, "vertical", "protanopia")]);
+      for (const [name, pv] of cases) {
+        const withFrame = await shoot(theme, pv, true), bare = await shoot(theme, pv, false);
+        assert.ok(withFrame.top.equals(bare.top), `${theme} admin theme, ${name}: the transparent page shows the background (no opaque sheet behind it)`);
+        assert.ok(!withFrame.full.equals(bare.full), `${theme} admin theme, ${name}: the element of the page is drawn over the background`);
+      }
+    }
+  } finally { await browser.close(); }
+});
+
 // ── Undo / redo ────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 test("undo: the editor document reuses the 50-step history of the composition editor; a click that changes nothing is not a step", () => {
   const doc = (x) => ({ size: PAGE, style: { text: "light", background: "transparent", corners: "round" }, elements: [{ uid: "u000001", x }] });
