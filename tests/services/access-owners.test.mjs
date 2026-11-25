@@ -270,12 +270,12 @@ test("the owner of a deleted account no longer exists: the access is REVOKED (jo
   assert.ok(!JSON.stringify(lines).includes(made.code), "no code in the journal");
 });
 
-test("the single-account step and its page are temporary: SUNSET 0.49.0, the permanent code stays", () => {
-  assert.equal(LEG.LEGACY_OWNERS_SUNSET, "0.49.0");
+test("the single-account step and its page are temporary: SUNSET 0.50.0, the permanent code stays", () => {
+  assert.equal(LEG.LEGACY_OWNERS_SUNSET, "0.50.0");
   const [maj, min] = JSON.parse(fs.readFileSync("package.json", "utf8")).version.split(".").map(Number);
-  const due = maj > 0 || min >= 49;
+  const due = maj > 0 || min >= 50;
   const temporary = ["src/core/personalAi/legacyOwners.ts", "src/app/admin/(panel)/assistants/assign-owners"];
-  for (const f of temporary) if (due) assert.ok(!fs.existsSync(f), `${f} must be deleted: it was due in 0.49.0 (docs/PERSONAL-AI.md, "Choosing owners")`);
+  for (const f of temporary) if (due) assert.ok(!fs.existsSync(f), `${f} must be deleted: it was due in 0.50.0 (docs/PERSONAL-AI.md, "Choosing owners")`);
   if (due) assert.ok(!fs.readFileSync("src/instrumentation.ts", "utf8").includes("legacyOwners"));
   const sourceOfPermanent = fs.readFileSync("src/app/admin/(panel)/assistants/OwnersTab.tsx", "utf8");
   // CHANGED (0.47.1): the row menu "Choose an owner" was called permanent here. It is gone: the owner never changes.
@@ -283,7 +283,7 @@ test("the single-account step and its page are temporary: SUNSET 0.49.0, the per
   // everything temporary lives in one folder and one locale prefix
   const folder = fs.readdirSync("src/app/admin/(panel)/assistants/assign-owners");
   assert.deepEqual(folder.sort(), ["AssignOwners.tsx", "BulkAssign.tsx", "actions.ts"]);
-  assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /sunset 0\.49\.0/);
+  assert.match(fs.readFileSync("src/instrumentation.ts", "utf8"), /sunset 0\.50\.0/);
 });
 
 test("the screens, rendered with real rows: nothing about owners when nothing waits; the assign panel only while an access has no owner", async () => {

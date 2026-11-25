@@ -1,6 +1,6 @@
 "use server";
 
-// TEMPORARY (SUNSET 0.49.0): deleted with the folder assign-owners/.
+// TEMPORARY (SUNSET 0.50.0): deleted with the folder assign-owners/.
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
 import { assignAllWithoutOwner } from "@/core/personalAi/owners";
