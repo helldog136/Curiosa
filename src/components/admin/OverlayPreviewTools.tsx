@@ -6,7 +6,7 @@ import { HelpTip } from "./HelpTip";
 import { MoreOptions } from "./MoreOptions";
 import { ui } from "./ui";
 import {
-  BACKDROP_CSS, CVD_MODES, OWN_BACKDROP_MAX_BYTES, PREVIEW_BACKDROPS, SAFE_MODES, cvdFilterValues, isCvdMode, isPreviewBackdrop, isSafeMode, safeAreas,
+  BACKDROP_CSS, CVD_MODES, OWN_BACKDROP_MAX_BYTES, PREVIEW_BACKDROPS, PREVIEW_FRAME_SCHEME, SAFE_MODES, cvdFilterValues, isCvdMode, isPreviewBackdrop, isSafeMode, safeAreas,
   type CvdMode, type PreviewBackdrop, type SafeMode,
 } from "@/core/overlays/editorView";
 import type { Size } from "@/core/overlays/layout";
@@ -70,6 +70,22 @@ export function CvdFilters() {
         ))}
       </defs>
     </svg>
+  );
+}
+
+/**
+ * The live preview: the saved page in a frame, drawn over the chosen background. The public page is transparent and declares `color-scheme: normal` (light).
+ * A browser paints an OPAQUE canvas behind a frame whose colour scheme differs from the one of the frame element, so in the dark admin theme (which
+ * declares `color-scheme: dark`) the frame hid the background behind a white sheet. The frame element therefore declares the page's own scheme
+ * (`PREVIEW_FRAME_SCHEME`): the two match in every admin theme and the page stays transparent, as it is in OBS. The page itself is not touched.
+ */
+export function LivePreview({ v, src, title, width, size, page }: { v: PreviewView; src: string; title: string; width: number; size: Size; page: Size }) {
+  return (
+    <div className="relative mx-auto overflow-hidden rounded-xl border border-line" data-testid="overlay-live" data-backdrop={v.view.backdrop}
+      style={{ width: width || "100%", aspectRatio: `${size.width} / ${size.height}`, ...v.style, filter: v.filter }}>
+      <iframe title={title} src={src} sandbox="allow-scripts allow-same-origin" data-testid="overlay-live-frame" className="h-full w-full border-0" style={{ colorScheme: PREVIEW_FRAME_SCHEME }} />
+      <SafeOverlay mode={v.view.safe} page={page} />
+    </div>
   );
 }
 
