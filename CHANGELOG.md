@@ -7,6 +7,18 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Les overlays ont un seul groupe dans le menu : « Overlays ».** Il contient « Prédéfinis » (les overlays tout prêts) et « Personnalisés » (vos pages d'overlay), et se plie comme « Réseaux ». Il s'ouvre tout seul sur l'une de ses pages ; les adresses ne changent pas.
+- **(English) Overlays have one group in the menu: "Overlays".** It holds "Ready-made" (the ready-to-use overlays) and "Custom" (your overlay pages), and folds like "Networks". It opens by itself on one of its pages; the addresses do not change.
+
+### Pour les développeurs
+
+- **Le groupe `obs` s'appelle « Overlays » (0.49.0).** Son id et les adresses `/admin/obs/...` et `/admin/overlay-pages` ne changent pas ; un chemin `OBS.…` ou `Overlays.…` tombe dans ce groupe. Une page de place peut avoir un nom court dans le menu (`menuTitles`, voir `docs/PLACES.md`).
+- **(English) The `obs` group is called "Overlays" (0.49.0).** Its id and the `/admin/obs/...` and `/admin/overlay-pages` addresses do not change; a path `OBS.…` or `Overlays.…` lands in this group. A place page can have a short menu name (`menuTitles`, see `docs/PLACES.md`).
+
 ## 0.48.0 — 2026-11-24
 
 **En bref.** Un assistant IA voit tout ce que le site pourrait lui permettre de faire, et la personne propriétaire de son accès ne change plus jamais. Vous pouvez ajouter un dépôt privé qui propose ses propres extensions. Les skins d'overlay peuvent dessiner eux-mêmes les morceaux d'un vitrail, et les liens internes d'une page du site mènent au bon titre. L'assistant d'installation n'annonce plus la mauvaise langue. Pour les développeurs : l'appelant d'un service et des mots de passe chiffrés pour les extensions, et un cœur mieux rangé.

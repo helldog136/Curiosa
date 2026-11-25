@@ -5,6 +5,12 @@ import { MAINTENANCE_TAB_HREFS } from "../adminLinks";
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
 export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "maintenance";
 
+/** (0.49.0) Les entrées de la rubrique « Administration » qui s'affichent dans cette rubrique : « overlays » (les pages d'overlay) est l'entrée « Personnalisés » du groupe Overlays, plus haut dans le menu. */
+export type SidebarAdminEntry = Exclude<AdminEntry, "overlays">;
+
+/** (0.49.0) Place de « Personnalisés » dans le groupe Overlays : après toute page de la place `obs` (les pages tout prêtes passent d'abord). */
+export const OVERLAY_CUSTOM_ORDER = 900;
+
 /** Les entrées d'« Administration » réservées au mode avancé : jamais dans le menu d'une personne en mode simple (test : tests/core/admin-simple-mode.test.mjs). Aucune aujourd'hui : le journal d'activité est un onglet d'Entretien, réservé au mode avancé (ADVANCED_ONLY_TABS). */
 export const ADVANCED_ONLY_ENTRIES: readonly AdminEntry[] = [];
 
@@ -64,6 +70,6 @@ export function navItemVisible(item: { content: boolean; moduleId: string }, can
 export const SIDEBAR_R12_KEYS = {
   sections: { content: "nav.content", community: "nav.community", tools: "nav.tools", connections: "nav.connections" },
   site: { heading: "nav.site", entries: [["homeMenu", "nav.homeMenu"], ["appearance", "nav.appearance"], ["settings", "nav.settings"], ["redirects", "nav.redirects"]] },
-  admin: { heading: "nav.admin", entries: { extensions: "nav.extensions", overlays: "nav.overlayPages", assistants: "nav.assistants", users: "nav.users", maintenance: "nav.maintenance" } satisfies Record<AdminEntry, string> },
+  admin: { heading: "nav.admin", entries: { extensions: "nav.extensions", assistants: "nav.assistants", users: "nav.users", maintenance: "nav.maintenance" } satisfies Record<SidebarAdminEntry, string> },
   account: { heading: "nav.account", entries: [["myAccount", "nav.myAccount"], ["viewSite", "nav.viewSite"]] },
 } as const;
