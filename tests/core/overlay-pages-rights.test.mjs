@@ -148,10 +148,13 @@ test("aperçu en direct : réservé au palier « admin » (403 sinon), jamais d'
   assert.equal((await Preview.GET(new Request("http://x"), { params: Promise.resolve({ id: "inconnue" }) })).status, 404);
 });
 
-test("menu d'administration : « Overlays » pour l'administration, la coordination technique et la personne propriétaire, en mode simple comme avancé", () => {
+test("administration menu: the overlay pages entry is for administration, technical coordination and the owner, in simple and advanced mode", () => {
   for (const role of ["admin", "coordinator", "owner"]) for (const advanced of [true, false]) assert.ok(administrationEntries({ role, advanced }).includes("overlays"), `${role} ${advanced}`);
   for (const role of ["editor", "none"]) assert.ok(!administrationEntries({ role, advanced: true }).includes("overlays"), role);
-  assert.match(fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8"), /overlays: <NavLink key="overlays" href=\{OVERLAY_PAGES_HREF\}>/);
+  // (0.49.0) The entry is « Custom » in the Overlays group of the sidebar, shown under the same condition.
+  const layout = fs.readFileSync("src/app/admin/(panel)/layout.tsx", "utf8");
+  assert.match(layout, /allAdminEntries\.includes\("overlays"\)/);
+  assert.match(layout, /id: "core:overlays", name: t\("nav\.overlayCustom"\)[^\n]*href: OVERLAY_PAGES_HREF/);
 });
 
 test("un rôle personnalisé ne donne pas accès aux overlays, même avec tous les droits délégables", async () => {

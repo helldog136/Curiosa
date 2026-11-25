@@ -4064,6 +4064,7 @@
   "users.levelHelp.editor": "Peut : écrire, modifier et publier les contenus. Ne peut pas : régler le site ni gérer l'équipe.",
   "users.error.invalid": "Vérifiez l'adresse e-mail. Exemple : camille@exemple.org",
   "nav.overlayPages": "Pages d'overlay",
+  "nav.overlayCustom": "Personnalisés",
   "ovp.title": "Pages d'overlay",
   "ovp.intro": "Composez vos pages pour OBS.",
   "ovp.new": "Nouvelle page d'overlay",

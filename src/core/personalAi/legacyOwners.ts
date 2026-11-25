@@ -3,8 +3,8 @@ import { setSetting } from "@/core/settings";
 import { resolvePersonalOwner } from "./owner";
 
 /**
- * TEMPORARY (introduced in 0.47.0, SUNSET 0.49.0: delete this file, its call in src/instrumentation.ts and the folder src/app/admin/(panel)/assistants/assign-owners/;
- * tests/services/access-owners.test.mjs ("sunset") fails once package.json reaches 0.49.0 while they exist).
+ * TEMPORARY (introduced in 0.47.0, SUNSET 0.50.0: delete this file, its call in src/instrumentation.ts and the folder src/app/admin/(panel)/assistants/assign-owners/;
+ * tests/services/access-owners.test.mjs ("sunset") fails once package.json reaches 0.50.0 while they exist).
  *
  * 1. MARKER, ONCE. The first start-up after the migration marks `coarseCeiling` (see ownerCeiling.ts, COARSE_FALLBACK) on the accesses that have no owner and were created
  *    before that moment (`ai.legacyCutoff`, written before marking so that a retry after a crash reuses it): they predate the owners. Then `ai.legacyMarked` is written, and
@@ -21,7 +21,7 @@ import { resolvePersonalOwner } from "./owner";
  * (`pausedAt` too: an access without an owner ignores it, so a paused one would start working again; revoke the paused ones first if that is not wanted).
  * Accesses created later are not marked and are not affected.
  */
-export const LEGACY_OWNERS_SUNSET = "0.49.0";
+export const LEGACY_OWNERS_SUNSET = "0.50.0";
 
 export const LEGACY_CUTOFF_KEY = "ai.legacyCutoff";
 export const LEGACY_MARKED_KEY = "ai.legacyMarked";

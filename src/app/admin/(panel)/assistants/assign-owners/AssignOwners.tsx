@@ -1,4 +1,4 @@
-// TEMPORARY (SUNSET 0.49.0): the page "Choose who owns each access" exists only to migrate sites that have several accounts. It is NOT shown when every access has an owner.
+// TEMPORARY (SUNSET 0.50.0): the page "Choose who owns each access" exists only to migrate sites that have several accounts. It is NOT shown when every access has an owner.
 // Deleting this folder (and its import in ../OwnersTab.tsx, the locale keys `owners.assign.*`, its sunset test in tests/services/access-owners.test.mjs) removes it.
 import type { Translator } from "@/core/i18n/dictionary";
 import { accessesWithoutOwner, eligibleOwners, ownerOptions } from "@/core/personalAi/owners";
@@ -10,7 +10,7 @@ import { OwnerSelect } from "../OwnerSelect";
 import { BulkAssign } from "./BulkAssign";
 import { assignAllAction } from "./actions";
 
-export const ASSIGN_OWNERS_SUNSET = "0.49.0";
+export const ASSIGN_OWNERS_SUNSET = "0.50.0";
 
 /** Null when nothing waits for input (R33: no empty panel). */
 export async function AssignOwners({ t, viewerId }: { t: Translator; viewerId: string }) {

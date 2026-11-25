@@ -12,7 +12,7 @@ const P = await import("@/core/modules/menuPlacement");
 const L = await import("@/core/adminLinks");
 
 // The entries of the sidebar that belong to the core, in display order (keys as used in layout.tsx).
-const CORE_ENTRIES = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount", "nav.viewSite"];
+const CORE_ENTRIES = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayCustom", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount", "nav.viewSite"];
 const HEADINGS = ["nav.content", "nav.community", "nav.tools", "nav.connections", "nav.site", "nav.admin", "nav.account"];
 
 test("every core entry key is used by the layout, in both languages", () => {

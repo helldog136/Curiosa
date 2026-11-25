@@ -27,7 +27,7 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, navItemVisible, type AdminEntry } from "@/core/modules/adminMenu";
+import { OVERLAY_CUSTOM_ORDER, SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, navItemVisible, type SidebarAdminEntry } from "@/core/modules/adminMenu";
 import { overlaysUseful } from "@/core/overlays/presence";
 import { can, hasRole } from "@/core/auth/access";
 import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
@@ -55,16 +55,23 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
   const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
-  type PlaceItem = TreeItem & { href: string; place: true; badgeTip: string };
+  type PlaceItem = TreeItem & { href: string; place: true; badgeTip: string; /** The full title of a place page (its sidebar name may be shorter inside a group); absent on a core entry. */ fullName?: string };
   // (0.34.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
   const instanceBadge = new Map(allNav.map((m) => [m.id, m.badge] as const));
   const carried = placeBadges(placeIndex, (instanceId) => instanceBadge.get(instanceId) ?? 0);
   const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({
-    id: `place:${p.id}`, name: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
+    id: `place:${p.id}`, name: p.menuTitle, fullName: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
     groupLabels: { [g.id]: { en: g.title, fr: g.title } }, moduleId: "", href: p.href, place: true as const,
   })));
   const editor = hasRole(user, "editor");
   const canManage = hasRole(user, "admin");
+  // Administration: which entries this role and mode get (adminMenu.ts). (0.49.0) The custom overlay pages are not listed there any more: they are the « Custom » entry of the Overlays group, next to the ready-made page of the catalogue.
+  const allAdminEntries = administrationEntries({ role: user.level, advanced, overlays: canManage ? await overlaysUseful() : false });
+  const adminEntries = allAdminEntries.filter((id): id is SidebarAdminEntry => id !== "overlays");
+  // The core entry joins the group `obs` through the same tree as the place pages and the module paths; the group exists only while one entry is visible (nothing visible, no group).
+  const overlayCustom: PlaceItem[] = allAdminEntries.includes("overlays")
+    ? [{ id: "core:overlays", name: t("nav.overlayCustom"), badge: 0, error: false, placement: "menu", menuPath: [{ id: "obs", text: "obs" }], menuOrder: OVERLAY_CUSTOM_ORDER, connector: false, moduleId: "", href: OVERLAY_PAGES_HREF, place: true as const, badgeTip: "" }]
+    : [];
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
   const modulesBehind = can(user, "core:modules.install") ? (peekModulesReport()?.outdated.length ?? 0) : 0;
@@ -77,7 +84,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const menu = buildMenuLayout(nav);
   // (0.13.0) Entries whose module declares a menu path (`adminMenu`) leave their section for their own groups; without any, `tree` is empty and the sidebar is unchanged.
   type Entry = (typeof nav)[number] | PlaceItem;
-  const tree = buildMenuTree<Entry>([...nav, ...placeItems], locale);
+  const tree = buildMenuTree<Entry>([...nav, ...placeItems, ...overlayCustom], locale);
   const treeItems = [...Object.values(tree.sections).flatMap((n) => (n ? nodeEntries(n) : [])), ...tree.groups.flatMap(nodeEntries)];
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
   const isPlace = (m: Entry): m is PlaceItem => "place" in m;
@@ -88,9 +95,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const entryLink = (m: Entry) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
   const treeTargets = (m: Entry) => [entryHref(m), ...entryAlso(m)];
   const treeEntryLink = (m: Entry) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
-  // (0.31.0) A group made of one place page shows that page directly, without a heading.
-  const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => (n.children.length === 0 && n.entries.length === 1 && isPlace(n.entries[0]!)
-    ? <div key={n.id} data-testid={`nav-tree-${n.id}`}>{entryLink(n.entries[0]!)}</div>
+  // (0.31.0) A group made of one place page shows that page directly, without a heading, under its full title (0.49.0). A core entry (« Custom ») keeps its group, so it is never alone without its context.
+  const alone = (n: (typeof tree.groups)[number]) => n.children.length === 0 && n.entries.length === 1 && isPlace(n.entries[0]!) && n.entries[0]!.fullName !== undefined;
+  const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => (alone(n)
+    ? <div key={n.id} data-testid={`nav-tree-${n.id}`}>{entryLink({ ...(n.entries[0] as PlaceItem), name: (n.entries[0] as PlaceItem).fullName! })}</div>
     : <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={treeEntryLink} badgeLabel={t("nav.badge.todo")} />));
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
@@ -103,8 +111,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const shown = new Set<Entry>([...menu.content, ...menu.community, ...menu.tools, ...menu.connections, ...treeItems]);
   const unpinnedPages = allNav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
 
-  // Administration : quelles entrées pour ce rôle et ce mode (adminMenu.ts), puis leur lien. Assistants IA : un seul lien, en mode simple comme avancé.
-  const adminEntries = administrationEntries({ role: user.level, advanced, overlays: canManage ? await overlaysUseful() : false });
+  // Administration : les liens des entrées calculées plus haut. Assistants IA : un seul lien, en mode simple comme avancé.
   // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
   const maintenanceTabList = maintenanceTabs({ role: user.level, advanced });
   const maintenanceBadge = (maintenanceTabList.includes("updates") && updateAvailable ? 1 : 0) + (maintenanceTabList.includes("upkeep") && upkeep?.state === "todo" ? upkeep.todo : 0);
@@ -115,7 +122,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     const extra = tree.sections[id];
     for (const m of [...menu[id], ...(extra ? nodeEntries(extra) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections[id]) });
   }
-  for (const n of tree.groups) for (const m of nodeEntries(n)) r12.push({ id: m.id, label: m.name, group: n.title });
+  for (const n of tree.groups) for (const m of nodeEntries(n)) r12.push({ id: m.id, label: alone(n) ? (m as PlaceItem).fullName! : m.name, group: n.title });
   for (const m of [...menu.connections, ...(tree.sections.connections ? nodeEntries(tree.sections.connections) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections.connections) });
   for (const [id, key] of K.site.entries) r12.push({ id: `core:${id}`, label: t(key), group: t(K.site.heading) });
   for (const id of adminEntries) r12.push({ id: `core:${id}`, label: t(K.admin.entries[id]), group: t(K.admin.heading) });
@@ -123,9 +130,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const qualified = qualifyLabels(r12).labels;
   function q(id: string, text: string): string { return qualified.get(id) ?? text; }
 
-  const adminLinks: Record<AdminEntry, React.ReactNode> = {
+  const adminLinks: Record<SidebarAdminEntry, React.ReactNode> = {
     extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
-    overlays: <NavLink key="overlays" href={OVERLAY_PAGES_HREF}>{q("core:overlays", t("nav.overlayPages"))}</NavLink>,
     assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
     users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
     maintenance: <NavLink key="maintenance" href={maintenanceTabList.length > 0 ? MAINTENANCE_TAB_HREFS[maintenanceTabList[0]!] : HEALTH_HREF} also={maintenanceTabList.map((id) => MAINTENANCE_TAB_HREFS[id])} badge={maintenanceBadge} badgeLabel={t("nav.badge.maintenance")}>{t("nav.maintenance")}</NavLink>,
