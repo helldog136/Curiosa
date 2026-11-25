@@ -36,7 +36,7 @@ test("the group is called Overlays in both languages, in the vocabulary and in t
 });
 
 test("the ready-made page keeps its full title as heading and takes the short name in the group, in both languages", () => {
-  for (const [locale, short, full] of [["en", "Ready-made", "Ready-made overlays"], ["fr", "Prédéfinis", "Overlays tout prêts"]]) {
+  for (const [locale, short, full] of [["en", "Ready-made", "Ready-made overlays"], ["fr", "Prédéfinis", "Overlays prédéfinis"]]) {
     const idx = P.buildPlaceIndex([contrib("maze-overlay", "obs.overlays.maze")], VOCAB, locale);
     const page = P.findPage(idx, "obs", "overlays");
     assert.equal(page.menuTitle, short, locale);
