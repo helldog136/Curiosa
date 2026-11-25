@@ -23,7 +23,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (typeof credentials?.ticket === "string" && credentials.ticket) {
           const id = readToken("ticket", credentials.ticket);
           const owner = id ? await prisma.user.findUnique({ where: { id } }) : null;
-          return owner ? { id: owner.id, email: owner.email, name: owner.name, role: owner.role, locale: owner.locale, sessionVersion: owner.sessionVersion } : null;
+          return owner && !owner.suspendedAt ? { id: owner.id, email: owner.email, name: owner.name, role: owner.role, locale: owner.locale, sessionVersion: owner.sessionVersion } : null;
         }
         const email = typeof credentials?.email === "string" ? credentials.email.trim().toLowerCase() : "";
         const password = typeof credentials?.password === "string" ? credentials.password : "";

@@ -9,6 +9,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Vous invitez une personne avec son e-mail et un rôle, sans mot de passe à transmettre.** Elle reçoit un lien à usage unique (72 heures par défaut), choisit son mot de passe, et vous pouvez renvoyer, annuler ou suspendre un compte. Sans envoi de courriel, le lien s'affiche une fois pour vous.
+- **(English) You invite a person with an e-mail and a role, with no password to hand over.** They get a single-use link (72 hours by default) and choose their own password; you can resend, cancel or suspend an account. With no mail sending, the link is shown once to you.
+- **Chacun peut demander un nouveau mot de passe quand le site envoie des courriels.** Le lien dure 45 minutes, garde la double vérification et déconnecte les autres appareils.
+- **(English) Anyone can ask for a new password when the site sends e-mail.** The link lasts 45 minutes, keeps two-step verification and signs out the other devices.
+
 ### Corrections
 
 - **Le fond d'aperçu de l'éditeur de page d'overlay s'affiche aussi quand l'administration est en sombre.** Avant, « Damier » et les autres fonds laissaient l'aperçu en direct sur un blanc uni. Le fond choisi apparaît maintenant derrière la page ; la page vue par OBS ne change pas.

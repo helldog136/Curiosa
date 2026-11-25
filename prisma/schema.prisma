@@ -36,6 +36,8 @@ model User {
   totpLastStep  Int?
   // (0.46.0) Personal AI assistant, per-person override of the role rule: "inherit" (the role right `core:ai.personal` decides), "allow" or "deny". Only holders of `core:mcp.tokens` change it.
   personalAi   String   @default("inherit")
+  // (0.49.0) Set when the person is suspended: no sign-in, every session cut, content and authorship kept. Null = active. An older core ignores this column (rollback: see docs/SECURITE.md, "Onboarding by invitation").
+  suspendedAt  DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -458,4 +460,40 @@ model OverlayPage {
   rev          Int       @default(1)
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
+}
+
+// ─── Onboarding (0.49.0) ───────────────────────────────────────────────────
+// An invitation to join the team. The link carries a 256-bit random token; only its keyed hash is stored. `status`: pending | accepted | revoked | expired | refused.
+// The role is bound at invitation time (`roleId`, never reused, plus a snapshot of its rights) and re-validated when the invitation is accepted. No foreign key on purpose:
+// the inviter or the role may disappear, the row stays as the record. Not part of a backup (tokens are secrets): see docs/SECURITE.md.
+model Invitation {
+  id              String    @id @default(cuid())
+  email           String
+  tokenHash       String    @unique
+  status          String    @default("pending")
+  roleId          String
+  roleKey         String
+  rightsSnapshot  String    @default("[]")
+  invitedById     String
+  invitedByEmail  String
+  invitedByLevel  String
+  deliveredBy     String    @default("email")
+  sendCount       Int       @default(1)
+  lastSentAt      DateTime  @default(now())
+  expiresAt       DateTime
+  acceptedAt      DateTime?
+  acceptedUserId  String?
+  createdAt       DateTime  @default(now())
+
+  @@index([email, status])
+  @@index([status, expiresAt])
+}
+
+// A request to choose a new password (forgot-password). Only the keyed hash of the token is stored; at most one row per person.
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
 }

@@ -23,7 +23,10 @@ import { rightLabel } from "@/core/auth/describe";
 import type { Level } from "@/core/auth/rights";
 import { canManageMember, grantableLevels } from "@/core/auth/team";
 import { listRoles } from "@/core/auth/roles";
-import { createUser, deleteUser, resetUserTwoFactor, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRolesAction, unlockUser } from "./actions";
+import { createUser, deleteUser, inviteAction, reactivateUser, resendInvitationAction, resetUserTwoFactor, revokeInvitationAction, revokeUserSessions, setRequireTwoFactor, setTemporaryPassword, setUserRolesAction, suspendUser, unlockUser } from "./actions";
+import { FormDialog } from "@/components/admin/FormDialog";
+import { DEFAULT_TTL_HOURS, listInvitations, TTL_CHOICES_HOURS, type InviteStatus } from "@/core/auth/invitations";
+import { isMailConfigured } from "@/core/services/mail";
 import { RolesPanel } from "./RolesPanel";
 import { PersonAiOverride } from "@/components/admin/PersonAiOverride";
 import { countOwned, eligibleOwners, mayOwnAccess, ownerOptions } from "@/core/personalAi/owners";
@@ -125,13 +128,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     const canDelete = canTeam ? manageable : user.level === "admin" && !me && level === "editor";
     const canReset = manageable;
     const canTempPassword = manageable;
-    const hasMenu = canDelete || canReset || canTempPassword || (manageable && !!lock) || !!personAi;
+    const canSuspend = manageable && !me;
+    const hasMenu = canDelete || canReset || canTempPassword || (manageable && !!lock) || canSuspend || !!personAi;
     const levelName = level === "none" ? t("users.noRole") : t(`role.${level}`);
     const rolesText = [levelName, ...custom.map((r) => r.name)].join(", ");
     return {
       key: u.id,
       testid: "user-row",
-      search: [u.name, u.email, mixed && t("team.type.person"), levelName, ...custom.map((r) => r.name), me && t("users.you"), secured && t("users.secured"), u.mustChangePassword && t("users.mustChange"), lock && t("users.lockedShort")],
+      search: [u.name, u.email, mixed && t("team.type.person"), levelName, ...custom.map((r) => r.name), me && t("users.you"), secured && t("users.secured"), u.mustChangePassword && t("users.mustChange"), lock && t("users.lockedShort"), u.suspendedAt && t("users.suspended"), required && !secured && t("users.needs2fa")],
       filters: { [mixed ? "who" : "role"]: mixed ? memberFilter("person", level) : level },
       titles: { person: `${u.name} — ${u.email}`, role: level === "none" ? undefined : t(`roles.system.${level}`) },
       cells: {
@@ -144,8 +148,10 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           <Badge tone={LEVEL_TONE[level]} testid="user-level">{levelName}</Badge>
           {custom.map((r) => <Badge key={r.id} tone="neutral" testid="user-role-chip">{r.name}</Badge>)}
         </span>,
-        state: lock || u.mustChangePassword || secured ? (
+        state: lock || u.mustChangePassword || secured || u.suspendedAt || (required && !secured) ? (
           <span className="flex flex-wrap gap-1.5">
+            {u.suspendedAt && <span className={ui.chipDanger} data-testid="user-suspended">{t("users.suspended")}</span>}
+            {required && !secured && !u.suspendedAt && <span className={ui.chipWarn} data-testid="user-needs-2fa">{t("users.needs2fa")}</span>}
             {lock && <span className={ui.chipDanger} data-testid="user-locked">{t("users.locked", { time: formatUntil(lock, locale) })}</span>}
             {u.mustChangePassword && <span className={ui.chipWarn} data-testid="user-must-change">{t("users.mustChange")}</span>}
             {secured && <span className={ui.chipOk} data-testid="user-2fa" title={t("users.twofa")}>🔐 {t("users.secured")}</span>}
@@ -165,6 +171,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
               {canTempPassword && (
                 <TemporaryPasswordButton menu memberName={`${u.name} — ${u.email}`} action={setTemporaryPassword.bind(null, u.id)} labels={tempLabels} />
               )}
+              {canSuspend && !u.suspendedAt && <form action={suspendUser.bind(null, u.id)}><ConfirmButton menu danger={false} message={t("users.suspendConfirm", { name: u.name })} confirmLabel={t("users.suspend")}>{t("users.suspend")}</ConfirmButton></form>}
+              {canSuspend && u.suspendedAt && <form action={reactivateUser.bind(null, u.id)}><PendingButton variant="menu">{t("users.reactivate")}</PendingButton></form>}
               {canReset && <form action={revokeUserSessions.bind(null, u.id)}><ConfirmButton menu danger={false} message={t("users.revokeConfirm", { name: u.name })}>{t("users.menu.revoke")}</ConfirmButton></form>}
               {canReset && secured && <form action={resetUserTwoFactor.bind(null, u.id)}><ConfirmButton menu danger={false} message={t("users.twofaResetConfirm", { name: u.name })}>{t("users.menu.twofaReset")}</ConfirmButton></form>}
               {canDelete && <div className="mt-1 border-t border-line pt-1"><form action={deleteUser.bind(null, u.id)}><ConfirmButton menu message={t("users.deleteConfirm", { name: u.name, roles: rolesText })} confirmLabel={t("users.deleteAccount")} dangerConfirm>{t("users.deleteAccount")}</ConfirmButton></form></div>}
@@ -175,66 +183,101 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     };
   });
 
+  // Invitations: the default way to add a person (right `core:team`). Short path: e-mail and ONE role, one click; the link's validity is folded.
+  const mailOn = await isMailConfigured().catch(() => false);
+  const roleChoices = [...baseOptions, ...extraOptions];
+  const pickedRole = (baseOptions.find((o) => o.id === allRoles.find((r) => r.key === invitable[invitable.length - 1])?.id) ?? roleChoices[0])?.id;
+  const invitations = canTeam ? await listInvitations() : [];
+  const inviteState: Record<InviteStatus, { tone: "ok" | "warn" | "neutral" | "danger"; key: string }> = {
+    pending: { tone: "ok", key: "invite.state.pending" }, accepted: { tone: "neutral", key: "invite.state.accepted" }, expired: { tone: "warn", key: "invite.state.expired" },
+    revoked: { tone: "neutral", key: "invite.state.revoked" }, refused: { tone: "danger", key: "invite.state.refused" },
+  };
+  const ttlOptions = TTL_CHOICES_HOURS.map((h) => ({ value: String(h), label: t(`invite.ttl.${h}`) }));
+  const ttlField = (id: string) => (
+    <div>
+      <label className={ui.label} htmlFor={id}>{t("invite.ttl.label")}</label>
+      <select id={id} name="ttl" defaultValue={String(DEFAULT_TTL_HOURS)} className={ui.input}>{ttlOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>
+    </div>
+  );
+  const roleField = roleChoices.length > 4 ? (
+    <div>
+      <label className={ui.label} htmlFor="invite-role">{t("users.role")}</label>
+      <select id="invite-role" name="roleId" defaultValue={pickedRole} data-testid="invite-role" className={ui.input}>{roleChoices.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>
+    </div>
+  ) : (
+    <fieldset data-testid="invite-levels" id="roleId__group" tabIndex={-1}>
+      <legend className={ui.label}>{t("users.role")}</legend>
+      <div className={`grid gap-2 ${roleChoices.length > 1 ? "sm:grid-cols-2" : ""}`}>
+        {roleChoices.map((o) => (
+          <label key={o.id} data-testid="invite-role-option" className="relative flex min-h-11 cursor-pointer flex-col justify-center rounded-xl border border-line bg-bg/40 px-3 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+            <input type="radio" name="roleId" value={o.id} defaultChecked={o.id === pickedRole} className="sr-only" />
+            <span className="font-medium">{o.name}</span>
+            <span className="text-muted">{o.summary}</span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
+  );
+  // Older way, kept under "More options": the person gets a first password from the site (needed on a site that cannot send e-mail, and for administrators without the team right).
+  const legacyForm = (
+    <ActionForm action={createUser} submitLabel={t("users.addButton")} pendingLabel={t("progress.creating")} reset>
+              <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+                <TextField name="email" type="email" label={t("field.email")} required example={t("users.emailExample")} autoComplete="off" />
+                <fieldset data-testid="invite-levels" id="role__group" tabIndex={-1}>
+                  <legend className={ui.label}>{t("users.role")}</legend>
+                  <div className={`grid gap-2 ${invitable.length > 1 ? "sm:grid-cols-3" : ""}`}>
+                    {invitable.map((r) => (
+                      <label key={r} data-testid={`invite-level-${r}`} title={t(`users.levelHelp.${r}`)}
+                        className="relative flex min-h-11 cursor-pointer flex-col justify-center rounded-xl border border-line bg-bg/40 px-3 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+                        <input type="radio" name="role" value={r} defaultChecked={r === defaultInvite} className="sr-only" />
+                        <span className="font-medium">{t(`role.${r}`)}</span>
+                        <span className="text-muted">{t(`users.levelShort.${r}`)}</span>
+                      </label>
+                    ))}
+                  </div>
+                </fieldset>
+              </div>
+              <MoreOptions title={t("users.addMore")} summary={t("users.addMoreSummary")}>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <TextField name="name" label={t("users.displayName")} example={t("users.nameExample")} help={t("users.nameHelp")} autoComplete="off" />
+                  <TextField name="password" type="password" noManager label={t("users.firstPassword")} help={t("users.passwordHelp")} passwordMin={10} autoComplete="new-password" />
+                </div>
+              </MoreOptions>
+            </ActionForm>
+  );
+  const personPane = (
+    <div className="space-y-4">
+      {canTeam && (
+        <div className="flex flex-wrap items-center gap-3">
+          <FormDialog primary={!ai} trigger={t("invite.button")} title={t("invite.title")} closeLabel={t("roles.close")} testid="invite-open">
+            <ActionForm action={inviteAction} submitLabel={t("invite.submit")} pendingLabel={t("progress.sending")} reset>
+              {!mailOn && <p className="text-sm font-medium" data-testid="invite-no-mail">{t("invite.noMail")}</p>}
+              <TextField name="email" type="email" label={t("field.email")} required example={t("users.emailExample")} autoComplete="off" />
+              {roleField}
+              <MoreOptions title={t("invite.more")} summary={t("invite.moreSummary")}>{ttlField("invite-ttl")}</MoreOptions>
+            </ActionForm>
+          </FormDialog>
+        </div>
+      )}
+      <MoreOptions title={t("users.addMore")} summary={t(canTeam ? "invite.legacy.summary" : "invite.legacy.summaryAdmin")} id="invite-legacy">
+        <div className="space-y-3" data-testid="invite-person-legacy">
+          <p className="text-sm font-medium">{t("invite.legacy.title")}</p>
+          {legacyForm}
+        </div>
+      </MoreOptions>
+    </div>
+  );
+
   const team = (
     <div className="space-y-8" data-tab="team">
       {ai ? (
         <Panel title={t("team.add.title")} help={t("team.add.help")} testid="invite">
-          <AddMember initial={query.assistant === "maintenance" ? "assistant" : "person"} anchor={ADD_ASSISTANT_ANCHOR} label={t("team.add.title")} personLabel={t("users.add")} assistantLabel={t("team.ai.add")}
-            person={<div data-testid="invite-person">
-        <ActionForm action={createUser} submitLabel={t("users.addButton")} pendingLabel={t("progress.creating")} reset>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-            <TextField name="email" type="email" label={t("field.email")} required example={t("users.emailExample")} autoComplete="off" />
-            <fieldset data-testid="invite-levels" id="role__group" tabIndex={-1}>
-              <legend className={ui.label}>{t("users.role")}</legend>
-              <div className={`grid gap-2 ${invitable.length > 1 ? "sm:grid-cols-3" : ""}`}>
-                {invitable.map((r) => (
-                  <label key={r} data-testid={`invite-level-${r}`} title={t(`users.levelHelp.${r}`)}
-                    className="relative flex min-h-11 cursor-pointer flex-col justify-center rounded-xl border border-line bg-bg/40 px-3 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-                    <input type="radio" name="role" value={r} defaultChecked={r === defaultInvite} className="sr-only" />
-                    <span className="font-medium">{t(`role.${r}`)}</span>
-                    <span className="text-muted">{t(`users.levelShort.${r}`)}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-          <MoreOptions title={t("users.addMore")} summary={t("users.addMoreSummary")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField name="name" label={t("users.displayName")} example={t("users.nameExample")} help={t("users.nameHelp")} autoComplete="off" />
-              <TextField name="password" type="password" noManager label={t("users.firstPassword")} help={t("users.passwordHelp")} passwordMin={10} autoComplete="new-password" />
-            </div>
-          </MoreOptions>
-        </ActionForm>
-            </div>}
+          <AddMember initial={query.assistant === "maintenance" ? "assistant" : "person"} anchor={ADD_ASSISTANT_ANCHOR} label={t("team.add.title")} personLabel={t("invite.tab")} assistantLabel={t("team.ai.add")}
+            person={<div data-testid="invite-person">{personPane}</div>}
             assistant={<div data-testid="invite-assistant"><McpTokenCreator compact action={createTokenAction} baseUrl={siteUrl} advanced={advanced} guide={guide} defaultProfile={query.assistant === "maintenance" ? "maintenance" : "standard"} labels={creatorLabels(t, advanced)} owners={ownerChoices} ownerId={user.id} /></div>} />
         </Panel>
       ) : (
-      <Panel title={t("users.add")} testid="invite">
-        <ActionForm action={createUser} submitLabel={t("users.addButton")} pendingLabel={t("progress.creating")} reset>
-          <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
-            <TextField name="email" type="email" label={t("field.email")} required example={t("users.emailExample")} autoComplete="off" />
-            <fieldset data-testid="invite-levels" id="role__group" tabIndex={-1}>
-              <legend className={ui.label}>{t("users.role")}</legend>
-              <div className={`grid gap-2 ${invitable.length > 1 ? "sm:grid-cols-3" : ""}`}>
-                {invitable.map((r) => (
-                  <label key={r} data-testid={`invite-level-${r}`} title={t(`users.levelHelp.${r}`)}
-                    className="relative flex min-h-11 cursor-pointer flex-col justify-center rounded-xl border border-line bg-bg/40 px-3 py-2 text-sm has-[:checked]:border-accent has-[:checked]:bg-accent/10 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
-                    <input type="radio" name="role" value={r} defaultChecked={r === defaultInvite} className="sr-only" />
-                    <span className="font-medium">{t(`role.${r}`)}</span>
-                    <span className="text-muted">{t(`users.levelShort.${r}`)}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          </div>
-          <MoreOptions title={t("users.addMore")} summary={t("users.addMoreSummary")}>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField name="name" label={t("users.displayName")} example={t("users.nameExample")} help={t("users.nameHelp")} autoComplete="off" />
-              <TextField name="password" type="password" noManager label={t("users.firstPassword")} help={t("users.passwordHelp")} passwordMin={10} autoComplete="new-password" />
-            </div>
-          </MoreOptions>
-        </ActionForm>
-      </Panel>
+      <Panel title={t("users.add")} testid="invite">{personPane}</Panel>
       )}
 
       <Panel title={t("users.team", { n: users.length + (ai?.count ?? 0) })} help={t(mixed ? "team.listHelp" : "users.listHelp")} testid="team">
@@ -289,6 +332,48 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           </div>
         )}
       </Panel>
+
+      {canTeam && invitations.length > 0 && (
+        <Panel title={t("invite.list.title", { n: invitations.length })} testid="invitations">
+          <LiveSearch scope="invites" placeholder={t("invite.list.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
+            filters={[{ key: "state", allLabel: t("invite.list.all"), options: (["pending", "accepted", "expired", "revoked", "refused"] as InviteStatus[]).filter((k) => invitations.some((i) => i.state === k)).map((k) => ({ value: k, label: t(inviteState[k].key), count: invitations.filter((i) => i.state === k).length })) }]} />
+          <RowTable scope="invites" actionsLabel={t("users.actions")}
+            columns={[
+              { key: "person", label: t("invite.col.person"), width: "w-[34%]" },
+              { key: "role", label: t("users.col.role"), width: "w-[22%]" },
+              { key: "state", label: t("users.col.state"), width: "w-[16%]" },
+              { key: "until", label: t("invite.col.until"), width: "w-[16%]" },
+            ]}
+            rows={invitations.map((i): TableRow => {
+              const roleLabel = i.roleName || t(`role.${i.roleKey}`);
+              const open = i.state === "pending" || i.state === "expired";
+              return {
+                key: i.id, testid: "invitation-row",
+                search: [i.email, roleLabel, t(inviteState[i.state].key)],
+                filters: { state: i.state },
+                titles: { person: i.email },
+                cells: {
+                  person: <span className="block truncate font-medium">{i.email}</span>,
+                  role: <Badge tone="neutral" testid="invite-role-chip">{roleLabel}</Badge>,
+                  state: <Badge tone={inviteState[i.state].tone} testid="invite-state">{t(inviteState[i.state].key)}</Badge>,
+                  until: <time dateTime={i.expiresAt.toISOString()} className="whitespace-nowrap">{i.expiresAt.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}</time>,
+                },
+                actions: open ? (
+                  <>
+                    <FormDialog trigger={t("invite.resend")} triggerLabel={t("invite.resendFor", { email: i.email })} title={t("invite.resendTitle", { email: i.email })} closeLabel={t("roles.close")} testid="invite-resend-open">
+                      <ActionForm action={resendInvitationAction.bind(null, i.id)} submitLabel={t("invite.resendSubmit")} pendingLabel={t("progress.sending")}>
+                        {ttlField(`resend-ttl-${i.id}`)}
+                      </ActionForm>
+                    </FormDialog>
+                    <RowMenu label={t("users.menu.open", { name: i.email })}>
+                      <form action={revokeInvitationAction.bind(null, i.id)}><ConfirmButton menu message={t("invite.revokeConfirm", { email: i.email })} confirmLabel={t("invite.revoke")}>{t("invite.revoke")}</ConfirmButton></form>
+                    </RowMenu>
+                  </>
+                ) : null,
+              };
+            })} />
+        </Panel>
+      )}
 
       {can(user, "core:security") && (
         <Panel title={t("users.securityTitle")} testid="require-2fa">

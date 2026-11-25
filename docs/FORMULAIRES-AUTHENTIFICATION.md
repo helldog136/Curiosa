@@ -29,7 +29,7 @@ Why: a password manager (1Password, Bitwarden, Dashlane, Chrome, Safari) does no
 ## Do not offer a password that is not the account's own
 
 `noManager` (on `PasswordInput` or `TextField`) sets `data-1p-ignore`, `data-lpignore`, `data-bwignore`. Keep it for:
-- a password given to **another person** (the temporary password, `TemporaryPasswordButton`; the first password in the invitation form of the Team page): otherwise the manager offers to replace mine;
+- a password given to **another person** (the temporary password, `TemporaryPasswordButton`; the temporary password of the legacy form under "More options" on the Team page): otherwise the manager offers to replace mine;
 - a **technical secret** (a service key: a module `secret` setting, the password of the mail server).
 
 Everywhere else these attributes are **forbidden on a password field** (the test checks it). `TextField` used to set them on every `new-password` field: 1Password then offered nothing when choosing the first password or changing it.
@@ -44,3 +44,11 @@ A text input that is not a login (a name, a label, a nickname, an address, a URL
 - A form whose result is shown once ignores a second submit while the first runs (`createGate`, `src/components/admin/singleFlight.ts`), so one click or an extension re-sending the event cannot create two accesses and hide the first secret.
 
 Limits: the hints and `autocomplete="off"` are honoured by 1Password, Bitwarden and LastPass on inputs; a manager may still show its own menu on a page that has a real login or sign-up form. A test reads the source and the rendered markup; it does not replace the real extension, which the owner confirms on the real site.
+
+## Invitation, reset and "forgot password" pages (core 0.49.0)
+
+These public pages (`/admin/invitation`, `/admin/forgot-password`, `/admin/reset-password`) set a password that is **the person's own**: the fields carry `autoComplete="new-password"`, **no** `noManager`, and the strength rules of `passwordMin`, so a password manager offers to save it. The e-mail is shown as text (not a field) on the invitation page, and a hidden username field is not needed because the manager reads the address from the page text.
+
+- The link token comes from the URL fragment (`#t=`, `useFragmentToken`) and travels only in the form body. Never put it in a query string, a log or an error message.
+- Errors are under the field, with an example; after an error the e-mail stays and the passwords are emptied (rule 9 above).
+- The "forgot password" page and the login link exist only when mail is configured; the answer is the same for every address.

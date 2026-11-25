@@ -41,7 +41,7 @@ export const RESERVED_GROUPS: readonly string[] = ["admin", "account", "administ
 export const ADMIN_ROUTE_SEGMENTS: readonly string[] = [
   "account", "ai-visibility", "appearance", "assistants", "audit", "backup", "catalogue", "drafts", "entries", "extensions", "home", "instances", "integrations",
   "maintenance", "maintenance-ia", "mcp", "mode", "modules", "navigation", "overlay-pages", "overlays", "redirects", "search", "settings", "social", "updates", "users",
-  "choose-password", "login", "no-access", "setup", "bug-report",
+  "choose-password", "forgot-password", "invitation", "reset-password", "login", "no-access", "setup", "bug-report",
 ];
 
 export type GroupStatus = "open" | "additive" | "reserved";

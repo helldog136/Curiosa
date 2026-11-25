@@ -1,13 +1,15 @@
 /**
- * COMPTES DE L'ÉQUIPE (0.4.0) : créer, supprimer, débloquer, couper les sessions, réinitialiser la double vérification. Toutes les règles sont ICI, côté serveur :
- * les actions de la page Équipe ne font que passer l'identifiant de la personne connectée (jamais lu dans le formulaire) et les valeurs envoyées ; l'acteur est RELU en base.
- * « Qui peut gérer qui » : voir team.ts. Chaque changement est inscrit au journal d'audit.
+ * TEAM ACCOUNTS: create (with a first password), delete, suspend, reactivate, unlock, cut sessions, reset the second factor. Every rule is HERE, on the server:
+ * the actions of the Team page only pass the id of the signed-in person (never read from a form) and the values sent; the actor is RE-READ from the database.
+ * Who may manage whom: see team.ts. Every change is written to the audit journal, with the level that acted.
+ * Adding a person by invitation (the default way) lives in invitations.ts; `createMember` stays for sites that choose to hand over a first password themselves.
  */
 import bcrypt from "bcryptjs";
 import { prisma } from "../db";
 import { levelOf } from "./access";
 import { passwordProblem } from "./passwordPolicy";
-import { revokeSessions } from "./sessions";
+import { pausePersonalAccesses, revokeSessions } from "./sessions";
+import { auditAccount } from "./accountAudit";
 import { revokePersonalAccessesOf } from "../personalAi/lifecycle";
 import { unlockEmail } from "./lockout";
 import { disableTwoFactor } from "./twoFactor";
@@ -15,7 +17,7 @@ import { assignInitialRole } from "./roles";
 import { columnsOf, RANK, type Level } from "./rights";
 import { canManageMember, grantableLevels } from "./team";
 
-export type MemberFailure = "denied" | "invalid" | "password" | "exists" | "level" | "missing";
+export type MemberFailure = "denied" | "invalid" | "password" | "exists" | "level" | "missing" | "state" | "last";
 export type MemberResult<T = object> = ({ ok: true } & T) | { ok: false; reason: MemberFailure };
 
 async function audit(actor: string, action: string, target = ""): Promise<void> {
@@ -23,15 +25,15 @@ async function audit(actor: string, action: string, target = ""): Promise<void> 
 }
 
 type Actor = { id: string; email: string; level: Level };
-/** L'acteur, relu en base : au moins administrateur, sans mot de passe temporaire à remplacer. */
+/** The actor, re-read from the database: at least administrator, active, with no temporary password to replace. */
 async function actorOf(actorId: string): Promise<Actor | null> {
-  const row = await prisma.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true } });
-  if (!row || row.mustChangePassword) return null;
+  const row = await prisma.user.findUnique({ where: { id: String(actorId ?? "") }, select: { id: true, email: true, role: true, coordinator: true, mustChangePassword: true, suspendedAt: true } });
+  if (!row || row.mustChangePassword || row.suspendedAt) return null;
   const level = levelOf(row);
   return RANK[level] >= RANK.admin ? { id: row.id, email: row.email, level } : null;
 }
 
-/** Nouveau compte avec mot de passe initial (`mustChangePassword: true` : posé dans la MÊME écriture, la personne devra en choisir un à sa première connexion). Le niveau doit être de ceux que l'acteur peut attribuer (`grantableLevels`) : seul le propriétaire crée un coordinateur ou un administrateur... */
+/** New account with a first password (`mustChangePassword: true` is set in the SAME write: the person must choose their own at first sign-in). The level must be one the actor may grant (`grantableLevels`). */
 export async function createMember(actorId: string, input: { name?: unknown; email?: unknown; password?: unknown; role?: unknown; mustChangePassword?: unknown }): Promise<MemberResult<{ id: string; level: Level }>> {
   const actor = await actorOf(actorId);
   if (!actor) return { ok: false, reason: "denied" };
@@ -40,7 +42,7 @@ export async function createMember(actorId: string, input: { name?: unknown; ema
   if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return { ok: false, reason: "invalid" };
   if (passwordProblem(String(input.password ?? ""))) return { ok: false, reason: "password" };
   const level = String(input.role ?? "") as Level;
-  // Jamais « owner » ni « none » (un rôle personnalisé s'affecte ensuite) ; « coordinator » : propriétaire seul.
+  // Never "owner" nor "none" (a custom role is assigned afterwards); "coordinator": the owner only.
   if (!grantableLevels(actor.level).includes(level)) return { ok: false, reason: "level" };
   if (await prisma.user.findUnique({ where: { email } })) return { ok: false, reason: "exists" };
   const created = await prisma.user.create({ data: { email, name, ...columnsOf(level), passwordHash: await bcrypt.hash(String(input.password), 12), ...(input.mustChangePassword === true ? { mustChangePassword: true } : {}) } });
@@ -49,7 +51,7 @@ export async function createMember(actorId: string, input: { name?: unknown; ema
   return { ok: true, id: created.id, level };
 }
 
-/** Quelle opération sur quelle cible : la cible relue en base, la règle de team.ts appliquée. */
+/** The target, re-read from the database, with the rule of team.ts applied. */
 async function target(actor: Actor, targetId: string, opts: { allowSelf?: boolean } = {}): Promise<MemberResult<{ row: { id: string; email: string; level: Level } }>> {
   const row = await prisma.user.findUnique({ where: { id: String(targetId ?? "") }, select: { id: true, email: true, role: true, coordinator: true } });
   if (!row) return { ok: false, reason: "missing" };
@@ -60,8 +62,8 @@ async function target(actor: Actor, targetId: string, opts: { allowSelf?: boolea
 }
 
 /**
- * Supprime un compte. Qui détient `core:team` : tout compte sauf le propriétaire, soi-même et (sauf propriétaire) un coordinateur.
- * Un administrateur (sans `core:team`) ne supprime qu'un éditeur, comme avant.
+ * Deletes an account. Whoever holds `core:team`: any account except the owner, oneself and (unless owner) a coordinator.
+ * An administrator (without `core:team`) deletes an editor only, as before. A pending reset link of the person goes with them.
  */
 export async function deleteMember(actorId: string, targetId: string): Promise<MemberResult> {
   const actor = await actorOf(actorId);
@@ -71,6 +73,7 @@ export async function deleteMember(actorId: string, targetId: string): Promise<M
     if (!row || row.id === actor.id || levelOf(row) !== "editor") return { ok: false, reason: "denied" };
     await revokePersonalAccessesOf(row.id, actor.email);
     await prisma.user.delete({ where: { id: row.id } });
+    await prisma.passwordReset.deleteMany({ where: { userId: row.id } });
     await audit(actor.email, "user.delete", row.email);
     return { ok: true };
   }
@@ -78,11 +81,12 @@ export async function deleteMember(actorId: string, targetId: string): Promise<M
   if (!t.ok) return t;
   await revokePersonalAccessesOf(t.row.id, actor.email);
   await prisma.user.delete({ where: { id: t.row.id } });
+  await prisma.passwordReset.deleteMany({ where: { userId: t.row.id } });
   await audit(actor.email, "user.delete", t.row.email);
   return { ok: true };
 }
 
-/** Débloque quelqu'un qui a trop essayé de se connecter (son e-mail redevient libre tout de suite). Jamais le propriétaire pour un coordinateur. */
+/** Unlocks someone who tried to sign in too often (their address is free at once). */
 export async function unlockMember(actorId: string, targetId: string): Promise<MemberResult> {
   const actor = await actorOf(actorId);
   if (!actor) return { ok: false, reason: "denied" };
@@ -93,7 +97,7 @@ export async function unlockMember(actorId: string, targetId: string): Promise<M
   return { ok: true };
 }
 
-/** Coupe toutes les sessions ouvertes de quelqu'un (appareil perdu, compte douteux). */
+/** Cuts every open session of someone (lost device, doubtful account). */
 export async function revokeMemberSessions(actorId: string, targetId: string): Promise<MemberResult> {
   const actor = await actorOf(actorId);
   if (!actor) return { ok: false, reason: "denied" };
@@ -104,7 +108,7 @@ export async function revokeMemberSessions(actorId: string, targetId: string): P
   return { ok: true };
 }
 
-/** Réinitialise la double vérification ET les clés d'accès de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). */
+/** Resets the second factor AND the passkeys of someone who lost their phone and recovery codes (their open sessions are cut). */
 export async function resetMemberTwoFactor(actorId: string, targetId: string): Promise<MemberResult> {
   const actor = await actorOf(actorId);
   if (!actor) return { ok: false, reason: "denied" };
@@ -113,5 +117,40 @@ export async function resetMemberTwoFactor(actorId: string, targetId: string): P
   await disableTwoFactor(t.row.id);
   await prisma.passkey.deleteMany({ where: { userId: t.row.id } });
   await audit(actor.email, "user.2fa.reset", t.row.email);
+  return { ok: true };
+}
+
+/**
+ * SUSPEND a person: reversible, immediate. Sign-in is refused, every open session is cut (session number raised), a pending reset link is removed, personal AI accesses are paused.
+ * Their content and authorship stay as they are. Same "who may manage whom" as every other action (team.ts): never the owner, never oneself, a coordinator only by the owner.
+ * A last guard: the site must keep at least one ACTIVE owner or technical coordinator besides the person suspended.
+ */
+export async function suspendMember(actorId: string, targetId: string): Promise<MemberResult> {
+  const actor = await actorOf(actorId);
+  if (!actor) return { ok: false, reason: "denied" };
+  const t = await target(actor, targetId);
+  if (!t.ok) return t;
+  const row = await prisma.user.findUnique({ where: { id: t.row.id }, select: { suspendedAt: true } });
+  if (row?.suspendedAt) return { ok: false, reason: "state" };
+  if (t.row.level === "owner" || t.row.level === "coordinator") {
+    const others = await prisma.user.findMany({ where: { id: { not: t.row.id }, suspendedAt: null, role: { in: ["owner", "admin"] } }, select: { role: true, coordinator: true } });
+    if (!others.some((o) => { const l = levelOf(o); return l === "owner" || l === "coordinator"; })) return { ok: false, reason: "last" };
+  }
+  await prisma.user.update({ where: { id: t.row.id }, data: { suspendedAt: new Date(), sessionVersion: { increment: 1 } } });
+  await pausePersonalAccesses(t.row.id);
+  await prisma.passwordReset.deleteMany({ where: { userId: t.row.id } });
+  await auditAccount(actor.email, actor.level, "user.suspend", t.row.email);
+  return { ok: true };
+}
+
+/** Reactivates a suspended person. Their old sessions stay cut (they sign in again); their personal AI stays paused until they resume it. */
+export async function reactivateMember(actorId: string, targetId: string): Promise<MemberResult> {
+  const actor = await actorOf(actorId);
+  if (!actor) return { ok: false, reason: "denied" };
+  const t = await target(actor, targetId);
+  if (!t.ok) return t;
+  const done = await prisma.user.updateMany({ where: { id: t.row.id, suspendedAt: { not: null } }, data: { suspendedAt: null } });
+  if (done.count !== 1) return { ok: false, reason: "state" };
+  await auditAccount(actor.email, actor.level, "user.reactivate", t.row.email);
   return { ok: true };
 }
