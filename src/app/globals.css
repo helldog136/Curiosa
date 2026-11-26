@@ -232,6 +232,9 @@
 @keyframes help-tip-in { from { opacity: 0; } to { opacity: 1; } }
 .help-tip-bubble:not([hidden]) { animation: help-tip-in 0.12s ease-out; }
 
+/* Administration : un lien dans une phrase se reconnaît à autre chose que sa couleur (audit F-A11Y-005 : sombre, 7 pages). Les liens-boutons (arrondis, cadre, `data-btn`) ne sont pas soulignés. */
+:root[data-admin-theme] :is(p, dd, small, label, figcaption) a:not([class*="rounded"], [class*="border"], [data-btn]) { text-decoration: underline; text-underline-offset: 2px; }
+
 /* Accent secondaire choisi (attribut data-accent2 posé sur <html> seulement si accent2 est défini ET différent de l'accent) :
    boutons pleins, accents de détail, dégradé. Sans cet attribut, rien ci-dessous ne s'applique et le site garde son apparence d'origine (règle 60-30-10 : le secondaire reste dans les petits détails). */
 [data-accent2] [data-btn="primary"] { background-color: var(--v-accent); border-color: var(--v-accent); color: var(--v-accent-fg); transition: filter 0.15s; }
@@ -260,6 +263,3 @@
   border-color: color-mix(in srgb, var(--v-line) 65%, var(--v-fg));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--v-fg) 10%, transparent), 0 8px 20px -10px color-mix(in srgb, var(--v-fg) 28%, transparent);
 }
-
-/* Administration : un lien dans une phrase se reconnaît à autre chose que sa couleur (audit F-A11Y-005 : sombre, 7 pages). Les liens-boutons (arrondis, cadre, `data-btn`) ne sont pas soulignés. */
-:root[data-admin-theme] :is(p, dd, small, label, figcaption) a:not([class*="rounded"], [class*="border"], [data-btn]) { text-decoration: underline; text-underline-offset: 2px; }
