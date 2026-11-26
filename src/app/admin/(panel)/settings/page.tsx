@@ -40,12 +40,18 @@ import { siteUrl } from "@/core/config";
 import { HostedSections } from "@/components/admin/HostedSections";
 import { CoreAnchors } from "@/components/admin/CoreAnchors";
 import { coreAnchorMap, plainQuery } from "@/core/modules/coreSections";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 /** Vocabulary tab of `site.general` -> the tab id of this page. */
 const HOSTED_TAB: Record<string, string> = { identity: "site", visibility: "search" };
 const CORE_ANCHORS = coreAnchorMap(SETTINGS_HREF);
 
 const TRANSLATABLE = ["site.name", "site.tagline", "site.about", "footer.text", "privacy.extra"] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.settings"));
+}
 
 export default async function SettingsPage({ searchParams }: { searchParams?: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, config, advanced, user, locale } = await adminCtx("admin");

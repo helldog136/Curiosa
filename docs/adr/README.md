@@ -32,3 +32,4 @@ Rules: one decision per file; numbers are never reused; a changed decision gets 
 | [0008](0008-service-caller-identity-is-set-by-the-core.md) | A service method learns who calls it from the core, never from the caller |
 | [0009](0009-module-secrets-are-sealed-per-instance.md) | Module secrets are sealed per instance, behind a permission |
 | [0010](0010-onboarding-by-invitation.md) | People join by invitation: an e-mail, a role and a single-use link |
+| [0011](0011-admin-redesign-vocabulary-menu-and-access.md) | Admin redesign: "module" is the only word for an installed piece, the menu is declared by the module, one table answers who can open what |

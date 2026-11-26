@@ -6,8 +6,14 @@ import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { getRecognizedDetailed } from "@/core/modules/recognized";
 import { installedFrom, listCatalogues, statusOf } from "@/core/modules/personalCatalogues";
 import { PersonalView } from "./PersonalView";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => `${t("nav.extensions")} \u00b7 ${t("hub.tab.personal")}`);
+}
 
 export default async function PersonalCataloguesPage() {
   const { t, user, advanced } = await adminCtx("admin");

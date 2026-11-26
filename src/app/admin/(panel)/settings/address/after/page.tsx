@@ -15,10 +15,16 @@ import { TaskTick } from "@/components/admin/TaskTick";
 import { ui } from "@/components/admin/ui";
 import { setAfterTask } from "../actions";
 import { ACCOUNT_HREF, OVERLAY_PAGES_HREF, SETTINGS_ADDRESS_AFTER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const CHIP = { ok: ui.chipOk, warn: ui.chipWarn, fail: ui.chipDanger, skipped: ui.chip } as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("domain.after.title"));
+}
 
 export default async function AfterChangePage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale, config, advanced } = await adminCtx("admin");

@@ -41,6 +41,8 @@ import { memberFilter } from "@/core/services/mcp/teamView";
 import { createTokenAction } from "../assistants/actions";
 import { creatorLabels } from "../assistants/creatorLabels";
 import { assistantMembers } from "./assistantMembers";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 
 /** Couleur de la pastille de chaque niveau (elle accompagne toujours le nom écrit, jamais seule). */
@@ -55,6 +57,10 @@ async function lastLogins(emails: string[]): Promise<Map<string, Date>> {
   const rows = await prisma.auditLog.groupBy({ by: ["actor"], where: { actor: { in: emails.slice(0, 500) }, action: { in: LOGIN_ACTIONS } }, _max: { createdAt: true } });
   for (const r of rows) if (r._max.createdAt) out.set(r.actor, r._max.createdAt);
   return out;
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.users"));
 }
 
 /**

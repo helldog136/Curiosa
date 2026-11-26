@@ -39,6 +39,8 @@ import { PreviewButton, type PreviewPage } from "./PreviewDialog";
 import { appearanceLabels } from "./labels";
 import { resetSkinAction, saveAppearance, undoSkinAction } from "./actions";
 import { SETTINGS_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 /** Exemple affiché tant qu'aucune description personnalisée n'est enregistrée : le format est décrit dans docs/BACKGROUND.md. */
 const BG_EXAMPLE = JSON.stringify([
@@ -87,6 +89,10 @@ const ORIGIN_TONE: Record<"catalogue" | "address" | "file", BadgeTone> = { catal
 const originOf = (m: ManagedSkin): "catalogue" | "address" | "file" => (m.upload ? "file" : m.source === "personal" ? "address" : "catalogue");
 
 const FLASH = { updated: "appearance.updatedOk", reverted: "appearance.revertedOk", removed: "appearance.removedOk", removedActive: "appearance.removedActive" } as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.appearance"));
+}
 
 export default async function AppearancePage({ searchParams }: { searchParams?: Promise<{ done?: string; v?: string }> }) {
   const sp = (await searchParams) ?? {};
