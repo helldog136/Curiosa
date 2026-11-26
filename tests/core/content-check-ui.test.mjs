@@ -141,7 +141,7 @@ test("droits : la page et CHAQUE action sont réservées aux administrateurs ; l
   assert.ok(read("src/core/operations/tracker.ts").includes('"content-check": ["links"]'), "étape annoncée au suivi d'opérations");
   for (const d of [fr, en]) assert.ok(d["progress.step.links"]);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /key="maintenance" href=\{maintenanceTabList\.length > 0 \? MAINTENANCE_TAB_HREFS\[maintenanceTabList\[0\]!\] : HEALTH_HREF\}/);
+  assert.match(layout, /adminLink\(id, \{ tabs: maintenanceTabList/);
 });
 
 test("tableau de bord : une ligne sobre (ton « info »), seulement pour les administrateurs, jamais d'alarme", () => {

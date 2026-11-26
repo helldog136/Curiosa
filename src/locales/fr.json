@@ -4470,6 +4470,8 @@
   "family.tools.help": "Vos outils à vous : planning, carnet, annonces…",
   "redirects.line": "Une adresse courte de votre site qui envoie votre public ailleurs. Par exemple : {site}/twitch ouvre votre chaîne Twitch.",
   "nav.homeMenu": "Accueil et menu",
+  "nav.more": "Plus ({n})",
+  "nav.newTab": "ouvre un nouvel onglet",
   "homemenu.intro": "Votre page d'accueil, le menu de votre site et les boutons tout en haut.",
   "homemenu.tabs.label": "Parties d'Accueil et menu",
   "homemenu.tab.home": "Accueil",

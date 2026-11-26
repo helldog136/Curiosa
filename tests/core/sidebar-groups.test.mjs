@@ -16,7 +16,7 @@ const CORE_ENTRIES = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.se
 const HEADINGS = ["nav.content", "nav.community", "nav.tools", "nav.connections", "nav.site", "nav.admin", "nav.account"];
 
 test("every core entry key is used by the layout, in both languages", () => {
-  const layout = read(`${PANEL}/layout.tsx`);
+  const layout = read(`${PANEL}/layout.tsx`) + read("src/core/adminSidebar.ts");
   for (const k of [...CORE_ENTRIES, ...HEADINGS]) {
     assert.ok(en[k] && fr[k], `${k} exists in EN and FR`);
     // nav.content, nav.community and nav.tools are built as `nav.${id}` from the section list.
@@ -48,7 +48,8 @@ test("Short links: one name in both modes, for the sidebar, the page title and t
   assert.equal(en["nav.redirects"], "Short links");
   assert.equal(fr["nav.redirects"], "Liens courts");
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /<NavLink href=\{REDIRECTS_HREF\}>\{t\("nav\.redirects"\)\}<\/NavLink>/);
+  assert.match(layout, /NavLink/);
+  assert.match(read("src/core/adminSidebar.ts"), /id: "redirects", label: "nav\.redirects", href: REDIRECTS_HREF/);
   const page = read(`${PANEL}/redirects/page.tsx`);
   assert.match(page, /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/);
   assert.match(page, /t\("redirects\.line", \{ site \}\)/);
@@ -63,12 +64,12 @@ test("old addresses: the Short links page, the site menu and the social page kee
   for (const f of ["redirects/page.tsx", "navigation/page.tsx", "social/page.tsx", "home/page.tsx"]) assert.ok(fs.existsSync(`${PANEL}/${f}`), f);
 });
 
-test("Connections is a collapsed group (open on its own pages, state kept in the cookie); the other three are plain lists", () => {
+test("Connections is a collapsed group (open on its own pages, state kept in the cookie); the other sections are collapsible, open by default", () => {
   const layout = read(`${PANEL}/layout.tsx`);
   assert.match(layout, /<NavGroup id="connections" title=\{t\("nav\.connections"\)\}/);
   assert.match(layout, /openByDefault=\{false\}/);
   assert.match(layout, /menu\.connections\.length > 0/, "an empty Connections group is not shown");
-  assert.match(layout, /\(items\.length > 0 \|\| extra\) && \(/, "an empty section is not shown (a section extended by a module path is)");
+  assert.match(layout, /items\.length === 0 && !extra\) return null/, "an empty section is not shown (a section extended by a module path is)");
   assert.ok(!layout.includes("menu.community.items") && !layout.includes("collapsible"), "no sub-groups inside Community any more");
 });
 

@@ -6,6 +6,7 @@ import { MULTI_VALUE_RE, siteDefaultRef } from "./settingValues";
 import { checkDateTime, parsePeriod } from "../adminkit/values";
 import { PLATFORM_PATTERN } from "./platform";
 import { parseMenuPath } from "./menuPath";
+import { MENU_ICON_KEYS } from "../adminSidebar";
 import { socialSpecSchema } from "../socialSpec";
 import { shortLinkIssues, shortLinkSchema } from "./shortLink";
 import { actionRight, HISTORY, MAX_MODULE_RIGHTS, OPEN, RIGHT_ID_RE } from "../auth/rights";
@@ -283,6 +284,8 @@ export const manifestSchema = z.object({
   menuGroup: z.enum(["content", "community", "tools", "connections"]).optional(),
   /** (core 0.13.0, no `minCore` to declare) Where the module's entry sits in the admin sidebar: a dot-separated path of groups, 1 to 3 segments ("Networks.Twitch"). Words in English or French, or ids, in any case and with or without accents: the core resolves them to one canonical group. A module with a path is in the menu by default. An older core ignores the key. */
   adminMenu: z.string().min(1).max(120).refine((v) => parseMenuPath(v) !== null, { message: "adminMenu: 1 to 3 segments separated by dots, none empty, not starting with Site, Administration or Account" }).optional(),
+  /** Line icon of the entry in the admin sidebar, from the core set (`MENU_ICONS` in core/adminSidebar.ts). Absent: the icon of its section. An older core ignores the key. */
+  menuIcon: z.enum(MENU_ICON_KEYS).optional(),
   /** (core 0.13.0) Position of the entry inside its group (0 to 999, default 100): the lower comes first; at equal value connectors come first, then alphabetical. */
   adminMenuOrder: z.number().int().min(0).max(999).optional(),
   /** (core 0.13.0) Titles of the groups of the path, by canonical id, for a group the core does not know: `{ "shop": { "en": "Shop", "fr": "Boutique" } }`. */

@@ -330,9 +330,9 @@ test("Réglages : plus d'onglet Apparence ni de rappel vers Apparence ; le lien 
   assert.ok(!/header\.socials|header\.secondary|header\.button/.test(actions), "saveSettings ne touche plus à l'en-tête");
   assert.match(read("src/app/admin/(panel)/social/actions.ts"), /"header\.socials"/);
   assert.match(read("src/app/admin/(panel)/navigation/actions.ts"), /header\.secondaryHref[\s\S]*header\.buttonHref/);
-  const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /<NavLink href=\{APPEARANCE_HREF\}>\{t\("nav\.appearance"\)\}<\/NavLink>/);
-  assert.ok(layout.indexOf("APPEARANCE_HREF") < layout.indexOf("SETTINGS_HREF"));
+  const model = read("src/core/adminSidebar.ts");
+  assert.match(model, /id: "appearance", label: "nav\.appearance", href: APPEARANCE_HREF/);
+  assert.ok(model.indexOf("href: APPEARANCE_HREF") < model.indexOf("href: SETTINGS_HREF"));
   const appearance = read("src/app/admin/(panel)/appearance/page.tsx");
   assert.match(appearance, /<ThemePicker|<ColorSection/);
   assert.match(appearance, /text=\{config\.textColor\}|textColor/);

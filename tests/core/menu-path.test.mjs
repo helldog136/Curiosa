@@ -156,7 +156,7 @@ test("sidebar markup: the tree is built once, in the sections and before Connect
   assert.match(layout, /\.\.\.treeItems\]\)/, "pages of an unpinned instance stay under Extensions, tree entries are not among them");
   const group = read("src/components/admin/NavGroup.tsx");
   assert.match(group, /<details open=\{open\}/);
-  assert.match(group, /"aria-expanded": open/);
+  assert.match(group, /aria-expanded=\{open\}/);
   assert.match(group, /min-h-11/);
   assert.match(group, /focus-visible:outline/);
   assert.match(group, /try \{[\s\S]*document\.cookie[\s\S]*catch/, "remembering the state never throws");
@@ -167,8 +167,8 @@ test("sidebar markup: the tree is built once, in the sections and before Connect
   assert.match(nav, /openByDefault=\{false\}/);
   assert.match(nav, /stored=\{state\[id\]\}/);
   assert.ok(!/<script|dangerouslySetInnerHTML/.test(nav));
-  // Old markup of the plain group: no new attribute, no new class, when `tree` is off.
-  assert.match(group, /\$\{tree \? "min-h-11[^"]*" : ""\}text-\[13px\] font-semibold \$\{tree && here \? "text-accent" : "text-muted"\}/);
+  // (C1c) every group heading is a 44 px target with a decorative chevron; the tree groups are a little quieter than the section headings.
+  assert.match(group, /tree \? "text-\[13px\] font-semibold text-muted"/);
   assert.match(group, /<summary[\s\S]*onClick=\{\(e\) => \{ e\.preventDefault\(\); if \(here\) return;/, "the group of the current page cannot be folded away");
 });
 
