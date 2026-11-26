@@ -7,7 +7,7 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
-## Prochaine version (non publiée)
+## 0.51.0 — 2026-11-26
 
 ### Nouveautés
 
@@ -15,6 +15,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Every administration page has its own tab title: the page name, then the site name.** Several open tabs can finally be told apart, and a screen reader announces the page at each change.
 - **Un lien « Aller au contenu » apparaît dès la première touche Tab.** Au clavier, vous passez directement au contenu de la page sans parcourir tout le menu.
 - **(English) A “Skip to content” link appears on the first Tab key.** With a keyboard you go straight to the page content without walking through the whole menu.
+- **Les textes de l'administration sont plus lisibles : les couleurs atteignent le contraste AA.** Les textes secondaires et les pastilles se lisent mieux, en clair comme en sombre.
+- **(English) Administration text is easier to read: colours now reach AA contrast.** Secondary text and badges read better, in light and dark.
 
 ### Corrections
 
@@ -27,6 +29,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.
 - `compileSkin` : la règle `reduce` exclut `[data-ov-region="composition"]`. `composeEngine` met un fondu sous `reduce` (`opts.calm`, `data-calm`) et la sortie utilise `forwards`. Test : `tests/core/overlay-reduced-motion.test.mjs`.
+- Décision d'architecture 0011, entrée « module » du glossaire et règles d'ergonomie R34 à R37 ajoutées à `docs/`.
 
 ## 0.50.0 — 2026-11-26
 
