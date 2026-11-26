@@ -1,6 +1,7 @@
 import { Suspense, type ReactNode } from "react";
 import type { AdminUser } from "@/core/auth/access";
 import { hasRole } from "@/core/auth/access";
+import { canOpen, openable, type AccessContext } from "@/core/adminAccess";
 import type { Translator } from "@/core/i18n/dictionary";
 import { statsEnabled, statsSummary } from "@/core/stats";
 import { ui } from "@/components/admin/ui";
@@ -27,7 +28,7 @@ import { APPEARANCE_HREF, AUDIT_HREF, SETTINGS_HREF, SOCIAL_HREF } from "@/core/
  * Les blocs du tableau de bord : des composants serveur, chacun dans son `Suspense`. Un bloc lent (une extension qui tarde, une lecture de base) ne retient ni la page ni les autres blocs ;
  * un bloc qui échoue disparaît seul. Toute la logique est dans src/core/dashboard/ ; ici, seulement de la mise en page.
  */
-export type BlockCtx = { t: Translator; locale: string; defaultLocale: string; advanced: boolean; user: AdminUser; nav: readonly TodoNavItem[]; contentIds: readonly string[]; newPageHref: string };
+export type BlockCtx = { t: Translator; locale: string; defaultLocale: string; advanced: boolean; user: AdminUser; nav: readonly TodoNavItem[]; contentIds: readonly string[]; newPageHref: string; /** Which module owns each instance: lets the access table answer for the page of an instance (R35). */ owners: AccessContext };
 
 const ARROW = <span aria-hidden="true"> →</span>;
 const row = "flex items-center justify-between gap-3 rounded-xl px-3 py-2 min-h-11 hover:bg-accent/10";
@@ -67,7 +68,7 @@ export async function SetupBlock({ c }: { c: BlockCtx }) {
         {state.steps.map((s) => (
           <li key={s.id} className="flex items-center justify-between gap-3 py-2">
             <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true">{s.done ? "✅" : "⬜"}</span><span className={s.done ? "text-muted line-through" : "font-medium"}>{t(`dash.setup.${s.id}`)}</span></span>
-            {!s.done && <a href={s.href} className={`${ui.btn} min-h-11`}>{t("dash.setup.go")}{ARROW}</a>}
+            {!s.done && canOpen(c.user, s.href, c.owners) && <a href={s.href} className={`${ui.btn} min-h-11`}>{t("dash.setup.go")}{ARROW}</a>}
           </li>
         ))}
       </ul>
@@ -91,7 +92,7 @@ export async function HealthPill({ c }: { c: BlockCtx }) {
         {h.points.map((p) => (
           <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
             <span>{p.label}{p.help && <> <HelpTip help={p.help} name={p.label} always /></>}</span>
-            {p.href && <a href={p.href} className={`${ui.btn} min-h-11`}>{t("dash.health.open")}{ARROW}</a>}
+            {p.href && canOpen(c.user, p.href, c.owners) && <a href={p.href} className={`${ui.btn} min-h-11`}>{t("dash.health.open")}{ARROW}</a>}
           </li>
         ))}
       </ul>
@@ -168,7 +169,8 @@ export async function TodoBlock({ c }: { c: BlockCtx }) {
     loadCoreTodo({ user: c.user, t, locale: c.locale, defaultLocale: c.defaultLocale, nav: c.nav, toSetUp, skipDrafts: true }).catch(() => []),
     moduleTasks(env(c)).catch(() => []),
   ]);
-  const items = mergeTodo(core, mods);
+  // R35: a line that opens a page this person cannot open is not shown (the page keeps its own check).
+  const items = openable(c.user, mergeTodo(core, mods), c.owners);
   // R33: an empty "to do" card shows nothing.
   if (items.length === 0) return null;
   return (
@@ -193,7 +195,7 @@ export async function TodoBlock({ c }: { c: BlockCtx }) {
 export async function CreateBlock({ c }: { c: BlockCtx }) {
   const { t } = c;
   const declared = await moduleActions(env(c)).catch(() => []);
-  const actions = mergeQuick(declared, coreQuickActions({ user: c.user, t, advanced: c.advanced, nav: c.nav, declared }));
+  const actions = openable(c.user, mergeQuick(declared, coreQuickActions({ user: c.user, t, advanced: c.advanced, nav: c.nav, declared })), c.owners);
   // R33 / R18: with no creation button there is only one thing to do, and only an administrator can do it: the link. Other people see nothing.
   if (actions.length === 0 && !hasRole(c.user, "admin")) return null;
   return (

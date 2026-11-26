@@ -1,5 +1,6 @@
 import { currentUser } from "@/core/permissions";
-import { hasRole } from "@/core/auth/access";
+import { canOpen } from "@/core/adminAccess";
+import { ENTRIES_HREF } from "@/core/adminLinks";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { getSiteConfig } from "@/core/settings";
 import { searchContentEntries } from "@/core/content/adminSearch";
@@ -11,7 +12,7 @@ export async function GET(req: Request): Promise<Response> {
   const headers = { "cache-control": "private, no-store", "x-content-type-options": "nosniff" };
   const user = await currentUser();
   if (!user) return new Response("Unauthorized", { status: 401, headers });
-  if (!hasRole(user, "editor")) return Response.json({ entries: [] }, { headers });
+  if (!canOpen(user, ENTRIES_HREF)) return Response.json({ entries: [] }, { headers });
   const { locale } = await getAdminTranslator(user.locale);
   const config = await getSiteConfig();
   const entries = await searchContentEntries(new URL(req.url).searchParams.get("q"), locale, config.defaultLocale);

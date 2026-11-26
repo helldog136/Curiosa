@@ -60,6 +60,7 @@ const withSkin = (f, { tokens = SKIN_TOKENS, code = SKIN_CSS, skin = {} } = {}) 
 };
 const FAULTS = {
   "dashboard.valid": (f) => editManifest(f, (m) => { m.dashboard.tasks.push({ id: "ghost", label: { en: "{n} ghosts", fr: "{n} fantômes" }, href: "?tab=use" }); }),
+  "dashboard.coreLinkRight": (f) => editManifest(f, (m) => { m.dashboard.quickActions = [...(m.dashboard.quickActions ?? []), { id: "team", label: { en: "Open the team", fr: "Ouvrir l'équipe" }, href: "/admin/users" }]; }),
   "manifest.file": (f) => { f["module.json"] = null; },
   "manifest.valid": (f) => editManifest(f, (m) => { m.instances = "bogus"; }),
   "manifest.version": (f) => editManifest(f, (m) => { m.version = "1.0"; }),

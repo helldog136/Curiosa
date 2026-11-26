@@ -1,3 +1,4 @@
+import { canOpen, ownersOf } from "../adminAccess";
 import { cache } from "react";
 import type { AdminUser } from "@/core/auth/access";
 import { hasRole } from "@/core/auth/access";
@@ -104,5 +105,7 @@ export const searchEntriesFor = cache(async (user: AdminUser, t: Translator, loc
       }
     }
   }
-  return entries;
+  // R35 (C2a): a result is offered only when this person can open the page it leads to (the access table; the page keeps its own check).
+  const owners = ownersOf(actives.map((a) => ({ id: a.instance.id, moduleId: a.mod.manifest.id })));
+  return entries.filter((e) => canOpen(user, e.href, owners));
 });

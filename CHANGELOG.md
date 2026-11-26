@@ -17,6 +17,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Thin icons replace the emoji in the menu, and every row is easy to tap.** All rows are at least 44 px tall; on a phone the menu opens as a sheet that the Escape key closes.
 - **Un module peut choisir l'icône de son entrée de menu.**
 - **(English) A module can pick the icon of its menu entry.**
+- **Chacun ne voit que ce qu'il peut ouvrir.** Le menu, le tableau de bord (chiffres, tâches, raccourcis, cartes des modules) et la recherche ne proposent plus un lien vers une page que votre rôle n'ouvre pas.
+- **(English) Everyone sees only what they can open.** The menu, the dashboard (numbers, tasks, shortcuts, module cards) and the search no longer offer a link to a page your role cannot open.
+- **Un refus dit ce qui manque.** Au lieu de « Vous n'avez pas le droit de faire cela », le bandeau nomme l'accès demandé et à qui le demander.
+- **(English) A refusal says what is missing.** Instead of “You do not have permission to do that”, the notice names the access needed and who to ask.
 
 ### Corrections
 
@@ -27,6 +31,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page. Une tâche, une action ou une carte de module qui mène à une page que la personne ne peut pas ouvrir n'est pas affichée ; le kit signale (conseil) un lien vers une page du cœur sans `right`.
 - Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
 - **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
 - `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).

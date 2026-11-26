@@ -11,6 +11,7 @@
  */
 import { TIMED_OUT, withDeadline } from "../deadline";
 import { can, type AdminUser } from "../auth/access";
+import { canOpen, ownersOf, type AccessContext } from "../adminAccess";
 import { pickName } from "../instances";
 import type { ActiveInstance } from "../modules/registry";
 import { buildContext } from "../modules/context";
@@ -51,7 +52,7 @@ async function realActive(): Promise<ActiveInstance[]> {
 type Slot = { src: ModuleSource; a: ActiveInstance };
 
 /** Les instances qui ont une déclaration pour cette sorte d'élément, 5 par module au plus, dans l'ordre du site. */
-async function slotsFor(env: DashboardEnv, kind: "tasks" | "quickActions" | "cards"): Promise<Slot[]> {
+async function slotsFor(env: DashboardEnv, kind: "tasks" | "quickActions" | "cards"): Promise<{ slots: Slot[]; owners: AccessContext }> {
   const all = await (env.active ?? realActive)();
   const perModule = new Map<string, number>();
   const several = new Map<string, number>();
@@ -77,7 +78,7 @@ async function slotsFor(env: DashboardEnv, kind: "tasks" | "quickActions" | "car
       },
     });
   }
-  return out;
+  return { slots: out, owners: ownersOf(all.map((a) => ({ id: a.instance.id, moduleId: a.mod.manifest.id }))) };
 }
 
 /** Appelle UNE fonction de module : délai, mémoire courte, isolation. Renvoie la réponse brute, ou undefined si le module n'a pas répondu (jamais d'exception). */
@@ -123,7 +124,7 @@ const allowed = (env: DashboardEnv, moduleId: string, right: string | undefined)
 
 /** Les tâches des modules que cette personne a le droit de voir : nombre > 0 seulement, les plus nombreuses d'abord. */
 export async function moduleTasks(env: DashboardEnv): Promise<ModuleTask[]> {
-  const slots = await slotsFor(env, "tasks");
+  const { slots, owners } = await slotsFor(env, "tasks");
   const calls = budget();
   const jobs: Promise<ModuleTask | null>[] = [];
   for (const slot of slots) {
@@ -133,7 +134,7 @@ export async function moduleTasks(env: DashboardEnv): Promise<ModuleTask[]> {
       jobs.push((async () => {
         const n = parseTaskCount(await guarded(env, slot, `task:${decl.id}`, fn));
         const href = resolveHref(decl.href, { id: slot.src.instanceId, key: slot.src.instanceKey });
-        if (!n || !href) return null;
+        if (!n || !href || !canOpen(env.viewer, href, owners)) return null;
         const label = fillCount(pickWords(decl.label, env.locale, env.defaultLocale), n);
         return { ...slot.src, id: decl.id, label: slot.src.several ? `${label} (${slot.src.instanceName})` : label, n, href };
       })());
@@ -146,14 +147,14 @@ export async function moduleTasks(env: DashboardEnv): Promise<ModuleTask[]> {
 // ── Actions rapides : « Créer… » (déclaration seule, aucun code de module) ───────────────────────────────────────────────────────────────
 
 export async function moduleActions(env: DashboardEnv): Promise<ModuleAction[]> {
-  const slots = await slotsFor(env, "quickActions");
+  const { slots, owners } = await slotsFor(env, "quickActions");
   const out: ModuleAction[] = [];
   for (const slot of slots) {
     for (const decl of slot.a.mod.manifest.dashboard?.quickActions ?? []) {
       if (!allowed(env, slot.src.moduleId, decl.right)) continue;
       const href = resolveHref(decl.href, { id: slot.src.instanceId, key: slot.src.instanceKey });
       const label = cleanLabel(pickWords(decl.label, env.locale, env.defaultLocale));
-      if (!href || !label) continue;
+      if (!href || !label || !canOpen(env.viewer, href, owners)) continue;
       out.push({ ...slot.src, id: decl.id, label: slot.src.several ? `${label} (${slot.src.instanceName})` : label, href, icon: decl.icon ?? slot.src.icon });
     }
   }
@@ -166,7 +167,7 @@ const cleanLabel = (s: string): string => s.replace(/[\u0000-\u001f\u007f]+/g, "
 
 /** Les cartes d'information des modules (un chiffre, ou une courte liste), 4 au plus. Une carte « liste » vide dit pourquoi (`empty`) au lieu de disparaître si le module l'a prévu. */
 export async function moduleCards(env: DashboardEnv): Promise<ModuleCard[]> {
-  const slots = await slotsFor(env, "cards");
+  const { slots, owners } = await slotsFor(env, "cards");
   const calls = budget();
   const jobs: Promise<ModuleCard | null>[] = [];
   for (const slot of slots) {
@@ -182,6 +183,9 @@ export async function moduleCards(env: DashboardEnv): Promise<ModuleCard[]> {
         if (data.type === "list" && data.rows.length === 0 && !empty) return null;
         const title = cleanLabel(pickWords(decl.title, env.locale, env.defaultLocale));
         const href = decl.href ? resolveHref(decl.href, { id: slot.src.instanceId, key: slot.src.instanceKey }) : null;
+        // R35: a card that points to a page this person cannot open is not shown (its own `right` was checked above); a row link they cannot open is only text.
+        if (href && !canOpen(env.viewer, href, owners)) return null;
+        for (const r of data.type === "list" ? data.rows : []) if (r.href && !canOpen(env.viewer, r.href, owners)) delete r.href;
         return { ...slot.src, id: decl.id, title: slot.src.several ? `${title} (${slot.src.instanceName})` : title, ...(href ? { href } : {}), data, ...(empty ? { empty } : {}) };
       })());
     }

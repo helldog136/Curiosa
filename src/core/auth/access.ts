@@ -187,6 +187,28 @@ export function shouldAuditDenied(userId: string, what: string, now = Date.now()
   return true;
 }
 
+/* ── Which page was refused (rule R35, admin redesign C2a): kept in memory for the next dashboard view of THAT person, so that the notice can name the missing access. ──
+ * Nothing about it travels in the address (a crafted `?denied=` can never make the notice say anything), and it is never read for another person. One entry per person,
+ * forgotten after two minutes or at the first read; the memory is bounded like the audit one above. */
+const DENIED_NEED_TTL = 2 * 60_000;
+const deniedNeed = ((globalThis as unknown as { curiosaDeniedNeed?: Map<string, { need: Need; at: number }> }).curiosaDeniedNeed ??= new Map<string, { need: Need; at: number }>());
+
+/** Remembers the need of the page this person was just refused (the last one wins). */
+export function rememberDenied(userId: string, need: Need, now = Date.now()): void {
+  if (deniedNeed.size >= DENIED_MAX) {
+    for (const [k, v] of deniedNeed) if (now - v.at >= DENIED_NEED_TTL) deniedNeed.delete(k);
+    if (deniedNeed.size >= DENIED_MAX) { const first = deniedNeed.keys().next().value; if (first !== undefined) deniedNeed.delete(first); }
+  }
+  deniedNeed.set(userId, { need, at: now });
+}
+
+/** The need of the last refusal of this person (and forgets it), or null when none is recent. */
+export function takeDenied(userId: string, now = Date.now()): Need | null {
+  const seen = deniedNeed.get(userId);
+  deniedNeed.delete(userId);
+  return seen && now - seen.at < DENIED_NEED_TTL ? seen.need : null;
+}
+
 export function needLabel(need: Need): string {
   return typeof need === "string" ? need : `right:${need.right}`;
 }

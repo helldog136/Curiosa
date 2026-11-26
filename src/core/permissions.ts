@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { auth } from "@/auth";
 import { prisma } from "./db";
 import { actorKindOf } from "./journal/events";
-import { accessGate, can, deniedPath, GATE_PATH, hasRole, isMember, isOwner, loadAdminUser, needLabel, shouldAuditDenied, type AdminUser, type Need } from "./auth/access";
+import { accessGate, can, deniedPath, GATE_PATH, hasRole, isMember, isOwner, loadAdminUser, needLabel, rememberDenied, shouldAuditDenied, type AdminUser, type Need } from "./auth/access";
 
 export type { Role, AdminUser, Need, Level } from "./auth/access";
 export { can, isOwner, isMember };
@@ -33,6 +33,7 @@ export async function requireRole(min: Need, opts: { allowUnenrolled?: boolean; 
   const gate = accessGate(user, min, opts);
   if (gate === "denied" && user) {
     await auditDenied(user, needLabel(min));
+    rememberDenied(user.id, min);
     redirect(deniedPath(user));
   }
   if (gate !== "ok") redirect(GATE_PATH[gate]);
