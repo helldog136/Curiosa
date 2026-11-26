@@ -78,7 +78,8 @@ async function slotsFor(env: DashboardEnv, kind: "tasks" | "quickActions" | "car
       },
     });
   }
-  return { slots: out, owners: ownersOf(all.map((a) => ({ id: a.instance.id, moduleId: a.mod.manifest.id }))) };
+  const groups = await import("../modules/placesLoad").then((m) => m.currentVocabulary().groups.map((g) => g.id)).catch(() => undefined);
+  return { slots: out, owners: ownersOf(all.map((a) => ({ id: a.instance.id, moduleId: a.mod.manifest.id })), groups) };
 }
 
 /** Appelle UNE fonction de module : délai, mémoire courte, isolation. Renvoie la réponse brute, ou undefined si le module n'a pas répondu (jamais d'exception). */

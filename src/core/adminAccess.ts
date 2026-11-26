@@ -1,5 +1,5 @@
 import { accessGate, can, type AdminUser, type Need } from "./auth/access";
-import { ADMIN_ROUTE_SEGMENTS, RESERVED_GROUPS } from "./modules/places";
+import { ADMIN_ROUTE_SEGMENTS, BUILTIN_VOCABULARY, RESERVED_GROUPS } from "./modules/places";
 import { entryHref } from "./adminSidebar";
 import { navItemVisible } from "./modules/adminMenu";
 
@@ -24,7 +24,7 @@ export type AccessRule = {
   allowUnenrolled?: true;
   /** The sources (relative to `src/app/admin`) whose `adminCtx(...)` calls must say `need`: a page, plus the view components it delegates to. Empty: a redirect to another row. */
   files: readonly string[];
-  /** The place pages row: it claims `/admin/<group>/...` only when `<group>` is not the first segment of a core page nor a reserved group (otherwise an unknown core path would look open). */
+  /** The place pages row: it claims `/admin/<group>/...` only when `<group>` is a real place group (the vocabulary), never a core page segment or a reserved group. */
   place?: true;
 };
 
@@ -65,6 +65,7 @@ export const ACCESS_RULES: readonly AccessRule[] = [
 ];
 
 const PUBLIC_SITE = "/";
+const BUILTIN_GROUPS: readonly string[] = BUILTIN_VOCABULARY.groups.map((g) => g.id);
 
 /** The path of an address: no query, no hash, no trailing slash, never a protocol-relative or absolute URL. Null when it is not a plain path. */
 export function pathOf(href: string): string | null {
@@ -72,10 +73,9 @@ export function pathOf(href: string): string | null {
   const cut = href.search(/[?#]/);
   let p = cut === -1 ? href : href.slice(0, cut);
   if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1);
-  let decoded: string;
-  try { decoded = decodeURIComponent(p); } catch { return null; }
-  // A dot segment or a control character never names an admin page (no `/admin/../x` games).
-  if (/[\u0000-\u001f\u007f]/.test(decoded) || decoded.split("/").some((s) => s === ".." || s === ".")) return null;
+  // Next matches the DECODED path, the table the raw one: an encoded character (`%62ackup`) could name a page the table reads as another. No admin address needs one
+  // (identifiers are plain), so an address with `%` is simply not openable. A dot segment or a control character never names an admin page either.
+  if (p.includes("%") || /[\u0000-\u001f\u007f]/.test(p) || p.split("/").some((s) => s === ".." || s === ".")) return null;
   return p;
 }
 
@@ -88,11 +88,12 @@ function matches(pattern: string, path: string): boolean {
 }
 
 /** The row of an address, or null when the table does not know it. */
-export function ruleFor(href: string): AccessRule | null {
+export function ruleFor(href: string, ctx: AccessContext = {}): AccessRule | null {
   const path = pathOf(href);
   if (path === null) return null;
   const group = path.split("/")[2] ?? "";
-  return ACCESS_RULES.find((r) => matches(r.pattern, path) && (!r.place || (!ADMIN_ROUTE_SEGMENTS.includes(group) && !RESERVED_GROUPS.includes(group)))) ?? null;
+  const groups = ctx.placeGroups ?? BUILTIN_GROUPS;
+  return ACCESS_RULES.find((r) => matches(r.pattern, path) && (!r.place || (groups.includes(group) && !ADMIN_ROUTE_SEGMENTS.includes(group) && !RESERVED_GROUPS.includes(group)))) ?? null;
 }
 
 /** What the page at this address asks (null: unknown address, or not an admin page). */
@@ -101,20 +102,20 @@ export function needOf(href: string): AccessNeed | null {
 }
 
 /** For an instance page: which module owns the instance (null when unknown). The caller reads it from the installed instances. */
-export type AccessContext = { moduleOf?: (instanceId: string) => string | null | undefined };
+export type AccessContext = { moduleOf?: (instanceId: string) => string | null | undefined; /** The place groups that exist (vocabulary of the site); default: the core's own groups. */ placeGroups?: readonly string[] };
 
 /**
  * May this person open the page at `href`? Exactly the answer of the gate that the page itself applies (`accessGate`, the function behind `requireRole`).
- * Unknown address: no. The public site (`/`): yes (it is public). Never use it instead of the gate of a page or of an action.
+ * Unknown address (or one with an encoded character): no. The public site (`/`): yes (it is public). Never use it instead of the gate of a page or of an action.
  */
 export function canOpen(user: AdminUser | null, href: string, ctx: AccessContext = {}): boolean {
   if (pathOf(href) === PUBLIC_SITE) return true;
-  const rule = ruleFor(href);
+  const rule = ruleFor(href, ctx);
   if (!rule || !user) return false;
   const opts = rule.allowUnenrolled ? { allowUnenrolled: true } : {};
   if (rule.need !== "instance") return accessGate(user, rule.need, opts) === "ok";
   const path = pathOf(href)!;
-  const moduleId = ctx.moduleOf?.(decodeURIComponent(path.split("/")[3] ?? ""));
+  const moduleId = ctx.moduleOf?.(path.split("/")[3] ?? "");
   return typeof moduleId === "string" && moduleId !== "" && accessGate(user, { right: `${moduleId}:open` }, opts) === "ok";
 }
 
@@ -124,9 +125,9 @@ export function openable<T extends { href: string }>(user: AdminUser | null, ite
 }
 
 /** Which module owns each instance, from the list of installed instances: the context that lets `canOpen` answer for the page of an instance. No right is read here. */
-export function ownersOf(items: readonly { id: string; moduleId: string }[]): AccessContext {
+export function ownersOf(items: readonly { id: string; moduleId: string }[], placeGroups?: readonly string[]): AccessContext {
   const owner = new Map(items.map((i) => [i.id, i.moduleId] as const));
-  return { moduleOf: (id) => owner.get(id) };
+  return { moduleOf: (id) => owner.get(id), ...(placeGroups ? { placeGroups } : {}) };
 }
 
 /**

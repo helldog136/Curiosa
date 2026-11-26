@@ -49,7 +49,7 @@ function panelPages() {
     .filter((p) => !p.includes("@modal"))
     .map((p) => {
       const rel = path.relative(path.join(ROOT, "(panel)"), path.dirname(p)).split(path.sep).filter((s) => s !== "" && !/^\(.*\)$/.test(s));
-      const segs = rel.filter((s) => !s.startsWith("[[")).map((s) => (s === "[group]" ? "zzgroup" : s === "[page]" ? "zzpage" : s.startsWith("[") ? "x1" : s));
+      const segs = rel.filter((s) => !s.startsWith("[[")).map((s) => (s === "[group]" ? "live" : s === "[page]" ? "zzpage" : s.startsWith("[") ? "x1" : s));
       return { file: p, href: `/admin${segs.length ? `/${segs.join("/")}` : ""}` };
     });
 }
@@ -128,7 +128,7 @@ test("the instance page asks `<module>:open` after the member check: the table s
 
 test("the answer is the answer of the gate: every row, every kind of person, the need read from the page source", () => {
   for (const rule of A.ACCESS_RULES) {
-    const probe = rule.pattern.replace("/**", "/x1").replace(":id", "i-1").replace(":group", "zzgroup").replace(":page", "zzpage");
+    const probe = rule.pattern.replace("/**", "/x1").replace(":id", "i-1").replace(":group", "live").replace(":page", "zzpage");
     const asks = rule.files.length ? needsIn(path.join(ROOT, rule.files[0]))[0] : { need: rule.need, unenrolled: false };
     for (const [who, u] of Object.entries(PEOPLE)) {
       for (const state of [{}, { needsTwoFactor: true }, { mustChangePassword: true }]) {
@@ -152,6 +152,12 @@ const OPENS = {
   "/admin/drafts": ["OWNER", "COORD", "ADMIN", "EDITOR", "ENTRIES_ONLY"],
   "/admin/redirects": ["OWNER", "COORD", "ADMIN", "EDITOR", "ENTRIES_ONLY"],
   "/admin/settings#privacy": ["OWNER", "COORD", "ADMIN"],
+  "/admin/settings/address": ["OWNER", "COORD", "ADMIN"],
+  "/admin/navigation": ["OWNER", "COORD", "ADMIN"],
+  "/admin/navigation/header": ["OWNER", "COORD", "ADMIN"],
+  "/admin/extensions/updates": ["OWNER", "COORD", "ADMIN"],
+  "/admin/overlay-pages/p1": ["OWNER", "COORD", "ADMIN"],
+  "/admin/overlay-pages/p1/skin": ["OWNER", "COORD", "ADMIN"],
   "/admin/appearance": ["OWNER", "COORD", "ADMIN"],
   "/admin/home": ["OWNER", "COORD", "ADMIN"],
   "/admin/social": ["OWNER", "COORD", "ADMIN"],
@@ -190,7 +196,7 @@ test("an instance page opens only for someone who holds the access of the module
 test("the public site is open to anyone; what the table does not know is closed (deny by default)", () => {
   assert.equal(A.canOpen(null, "/"), true);
   assert.equal(A.canOpen(OWNER, "/"), true);
-  for (const href of ["/admin/nope", "/admin/backup/restore", "/admin/maintenance/foo", "/admin/users/roles/x", "//evil.test/admin", "https://evil.test/admin", "admin/users", "", "/admin/../admin/users", "/admin/%2e%2e/users", "/admin\\users", "/api/admin/backup", "/blog", "javascript:alert(1)", "/admin/\u0000"]) {
+  for (const href of ["/admin/nope", "/admin/backup/restore", "/admin/%62ackup/restore", "/admin/%75sers/x", "/admin/upload/x", "/admin/zzgroup/zzpage", "/admin/maintenance/foo", "/admin/users/roles/x", "//evil.test/admin", "https://evil.test/admin", "admin/users", "", "/admin/../admin/users", "/admin/%2e%2e/users", "/admin\\users", "/api/admin/backup", "/blog", "javascript:alert(1)", "/admin/\u0000"]) {
     assert.equal(A.canOpen(OWNER, href, OWNERS), false, JSON.stringify(href));
   }
   assert.equal(A.canOpen(null, "/admin"), false, "nobody signed in");
@@ -365,14 +371,14 @@ test("denied.* texts: both languages, same {variables}, no exclamation mark, no 
   for (const id of ["backup", "updates", "security", "mcp.tokens", "modules.install", "team", "roles"]) assert.ok(en[`denied.area.${id}`] && fr[`denied.area.${id}`], id);
 });
 
-test("the refusal is remembered for the next dashboard view of the SAME person, once, for two minutes", () => {
+test("the refusal is remembered for the next dashboard view of the SAME person, once, for 30 seconds", () => {
   const now = 1_000_000;
   Acc.rememberDenied("u-a", "admin", now);
   Acc.rememberDenied("u-b", { right: "core:backup" }, now);
   assert.equal(Acc.takeDenied("u-c", now + 1), null, "another person sees nothing");
   assert.deepEqual(Acc.takeDenied("u-b", now + 1000), { right: "core:backup" });
   assert.equal(Acc.takeDenied("u-b", now + 1001), null, "read once");
-  assert.equal(Acc.takeDenied("u-a", now + 3 * 60_000), null, "forgotten after two minutes");
+  assert.equal(Acc.takeDenied("u-a", now + 31_000), null, "forgotten after 30 seconds");
   Acc.rememberDenied("u-a", "admin", now);
   Acc.rememberDenied("u-a", "editor", now + 5);
   assert.equal(Acc.takeDenied("u-a", now + 10), "editor", "the last one wins");
@@ -390,4 +396,53 @@ test("the gate remembers the need it refused, and the dashboard words it without
   // The redirect itself did not change: old links and the tests of every gate keep their address.
   assert.equal(Acc.deniedPath(EDITOR), "/admin?denied=1");
   assert.equal(Acc.deniedPath(NOBODY), "/admin/no-access");
+});
+
+test("an unknown group is closed; a group of the site vocabulary is open (the caller passes its groups)", () => {
+  assert.equal(A.canOpen(EDITOR, "/admin/zzgroup/zzpage", OWNERS), false);
+  assert.equal(A.canOpen(EDITOR, "/admin/zzgroup/zzpage", A.ownersOf([], ["zzgroup"])), true);
+  assert.equal(A.canOpen(EDITOR, "/admin/backup/zzpage", A.ownersOf([], ["backup"])), false, "a core segment is never a place group");
+  assert.equal(A.canOpen(EDITOR, "/admin/community/games", OWNERS), true, "a core vocabulary group");
+});
+
+test("the notice sentence for reserved rights is true: those rights are never delegable and only owner and coordination hold them", async () => {
+  const R = await import("@/core/auth/rights");
+  for (const id of ["backup", "updates", "security", "mcp.tokens", "modules.install", "team", "roles"]) {
+    const right = `core:${id}`;
+    assert.ok(R.isReserved(right), right);
+    assert.ok(R.LEVEL_RESERVED.coordinator.includes(right) && R.LEVEL_RESERVED.owner.includes(right), right);
+    assert.ok(!R.LEVEL_RESERVED.admin.includes(right) && !R.LEVEL_RESERVED.editor.includes(right), right);
+    assert.ok(!R.CORE_DELEGABLE.includes(right), right);
+  }
+});
+
+test("denial memory: bounded, expired entries purged first, two people never mix", () => {
+  const now = 5_000_000;
+  for (let i = 0; i < 1000; i++) Acc.rememberDenied(`old-${i}`, "admin", now - 60_000);
+  Acc.rememberDenied("fresh-1", "editor", now); // at the cap: the expired ones are purged
+  assert.equal(Acc.takeDenied("old-0", now + 1), null);
+  assert.equal(Acc.takeDenied("fresh-1", now + 1), "editor");
+  for (let i = 0; i < 1000; i++) Acc.rememberDenied(`live-${i}`, "admin", now);
+  Acc.rememberDenied("extra", "owner", now); // nothing expired: the oldest goes
+  assert.equal(Acc.takeDenied("live-0", now + 1), null, "evicted");
+  assert.equal(Acc.takeDenied("live-999", now + 1), "admin");
+  assert.equal(Acc.takeDenied("extra", now + 1), "owner");
+  Acc.rememberDenied("p1", { right: "core:backup" }, now);
+  Acc.rememberDenied("p2", "admin", now);
+  assert.equal(Acc.takeDenied("p2", now + 1), "admin");
+  assert.deepEqual(Acc.takeDenied("p1", now + 1), { right: "core:backup" });
+});
+
+test("the gate does not remember a link prefetch", () => {
+  assert.match(read("src/core/permissions.ts"), /if \(!\(await isPrefetch\(\)\)\) rememberDenied\(user\.id, min\);/);
+});
+
+test("the 'unlisted' line of the dashboard (module names and counts) is shown only to people who can open the Modules page", () => {
+  const page = read(`${ROOT}/(panel)/page.tsx`);
+  assert.match(page, /advanced && canOpen\(user, EXTENSIONS_HREF, owners\) \? unlistedEntries\(allNav\)/);
+});
+
+test("the dashboard blocks are server components: nothing here crosses to the browser", () => {
+  const dir = "src/components/admin/dashboard";
+  for (const f of fs.readdirSync(dir)) assert.doesNotMatch(read(`${dir}/${f}`), /^\s*["']use client["']/m, f);
 });

@@ -1,5 +1,6 @@
 import { adminCtx } from "@/core/admin";
 import { takeDenied } from "@/core/auth/access";
+import { currentVocabulary } from "@/core/modules/placesLoad";
 import { canOpen, openableModuleEntries, ownersOf } from "@/core/adminAccess";
 import { denialText } from "@/core/adminDenial";
 import { prisma } from "@/core/db";
@@ -24,7 +25,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const { t, locale, config, advanced, user } = await adminCtx("member");
   const allNav = await getAdminNav(config.defaultLocale, config.defaultLocale);
   // R35: the entries of the modules this person may open (the rule of the menu, then the access table), and who owns each instance for the pages of instances.
-  const owners = ownersOf(allNav);
+  const owners = ownersOf(allNav, currentVocabulary().groups.map((g) => g.id));
   const nav = openableModuleEntries(user, allNav, owners);
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
@@ -34,7 +35,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const [counts, draftList, unlisted, redirects, instanceCount, modules] = await Promise.all([
     dashboardEntryCounts(nav),
     listDrafts(nav, config.defaultLocale, { limit: 5 }),
-    advanced ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
+    advanced && canOpen(user, EXTENSIONS_HREF, owners) ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
     prisma.module.count(),

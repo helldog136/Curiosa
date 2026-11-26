@@ -189,8 +189,8 @@ export function shouldAuditDenied(userId: string, what: string, now = Date.now()
 
 /* ── Which page was refused (rule R35, admin redesign C2a): kept in memory for the next dashboard view of THAT person, so that the notice can name the missing access. ──
  * Nothing about it travels in the address (a crafted `?denied=` can never make the notice say anything), and it is never read for another person. One entry per person,
- * forgotten after two minutes or at the first read; the memory is bounded like the audit one above. */
-const DENIED_NEED_TTL = 2 * 60_000;
+ * forgotten after 30 seconds or at the first read; background renders (link prefetch) never write it, see permissions.ts; the memory is bounded like the audit one above. */
+const DENIED_NEED_TTL = 30_000;
 const deniedNeed = ((globalThis as unknown as { curiosaDeniedNeed?: Map<string, { need: Need; at: number }> }).curiosaDeniedNeed ??= new Map<string, { need: Need; at: number }>());
 
 /** Remembers the need of the page this person was just refused (the last one wins). */

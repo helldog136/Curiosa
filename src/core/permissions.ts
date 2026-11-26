@@ -25,6 +25,17 @@ export async function auditDenied(user: AdminUser, what: string): Promise<void> 
   if (shouldAuditDenied(user.id, what)) await audit(user.email, "access.denied", what);
 }
 
+/** A background render (link prefetch) is not a refusal the person has seen: it must not overwrite the one they are about to read. */
+async function isPrefetch(): Promise<boolean> {
+  try {
+    const { headers } = await import("next/headers");
+    const h = await headers();
+    return h.has("next-router-prefetch") || (h.get("purpose") ?? "").toLowerCase() === "prefetch" || (h.get("sec-purpose") ?? "").toLowerCase().includes("prefetch");
+  } catch {
+    return false; // outside a request (tests, scripts): not a prefetch
+  }
+}
+
 /** À appeler en tête de chaque page ET de chaque action serveur d'admin. `need` : un palier (« editor », « admin », « owner »), « member » (tout accès) ou `{ right }`. */
 /** `allowUnenrolled` : seulement pour la page « Mon compte » (où l'on active la double vérification exigée) et ses actions. `allowForced` : seulement pour « Choisissez votre mot de passe ». */
 export async function requireRole(min: Need, opts: { allowUnenrolled?: boolean; allowForced?: boolean } = {}): Promise<AdminUser> {
@@ -33,7 +44,7 @@ export async function requireRole(min: Need, opts: { allowUnenrolled?: boolean; 
   const gate = accessGate(user, min, opts);
   if (gate === "denied" && user) {
     await auditDenied(user, needLabel(min));
-    rememberDenied(user.id, min);
+    if (!(await isPrefetch())) rememberDenied(user.id, min);
     redirect(deniedPath(user));
   }
   if (gate !== "ok") redirect(GATE_PATH[gate]);

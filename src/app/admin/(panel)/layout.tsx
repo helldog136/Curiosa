@@ -19,7 +19,7 @@ import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
 import { buildMenuTree, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
-import { fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
+import { currentVocabulary, fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
 import { placeBadges, qualifyLabels } from "@/core/modules/places";
 import { SettingsSearch } from "@/components/admin/SettingsSearch";
 import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
@@ -55,7 +55,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const twin = hasRole(user, OVERLAY_NEED) ? await pendingTwinOffer(liveTwinState, locale).catch(() => null) : null;
   // (C2a, R35) One access table decides what the menu shows: a module entry stays only when its rule AND the table's answer for its address say yes (never more than before).
   const everyNav = await getAdminNav(locale, config.defaultLocale);
-  const owners = ownersOf(everyNav);
+  const owners = ownersOf(everyNav, currentVocabulary().groups.map((g) => g.id));
   const allNav = openableModuleEntries(user, everyNav, owners);
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).

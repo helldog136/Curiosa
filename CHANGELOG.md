@@ -31,7 +31,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
-- Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page. Une tâche, une action ou une carte de module qui mène à une page que la personne ne peut pas ouvrir n'est pas affichée ; le kit signale (conseil) un lien vers une page du cœur sans `right`.
+- Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page.
+- Une tâche, une action ou une carte de module qui mène à une page que la personne ne peut pas ouvrir est maintenant masquée : le module doit aussi donner l'accès « ouvrir » aux rôles concernés. Le kit signale (conseil `dashboard.coreLinkRight`) un lien vers une page du cœur sans `right`.
 - Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
 - **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
 - `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
