@@ -12,7 +12,7 @@ export function NavLink({ href, children, external, exact, also = [], badge = 0,
   const here = !external && isCurrent(href, path, search, { exact, also });
   const cls = `${touch ? "flex min-h-11 items-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent" : "block"} rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent`;
   return (
-    <a href={href} aria-current={here ? "page" : undefined} className={`${cls} ${here ? "bg-accent/10 font-semibold text-accent" : ""}`} {...(external ? { target: "_blank", rel: "noopener" } : {})}>
+    <a href={href} aria-current={here ? "page" : undefined} className={`${cls} ${here ? "bg-accent-tint font-semibold text-accent-text" : ""}`} {...(external ? { target: "_blank", rel: "noopener" } : {})}>
       <span className="flex items-center justify-between gap-2">
         <span>{children}</span>
         {status && <span data-testid="admin-status" title={status.hint} className={`rounded-full px-2 text-xs font-medium leading-5 ${BADGE[status.tone]}`}>{status.label}{status.hint && <span className="sr-only"> — {status.hint}</span>}</span>}

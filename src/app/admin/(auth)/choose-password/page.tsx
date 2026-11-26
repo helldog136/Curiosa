@@ -7,8 +7,14 @@ import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { choosePassword, signOutForced } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ADMIN_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("choosePassword.title"));
+}
 
 /** Seule page accessible tant que le mot de passe est temporaire : la personne y choisit le sien (ou se déconnecte). Rien d'autre de l'admin ne s'ouvre avant. */
 export default async function ChoosePasswordPage() {

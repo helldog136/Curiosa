@@ -40,6 +40,10 @@ Read: [docs/MAINTENANCE-IA.md](docs/MAINTENANCE-IA.md), [docs/formal/approval-qu
 
 A message that the Discord connector writes and keeps up to date in a Discord channel. It lives in the modules repository (`helldog136/curiosa-extras`, module `discord`), not in this one: the core has no such concept, so it is only named here.
 
+## Module
+
+A piece installed from the catalogue (or from a personal catalogue) that adds pages, elements or tools to the site, described by its `module.json`. It is the only word for that concept, in English and in French: never "extension", "plugin", "add-on" or "fonctionnalité". The route `/admin/extensions`, the `extensions.*` translation keys and the manifest keys keep their historical names. "Feature" in the AI settings (`aim.*`) is a different thing and is kept. See [ADR 0011](docs/adr/0011-admin-redesign-vocabulary-menu-and-access.md) and the interface glossary in [docs/TRANSLATING.md](docs/TRANSLATING.md).
+
 ## Module candidate
 
 The version of a module that is being checked before it replaces, or becomes, what the site runs: the downloaded copy in a temporary `.incoming-*` folder of the modules directory (the `candidate` of `installModule`). It must pass, in this order, before anything is activated: a readable `module.json`, the expected id, a compatible core, the main file present, the size limit, then the **load check** in a fresh process (`preflightModule`, [`loadCheck.ts`](src/core/modules/loadCheck.ts)), then, once the files are placed, the same check inside the site process from a fresh copy (`verifyModuleLoad`, [`registry.ts`](src/core/modules/registry.ts)). A failure undoes everything: the old version stays, or nothing is installed. The same two checks guard updates and reinstalls ([`reinstall.ts`](src/core/modules/reinstall.ts)). A **dependency candidate** is a different thing: a module ranked as a possible provider of a missing service ([`dependencyPlan.ts`](src/core/modules/dependencyPlan.ts)).

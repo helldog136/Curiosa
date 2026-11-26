@@ -12,8 +12,14 @@ import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsL
 import { loadInstalled } from "./loadInstalled";
 import { HelpTip } from "@/components/admin/HelpTip";
 import { PlacedNotice } from "@/components/admin/PlacedNotice";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.extensions"));
+}
 
 /** Extensions > Installées : tout ce qui est installé sur le site, par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec son état, ses réglages et « épingler au menu ». */
 export default async function ExtensionsPage({ searchParams }: { searchParams: Promise<NoticeQuery & { family?: string; placed?: string }> }) {

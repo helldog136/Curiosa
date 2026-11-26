@@ -6,6 +6,16 @@ import { getInstanceLabeler } from "@/core/modules/labels";
 import { EntryForm } from "../EntryForm";
 import { pageSkinOptions } from "@/core/skins/pageSkin";
 import { entriesHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ c?: string }> }): Promise<Metadata> {
+  const { c } = await searchParams;
+  return adminTitle(async ({ t, locale, config }) => {
+    const collection = c ? await getInstanceByKey(c) : undefined;
+    return collection ? `${t("entries.new")} \u00b7 ${(await getInstanceLabeler(locale, config.defaultLocale)).label(collection)}` : "";
+  }, { need: "editor" });
+}
 
 export default async function NewEntryPage({ searchParams }: { searchParams: Promise<{ c?: string; locale?: string }> }) {
   const { t, locale: adminLocale, config, advanced } = await adminCtx("editor");

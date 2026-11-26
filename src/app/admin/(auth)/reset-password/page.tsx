@@ -2,8 +2,14 @@ import { getAdminTranslator } from "@/core/i18n/request";
 import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { ResetPasswordForm } from "@/components/admin/ResetPasswordForm";
 import { saveNewPasswordAction, peekLinkAction } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("reset.title"));
+}
 
 /** Public page of a reset link (token in the address fragment; no-store and no-referrer headers come from next.config.mjs). */
 export default async function ResetPasswordPage() {

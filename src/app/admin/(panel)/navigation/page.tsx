@@ -15,6 +15,8 @@ import { ensureMenuMigrated, loadMenu } from "@/core/menuStore";
 import { AssistantUndoNotice } from "@/components/admin/AssistantUndoNotice";
 import { navigationRestorePoint } from "@/core/maintenance/siteNavigation";
 import { restoreAssistantMenu, saveNavigation } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,10 @@ const STRINGS = [
   "tree", "missing", "notInMenu", "notInMenuHelp", "notInMenuNone", "totalFull",
   "moved", "movedInto", "movedOut", "added", "removed", "blocked.group", "blocked.hasChildren", "blocked.full", "limits",
 ] as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("navigation.title"));
+}
 
 export default async function NavigationPage() {
   const { t, locale, config, advanced } = await adminCtx("admin");

@@ -11,6 +11,12 @@ import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } fr
 import { dashboardPlan } from "@/core/dashboard/layout";
 import { ActivityBlock, CardsBlock, CreateBlock, HealthPill, SetupBlock, Slot, StorageBlock, TodoBlock, VisitsBlock, type BlockCtx } from "@/components/admin/dashboard/Blocks";
 import { DRAFTS_HREF, REDIRECTS_HREF, entriesHref, entryHref, entryNewHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.dashboard"));
+}
 
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ denied?: string; welcome?: string; modules?: string }> }) {
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.

@@ -16,11 +16,17 @@ import { ui } from "@/components/admin/ui";
 import { createPageAction, deletePageAction, duplicatePageAction, renamePageAction, resetSecretAction, toggleActiveAction } from "./actions";
 import { OVERLAY_PAGES_HREF, OVERLAYS_OBS_HREF, overlayPageHref } from "@/core/adminLinks";
 import { LinkTabs } from "@/components/admin/LinkTabs";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const ERRORS = new Set(["limitPages", "limitActive", "name", "resolution", "notFound"]);
 const OKS = new Set(["duplicated", "renamed", "activated", "deactivated", "deleted", "secret"]);
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("ovp.title"));
+}
 
 export default async function OverlayPagesPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t } = await adminCtx(OVERLAY_NEED);

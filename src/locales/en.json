@@ -1101,6 +1101,7 @@
   "services.hint": "Drag the arrow from the service dot to a provider (or click one).",
   "services.list": "List view (keyboard)",
   "nav.menu": "Menu",
+  "nav.skip": "Skip to content",
   "catalogue.details": "View details and install",
   "catalogue.preview": "Read the README before installing",
   "catalogue.back": "Back to the catalog",

@@ -17,12 +17,18 @@ import type { Translator } from "@/core/i18n/dictionary";
 import type { Checklist } from "@/core/domainChecklist";
 import type { MigrationCommands } from "@/core/domainCommands";
 import { OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_ADDRESS_AFTER_HREF, SETTINGS_ADDRESS_HREF, SETTINGS_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 type Search = Promise<Record<string, string | string[] | undefined>>;
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 const HERE = SETTINGS_ADDRESS_HREF;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("domain.title"));
+}
 
 export default async function AddressPage({ searchParams }: { searchParams: Search }) {
   const { t, locale, config, advanced } = await adminCtx("admin");

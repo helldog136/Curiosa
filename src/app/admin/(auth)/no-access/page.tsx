@@ -4,8 +4,14 @@ import { currentUser, isMember } from "@/core/permissions";
 import { getAdminTranslator } from "@/core/i18n/request";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ADMIN_HREF, LOGIN_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("noAccess.title"));
+}
 
 /**
  * Une personne connectée dont le compte n'a encore AUCUN accès (aucun rôle utile, par exemple un rôle personnalisé vidé de ses droits) arrive ici,

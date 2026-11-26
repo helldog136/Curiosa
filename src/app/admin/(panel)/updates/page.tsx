@@ -17,6 +17,8 @@ import { HelpTip } from "@/components/admin/HelpTip";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,10 @@ function VersionCard({ label, version, tone, children }: { label: string; versio
       {children && <div className="mt-1.5">{children}</div>}
     </div>
   );
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("maint.tab.updates"));
 }
 
 /** Mettre le site à jour, dans l'ordre où on y pense : où j'en suis, ce qui existe, ce que ça change, puis un seul bouton ; pendant l'installation, où on en est. */
