@@ -64,6 +64,8 @@ const nextConfig = {
       { source: "/api/mcp", headers: [{ key: "Referrer-Policy", value: "no-referrer" }] },
       // Pages d'overlay (0.5.0) : l'adresse secrète `/overlays/page/<secret>` ne fuit jamais par « Referer » et rien n'est gardé en cache ; la politique de sécurité et le reste viennent de la page elle-même (core/overlays/render.ts).
       { source: "/overlays/page/:path*", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store, max-age=0" }] },
+      // (0.49.0) One-time link pages (invitation, reset): never cached, never leak the address to another site. The token is in the fragment, which is not sent anyway: this is the second lock.
+      { source: "/admin/:page(invitation|reset-password|forgot-password)", headers: [{ key: "Referrer-Policy", value: "no-referrer" }, { key: "Cache-Control", value: "no-store, max-age=0" }] },
       { source: "/admin/:path*", headers: [{ key: "X-Robots-Tag", value: "noindex, nofollow" }] },
       // Recherche dans le site (core/search/) : la page de résultats ne s'indexe pas, quelle que soit la langue (la balise de la page dit la même chose). Aucun cache partagé : Next répond « private, no-store » à une page dynamique.
       { source: "/search", headers: [{ key: "X-Robots-Tag", value: "noindex, follow" }] },

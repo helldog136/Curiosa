@@ -21,6 +21,8 @@ import { audit } from "@/core/permissions";
 import { fullPowersIds } from "@/core/services/mcp/fullPowers";
 import { levelOf } from "@/core/auth/access";
 import { syncSystemAssignments } from "@/core/auth/roles";
+import { withdrawAllLinks } from "@/core/auth/invitations";
+import { markRestore } from "@/core/auth/restoreMark";
 import { sweepOrphanedAccesses } from "@/core/personalAi/lifecycle";
 import { UPLOAD_NAME_RE } from "@/core/services/uploads";
 import { decryptBackup, decryptBackupAsync } from "./crypto";
@@ -348,6 +350,14 @@ export async function applyRestore(backup: ParsedBackup, opts: { confirmCustom: 
   resetModuleRegistry();
   opStep("finish");
   await syncSystemAssignments().catch((e) => console.error("[backup] roles sync failed:", (e as Error)?.message));
+  // Invitations and reset links are never in a backup (they hold secrets); the ones still waiting belong to the timeline that was just replaced: withdraw them all.
+  // The restore moment is written first: a link made before it is refused when opened, so correctness does not depend on the cleanup below. A failure is tried once more, then
+  // named in the report (never swallowed).
+  let linksDone = false;
+  for (let attempt = 0; attempt < 2 && !linksDone; attempt++) {
+    try { await markRestore(); await withdrawAllLinks(opts.actor); linksDone = true; } catch (e) { console.error("[backup] withdrawing links failed:", (e as Error)?.message); }
+  }
+  if (!linksDone) rep.failed.push({ id: "core.links", note: "linksWithdraw" });
   // AI accesses are not part of a backup but their owners are people, and the people were just replaced: an access whose owner is not in this backup is revoked (the owner of an access is
   // permanent, nobody takes it over), one journal line each, and the report says how many. Never fails the restore.
   try {

@@ -3,6 +3,7 @@
  * (clé de traduction `audit.action.<code>`) ; pour les autres (action d'un module, outil MCP…), on retombe sur une phrase générique, puis sur le code.
  */
 export const AUDIT_ACTIONS = [
+  "invite.create", "invite.resend", "invite.revoke", "invite.accept", "invite.expire", "invite.denied", "user.suspend", "user.reactivate", "password.reset.request", "password.reset.done",
   "login", "login.recovery", "login.passkey", "login.locked", "setup.completed",
   "user.create", "user.delete", "user.role", "user.roles", "role.create", "role.update", "role.delete", "access.denied", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",

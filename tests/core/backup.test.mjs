@@ -148,7 +148,7 @@ test("restauration : aller-retour complet — mêmes utilisateurs, réglages, in
   assert.deepEqual((await db.prisma.user.findMany()).map((u) => [u.id, u.email, u.passwordHash, u.advanced]), [[owner.id, "owner@example.org", "$2a$12$hash-du-proprietaire", true]], "le compte de l'intrus a disparu");
   const after = await db.prisma.entry.findUnique({ where: { id: e1.id }, include: { translations: { orderBy: { locale: "asc" } } } });
   assert.deepEqual(JSON.parse(JSON.stringify(after)), JSON.parse(JSON.stringify(before.entry)), "entrée, traductions, dates, identifiants identiques");
-  assert.deepEqual(JSON.parse(JSON.stringify(await db.prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }))).filter((s) => s.key !== "updates.latest" && s.key !== "rawg.keyImported" && !s.key.endsWith(".__storeGeneration")), JSON.parse(JSON.stringify(before.settings)).filter((s) => s.key !== "updates.latest" && !s.key.endsWith(".__storeGeneration")));
+  assert.deepEqual(JSON.parse(JSON.stringify(await db.prisma.setting.findMany({ orderBy: [{ key: "asc" }, { locale: "asc" }] }))).filter((s) => s.key !== "updates.latest" && s.key !== "security.lastRestoreAt" && s.key !== "rawg.keyImported" && !s.key.endsWith(".__storeGeneration")), JSON.parse(JSON.stringify(before.settings)).filter((s) => s.key !== "updates.latest" && !s.key.endsWith(".__storeGeneration")));
   assert.equal((await db.prisma.moduleInstance.findUnique({ where: { id: blog.id } })).key, "actus");
   assert.equal(await getSetting("rawg.key"), "cle-rawg-factice-0001", "la clé RAWG du cœur survit à la restauration (elle n'est jamais effacée)");
   const restoredRedirect = await db.prisma.redirect.findUnique({ where: { path: "twitch" } });

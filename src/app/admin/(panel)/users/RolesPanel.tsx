@@ -12,6 +12,8 @@ import { RowTable, type TableRow } from "@/components/admin/RowTable";
 import { ui } from "@/components/admin/ui";
 import type { Translator } from "@/core/i18n/dictionary";
 import { rightLabel } from "@/core/auth/describe";
+import { NewRoleForm } from "@/components/admin/NewRoleForm";
+import { presetRights, ROLE_PRESETS } from "@/core/auth/rolePresets";
 import type { RightInfo } from "@/core/auth/rights";
 import type { RoleSummary } from "@/core/auth/roles";
 import { localized } from "@/core/modules/types";
@@ -108,13 +110,9 @@ export function RolesPanel({ roles, catalogue, held, isOwner, t, locale, default
           </div>
           <div>
             <FormDialog trigger={t("roles.new")} title={t("roles.new")} intro={t("roles.newHelp")} closeLabel={t("roles.close")} wide testid="role-new-open">
-              <ActionForm action={createRoleAction} submitLabel={t("roles.create")} pendingLabel={t("progress.creating")} reset className="space-y-4">
-                {field("role-new-name", "name", t("roles.name"), { required: true, example: t("roles.nameExample") })}
-                <MoreOptions title={t("roles.more")}>
-                  {field("role-new-description", "description", t("roles.description"), { example: t("roles.descriptionExample") })}
-                </MoreOptions>
-                <RightsEditor groups={shownGroups} selected={[]} labels={rightsLabels} />
-              </ActionForm>
+              <NewRoleForm action={createRoleAction} groups={shownGroups} rightsLabels={rightsLabels}
+                presets={ROLE_PRESETS.map((p) => ({ id: p.id, name: t(`rolePreset.${p.id}.name`), description: t(`rolePreset.${p.id}.description`), rights: presetRights(p, catalogue, held) }))}
+                labels={{ start: t("roles.preset.start"), blank: t("roles.preset.blank"), startHelp: t("roles.preset.help"), name: t("roles.name"), nameExample: t("roles.nameExample"), description: t("roles.description"), descriptionExample: t("roles.descriptionExample"), rights: t("roles.preset.rights"), more: t("roles.more"), submit: t("roles.create"), pending: t("progress.creating"), rightsCount: t("roles.rights.chosen") }} />
             </FormDialog>
           </div>
         </div>

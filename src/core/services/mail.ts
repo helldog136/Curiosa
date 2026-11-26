@@ -70,13 +70,18 @@ const PER_SITE = 40;
 const WINDOW = 60 * 60_000;
 const sent = new Map<string, number[]>();
 export function resetMailLimits(): void { sent.clear(); }
-function allow(actor: string): boolean {
+/** Core mail about people ("core.onboarding", "core.reset", "core.notice") has its OWN site-wide bucket, apart from the one every module shares: a module cannot use up the invitations, nor the other way round. */
+const PER_SITE_CORE = 60;
+const isCoreKind = (actor: string) => actor.startsWith("core.");
+function allow(actor: string, perActor = PER_INSTANCE): boolean {
   const now = Date.now();
   const recent = (key: string) => (sent.get(key) ?? []).filter((t) => now - t < WINDOW);
-  const mine = recent(actor), all = recent("*");
-  if (mine.length >= PER_INSTANCE || all.length >= PER_SITE) return false;
+  const bucket = isCoreKind(actor) ? "core:*" : "*";
+  const cap = isCoreKind(actor) ? PER_SITE_CORE : PER_SITE;
+  const mine = recent(actor), all = recent(bucket);
+  if (mine.length >= perActor || all.length >= cap) return false;
   sent.set(actor, [...mine, now]);
-  sent.set("*", [...all, now]);
+  sent.set(bucket, [...all, now]);
   return true;
 }
 
@@ -103,7 +108,7 @@ export function mailCause(error: unknown): MailCause {
 export type MailAttachment = { filename: string; content: Buffer };
 export type MailResultWithCause = MailResult | { ok: false; reason: "failed"; cause: MailCause };
 
-async function deliver(request: MailRequest, actor: string, attachment?: MailAttachment): Promise<MailResultWithCause> {
+async function deliver(request: MailRequest, actor: string, attachment?: MailAttachment, perActor?: number): Promise<MailResultWithCause> {
   try {
     const config = await getMailConfig();
     if (!config) return { ok: false, reason: "not_configured" };
@@ -123,7 +128,7 @@ async function deliver(request: MailRequest, actor: string, attachment?: MailAtt
       if (!EMAIL_RE.test(to)) return { ok: false, reason: "invalid" };
     }
 
-    if (!allow(actor)) return { ok: false, reason: "rate_limited" };
+    if (!allow(actor, perActor)) return { ok: false, reason: "rate_limited" };
     const files = attachment ? [{ filename: oneLine(attachment.filename, 120).replace(/[\\/"]/g, "-"), content: attachment.content, contentType: "application/octet-stream" }] : [];
     try {
       await factory(config, { large: files.length > 0 }).sendMail({ from: config.from, to, subject, text, ...(replyTo ? { replyTo } : {}), ...(files.length ? { attachments: files } : {}) });
@@ -152,4 +157,16 @@ export async function sendMail(request: MailRequest, actor: string): Promise<Mai
  */
 export function sendCoreMailWithAttachment(request: MailRequest, attachment: MailAttachment | undefined): Promise<MailResultWithCause> {
   return deliver(request, "core", attachment);
+}
+
+/** Per hour, per kind of core mail about people (invitations, reset links, notices): a team of a few dozen can be invited in a day without touching the module quota. */
+const PER_ONBOARDING_KIND = 30;
+
+/**
+ * CORE ONLY (not offered to modules): a plain mail about a person's account (invitation, password reset link, change notice). `kind` names the bucket
+ * ("onboarding", "reset", "notice"): each kind has its own hourly limit, so a flood of reset requests never uses the invitations' share. Same sender, same
+ * audit row (never the content). The caller decides what to say about a refusal; a token in `text` is never logged here.
+ */
+export function sendCoreMail(request: MailRequest, kind: "onboarding" | "reset" | "notice"): Promise<MailResultWithCause> {
+  return deliver(request, `core.${kind}`, undefined, PER_ONBOARDING_KIND);
 }

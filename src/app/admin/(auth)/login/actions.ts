@@ -42,7 +42,7 @@ export async function loginAction(_prev: LoginState, formData: FormData): Promis
     // Étape 2 : le code de l'application (ou un code de secours).
     const uid = peekToken(token);
     const user = uid ? await prisma.user.findUnique({ where: { id: uid } }) : null;
-    if (!user || !readToken("pwd", token, passwordBinding(user.passwordHash))) return { error: t("login.expired") };
+    if (!user || user.suspendedAt || !readToken("pwd", token, passwordBinding(user.passwordHash))) return { error: t("login.expired") };
     const before = await blocked(user.email);
     if (before) return before;
     const second = await verifySecondFactor(user.id, String(formData.get("code") ?? ""));
@@ -91,6 +91,11 @@ export async function passkeyLoginFinish(challengeId: string, response: Record<s
     await recordFailure(ip, "");
     const again = await checkLogin(ip, "");
     return { error: again.locked ? t("login.locked", { time: formatUntil(again.until, locale) }) : t("login.passkeyInvalid") };
+  }
+  // A suspended person's passkey is answered like an unknown one.
+  if ((await prisma.user.findUnique({ where: { id: found.userId }, select: { suspendedAt: true } }))?.suspendedAt) {
+    await recordFailure(ip, "");
+    return { error: t("login.passkeyInvalid") };
   }
   await recordSuccess(ip, found.userId, found.email);
   await audit(found.email, "login.passkey", ip);

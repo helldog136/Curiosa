@@ -7,6 +7,15 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.50.0 — 2026-11-26
+
+### Nouveautés
+
+- **Vous invitez une personne avec son e-mail et un rôle, sans mot de passe à transmettre.** Elle reçoit un lien à usage unique (72 heures par défaut), choisit son mot de passe, et vous pouvez renvoyer, annuler ou suspendre un compte. Sans envoi de courriel, le lien s'affiche une fois pour vous.
+- **(English) You invite a person with an e-mail and a role, with no password to hand over.** They get a single-use link (72 hours by default) and choose their own password; you can resend, cancel or suspend an account. With no mail sending, the link is shown once to you.
+- **Vous pouvez demander un nouveau mot de passe quand le site envoie des courriels.** Le lien dure 45 minutes, garde la double vérification et déconnecte les autres appareils. Un compte à droits étendus, comme la coordination, doit avoir une double vérification ; sinon, l'équipe lui donne un mot de passe provisoire.
+- **(English) You can ask for a new password when the site sends e-mail.** The link lasts 45 minutes, keeps two-step verification and signs out the other devices. An account with wide rights, such as coordination, needs two-step verification; otherwise the person who runs the team gives a temporary password.
+
 ## 0.49.0 — 2026-11-25
 
 ### Nouveautés
