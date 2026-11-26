@@ -17,7 +17,8 @@ test("upkeep: no sentence that says everything is fine; the bug report explanati
   assert.ok(!("updates.modulesLink.ok" in fr) && !("updates.modulesLink.ok" in en));
   const page = read("src/app/admin/(panel)/updates/page.tsx");
   assert.ok(!page.includes("updates.modulesLink.ok"));
-  assert.match(page, /<HelpTip always help=\{t\("bugReport\.help"\)\}/);
+  assert.doesNotMatch(page, /bugReport\./, "the one bug report link lives in the sidebar footer");
+  assert.match(read("src/app/admin/(panel)/layout.tsx"), /title=\{t\("bugReport\.help"\)\}/, "its explanation is an accessible title, not a sentence");
 });
 
 test("AI assistants: no reassurance sentence (a loss warning stays)", () => {

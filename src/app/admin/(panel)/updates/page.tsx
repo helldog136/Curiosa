@@ -11,7 +11,6 @@ import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
 import { Callout, PageHeader, Panel } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
-import { HelpTip } from "@/components/admin/HelpTip";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
 import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
