@@ -165,7 +165,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-tint text-sm font-bold text-accent-text">{initialOf(user.name)}</span>
               <p className="min-w-0 leading-tight"><span className="block truncate text-sm font-semibold">{user.name}</span><span className="block truncate text-xs text-muted">{roleLabel}</span></p>
             </div>
-            {openable(user, ACCOUNT_LINKS, owners).map((l) => coreLink(l))}
+            {ACCOUNT_LINKS.map((l) => (canOpen(user, l.href, owners) ? coreLink(l) : null))}
             <BugReportLink href={bugUrl} className={rowCls} title={t("bugReport.help")}><MenuIcon name="bug" />{t("bugReport.link")}<span className="sr-only"> ({t("nav.newTab")})</span></BugReportLink>
             <form
               action={async () => {

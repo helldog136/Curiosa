@@ -290,7 +290,7 @@ test("the sidebar, the dashboard, the shortcuts, the cards and the search all as
   assert.match(layout, /openableModuleEntries\(user, everyNav, owners\)/);
   assert.match(layout, /openable\(user, siteLinks\(/);
   assert.match(layout, /\.filter\(\(\{ link \}\) => canOpen\(user, link\.href, owners\)\)/);
-  assert.match(layout, /openable\(user, ACCOUNT_LINKS, owners\)/);
+  assert.match(layout, /ACCOUNT_LINKS\.map\(\(l\) => \(canOpen\(user, l\.href, owners\) \? coreLink\(l\) : null\)\)/);
   assert.match(layout, /canOpen\(user, p\.href, owners\)/, "place pages");
   const page = read(`${ROOT}/(panel)/page.tsx`);
   assert.match(page, /openableModuleEntries\(user, allNav, owners\)/);
