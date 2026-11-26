@@ -63,7 +63,7 @@ Use the same word for the same thing everywhere.
 
 | English | Français | Meaning |
 |---|---|---|
-| extension | extension | a feature added to the site (blog, links, pages...) |
+| module | module | a piece installed from the catalogue that adds pages, elements or tools (blog, links, pages...); never "extension", "plugin", "add-on" or "fonctionnalité" (route `/admin/extensions`, i18n keys and manifest keys keep their names) |
 | entry | élément | one item of a collection: an article, a link, a code |
 | overlay page | page d'overlay | a page shown in streaming software (OBS) |
 | reward | récompense | what viewers get with channel points |
@@ -92,7 +92,7 @@ Use the same word for the same thing everywhere.
 | game scene | scène de jeu | (0.20.0) a preview background drawn by the core, with bright and dark parts (the editor only) |
 | vertical format | format vertical | (0.20.0) the safe margins of a phone-shaped page: bands where phone apps put their buttons; (0.23.0) also the 1080 × 1920 page size |
 | Fix the text size | Corriger la taille du texte | (0.23.0) the one-click fix of a vertical overlay page made before 0.23.0, whose TV text was sized on its height |
-| addresses for OBS | adresses pour OBS | (0.26.0) the page listing every address to paste into a browser source of OBS (overlay pages and extension overlays) |
+| addresses for OBS | adresses pour OBS | (0.26.0) the page listing every address to paste into a browser source of OBS (overlay pages and module overlays) |
 | alert preview | aperçu de l'alerte | (0.27.0) the alert drawn under the files of a reaction window, as the overlay shows it, with a sample name; sound off at first |
 | play again | rejouer | (0.27.0) plays the alert preview again from the start |
 | all other rewards | toutes les autres récompenses | the reaction of a channel point reward that has no reaction of its own |
@@ -109,16 +109,16 @@ Use the same word for the same thing everywhere.
 | place | emplacement | (0.31.0) where a module's settings show in the admin, written `group.page.tab` (`live.alerts.look`); not to be confused with a topic (sujet), which is a data channel |
 | group | groupe | (0.31.0) a heading of the admin sidebar that holds pages (En direct, Agenda, Communauté…) |
 | tab | onglet | a part of an admin page with its own address |
-| section | section | (0.31.0) what one extension adds to a tab of a place page: a card with its title, its origin and its settings |
+| section | section | (0.31.0) what one module adds to a tab of a place page: a card with its title, its origin and its settings |
 | vocabulary | vocabulaire | (0.31.0) the list of known places with their names, order and intro (`catalogue/places.json`) |
 | Live | En direct | (0.31.0) the group of what happens during a live: alerts, rewards, chat, audience games, raid, going live |
 | Calendar | Agenda | (0.31.0) the group of schedules, events, countdowns and announcement stories |
 | Other settings | Autres réglages | (0.31.0) the group where pages of more than two unknown groups are folded |
 | Advanced settings | Réglages avancés | (0.31.0) the one fold of a section that holds its rare and technical settings |
-| Added by | Ajouté par | (0.31.0) the origin of a section, when a page has sections from several extensions |
+| Added by | Ajouté par | (0.31.0) the origin of a section, when a page has sections from several modules |
 | Section unavailable | Section indisponible | (0.31.0) a section that failed or took too long; the rest of the page works |
-| Where its settings are | Où sont ses réglages | (0.31.0) the list of places of an extension, at the top of its page |
-| Settings added in | Réglages ajoutés dans | (0.31.0) the message after an install that links to the places of the new extension |
+| Where its settings are | Où sont ses réglages | (0.31.0) the list of places of a module, at the top of its page |
+| Settings added in | Réglages ajoutés dans | (0.31.0) the message after an install that links to the places of the new module |
 | overlay page (sidebar) | Pages d'overlay | kept as is (owner decision E10); next to a content list named « Pages » the sidebar qualifies it at runtime: « Pages d'overlay · Administration » |
 
 A new word must be added to this glossary (and to the repository glossary) before it is used.
