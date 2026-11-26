@@ -22,11 +22,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **Le lien « Signaler un bug » n'apparaît plus qu'une fois.** Il vit dans le bas du menu ; les copies des pages Mises à jour et Assistants IA sont retirées.
 - **(English) The “Report a bug” link now appears only once.** It lives at the bottom of the menu; the copies on the Updates and AI assistants pages are gone.
+- **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
+- **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
 
 ### Pour les développeurs
 
 - Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
 - **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
+- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
 
 ## 0.51.0 — 2026-11-26
 
