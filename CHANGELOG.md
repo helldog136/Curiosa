@@ -7,6 +7,27 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Nouveautés
+
+- **Le menu de l'administration reste en place quand vous faites défiler la page.** Il garde sa hauteur, ses liens défilent à l'intérieur, et votre nom, « Mon compte », « Voir le site », « Signaler un bug » et « Se déconnecter » restent toujours sous la main en bas. Les rubriques se plient et se déplient, et le menu s'en souvient.
+- **(English) The administration menu stays in place when you scroll the page.** It keeps its height, its links scroll inside it, and your name, “My account”, “View site”, “Report a bug” and “Sign out” always stay at the bottom. Sections fold and unfold, and the menu remembers it.
+- **Des icônes fines remplacent les émojis du menu, et chaque ligne est facile à toucher.** Toutes les lignes font au moins 44 px de haut ; sur téléphone, le menu s'ouvre en volet que la touche Échap referme.
+- **(English) Thin icons replace the emoji in the menu, and every row is easy to tap.** All rows are at least 44 px tall; on a phone the menu opens as a sheet that the Escape key closes.
+- **Un module peut choisir l'icône de son entrée de menu.**
+- **(English) A module can pick the icon of its menu entry.**
+
+### Corrections
+
+- **Le lien « Signaler un bug » n'apparaît plus qu'une fois.** Il vit dans le bas du menu ; les copies des pages Mises à jour et Assistants IA sont retirées.
+- **(English) The “Report a bug” link now appears only once.** It lives at the bottom of the menu; the copies on the Updates and AI assistants pages are gone.
+
+### Pour les développeurs
+
+- Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
+- **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
+
 ## 0.51.0 — 2026-11-26
 
 ### Nouveautés
