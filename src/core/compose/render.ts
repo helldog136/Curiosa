@@ -97,9 +97,23 @@ export function composeEngine(win: any): void {
     return { size: lo, overflow: false, tries: tries };
   }
 
-  function anim(phase: string, a: any, start: number): string | null {
+  /**
+   * Calm motion: the browser asks for reduced motion (`prefers-reduced-motion: reduce`, which an OBS browser reports when Windows has animations off) or
+   * `opts.calm` is true. The TIMING of a placed text never changes (the alert's viewers are the audience, not the streaming PC's owner): `in.at`, `out.at` and
+   * the durations stay, only the travel and the scale go, every entrance and exit becomes a plain fade (opacity only). `opts.calm: false` forces full motion.
+   */
+  function calmOf(opts: any): boolean {
+    if (opts && typeof opts.calm === "boolean") return opts.calm;
+    try { return !!(win.matchMedia && win.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch { return false; }
+  }
+
+  /**
+   * The entrance holds its first frame (hidden) until `at` (`both`); the exit only holds its LAST frame (`forwards`). With `both` on the exit too, its first
+   * keyframe (opacity 1) applied during its delay and, being later in the list, overrode the entrance: the text showed from the very start of the card.
+   */
+  function anim(phase: string, a: any, start: number, calm?: boolean): string | null {
     if (!a || ANIMS.indexOf(a.anim) < 0) return null;
-    return "cmp-" + a.anim + "-" + phase + " " + num(a.dur, 0.1, 2, 0.4) + "s " + (phase === "in" ? "cubic-bezier(.2,.8,.2,1)" : "ease-in") + " " + Math.max(0, start) + "s both";
+    return "cmp-" + (calm ? "fade" : a.anim) + "-" + phase + " " + num(a.dur, 0.1, 2, 0.4) + "s " + (phase === "in" ? "cubic-bezier(.2,.8,.2,1)" : "ease-in") + " " + Math.max(0, start) + "s " + (phase === "in" ? "both" : "forwards");
   }
 
   /** The frame ratio of a composition (the file's own shape for "media", 16:9 until it is known). */
@@ -109,7 +123,7 @@ export function composeEngine(win: any): void {
   }
 
   /**
-   * Builds the DOM of a resolved composition (texts already filled). `opts.doc`: the document; `opts.motion` false: no entrance or exit; `opts.seconds`: the
+   * Builds the DOM of a resolved composition (texts already filled). `opts.doc`: the document; `opts.motion` false: no entrance or exit; `opts.calm`: fades only (default: the browser's reduced-motion request); `opts.seconds`: the
    * length of the alert (an exit "at the end" starts then); `opts.still`: no video play (editor); (0.21.0) `opts.muted`: no sound even if the composition has
    * some (the editor's preview); (0.27.0) `opts.light` with `still`: a video loads only its first picture (the preview of a form). Returns the root, not yet in
    * the page (see `mount`).
@@ -148,6 +162,8 @@ export function composeEngine(win: any): void {
     root._media = null;
     root._comp = c;
     root._opts = opts;
+    var calm = calmOf(opts);
+    if (calm) root.setAttribute("data-calm", "1");
     var texts: string[] = [];
     var boxes = Array.isArray(c.boxes) ? c.boxes.slice(0, 4) : [];
     for (var i = 0; i < boxes.length; i++) {
@@ -175,10 +191,10 @@ export function composeEngine(win: any): void {
       box.appendChild(span);
       box._b = b;
       if (opts.motion !== false) {
-        var list: string[] = [], a1 = anim("in", b.in, num(b.in && b.in.at, 0, 60, 0));
+        var list: string[] = [], a1 = anim("in", b.in, num(b.in && b.in.at, 0, 60, 0), calm);
         if (a1) list.push(a1);
         var outAt = b.out && typeof b.out.at === "number" ? b.out.at : typeof opts.seconds === "number" ? opts.seconds - num(b.out && b.out.dur, 0.1, 2, 0.4) : null;
-        var a2 = outAt !== null ? anim("out", b.out, outAt) : null;
+        var a2 = outAt !== null ? anim("out", b.out, outAt, calm) : null;
         if (a2) list.push(a2);
         if (list.length) box.style.animation = list.join(",");
       }

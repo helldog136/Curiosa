@@ -7,6 +7,19 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Corrections
+
+- **Les textes placés sur une alerte apparaissent à la seconde choisie, même quand l'ordinateur de diffusion demande moins d'animations.** Avant, OBS avec les animations coupées les affichait pendant toute l'alerte. Le moment est respecté ; le zoom ou le glissement devient un fondu.
+- **(English) Texts placed on an alert appear at the chosen second, even when the streaming computer asks for less animation.** Before, OBS with animations off showed them for the whole alert. The timing is kept; zoom or slide becomes a fade.
+- **Un texte placé qui entre ET sort à des secondes précises n'est plus visible avant son entrée.** La sortie prévue plus tard masquait l'entrée au début de l'alerte.
+- **(English) A placed text that has both an entrance and an exit at set seconds is no longer visible before its entrance.** The later exit was overriding the entrance at the start of the alert.
+
+### Pour les développeurs
+
+- `compileSkin` : la règle `reduce` exclut `[data-ov-region="composition"]`. `composeEngine` met un fondu sous `reduce` (`opts.calm`, `data-calm`) et la sortie utilise `forwards`. Test : `tests/core/overlay-reduced-motion.test.mjs`.
+
 ## 0.50.0 — 2026-11-26
 
 ### Nouveautés
