@@ -70,7 +70,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
       )}
       <AssistantTabs t={t} current={tab} pending={pending} />
       {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} owner={isOwner(user)} />}
-      {tab === "owners" && <OwnersTab t={t} viewerId={user.id} />}
+      {tab === "owners" && <OwnersTab t={t} />}
       {tab === "requests" && <RequestsTab t={t} locale={locale} defaultLocale={config.defaultLocale} notice={notice} />}
       {tab === "history" && <HistoryTab t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} />}
 

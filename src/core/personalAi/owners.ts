@@ -6,8 +6,8 @@ import { sweepOrphanedAccesses } from "./lifecycle";
 
 /**
  * OWNERS OF AI ACCESSES (core 0.47.0). Every AI access belongs to a person, and THE OWNER IS A PERMANENT FACT (0.47.1): it is set when the access is created and can never change.
- * There is no exchange of accesses between people. This file holds who may own an access, the accesses that NEVER had an owner (the legacy ones, `ownerId` null) and the one-time
- * assignment of an owner to those, by a holder of `core:mcp.tokens` (the callers check that right). `assignOwner` refuses an access that has an owner (`already_owned`), whoever
+ * There is no exchange of accesses between people. This file holds who may own an access, the accesses that NEVER had an owner (`ownerId` null) and the one-time
+ * assignment of an owner to those, which only the 0.49 migration does (ownerMigration.ts: every ownerless access goes to the site owner at start-up). `assignOwner` refuses an access that has an owner (`already_owned`), whoever
  * that owner is and whether that person still exists: an owner that disappears takes the access with them (it is revoked, see lifecycle.ts), it is never handed over.
  * An access without an owner keeps working as it did before, and says so on screen ("No owner"); it can never be given NEW rights until it has one.
  * Journal: `mcp.personal.assign` with the access NAME and the person's e-mail, never a code.
@@ -71,30 +71,23 @@ export async function accessesWithoutOwner() {
 /**
  * Gives an access that has NEVER had an owner to a person, ONCE. An access that has an owner is refused with `already_owned` (even for the same person, even if that owner no longer
  * exists: such an access is revoked by the sweep, never given away). The check is also part of the write (`ownerId: null` in the update condition), so two simultaneous calls
- * cannot both succeed. The access keeps its ceiling kind as it is (an access that predates the owners is already marked coarse, see legacyOwners.ts and ownerCeiling.ts).
+ * cannot both succeed. The access keeps its ceiling kind as it is (an access that predates the owners is already marked coarse, see ownerCeiling.ts).
  * The target must be allowed to own an access.
  */
-export async function assignOwner(tokenId: string, ownerId: string, actorEmail: string, actorId: string): Promise<AssignResult> {
+export async function assignOwner(tokenId: string, ownerId: string, actorEmail: string, actorId: string, via?: string): Promise<AssignResult> {
   const row = await prisma.apiToken.findUnique({ where: { id: String(tokenId ?? "") } });
   if (!row || row.revokedAt) return { ok: false, reason: "access_missing" };
   if (row.ownerId) return { ok: false, reason: "already_owned" };
   const target = await prisma.user.findUnique({ where: { id: String(ownerId ?? "") }, select: { id: true, email: true } });
   if (!target) return { ok: false, reason: "owner_missing" };
   if (!(await mayOwnAccess(target.id)) || !(await actorMayGiveTo(actorId, target.id))) return { ok: false, reason: "owner_not_allowed" };
-  // The ceiling kind (`coarseCeiling`) is NEVER changed here: it marks an access that predates the owners (written only by legacyOwners.ts).
+  // The ceiling kind (`coarseCeiling`) is NEVER changed here: it marks an access that predates the owners (written by the 0.47.0 start-up step, gone in 0.49.0).
   const done = await prisma.apiToken.updateMany({ where: { id: row.id, ownerId: null, revokedAt: null }, data: { ownerId: target.id } });
   if (done.count !== 1) return { ok: false, reason: "already_owned" };
-  await prisma.auditLog.create({ data: { actor: actorEmail, actorKind: "person", action: "mcp.personal.assign", target: `${row.name} -> ${target.email}`.slice(0, 300) } }).catch(() => {});
+  // `via` is set only by the 0.49 migration (ownerMigration.ts): the journal then names the migration and not a person.
+  const entry = via ? { actor: "system", actorKind: "system", target: `${row.name}: ${via}` } : { actor: actorEmail, actorKind: "person", target: `${row.name} -> ${target.email}` };
+  await prisma.auditLog.create({ data: { ...entry, target: entry.target.slice(0, 300), action: "mcp.personal.assign" } }).catch(() => {});
   return { ok: true, changed: true };
-}
-
-/** The same owner for every access that NEVER had one (never an access that has an owner). Returns how many changed (none when the person is not allowed). */
-export async function assignAllWithoutOwner(ownerId: string, actorEmail: string, actorId: string): Promise<{ ok: boolean; changed: number; reason?: AssignFailure }> {
-  if (!(await prisma.user.findUnique({ where: { id: String(ownerId ?? "") }, select: { id: true } }))) return { ok: false, changed: 0, reason: "owner_missing" };
-  if (!(await mayOwnAccess(ownerId)) || !(await actorMayGiveTo(actorId, ownerId))) return { ok: false, changed: 0, reason: "owner_not_allowed" };
-  let changed = 0;
-  for (const row of await accessesWithoutOwner()) if ((await assignOwner(row.id, ownerId, actorEmail, actorId)).ok) changed++;
-  return { ok: true, changed };
 }
 
 /** How many live accesses a person owns (for the team dialog). */

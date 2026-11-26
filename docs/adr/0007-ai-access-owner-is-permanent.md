@@ -22,8 +22,8 @@ An AI access can act on the site through the assistant protocol. Since core 0.46
 - Any new way to delete or replace people (import, restore, a new screen) must go through `revokePersonalAccessesOf` or end with the sweep; otherwise accesses are left pointing at nobody until the next sweep.
 - Any new way to remove an access must call `revokeAccess`, not `revokeToken`.
 - A person who needs a different owner for an automation creates a new access under that person; there is no transfer. The cost is deliberate: nobody inherits rights they were not given.
-- At the end of the migration `legacyOwners.ts`, `assignOwner` and their settings go away; the `coarseCeiling` column stays.
+- In 0.49.0 `legacyOwners.ts` and the Assign owners screen went away: a start-up migration (`ownerMigration.ts`) attributes every ownerless access to the site owner, once. `assignOwner` is called only by it; the `coarseCeiling` column stays.
 
 ## Sources
 
-`src/core/personalAi/lifecycle.ts`, `revoke.ts`, `owners.ts`, `legacyOwners.ts`; `src/core/services/mcp/ownerCeiling.ts`; `src/instrumentation.ts`; `src/core/backup/restore.ts`; [docs/PERSONAL-AI.md](../PERSONAL-AI.md) (Lifecycle, the permanent part, every writer of `ApiToken.ownerId`); `tests/services/ai-owner-permanent.test.mjs`; [GLOSSARY.md](../../GLOSSARY.md) (AI access owner).
+`src/core/personalAi/lifecycle.ts`, `revoke.ts`, `owners.ts`, `ownerMigration.ts`; `src/core/services/mcp/ownerCeiling.ts`; `src/instrumentation.ts`; `src/core/backup/restore.ts`; [docs/PERSONAL-AI.md](../PERSONAL-AI.md) (Lifecycle, the permanent part, every writer of `ApiToken.ownerId`); `tests/services/ai-owner-permanent.test.mjs`; [GLOSSARY.md](../../GLOSSARY.md) (AI access owner).
