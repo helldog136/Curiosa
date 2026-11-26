@@ -10,7 +10,7 @@ Decisions it follows (`docs/ideas/overlays-decisions.md`): overlay skins live in
 
 1. The page (`/overlays/page/<secret>`) resolves the skin it wears now: the rule of the current context value, else its default skin, else none.
 2. The core page embeds the compiled skin sheet. When each element's iframe has loaded, the page adopts the sheet into the element's document (same origin, constructed style sheet, so the element's own security policy is not involved) and sets `data-ov-skin="<id>"` on its root. Frames of elements that declare `followsStyle: false` are never touched. Frames are hidden until the skin is applied, so there is no flash of the unskinned element.
-3. The page already polls its light `state` endpoint (about every 5 s, and stays at 5 s when a context drives the skin). The answer carries the skin key (`<id>@<version>:<fingerprint>`) and the sheet only when it differs from the one the page wears. **The page switches only when it has seen the same new key on two consecutive reads**, then fades the stage out and in (0.25 s). With `prefers-reduced-motion: reduce` the switch is instant and every motion preset is off. Reduced motion never changes the *timing* of streamed content: the rule that cuts the skin's animations skips `[data-ov-region="composition"]` (placed texts keep their `in.at` / `out.at`; the compose engine turns their entrance and exit into a plain fade, `data-calm="1"`).
+3. The page already polls its light `state` endpoint (about every 5 s, and stays at 5 s when a context drives the skin). The answer carries the skin key (`<id>@<version>:<fingerprint>`) and the sheet only when it differs from the one the page wears. **The page switches only when it has seen the same new key on two consecutive reads**, then fades the stage out and in (0.25 s). With `prefers-reduced-motion: reduce` the switch is instant and the skin's own decorative motion is off. Reduced motion never changes the *timing* of streamed content (the preference is the streaming PC's, the viewers are the audience): see "Reduced motion" below.
 4. No provider, module turned off, module slow or in error, value unknown, skin missing or altered: the **default skin** applies, then the **common style**. A page never breaks because a skin or a module is gone.
 
 ## 2. The skin format (`skin.json`, `kind: "overlay"`)
@@ -110,9 +110,30 @@ Rules of thumb: a shape clips the element's own shadow and border at the cut (us
 
 The core also guarantees the text/surface pair: for every skin, containers (`panel`, `card`, `bubble`, `quote`) take `--ov-surface` as background and `--ov-fg` as text, and the text parts (`title`, `name`, `body`, `text`, `message`, `value`, `label`…) follow `--ov-fg`, so an element that draws its own colours cannot put the skin's text on a colour the skin never checked.
 
+### Reduced motion: what the core cuts and what it leaves alone
+
+The core cuts **only what it generates itself**, and it does so by never writing it under `prefers-reduced-motion: reduce`: the `--ov-anim` entrance / glow preset on `panel`, `card`, `bubble`, `quote`, and the idle presets (`ov-motion`, `shimmer`) are inside `@media (prefers-reduced-motion: no-preference)`. A skin's own `@keyframes` and `animation` are already required to sit in that query (the validator refuses them otherwise).
+
+The core does **not** cut what a module authors: its CSS `transition`s and `animation`s on its own elements carry timing and visibility (a ticker sliding in and out, a poll bar growing, a countdown's last second). An OBS browser reports `reduce` when Windows has animations off, so a blanket rule would make a sponsor ticker vanish or jump. A module that has a purely decorative loop writes its own `@media (prefers-reduced-motion: reduce)` rule for it (as the extras modules do), or opts in:
+
+- **`data-ov-calm`** on an element of a module: under reduced motion the skin sheet sets `animation:none` and `transition:none` on that element, its descendants and their pseudo-elements. Use it for decoration only (a shine, a float, a pulse), never for something whose end state matters (a transition that reveals content: with `transition:none` it still ends in the right state, but a keyframe `animation` with `both` fill that reveals the content would leave it at its initial state).
+- Compositions (`[data-ov-region="composition"]`) keep their `in.at` / `out.at`; the compose engine turns entrance and exit into a plain fade (`data-calm="1"`).
+
+| Under `reduce` | Before | Now |
+| --- | --- | --- |
+| Entrance / glow preset (`--ov-anim`) on containers | cut | not written (cut) |
+| Idle presets (`ov-motion`, `ov-deco: shimmer`) | not written | not written |
+| Skin-authored `@keyframes` / `animation` | not written | not written |
+| Module `transition` (sliders, bars, fades) | cut | **kept** |
+| Module `animation` (entrances, timing keyframes) | cut | **kept** |
+| Module animation on a container part when a preset is set | cut | replaced by the preset without a preference (unchanged), **kept** under `reduce` |
+| Skin-authored `transition` (bounded, sanitised) | cut | **kept** |
+| Elements with `data-ov-calm` | cut | cut |
+| Composition texts | timing kept, fade | timing kept, fade |
+
 ## 3. What the core maps for you
 
-For the tokens a skin defines, the core adds (before the skin's own rules, so a rule can refine them): font and tracking on the element root and on the shared parts, heading font and weight on `title`, `name`, `subtitle`, `kind`, `label`, `badge`, `tag`; case on `title`, `kind`, `badge`, `tag`, `label`; text shadow; muted colour on `subtitle`, `source`, `foot`, `footer`, `author`, `kind`, `how`; surface gradient, border style and width, shadow on `panel`, `card`, `bubble`, `quote`; accent on `bar-fill`, `dot`, `badge` (and `stars`, `winner` text) with `--ov-accent-fg` on badges; and the motion preset on the same containers, switched off for reduced motion (except inside a composition: its placed texts keep their timing, with fades only).
+For the tokens a skin defines, the core adds (before the skin's own rules, so a rule can refine them): font and tracking on the element root and on the shared parts, heading font and weight on `title`, `name`, `subtitle`, `kind`, `label`, `badge`, `tag`; case on `title`, `kind`, `badge`, `tag`, `label`; text shadow; muted colour on `subtitle`, `source`, `foot`, `footer`, `author`, `kind`, `how`; surface gradient, border style and width, shadow on `panel`, `card`, `bubble`, `quote`; accent on `bar-fill`, `dot`, `badge` (and `stars`, `winner` text) with `--ov-accent-fg` on badges; and the motion preset on the same containers, written only for people who have not asked for reduced motion (see "Reduced motion").
 
 ## 4. The generic overlay context contract
 

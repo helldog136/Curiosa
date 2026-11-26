@@ -14,15 +14,20 @@ const SRC = "/uploads/00000001-0000-4000-8000-000000000000.png";
 const TOKENS = { "--ov-fg": "#ffffff", "--ov-surface": "rgba(10,10,20,0.85)", "--ov-accent": "#e8a23b", "--ov-anim": "rise" };
 const sheet = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: TOKENS, css: "" }).css;
 
-test("skin sheet: the reduced-motion rule leaves a composition (and its texts) alone, everything else stops", () => {
-  const m = sheet.match(/@media \(prefers-reduced-motion:reduce\)\{([^}]*)\{animation:none!important;transition:none!important\}\}/);
-  assert.ok(m, "the decorative motion is still cut under reduced motion");
-  const sel = m[1];
-  const comp = ':not([data-ov-region="composition"]):not([data-ov-region="composition"] *)';
-  assert.deepEqual(sel.split(/,(?=html)/), [`html[data-ov-skin="epic"] *${comp}`, `html[data-ov-skin="epic"] *${comp}::before`, `html[data-ov-skin="epic"] *${comp}::after`]);
-  assert.doesNotMatch(sheet, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \*,/, "no blanket selector any more");
+test("skin sheet: the core cuts only what it generates (entrance preset, idle presets); module animations and transitions are left alone", () => {
+  const entrance = sheet.match(/@media \(prefers-reduced-motion:no-preference\)\{[^{]*\[data-ov-part="panel"\][^{]*\{animation:ov-rise [^}]*\}\}/);
+  assert.ok(entrance, "the entrance preset is written inside no-preference, so there is nothing to cut afterwards");
+  assert.doesNotMatch(sheet.replace(entrance[0], ""), /animation:ov-rise/, "and nowhere else");
+  const reduce = [...sheet.matchAll(/@media \(prefers-reduced-motion:reduce\)\{([^}]*)\{animation:none!important;transition:none!important\}\}/g)];
+  assert.equal(reduce.length, 1, "one reduced-motion rule");
+  const r = 'html[data-ov-skin="epic"] [data-ov-calm]';
+  assert.deepEqual(reduce[0][1].split(","), [r, `${r} *`, `${r}::before`, `${r}::after`, `${r} *::before`, `${r} *::after`], "only the opt-in hook `data-ov-calm`");
+  assert.doesNotMatch(sheet, /html\[data-ov-skin="epic"\] \*/, "no blanket selector, with or without the composition exclusion");
   const none = Sh.compileSkin({ id: "plain", version: "1.0.0", tokens: { "--ov-fg": "#fff", "--ov-surface": "#000" }, css: "" }).css;
-  assert.doesNotMatch(none, /prefers-reduced-motion/, "a skin without motion has no rule");
+  assert.doesNotMatch(none, /@keyframes|animation:ov-/, "a skin without motion has no animation");
+  assert.match(none, /\[data-ov-calm\]/, "the hook exists for every skin");
+  const idle = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: TOKENS, css: '@media (prefers-reduced-motion:no-preference){html[data-ov-skin="epic"] [data-ov-part="badge"]{animation:ov-flicker 3s infinite}}' }).css;
+  assert.match(idle, /@keyframes ov-flicker/);
 });
 
 test("compose engine: calm motion keeps the timing and turns every entrance and exit into a fade (unit, fake window)", () => {
@@ -92,17 +97,51 @@ for (const mode of ["no-preference", "reduce"]) {
   });
 }
 
-test("real browser: without the exclusion the skin sheet would cancel the animation (the former bug, kept as a witness)", { skip, timeout: 90000 }, async () => {
-  const old = sheet.replace(/\*:not\(\[data-ov-region="composition"\]\):not\(\[data-ov-region="composition"\] \*\)/g, "*");
-  assert.notEqual(old, sheet);
-  const server = http.createServer((req, res) => { if (req.url === SRC) { res.setHeader("content-type", "image/png"); return res.end(png); } res.setHeader("content-type", "text/html"); res.end(page.replace(sheet, old)); });
+/* ───────────── module content vs core decoration, in a real Chromium ───────────── */
+const modSheet = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: TOKENS, css: '@media (prefers-reduced-motion:no-preference){html[data-ov-skin="epic"] [data-ov-part="badge"]{animation:ov-flicker 3s ease-in-out infinite}}' }).css;
+const modPage = `<!doctype html><meta charset="utf-8"><html data-ov-skin="epic"><style>${modSheet}
+.slide{transform:translateX(135%);opacity:0;transition:transform .5s,opacity .4s}.slide.on{transform:none;opacity:1}
+.own{animation:own-in .4s ease-out both}@keyframes own-in{from{opacity:0}to{opacity:1}}</style>
+<body><div id="a" class="slide" data-ov-part="item">module slider</div><div id="c" class="slide" data-ov-calm>calm slider</div><div id="p" data-ov-part="card">preset</div><div id="b" data-ov-part="badge">idle</div><div id="o" class="own" data-ov-part="panel">own</div><div id="k" data-ov-calm class="own">calm own</div></body>`;
+
+async function probe(reducedMotion) {
+  const server = http.createServer((req, res) => { res.setHeader("content-type", "text/html; charset=utf-8"); res.end(modPage); });
   await new Promise((r) => server.listen(0, "127.0.0.1", r));
   const browser = await pw.chromium.launch({ executablePath: pw.path, args: pw.args });
   try {
-    const p = await (await browser.newContext({ viewport: { width: 800, height: 500 }, reducedMotion: "reduce" })).newPage();
+    const p = await (await browser.newContext({ viewport: { width: 800, height: 500 }, reducedMotion })).newPage();
     await p.goto(`http://127.0.0.1:${server.address().port}/`);
-    const comp = M.resolveComposition(M.checkComposition({ v: 1, format: "16:9", backdrop: { src: SRC }, boxes: [{ id: "a", content: { kind: "custom", text: "x" }, in: { anim: "pop", at: 1, dur: 0.5 } }] }, { variables: [] }).value, { phrase: "x", values: {} });
-    const n = await p.evaluate((c) => { const r = window.CuriosaCompose.mount(document.getElementById("host"), c, { still: true, calm: false }); return r.querySelector(".cmp-box").getAnimations().length; }, comp);
-    assert.equal(n, 0, "the old blanket rule cancels the placed text's animations");
+    return await p.evaluate(async () => {
+      const $ = (id) => document.getElementById(id), cs = (id) => getComputedStyle($(id));
+      const out = {};
+      for (const id of ["a", "c"]) {
+        $(id).offsetWidth; $(id).classList.add("on"); cs(id).opacity;
+        const tr = $(id).getAnimations().filter((x) => x.transitionProperty).map((x) => x.transitionProperty).sort();
+        const mid = (() => { $(id).getAnimations().forEach((x) => { x.pause(); x.currentTime = 100; }); return cs(id).opacity; })();
+        out[id] = { duration: cs(id).transitionDuration, running: tr, midOpacity: Number(mid) };
+      }
+      out.preset = cs("p").animationName; out.idle = cs("b").animationName; out.own = cs("o").animationName; out.calmOwn = cs("k").animationName;
+      return out;
+    });
   } finally { await browser.close(); server.close(); }
-});
+}
+
+for (const mode of ["no-preference", "reduce"]) {
+  test(`real browser, ${mode}: module transitions and animations keep their timing, the core's decorative presets follow the preference`, { skip, timeout: 90000 }, async () => {
+    const r = await probe(mode);
+    const reduce = mode === "reduce";
+    // (a) a module element with a CSS transition on transform / opacity still transitions, in both modes
+    assert.equal(r.a.duration, "0.5s, 0.4s", "the module's transition is still there");
+    assert.deepEqual(r.a.running, ["opacity", "transform"], "and it runs");
+    assert.ok(r.a.midOpacity > 0 && r.a.midOpacity < 1, `half-way through the transition the element is neither hidden nor shown (${r.a.midOpacity})`);
+    // (b) the decorative presets of the core: on without a preference, off under reduced motion
+    assert.equal(r.preset, reduce ? "none" : "ov-rise", "the entrance preset");
+    assert.equal(r.idle, reduce ? "none" : "ov-flicker", "the idle preset of the skin");
+    // a module's own keyframes on a skinned part are no longer overridden or cancelled by the core
+    assert.equal(r.own, reduce ? "own-in" : "ov-rise", "a module's own animation on a skinned container: the preset still replaces it without a preference (unchanged), but is no longer cancelled under reduced motion");
+    // the opt-in hook
+    assert.equal(r.c.duration, reduce ? "0s" : "0.5s, 0.4s", "data-ov-calm: calm under reduced motion only");
+    assert.deepEqual(r.c.running, reduce ? [] : ["opacity", "transform"]);
+    assert.equal(r.calmOwn, reduce ? "none" : "own-in");
+  });
+}
