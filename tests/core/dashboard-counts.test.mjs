@@ -137,9 +137,10 @@ test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un 
   assert.ok(page.indexOf('data-testid="to-finish"') < page.indexOf('data-testid="in-numbers"'), "les brouillons passent avant les chiffres");
   const numbers = page.slice(page.indexOf('data-testid="in-numbers"'));
   assert.match(numbers, /redirects > 0 &&/, "Liens courts masqués s'il n'y en a pas");
-  assert.match(numbers, /advanced && stat\(t\("dashboard\.instances"/);
-  assert.match(numbers, /advanced && stat\(t\("dashboard\.modules"/);
-  assert.match(numbers, /stat\(t\("dashboard\.extensions"/);
+  // R35 (C2a): each number that leads to a page is shown only to someone who can open that page.
+  assert.match(numbers, /advanced && canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.instances"/);
+  assert.match(numbers, /advanced && canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.modules"/);
+  assert.match(numbers, /canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.extensions"/);
   assert.doesNotMatch(page, /dashboard\.drafts"/, "plus de carte « Brouillons » sans destination claire");
   const plain = page.slice(page.indexOf("const plain"), page.indexOf("const link"));
   assert.doesNotMatch(plain, /hover:/, "un bloc informatif n'a pas l'allure d'un bouton");

@@ -59,6 +59,24 @@ const requirements = [
       return [...new Set(out)];
     },
   },
+  {
+    id: "dashboard.coreLinkRight", level: "advice", group: "dashboard",
+    title: "Une tâche, une action ou une carte qui mène à une page du cœur déclare le droit qu'elle demande",
+    what: "Si une tâche, une action rapide ou une carte du tableau de bord a un lien vers une page du cœur (« /admin/entries/new », « /admin/users »…), elle déclare « right » : sans lui, le droit par défaut est « ouvrir le module », qui ne dit rien de la page visée.",
+    why: "Le cœur n'affiche que les liens que la personne peut ouvrir (règle R35) : sans droit déclaré, une personne qui peut ouvrir le module mais pas la page ne voit pas la contribution, ou la voit sans pouvoir l'ouvrir.",
+    fix: "Ajoutez « right » à la contribution (un droit de « rights » du module qui est donné aux seules personnes qui peuvent ouvrir la page), ou pointez vers une page du module (« ?tab=… »).",
+    async run(m) {
+      const decl = m.manifest?.dashboard;
+      if (!decl) return { na: "le module ne propose rien au tableau de bord" };
+      const out = [];
+      for (const kind of ["tasks", "quickActions", "cards"]) {
+        for (const it of decl[kind] ?? []) {
+          if (typeof it.href === "string" && /^\/admin(\/|\?|$)/.test(it.href) && !it.href.startsWith("/admin/instances/") && !it.right) out.push(`${kind} « ${it.id} » mène à ${it.href} sans déclarer « right »`);
+        }
+      }
+      return out;
+    },
+  },
 ];
 
 export default requirements;

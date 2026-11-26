@@ -234,8 +234,9 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 | [`admin.ergonomics`](#adminergonomics) | obligatoire | Aucun nouvel écart d'ergonomie dans les réglages et les textes |
 | [`admin.ergonomics.known`](#adminergonomicsknown) | conseil | Écarts d'ergonomie connus, à résorber |
 | [`dashboard.valid`](#dashboardvalid) | obligatoire | Ce que le module propose au tableau de bord est complet et valide |
+| [`dashboard.coreLinkRight`](#dashboardcorelinkright) | conseil | Une tâche, une action ou une carte qui mène à une page du cœur déclare le droit qu'elle demande |
 
-49 exigences obligatoires et 37 conseils.
+49 exigences obligatoires et 38 conseils.
 
 ### Le fichier module.json
 
@@ -964,6 +965,14 @@ Chaque fiche : ce qui est vérifié, pourquoi, comment corriger. L'identifiant e
 - **Ce qui est vérifié.** Si module.json déclare « dashboard » (tasks, quickActions, cards), chaque tâche et chaque carte déclarée a sa fonction dans le code (dashboard.tasks.<id>, dashboard.cards.<id>) et chaque fonction est déclarée ; les libellés sont en français ET en anglais, les liens mènent à l'administration, les droits sont déclarés dans « rights » ; chaque fonction répond dans la forme attendue (un nombre pour une tâche, { value, detail? } ou { rows } pour une carte) en moins de 1,5 seconde, avec des données d'essai.
 - **Pourquoi.** Le cœur appelle ces fonctions à chaque affichage du tableau de bord, avec 1,5 seconde au plus : une réponse mal formée ou trop lente fait disparaître le module du tableau de bord (les autres s'affichent). Le cœur n'affiche jamais de HTML ni de lien hors de l'administration venant d'un module.
 - **Comment corriger.** Déclarez dans module.json « dashboard »: { "tasks": [{ "id": "pending", "label": { "fr": "{n} avis à valider", "en": "{n} reviews to approve" }, "href": "?tab=reviews" }] } et écrivez « dashboard: { tasks: { pending: async (ctx) => nombre } } » dans le code ; lisez un compteur déjà calculé, jamais un service externe. Voir docs/CREATE-A-MODULE.md, « Tableau de bord ».
+
+#### `dashboard.coreLinkRight`
+
+**Une tâche, une action ou une carte qui mène à une page du cœur déclare le droit qu'elle demande** — niveau : **conseil**
+
+- **Ce qui est vérifié.** Si une tâche, une action rapide ou une carte du tableau de bord a un lien vers une page du cœur (« /admin/entries/new », « /admin/users »…), elle déclare « right » : sans lui, le droit par défaut est « ouvrir le module », qui ne dit rien de la page visée.
+- **Pourquoi.** Le cœur n'affiche que les liens que la personne peut ouvrir (règle R35) : sans droit déclaré, une personne qui peut ouvrir le module mais pas la page ne voit pas la contribution, ou la voit sans pouvoir l'ouvrir.
+- **Comment corriger.** Ajoutez « right » à la contribution (un droit de « rights » du module qui est donné aux seules personnes qui peuvent ouvrir la page), ou pointez vers une page du module (« ?tab=… »).
 
 ## Limites connues
 

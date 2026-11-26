@@ -1,6 +1,8 @@
 import { adminCtx } from "@/core/admin";
-import { can, hasRole } from "@/core/auth/access";
-import { navItemVisible } from "@/core/modules/adminMenu";
+import { takeDenied } from "@/core/auth/access";
+import { currentVocabulary } from "@/core/modules/placesLoad";
+import { canOpen, openableModuleEntries, ownersOf } from "@/core/adminAccess";
+import { denialText } from "@/core/adminDenial";
 import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
@@ -22,14 +24,18 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   // Tout accès suffit (le menu y renvoie) ; ne montre que ce que cette personne peut ouvrir.
   const { t, locale, config, advanced, user } = await adminCtx("member");
   const allNav = await getAdminNav(config.defaultLocale, config.defaultLocale);
-  const nav = allNav.filter((m) => navItemVisible(m, (right) => can(user, right)));
+  // R35: the entries of the modules this person may open (the rule of the menu, then the access table), and who owns each instance for the pages of instances.
+  const owners = ownersOf(allNav, currentVocabulary().groups.map((g) => g.id));
+  const nav = openableModuleEntries(user, allNav, owners);
   const firstContent = nav.find((i) => i.content && !i.error);
   const { denied, welcome, modules: setupModulesState } = await searchParams;
-  const canEdit = hasRole(user, "editor");
+  // R35: the refusal names what the page needed (kept in memory for this person only, never read from the address).
+  const deniedNeed = denied ? takeDenied(user.id) : null;
+  const canEdit = canOpen(user, DRAFTS_HREF, owners);
   const [counts, draftList, unlisted, redirects, instanceCount, modules] = await Promise.all([
     dashboardEntryCounts(nav),
     listDrafts(nav, config.defaultLocale, { limit: 5 }),
-    advanced ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
+    advanced && canOpen(user, EXTENSIONS_HREF, owners) ? unlistedEntries(allNav) : Promise.resolve({ total: 0, parts: [] }),
     prisma.redirect.count(),
     prisma.moduleInstance.count(),
     prisma.module.count(),
@@ -40,6 +46,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     nav: nav.map((i) => ({ id: i.id, key: i.key, name: i.name, icon: i.icon, content: i.content, error: i.error, badge: i.badge, moduleId: i.moduleId })),
     contentIds: nav.filter((i) => i.content && !i.error).map((i) => i.id),
     newPageHref: firstContent ? entryNewHref(firstContent.key) : EXTENSIONS_ADD_HREF,
+    owners,
   };
   const ARROW = <span aria-hidden="true"> →</span>;
   const plain = `${ui.card} block`;
@@ -57,8 +64,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       {c.parts.length > 0 && (
         <ul className="mt-2 space-y-0.5 text-sm">
           {c.parts.map((p) => {
-            const row = (<><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}{canEdit && ARROW}</span></>);
-            return <li key={p.key}>{canEdit
+            const row = (<><span className="truncate">{p.icon} {p.name}</span><span className="text-muted">{p.n}{canOpen(user, entriesHref(p.key), owners) && ARROW}</span></>);
+            return <li key={p.key}>{canOpen(user, entriesHref(p.key), owners)
               ? <a href={entriesHref(p.key, { state: "published" })} className="flex items-center justify-between gap-3 rounded-lg px-2 py-1 hover:bg-accent/10">{row}</a>
               : <span className="flex items-center justify-between gap-3 px-2 py-1">{row}</span>}</li>;
           })}
@@ -94,10 +101,11 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {publishedStat(counts.published)}
-          {stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
-          {redirects > 0 && stat(t("dashboard.shortLinks"), redirects, REDIRECTS_HREF, "stat-redirects")}
-          {advanced && stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF, "stat-instances")}
-          {advanced && stat(t("dashboard.modules"), modules, EXTENSIONS_HREF, "stat-modules")}
+          {/* R35: a tile is shown only to someone who can open the page it leads to (the number alone is not offered to a person who cannot act on it). */}
+          {canOpen(user, EXTENSIONS_HREF, owners) && stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
+          {redirects > 0 && canOpen(user, REDIRECTS_HREF, owners) && stat(t("dashboard.shortLinks"), redirects, REDIRECTS_HREF, "stat-redirects")}
+          {advanced && canOpen(user, EXTENSIONS_HREF, owners) && stat(t("dashboard.instances"), instanceCount, EXTENSIONS_HREF, "stat-instances")}
+          {advanced && canOpen(user, EXTENSIONS_HREF, owners) && stat(t("dashboard.modules"), modules, EXTENSIONS_HREF, "stat-modules")}
         </div>
         {advanced && unlisted.total > 0 && (
           <p className="text-sm text-muted" data-testid="unlisted">{t("dashboard.unlisted", { where: unlisted.parts.map((p) => `${p.name || t("dashboard.removedExtension")} (${p.n})`).join(", ") })}</p>
@@ -125,7 +133,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       </PageHeader>
       {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
       {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && <Callout tone="warn" role="status" testid="setup-modules-failed">{t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")}</Callout>}
-      {denied && <Callout tone="danger">{t("error.denied")}</Callout>}
+      {denied && <Callout tone="danger" testid="denied">{denialText(t, deniedNeed)}</Callout>}
       {plan.blocks.filter((b) => b !== "health").map((b) => blocks[b] ?? null)}
     </div>
   );

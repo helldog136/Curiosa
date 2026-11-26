@@ -1,7 +1,7 @@
 import { CopyText } from "@/components/site/CopyText";
 import { floatingLabels } from "@/components/admin/floating";
 import { notFound, redirect } from "next/navigation";
-import { can, deniedPath, hasRole } from "@/core/auth/access";
+import { can, deniedPath, hasRole, rememberDenied } from "@/core/auth/access";
 import { auditDenied } from "@/core/permissions";
 import { adminCtx } from "@/core/admin";
 import { DISPLAYS, FEATURES, getInstanceById } from "@/core/instances";
@@ -73,6 +73,7 @@ export async function InstanceView({ id, query: sp, inModal = false }: { id: str
   if (!instance || !mod) notFound();
   if (!can(user, `${mod.manifest.id}:open`)) {
     await auditDenied(user, `${mod.manifest.id}:open`);
+    rememberDenied(user.id, { right: `${mod.manifest.id}:open` });
     redirect(deniedPath(user));
   }
   // Réglages, retrait, données gardées : administrateurs (comme avant). Un rôle personnalisé qui ouvre le module ne voit que son panneau.

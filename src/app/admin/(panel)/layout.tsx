@@ -3,6 +3,7 @@ import { CuriosaMark } from "@/components/brand/CuriosaMark";
 import { CodeCopyProvider } from "@/components/site/CodeBlock";
 import { codeCopyLabels } from "@/components/site/codeCopyLabels";
 import { adminCtx } from "@/core/admin";
+import { canOpen, openable, openableModuleEntries, ownersOf } from "@/core/adminAccess";
 import { adminBugReportUrl } from "@/core/bugReport";
 import { BugReportLink } from "@/components/admin/BugReportLink";
 import { maintenanceSummary } from "@/core/maintenance/summary";
@@ -18,7 +19,7 @@ import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
 import { buildMenuTree, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
-import { fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
+import { currentVocabulary, fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
 import { placeBadges, qualifyLabels } from "@/core/modules/places";
 import { SettingsSearch } from "@/components/admin/SettingsSearch";
 import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
@@ -26,7 +27,7 @@ import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } fro
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
-import { OVERLAY_CUSTOM_ORDER, SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, navItemVisible, type SidebarAdminEntry } from "@/core/modules/adminMenu";
+import { OVERLAY_CUSTOM_ORDER, SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, type SidebarAdminEntry } from "@/core/modules/adminMenu";
 import { overlaysUseful } from "@/core/overlays/presence";
 import { can, hasRole } from "@/core/auth/access";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
@@ -52,7 +53,10 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const placedAway = await fullyPlacedInstances();
   // (0.47.0) The matching overlay skin, offered once after the site skin changed (one setting read when nothing is pending).
   const twin = hasRole(user, OVERLAY_NEED) ? await pendingTwinOffer(liveTwinState, locale).catch(() => null) : null;
-  const allNav = (await getAdminNav(locale, config.defaultLocale)).filter((m) => navItemVisible(m, (right) => can(user, right)));
+  // (C2a, R35) One access table decides what the menu shows: a module entry stays only when its rule AND the table's answer for its address say yes (never more than before).
+  const everyNav = await getAdminNav(locale, config.defaultLocale);
+  const owners = ownersOf(everyNav, currentVocabulary().groups.map((g) => g.id));
+  const allNav = openableModuleEntries(user, everyNav, owners);
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
   const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
@@ -60,7 +64,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   // (0.34.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
   const instanceBadge = new Map(allNav.map((m) => [m.id, m.badge] as const));
   const carried = placeBadges(placeIndex, (instanceId) => instanceBadge.get(instanceId) ?? 0);
-  const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({
+  const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core && canOpen(user, p.href, owners)).map((p, i) => ({
     id: `place:${p.id}`, icon: groupIconKey(g.id), name: p.menuTitle, fullName: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
     groupLabels: { [g.id]: { en: g.title, fr: g.title } }, moduleId: "", href: p.href, place: true as const,
   })));
@@ -70,7 +74,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const allAdminEntries = administrationEntries({ role: user.level, advanced, overlays: canManage ? await overlaysUseful() : false });
   const adminEntries = allAdminEntries.filter((id): id is SidebarAdminEntry => id !== "overlays");
   // The core entry joins the group `obs` through the same tree as the place pages and the module paths; the group exists only while one entry is visible (nothing visible, no group).
-  const overlayCustom: PlaceItem[] = allAdminEntries.includes("overlays")
+  const overlayCustom: PlaceItem[] = allAdminEntries.includes("overlays") && canOpen(user, OVERLAY_PAGES_HREF, owners)
     ? [{ id: "core:overlays", name: t("nav.overlayCustom"), icon: "layers" as const, badge: 0, error: false, placement: "menu", menuPath: [{ id: "obs", text: "obs" }], menuOrder: OVERLAY_CUSTOM_ORDER, connector: false, moduleId: "", href: OVERLAY_PAGES_HREF, place: true as const, badgeTip: "" }]
     : [];
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
@@ -139,8 +143,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   );
   const stateOf = (id: keyof typeof SECTION_STATE_ID) => navState[SECTION_STATE_ID[id]];
   const openDefault = (id: keyof typeof SECTION_STATE_ID) => !SECTIONS_CLOSED_BY_DEFAULT.includes(SECTION_STATE_ID[id]);
-  const siteList = siteLinks({ canManage, editor });
-  const adminList = adminEntries.map((id) => ({ id, link: adminLink(id, { tabs: maintenanceTabList, unpinnedPages }) }));
+  const siteList = openable(user, siteLinks({ canManage, editor }), owners);
+  const adminList = adminEntries.map((id) => ({ id, link: adminLink(id, { tabs: maintenanceTabList, unpinnedPages }) })).filter(({ link }) => canOpen(user, link.href, owners));
   const targetsOf = (ls: readonly { href: string; also: readonly string[] }[]) => ls.flatMap((l) => [l.href, ...l.also]);
   const sectionBadge = (items: Entry[], extra?: { badge: number }) => items.reduce((n, m) => n + m.badge, 0) + (extra?.badge ?? 0);
 
@@ -161,7 +165,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
               <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-tint text-sm font-bold text-accent-text">{initialOf(user.name)}</span>
               <p className="min-w-0 leading-tight"><span className="block truncate text-sm font-semibold">{user.name}</span><span className="block truncate text-xs text-muted">{roleLabel}</span></p>
             </div>
-            {ACCOUNT_LINKS.map((l) => coreLink(l))}
+            {ACCOUNT_LINKS.map((l) => (canOpen(user, l.href, owners) ? coreLink(l) : null))}
             <BugReportLink href={bugUrl} className={rowCls} title={t("bugReport.help")}><MenuIcon name="bug" />{t("bugReport.link")}<span className="sr-only"> ({t("nav.newTab")})</span></BugReportLink>
             <form
               action={async () => {
