@@ -18,7 +18,7 @@ export type SwitchResult = { ok?: string; error?: string } | void | null;
 
 const TRACK = "relative inline-block h-6 w-11 shrink-0 rounded-full border transition-colors after:absolute after:left-0.5 after:top-0.5 after:h-4 after:w-4 after:rounded-full after:bg-surface after:shadow after:transition-transform after:content-['']";
 const TRACK_ON = "bg-accent border-accent after:translate-x-5";
-const TRACK_OFF = "bg-line/60 border-line";
+const TRACK_OFF = "bg-line/60 border-line-strong";
 
 /** Le message de retour reste affiché 3 secondes (une erreur reste jusqu'au prochain clic). */
 const OK_MS = 3000;

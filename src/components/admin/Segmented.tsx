@@ -22,7 +22,7 @@ export function Segmented({ label, name, options, defaultValue, help, example, e
   return (
     <fieldset id={`${name}__group`} tabIndex={-1} data-segmented="" aria-describedby={[note ? `${name}__note` : "", error ? `err-${name}` : ""].filter(Boolean).join(" ") || undefined} className="min-w-0">
       <legend className={`${ui.label} max-w-full`}>{label}<HelpTip help={tip} name={label} /></legend>
-      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-line bg-bg p-1" role="presentation">
+      <div className="flex flex-wrap gap-1.5 rounded-2xl border border-line-strong bg-bg p-1" role="presentation">
         {options.map((o) => (
           <label key={o.value} className="relative flex min-h-11 min-w-[7rem] flex-1 cursor-pointer items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-medium transition-colors hover:bg-surface has-[:checked]:bg-accent has-[:checked]:text-accent-fg has-[:checked]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
             <input type="radio" name={name} value={o.value} defaultChecked={o.value === current} required={required} className="peer sr-only" />

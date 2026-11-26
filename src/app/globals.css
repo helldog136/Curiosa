@@ -6,6 +6,18 @@
   --color-muted: var(--v-muted);
   --color-surface: var(--v-surface);
   --color-line: var(--v-line);
+  /* Jetons ajoutés pour le contraste AA : posés par l'administration (adminTheme.ts) ; ailleurs, repli sur les valeurs d'avant. */
+  --color-line-strong: var(--v-line-strong, var(--v-line));
+  --color-accent-text: var(--v-accent-text, var(--v-accent));
+  --color-accent-tint: var(--v-accent-tint, color-mix(in srgb, var(--v-accent) 10%, transparent));
+  --color-ok-text: var(--v-ok-text, var(--v-success));
+  --color-ok-soft: var(--v-ok-soft, color-mix(in srgb, var(--v-success) 15%, transparent));
+  --color-warn-text: var(--v-warn-text, var(--v-warning));
+  --color-warn-soft: var(--v-warn-soft, color-mix(in srgb, var(--v-warning) 20%, transparent));
+  --color-danger-text: var(--v-danger-text, var(--v-danger));
+  --color-danger-soft: var(--v-danger-soft, color-mix(in srgb, var(--v-danger) 15%, transparent));
+  --color-neutral-text: var(--v-neutral-text, var(--v-fg));
+  --color-neutral-soft: var(--v-neutral-soft, color-mix(in srgb, var(--v-line) 60%, transparent));
   --color-accent: var(--v-accent);
   --color-accent-fg: var(--v-accent-fg);
   --color-success: var(--v-success);
@@ -248,3 +260,6 @@
   border-color: color-mix(in srgb, var(--v-line) 65%, var(--v-fg));
   box-shadow: 0 1px 2px color-mix(in srgb, var(--v-fg) 10%, transparent), 0 8px 20px -10px color-mix(in srgb, var(--v-fg) 28%, transparent);
 }
+
+/* Administration : un lien dans une phrase se reconnaît à autre chose que sa couleur (audit F-A11Y-005 : sombre, 7 pages). Les liens-boutons (arrondis, cadre, `data-btn`) ne sont pas soulignés. */
+:root[data-admin-theme] :is(p, dd, small, label, figcaption) a:not([class*="rounded"], [class*="border"], [data-btn]) { text-decoration: underline; text-underline-offset: 2px; }
