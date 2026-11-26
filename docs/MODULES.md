@@ -118,6 +118,7 @@ A module says where its entry sits in the admin sidebar as a **path of groups**,
 | Key | Role |
 |---|---|
 | `adminMenu` | `"Networks.Twitch"`: 1 to 3 segments. The last segment is the group; the entry sits inside it. A group exists as soon as it holds an entry, so nothing is hard-coded to networks (`"Shop.Orders"` works). |
+| `menuIcon` | Line icon of the entry in the admin sidebar, one of the core set (`MENU_ICONS` in `src/core/adminSidebar.ts`: `doc`, `users`, `tv`, `calendar`, `cart`…). Absent: the icon of its section. Icons are decorative (the label always stays). An older core ignores the key. |
 | `adminMenuOrder` | Integer 0 to 999, default 100. Inside a group, lower first; at equal value the connectors (type `integration`) come first, then alphabetical. |
 | `adminMenuLabels` | `{ "shop": { "en": "Shop", "fr": "Boutique" } }`: titles for groups the core does not know, by canonical id (6 at most). |
 

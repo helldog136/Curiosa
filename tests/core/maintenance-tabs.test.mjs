@@ -44,7 +44,8 @@ test("une seule entrée « Entretien » dans Administration, plus les cinq ancie
   assert.ok(!M.administrationEntries({ role: "editor", advanced: true }).includes("maintenance"));
   const layout = read("src/app/admin/(panel)/layout.tsx");
   for (const gone of ["nav.health", "nav.backup", "nav.updates", "nav.upkeep\"", "nav.audit"]) assert.ok(!layout.includes(gone), gone);
-  assert.match(layout, /key="maintenance" href=\{maintenanceTabList\.length > 0 \? MAINTENANCE_TAB_HREFS/);
+  assert.match(layout, /adminLink\(id, \{ tabs: maintenanceTabList/);
+  assert.match(read("src/core/adminSidebar.ts"), /MAINTENANCE_TAB_HREFS\[t\]/);
 });
 
 test("l'entrée de menu reste en évidence sur les cinq pages et leurs sous-pages", () => {

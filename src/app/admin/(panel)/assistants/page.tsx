@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
 import { isOwner } from "@/core/permissions";
 import { CREDIT_URL } from "@/core/credit";
-import { adminBugReportUrl } from "@/core/bugReport";
 import { REQUEST_NOTICES, assistantsTabHref, newAccessHref, parseTab } from "@/core/services/mcp/assistantsLinks";
 import { maintenanceSummary } from "@/core/maintenance/summary";
 import { markSeen } from "@/core/maintenance/settings";
@@ -12,7 +11,6 @@ import { HelpTip } from "@/components/admin/HelpTip";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import { turnOffFullPowersAction } from "./fullPowersActions";
-import { BugReportLink } from "@/components/admin/BugReportLink";
 import { PageHeader } from "@/components/admin/Page";
 import { AccessTab } from "./AccessTab";
 import { OwnersTab } from "./OwnersTab";
@@ -43,7 +41,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
   // Ancien lien « ajouter un assistant d'entretien » : le formulaire est maintenant dans l'Équipe.
   if (tab === "access" && query.profile === "maintenance") redirect(newAccessHref(true));
   const notice = REQUEST_NOTICES.find((n) => n === query.notice);
-  const [{ pending }, bugUrl, fullPowers, unowned] = await Promise.all([maintenanceSummary(), adminBugReportUrl(t), accessesWithFullPowers(), accessesWithoutOwner()]);
+  const [{ pending }, fullPowers, unowned] = await Promise.all([maintenanceSummary(), accessesWithFullPowers(), accessesWithoutOwner()]);
   const owner = isOwner(user);
   // Voir les demandes ou l'historique = avoir vu ce que les IA ont fait : la pastille du menu repart de zéro (les demandes en attente, elles, restent).
   if (tab !== "access" && tab !== "owners") await markSeen();
@@ -83,7 +81,6 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
       <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
         <a href={`${CREDIT_URL}/blob/HEAD/docs/MAINTENANCE-IA.md`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-accent" data-testid="ai-guide-link">📄 {t("aim.guide")} ↗</a>
         <HelpTip always help={t("aim.guideHelp")} name={t("aim.guide")} />
-        <BugReportLink href={bugUrl} className="underline underline-offset-2 hover:text-accent">🐞 {t("bugReport.link")} ↗</BugReportLink>
       </p>
     </div>
   );

@@ -69,12 +69,13 @@ test("signalement : le lien est dans le menu d'admin (les deux modes), la page d
   assert.match(link, /target="_blank"/);
   assert.match(link, /rel="noopener noreferrer"/);
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /<BugReportLink href=\{bugUrl\}>/);
+  assert.match(layout, /<BugReportLink href=\{bugUrl\}/);
   assert.match(layout, /adminBugReportUrl\(t\)/);
   // Hors des blocs `advanced && …` : visible en mode simple ET avancé.
   const line = layout.split("\n").find((l) => l.includes("<BugReportLink"));
   assert.ok(!/advanced/.test(line));
-  for (const f of [`${PANEL}/updates/page.tsx`, `${PANEL}/assistants/page.tsx`]) assert.match(read(f), /<BugReportLink href=\{bugUrl\}/, f);
+  // F-DUP-001: ONE bug report link, in the pinned footer of the sidebar; the pages of updates and of the assistants no longer carry a copy.
+  for (const f of [`${PANEL}/updates/page.tsx`, `${PANEL}/assistants/page.tsx`]) assert.doesNotMatch(read(f), /BugReportLink/, f);
   const error = read(`${PANEL}/error.tsx`);
   assert.match(error, /^"use client"/);
   assert.match(error, /href=\{BUG_REPORT_HREF\} target="_blank" rel="noopener noreferrer"/);
@@ -93,7 +94,7 @@ test("admin : la page et ses actions sont réservées au propriétaire ; menu, t
   const actions = read(`${PANEL}/assistants/requestsActions.ts`);
   assert.match(actions, /^"use server"/);
   assert.equal((actions.match(/adminCtx\(\{ right: "core:[a-z.]+" \}\)/g) ?? []).length, 6, "approuver, refuser, validation par jeton, avertissements, remise à zéro des limites, réglage des limites");
-  assert.match(read(`${PANEL}/layout.tsx`), /<NavLink key="assistants" href=\{ASSISTANTS_HREF\}/);
+  assert.match(read("src/core/adminSidebar.ts"), /assistants: \{ id: "assistants", label: "nav\.assistants", href: ASSISTANTS_HREF/);
   assert.match(read("src/core/dashboard/todo.ts"), /kind: "ai"/, "les demandes à approuver sont dans « À faire »");
   // « Voir » mène aux demandes seulement s'il y en a à valider ; sinon à l'historique de ce que l'IA a fait
   assert.match(read("src/core/dashboard/todo.ts"), /ai\.pending > 0[\s\S]*assistantsTabHref\("requests"\)/);

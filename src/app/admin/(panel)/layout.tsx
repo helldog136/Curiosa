@@ -23,14 +23,12 @@ import { placeBadges, qualifyLabels } from "@/core/modules/places";
 import { SettingsSearch } from "@/components/admin/SettingsSearch";
 import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
 import { NAV_STATE_COOKIE, buildMenuLayout, extensionsBadge, parseNavState } from "@/core/modules/menuPlacement";
-import { EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { shortLabel } from "@/core/modules/missingSettings";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { OVERLAY_CUSTOM_ORDER, SIDEBAR_R12_KEYS, administrationEntries, maintenanceTabs, navItemVisible, type SidebarAdminEntry } from "@/core/modules/adminMenu";
 import { overlaysUseful } from "@/core/overlays/presence";
 import { can, hasRole } from "@/core/auth/access";
-import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
@@ -40,7 +38,9 @@ import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, HEALTH_HREF, HOME_HREF, LOGIN_HREF, MAINTENANCE_TAB_HREFS, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, OVERLAY_PAGES_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, entriesHref, instanceHref } from "@/core/adminLinks";
+import { MenuIcon } from "@/components/admin/MenuIcon";
+import { ACCOUNT_LINKS, DASHBOARD_LINK, SECTION_STATE_ID, SECTIONS_CLOSED_BY_DEFAULT, adminLink, capEntries, entryAlso, entryHref, entryIconKey, entryTargets, groupIconKey, initialOf, moreStateId, siteLinks, unpinnedPageTargets, type MenuIconKey, type SidebarLink } from "@/core/adminSidebar";
+import { ADMIN_HREF, LOGIN_HREF, OVERLAY_PAGES_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -56,12 +56,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const nav = allNav.filter((m) => !placedAway.has(m.id));
   // (0.31.0) Place pages: one entry per page with at least one section this person sees, in the groups of the vocabulary (core pages keep their own entries).
   const placeIndex = await placeIndexFor(user, advanced, locale, config.defaultLocale);
-  type PlaceItem = TreeItem & { href: string; place: true; badgeTip: string; /** The full title of a place page (its sidebar name may be shorter inside a group); absent on a core entry. */ fullName?: string };
+  type PlaceItem = TreeItem & { icon: MenuIconKey; href: string; place: true; badgeTip: string; /** The full title of a place page (its sidebar name may be shorter inside a group); absent on a core entry. */ fullName?: string };
   // (0.34.0) The badge of a module (`adminBadge`) is carried onto every place page that hosts one of its sections: a module that placed everything has no entry of its own.
   const instanceBadge = new Map(allNav.map((m) => [m.id, m.badge] as const));
   const carried = placeBadges(placeIndex, (instanceId) => instanceBadge.get(instanceId) ?? 0);
   const placeItems: PlaceItem[] = placeIndex.groups.flatMap((g) => g.pages.filter((p) => !p.core).map((p, i) => ({
-    id: `place:${p.id}`, name: p.menuTitle, fullName: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
+    id: `place:${p.id}`, icon: groupIconKey(g.id), name: p.menuTitle, fullName: p.title, badge: carried.get(p.id)?.count ?? 0, badgeKeys: carried.get(p.id)?.keys, badgeTip: carried.get(p.id)?.modules.join(" ; ") ?? "", error: false, placement: "menu", menuPath: [{ id: g.id, text: g.title }], menuOrder: i, connector: false,
     groupLabels: { [g.id]: { en: g.title, fr: g.title } }, moduleId: "", href: p.href, place: true as const,
   })));
   const editor = hasRole(user, "editor");
@@ -71,7 +71,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const adminEntries = allAdminEntries.filter((id): id is SidebarAdminEntry => id !== "overlays");
   // The core entry joins the group `obs` through the same tree as the place pages and the module paths; the group exists only while one entry is visible (nothing visible, no group).
   const overlayCustom: PlaceItem[] = allAdminEntries.includes("overlays")
-    ? [{ id: "core:overlays", name: t("nav.overlayCustom"), badge: 0, error: false, placement: "menu", menuPath: [{ id: "obs", text: "obs" }], menuOrder: OVERLAY_CUSTOM_ORDER, connector: false, moduleId: "", href: OVERLAY_PAGES_HREF, place: true as const, badgeTip: "" }]
+    ? [{ id: "core:overlays", name: t("nav.overlayCustom"), icon: "layers" as const, badge: 0, error: false, placement: "menu", menuPath: [{ id: "obs", text: "obs" }], menuOrder: OVERLAY_CUSTOM_ORDER, connector: false, moduleId: "", href: OVERLAY_PAGES_HREF, place: true as const, badgeTip: "" }]
     : [];
   const updateAvailable = can(user, "core:updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   // Modules en retard : jamais d'attente du réseau ici (menu de toutes les pages) ; la vérification se fait en arrière-plan et reste en mémoire quelques minutes.
@@ -89,18 +89,15 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const treeItems = [...Object.values(tree.sections).flatMap((n) => (n ? nodeEntries(n) : [])), ...tree.groups.flatMap(nodeEntries)];
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
   const isPlace = (m: Entry): m is PlaceItem => "place" in m;
-  const entryHref = (m: Entry) => (isPlace(m) ? m.href : m.content ? entriesHref(m.key) : instanceHref(m.id));
-  const entryAlso = (m: Entry) => (isPlace(m) ? [] : m.content ? [instanceHref(m.id)] : []);
-  const entryText = (m: Entry) => (isPlace(m) ? q(m.id, m.name) : `${m.icon} ${q(m.id, m.name)}`);
   const badgeText = (m: Entry) => (isPlace(m) && m.badgeTip ? `${t("nav.badge.todo")} — ${m.badgeTip}` : t("nav.badge.todo"));
-  const entryLink = (m: Entry) => <NavLink key={m.id} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
-  const treeTargets = (m: Entry) => [entryHref(m), ...entryAlso(m)];
-  const treeEntryLink = (m: Entry) => <NavLink key={m.id} touch href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{entryText(m)}</NavLink>;
+  const iconOf = (m: Entry): MenuIconKey => (isPlace(m) ? m.icon : entryIconKey(m.menuIcon, m.section));
+  const entryLink = (m: Entry) => <NavLink key={m.id} icon={iconOf(m)} href={entryHref(m)} also={entryAlso(m)} badge={m.badge} badgeLabel={badgeText(m)}>{q(m.id, m.name)}</NavLink>;
+  const treeTargets = entryTargets;
   // (0.31.0) A group made of one place page shows that page directly, without a heading, under its full title (0.49.0). A core entry (« Custom ») keeps its group, so it is never alone without its context.
   const alone = (n: (typeof tree.groups)[number]) => n.children.length === 0 && n.entries.length === 1 && isPlace(n.entries[0]!) && n.entries[0]!.fullName !== undefined;
   const treeNodes = (nodes: typeof tree.groups) => nodes.map((n) => (alone(n)
     ? <div key={n.id} data-testid={`nav-tree-${n.id}`}>{entryLink({ ...(n.entries[0] as PlaceItem), name: (n.entries[0] as PlaceItem).fullName! })}</div>
-    : <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={treeEntryLink} badgeLabel={t("nav.badge.todo")} />));
+    : <MenuTreeNav key={n.id} node={n} state={navState} targets={treeTargets} renderEntry={entryLink} badgeLabel={t("nav.badge.todo")} />));
   // Extensions : les mises à jour de modules, les modules à régler (à configurer ou en erreur) et les pastilles des modules qui ne sont pas épinglés au menu y remontent.
   const statuses = canManage ? await loadInstanceStatuses(locale, config.defaultLocale).catch(() => null) : null;
   const toSetUp = [...(statuses?.values() ?? [])].filter((s) => s.state === "setup" || s.state === "error").length;
@@ -110,7 +107,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const extensionsLabel = extensions.onlyUpdates ? t("nav.badge.updates") : setupList.length > 0 ? `${t("nav.badge.todo")} — ${t("nav.badge.setupFor", { list: setupList.join(" ; ") })}` : t("nav.badge.todo");
   // Les fiches d'une extension non épinglée restent « sous » l'entrée Extensions.
   const shown = new Set<Entry>([...menu.content, ...menu.community, ...menu.tools, ...menu.connections, ...treeItems]);
-  const unpinnedPages = allNav.filter((m) => !shown.has(m)).flatMap((m) => [instanceHref(m.id), ...(m.content ? [entriesHref(m.key)] : [])]);
+  const unpinnedPages = unpinnedPageTargets(allNav.filter((m) => !shown.has(m)));
 
   // Administration : les liens des entrées calculées plus haut. Assistants IA : un seul lien, en mode simple comme avancé.
   // Entretien : une seule entrée pour le contrôle du site, la sauvegarde, les mises à jour, les restes d'anciennes versions et le journal d'activité ; la pastille additionne mise à jour disponible et restes à traiter.
@@ -131,78 +128,108 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const qualified = qualifyLabels(r12).labels;
   function q(id: string, text: string): string { return qualified.get(id) ?? text; }
 
-  const adminLinks: Record<SidebarAdminEntry, React.ReactNode> = {
-    extensions: <NavLink key="extensions" href={EXTENSIONS_HREF} also={[MODULES_HREF, ...unpinnedPages]} badge={extensions.count} badgeLabel={extensionsLabel}>{t("nav.extensions")}</NavLink>,
-    assistants: <NavLink key="assistants" href={ASSISTANTS_HREF} badge={aiWaiting} badgeLabel={t("nav.badge.ai")}>{t("nav.assistants")}</NavLink>,
-    users: <NavLink key="users" href={USERS_HREF}>{t("nav.users")}</NavLink>,
-    maintenance: <NavLink key="maintenance" href={maintenanceTabList.length > 0 ? MAINTENANCE_TAB_HREFS[maintenanceTabList[0]!] : HEALTH_HREF} also={maintenanceTabList.map((id) => MAINTENANCE_TAB_HREFS[id])} badge={maintenanceBadge} badgeLabel={t("nav.badge.maintenance")}>{t("nav.maintenance")}</NavLink>,
+  const adminBadges: Record<SidebarAdminEntry, { count: number; label: string }> = {
+    extensions: { count: extensions.count, label: extensionsLabel },
+    assistants: { count: aiWaiting, label: t("nav.badge.ai") },
+    users: { count: 0, label: "" },
+    maintenance: { count: maintenanceBadge, label: t("nav.badge.maintenance") },
   };
+  const coreLink = (l: SidebarLink, badge?: { count: number; label: string }) => (
+    <NavLink key={l.id} href={l.href} also={[...l.also]} icon={l.icon} badge={badge?.count ?? 0} badgeLabel={badge?.label} {...(l.exact ? { exact: true } : {})} {...(l.external ? { external: true, newTabLabel: t("nav.newTab") } : {})}>{t(l.label)}</NavLink>
+  );
+  const stateOf = (id: keyof typeof SECTION_STATE_ID) => navState[SECTION_STATE_ID[id]];
+  const openDefault = (id: keyof typeof SECTION_STATE_ID) => !SECTIONS_CLOSED_BY_DEFAULT.includes(SECTION_STATE_ID[id]);
+  const siteList = siteLinks({ canManage, editor });
+  const adminList = adminEntries.map((id) => ({ id, link: adminLink(id, { tabs: maintenanceTabList, unpinnedPages }) }));
+  const targetsOf = (ls: readonly { href: string; also: readonly string[] }[]) => ls.flatMap((l) => [l.href, ...l.also]);
+  const sectionBadge = (items: Entry[], extra?: { badge: number }) => items.reduce((n, m) => n + m.badge, 0) + (extra?.badge ?? 0);
 
-  const group = "mb-1 mt-6 px-3 text-xs font-semibold uppercase tracking-wider text-muted";
+  const roleLabel = user.level === "none" ? t("role.custom") : t(`role.${user.level}`);
+  const rowCls = "flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   return (
     <div className="flex min-h-screen flex-col">
       <SkipLink label={t("nav.skip")} />
       <div className="flex flex-1 flex-col md:flex-row">
-      <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
-        <nav aria-label={t("nav.adminLabel")}>
-          <div className="mt-4 px-1"><SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" contentEndpoint={hasRole(user, "editor") ? "/api/admin/content-search" : undefined} advancedMode={advanced} /></div>
-          <div className="mt-3"><NavLink href={ADMIN_HREF} exact>{t("nav.dashboard")}</NavLink></div>
+      <MobileMenu
+        menuLabel={t("nav.menu")}
+        brand={<a href={ADMIN_HREF} className="flex min-w-0 flex-col px-3 leading-tight"><span className="truncate text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}
+        search={<SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" contentEndpoint={hasRole(user, "editor") ? "/api/admin/content-search" : undefined} advancedMode={advanced} />}
+        footer={(
+          <div role="group" aria-label={t("nav.account")}>
+            <div className="mb-1 flex items-center gap-3 px-3 py-1">
+              <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-tint text-sm font-bold text-accent-text">{initialOf(user.name)}</span>
+              <p className="min-w-0 leading-tight"><span className="block truncate text-sm font-semibold">{user.name}</span><span className="block truncate text-xs text-muted">{roleLabel}</span></p>
+            </div>
+            {ACCOUNT_LINKS.map((l) => coreLink(l))}
+            <BugReportLink href={bugUrl} className={rowCls} title={t("bugReport.help")}><MenuIcon name="bug" />{t("bugReport.link")}<span className="sr-only"> ({t("nav.newTab")})</span></BugReportLink>
+            <form
+              action={async () => {
+                "use server";
+                await signOut({ redirectTo: LOGIN_HREF });
+              }}
+              className="mt-1"
+            >
+              <PendingButton pendingLabel={t("progress.signingOut")} className="w-full">{t("nav.logout")}</PendingButton>
+            </form>
+          </div>
+        )}
+      >
+        <nav aria-label={t("nav.adminLabel")} className="pt-2">
+          {coreLink(DASHBOARD_LINK)}
           {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => {
             const extra = tree.sections[id];
-            return (items.length > 0 || extra) && (
+            if (items.length === 0 && !extra) return null;
+            const { shown: first, more } = capEntries<Entry>(items);
+            const targets = [...items.flatMap(treeTargets), ...(extra ? nodeEntries(extra).flatMap(treeTargets) : [])];
+            return (
               <div key={id} data-testid={`nav-section-${id}`}>
-                <p className={group}>{t(`nav.${id}`)}</p>
-                {items.map(entryLink)}
-                {extra?.entries.map(treeEntryLink)}
-                {extra && treeNodes(extra.children)}
+                <NavGroup id={SECTION_STATE_ID[id]} title={t(`nav.${id}`)} icon={groupIconKey(id)} targets={targets} stored={stateOf(id)} openByDefault={openDefault(id)} badge={sectionBadge(items, extra)} badgeLabel={t("nav.badge.todo")}>
+                  {first.map(entryLink)}
+                  {more.length > 0 && (
+                    <NavGroup id={moreStateId(id)} plain title={t("nav.more", { n: more.length })} icon="plus" targets={more.flatMap(treeTargets)} stored={navState[moreStateId(id)]} openByDefault={false} badge={sectionBadge(more)} badgeLabel={t("nav.badge.todo")}>
+                      {more.map(entryLink)}
+                    </NavGroup>
+                  )}
+                  {extra?.entries.map(entryLink)}
+                  {extra && treeNodes(extra.children)}
+                </NavGroup>
               </div>
             );
           })}
           {tree.groups.length > 0 && (
-            <div className="mt-6" data-testid="nav-tree">
+            <div data-testid="nav-tree">
               {treeNodes(tree.groups)}
             </div>
           )}
           {(menu.connections.length > 0 || tree.sections.connections) && (
-            <div className="mt-6" data-testid="nav-section-connections">
-              <NavGroup id="connections" title={t("nav.connections")} targets={[...menu.connections.flatMap(treeTargets), ...(tree.sections.connections ? nodeEntries(tree.sections.connections).flatMap(treeTargets) : [])]} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0) + (tree.sections.connections?.badge ?? 0)} badgeLabel={t("nav.badge.todo")}>
+            <div data-testid="nav-section-connections">
+              <NavGroup id="connections" title={t("nav.connections")} icon="plug" targets={[...menu.connections.flatMap(treeTargets), ...(tree.sections.connections ? nodeEntries(tree.sections.connections).flatMap(treeTargets) : [])]} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0) + (tree.sections.connections?.badge ?? 0)} badgeLabel={t("nav.badge.todo")}>
                 {menu.connections.map(entryLink)}
-                {tree.sections.connections?.entries.map(treeEntryLink)}
+                {tree.sections.connections?.entries.map(entryLink)}
                 {tree.sections.connections && treeNodes(tree.sections.connections.children)}
               </NavGroup>
             </div>
           )}
 
-          <p className={group}>{t("nav.site")}</p>
-          {canManage && <NavLink href={HOME_HREF} also={[NAVIGATION_HREF, NAVIGATION_HEADER_HREF, SOCIAL_HREF]}>{t("nav.homeMenu")}</NavLink>}
-          {canManage && <NavLink href={APPEARANCE_HREF}>{t("nav.appearance")}</NavLink>}
-          {canManage && <NavLink href={SETTINGS_HREF}>{t("nav.settings")}</NavLink>}
-          {editor && <NavLink href={REDIRECTS_HREF}>{t("nav.redirects")}</NavLink>}
-
-          {adminEntries.length > 0 && (
-            <>
-              <p className={group}>{t("nav.admin")}</p>
-              {adminEntries.map((id) => adminLinks[id])}
-            </>
+          {siteList.length > 0 && (
+            <div data-testid="nav-section-site">
+              <NavGroup id={SECTION_STATE_ID.site} title={t("nav.site")} icon="globe" targets={targetsOf(siteList)} stored={stateOf("site")} openByDefault badgeLabel="">
+                {siteList.map((l) => coreLink(l))}
+              </NavGroup>
+            </div>
           )}
 
-          <p className={group}>{t("nav.account")}</p>
-          <NavLink href={ACCOUNT_HREF}>{t("nav.myAccount")}</NavLink>
-          <NavLink href="/" external>{t("nav.viewSite")} ↗</NavLink>
+          {adminList.length > 0 && (
+            <div data-testid="nav-section-admin">
+              <NavGroup id={SECTION_STATE_ID.admin} title={t("nav.admin")} icon="shield" targets={targetsOf(adminList.map((a) => a.link))} stored={stateOf("admin")} openByDefault badge={adminList.reduce((n, a) => n + adminBadges[a.id].count, 0)} badgeLabel={t("nav.badge.todo")}>
+                {adminList.map(({ id, link }) => coreLink(link, adminBadges[id]))}
+              </NavGroup>
+            </div>
+          )}
         </nav>
-        <p className="mt-4 px-3"><BugReportLink href={bugUrl}>🐞 {t("bugReport.link")} ↗</BugReportLink></p>
-        <form
-          action={async () => {
-            "use server";
-            await signOut({ redirectTo: LOGIN_HREF });
-          }}
-          className="mt-6 px-3"
-        >
-          <p className="mb-2 truncate text-xs text-muted">{user.name} · {user.level === "none" ? t("role.custom") : t(`role.${user.level}`)}</p>
-          <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
-        </form>
       </MobileMenu>
+      <div className="flex min-w-0 flex-1 flex-col">
       <main id={ADMIN_MAIN_ID} tabIndex={-1} className="min-w-0 flex-1 p-6 outline-none md:p-10">
         {/* Une page qui a besoin de largeur (l'éditeur de pages d'overlay) porte data-admin-wide : la zone de contenu s'élargit alors, sans toucher aux autres pages. */}
         <div className="mx-auto max-w-4xl has-[[data-admin-wide]]:max-w-[112rem]">
@@ -212,11 +239,12 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {twin && <TwinOfferNotice text={t("appearance.twin.line", { name: twin.name })} button={t("appearance.twin.use")} dismiss={t("appearance.twin.later")} apply={applyMatchingOverlaySkinAction.bind(null, twin.skin)} notNow={dismissTwinOfferAction} />}
           <CropLabelsProvider advanced={advanced} labels={Object.fromEntries(CROP_LABEL_KEYS.map((k) => [k, t(`crop.${k}`)]))}><HelpTipProvider label={t("help.tip")}><CodeCopyProvider labels={codeCopyLabels(t)}>{children}</CodeCopyProvider></HelpTipProvider></CropLabelsProvider></div>
       </main>
-      </div>
       {/* Tout en bas de la page, pour tous les rôles et dans les deux modes : crédit exigé par la licence, et numéro de version à donner pour un signalement ou une mise à jour. */}
       <footer className="border-t border-line px-4 py-3 text-center text-xs text-muted" data-testid="app-version">
         {t("site.poweredBy")} <CuriosaMark newTab /> v{readVersion()}
       </footer>
+      </div>
+      </div>
     </div>
   );
 }
