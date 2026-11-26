@@ -7,6 +7,12 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## Prochaine version (non publiée)
+
+### Pour les développeurs
+
+- Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.
+
 ## 0.50.0 — 2026-11-26
 
 ### Nouveautés
