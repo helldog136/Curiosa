@@ -12,10 +12,16 @@ import { readHistory, readIgnored, readReport, readSettings } from "@/core/maint
 import { SEVERITIES, type Severity } from "@/core/maintenance/content/types";
 import { describeGroup, notCheckedList, verdictOf } from "@/core/maintenance/content/view";
 import { ignoreAction, saveContentSettings, unignoreAllAction } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const CHIP: Record<Severity, string> = { important: ui.chipDanger, advised: ui.chipWarn, info: ui.chip };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("content.title"));
+}
 
 /**
  * Santé de mon site (Entretien) : le contrôle du contenu, en mots simples. Un résumé rassurant (jamais de note), des remarques regroupées par importance, chacune avec une phrase,

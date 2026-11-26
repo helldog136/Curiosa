@@ -8,6 +8,16 @@ import { ui } from "@/components/admin/ui";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { createFromTemplate } from "../actions";
 import { entriesHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ c?: string }> }): Promise<Metadata> {
+  const { c } = await searchParams;
+  return adminTitle(async ({ t, locale, config }) => {
+    const collection = c ? await getInstanceByKey(c) : undefined;
+    return collection ? `${t("entries.templates.title")} \u00b7 ${(await getInstanceLabeler(locale, config.defaultLocale)).label(collection)}` : "";
+  }, { need: "editor" });
+}
 
 /**
  * « Partir d'un modèle » : les modèles d'entrée que le module déclare (`content.templates`). Un modèle crée un BROUILLON prérempli, jamais une page publiée ;

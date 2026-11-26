@@ -29,6 +29,8 @@ import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { createRedirect, deleteRedirect, saveMeasureLinks, setRedirectActive, suggestRedirectName } from "./actions";
 import { REDIRECTS_HREF, instanceHref, redirectHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +40,10 @@ const href = (q: string, page: number, state = "") => {
   const parts = [q ? `q=${encodeURIComponent(q)}` : "", state ? `state=${state}` : "", page > 1 ? `page=${page}` : ""].filter(Boolean);
   return `${REDIRECTS_HREF}${parts.length ? `?${parts.join("&")}` : ""}`;
 };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.redirects"));
+}
 
 export default async function RedirectsPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, advanced, locale, user, config } = await adminCtx("editor");

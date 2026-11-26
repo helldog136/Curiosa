@@ -14,8 +14,14 @@ import { AppearanceLabelsProvider } from "../AppearanceLabels";
 import { appearanceLabels } from "../labels";
 import { CustomizeForm } from "./CustomizeForm";
 import { buildModel, optionControls } from "./model";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("appearance.cz.titleNone"));
+}
 
 /** Apparence > <skin> > Personnaliser: one generic page, drawn from what the skin declares (docs/SKINS.md "Customization"). */
 export default async function CustomizePage({ searchParams }: { searchParams?: Promise<{ skin?: string }> }) {

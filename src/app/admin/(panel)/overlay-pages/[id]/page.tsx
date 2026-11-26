@@ -21,6 +21,8 @@ import { ui } from "@/components/admin/ui";
 import { restoreVersionAction, savePageAction, testAction } from "../actions";
 import { OVERLAY_PAGES_HREF, overlayPageHref, overlayPagePreviewHref, overlayPageSkinHref } from "@/core/adminLinks";
 import { LinkTabs } from "@/components/admin/LinkTabs";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +49,11 @@ function endTime(at: number, locale: string, tz: string): string {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", hour: "2-digit", minute: "2-digit" }).formatToParts(new Date(at));
   const h = Number(parts.find((p) => p.type === "hour")?.value ?? 0) % 24, m = parts.find((p) => p.type === "minute")?.value ?? "00";
   return locale === "fr" ? `${String(h).padStart(2, "0")} h ${m}` : `${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return adminTitle(async () => (await getPage(id))?.name ?? "", { need: OVERLAY_NEED });
 }
 
 export default async function OverlayPageEditor({ params }: { params: Promise<{ id: string }> }) {

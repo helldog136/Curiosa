@@ -14,9 +14,22 @@ import { EntryPanels } from "@/components/admin/EntryPanels";
 import { deleteEntry, deleteTranslation } from "../actions";
 import { pageSkinOptions } from "@/core/skins/pageSkin";
 import { entriesHref, entryHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 const day = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 const CHIP = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk } as const;
+
+export async function generateMetadata({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ locale?: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const { locale: requested } = await searchParams;
+  return adminTitle(async ({ t, config }) => {
+    const entry = await prisma.entry.findUnique({ where: { id }, include: { translations: true } });
+    if (!entry) return "";
+    const locale = requested && config.locales.includes(requested) ? requested : entry.translations.some((tr) => tr.locale === config.defaultLocale) ? config.defaultLocale : (entry.translations[0]?.locale ?? config.defaultLocale);
+    return entry.translations.find((tr) => tr.locale === locale)?.title || t("entries.edit");
+  }, { need: "editor" });
+}
 
 export default async function EditEntryPage({ params, searchParams }: {
   params: Promise<{ id: string }>; searchParams: Promise<{ c?: string; locale?: string; created?: string }>;

@@ -14,8 +14,18 @@ import { ui } from "@/components/admin/ui";
 import { LiveSearch, NoResults } from "@/components/admin/LiveSearch";
 import { Pagination } from "@/components/site/Pagination";
 import { ENTRIES_HREF, entriesHref, entryHref, entryNewHref, entryTemplatesHref, instanceHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 const CHIP: Record<EntryState, string> = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk };
+
+export async function generateMetadata({ searchParams }: { searchParams: Promise<{ c?: string }> }): Promise<Metadata> {
+  const { c } = await searchParams;
+  return adminTitle(async ({ locale, config }) => {
+    const collection = c ? await getInstanceByKey(c) : undefined;
+    return collection ? (await getInstanceLabeler(locale, config.defaultLocale)).label(collection) : "";
+  }, { need: "editor" });
+}
 
 export default async function EntriesPage({ searchParams }: { searchParams: Promise<{ c?: string; page?: string | string[]; q?: string | string[]; state?: string | string[] }> }) {
   const { t, locale, config, user } = await adminCtx("editor");

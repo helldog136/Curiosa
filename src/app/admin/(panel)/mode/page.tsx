@@ -3,6 +3,12 @@ import { PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { setAdminMode } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("mode.page.title"));
+}
 
 /** Choisir sa façon de gérer le site : l'essentiel (simple) ou tous les réglages techniques (avancé). Propre à chaque personne, rien n'est perdu en changeant. */
 export default async function ModePage() {

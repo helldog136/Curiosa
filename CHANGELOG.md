@@ -9,6 +9,13 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Nouveautés
+
+- **Chaque page d'administration a son propre titre d'onglet : le nom de la page, puis celui du site.** Plusieurs onglets ouverts se distinguent enfin, et un lecteur d'écran annonce la page à chaque changement.
+- **(English) Every administration page has its own tab title: the page name, then the site name.** Several open tabs can finally be told apart, and a screen reader announces the page at each change.
+- **Un lien « Aller au contenu » apparaît dès la première touche Tab.** Au clavier, vous passez directement au contenu de la page sans parcourir tout le menu.
+- **(English) A “Skip to content” link appears on the first Tab key.** With a keyboard you go straight to the page content without walking through the whole menu.
+
 ### Pour les développeurs
 
 - Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.

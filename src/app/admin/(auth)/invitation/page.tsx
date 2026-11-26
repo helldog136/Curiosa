@@ -2,8 +2,14 @@ import { getAdminTranslator } from "@/core/i18n/request";
 import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { InviteAccept } from "@/components/admin/InviteAccept";
 import { acceptInvitationAction, peekInvitationAction } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("invite.accept.title"));
+}
 
 /** Public page of an invitation. The token is in the address fragment (never sent to the server); headers (no-store, no-referrer) are set in next.config.mjs. */
 export default async function InvitationPage() {

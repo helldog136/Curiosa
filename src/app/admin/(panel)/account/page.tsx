@@ -17,6 +17,12 @@ import { AdminPreferences } from "@/components/admin/AdminPreferences";
 import { cookies } from "next/headers";
 import { ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
 import { changePassword, confirmTwoFactor, disableMyTwoFactor, finishPasskeyRegistration, regenerateMyRecoveryCodes, removeMyPasskey, renameMyPasskey, signOutEverywhere, startPasskeyRegistration, startTwoFactor, updateProfile } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.myAccount"));
+}
 
 export default async function AccountPage({ searchParams }: { searchParams: Promise<{ need2fa?: string }> }) {
   const { t, user, config, advanced } = await adminCtx("member", { allowUnenrolled: true });

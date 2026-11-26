@@ -21,8 +21,14 @@ import { Callout } from "@/components/admin/Page";
 import { AssistantTabs } from "./AssistantTabs";
 import { HistoryTab } from "./HistoryTab";
 import { RequestsTab } from "./RequestsTab";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("assistants.title"));
+}
 
 /**
  * Assistants IA : l'unique page pour laisser une IA lire ou gérer le site (remplace « API & MCP » et « Maintenance par IA »).

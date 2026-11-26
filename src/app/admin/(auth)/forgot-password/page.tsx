@@ -6,8 +6,14 @@ import { isMailConfigured } from "@/core/services/mail";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
 import { askLinkAction } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("forgot.title"));
+}
 
 /** Ask for a link to choose a new password. Only exists when the site can send e-mail (otherwise back to the sign-in page). */
 export default async function ForgotPasswordPage() {

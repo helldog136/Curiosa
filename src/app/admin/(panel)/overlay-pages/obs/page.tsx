@@ -16,6 +16,8 @@ import { LinkTabs } from "@/components/admin/LinkTabs";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { EmptyState, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +26,10 @@ export const dynamic = "force-dynamic";
  * of extensions. One table (R30): the kind is a column with a coloured AND written pill, filters above, live search (R15). Nothing is changed here.
  */
 type Row = { id: string; kind: "page" | "extension"; name: string; size: string | null; active: boolean; address: string | null; settings: string };
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("ovp.obs.title"));
+}
 
 export default async function ObsAddressesPage() {
   const { t, locale, config } = await adminCtx(OVERLAY_NEED);
