@@ -25,10 +25,17 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { Switch } from "@/components/admin/Switch";
 import { ui } from "@/components/admin/ui";
 import { chooseContextAction, installOverlaySkinAction, refreshSkinCatalogueAction, removeRuleAction, resetTweaksAction, saveRuleAction, saveTweaksAction, searchValuesAction, setPageSkinAction, toggleByContextAction } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const first = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v) ?? "";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return adminTitle(async ({ t }) => { const page = await getPage(id); return page ? `${page.name} \u00b7 ${t("ovp.tab.skin")}` : ""; }, { need: OVERLAY_NEED });
+}
 
 export default async function OverlayPageSkin({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, locale, config } = await adminCtx(OVERLAY_NEED);

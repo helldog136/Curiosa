@@ -9,10 +9,22 @@ import { getActiveInstances } from "@/core/modules/registry";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import { EmptyState, PageHeader } from "@/components/admin/Page";
 import { PlaceSectionCard, loadPlaceSection } from "@/components/admin/PlaceSection";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 type Params = { group: string; page: string; tab?: string[] };
+
+export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
+  const { group, page, tab: rest } = await params;
+  return adminTitle(async ({ user, locale, config }) => {
+    const asked = parsePlace(`${group}.${page}${rest?.[0] ? `.${rest[0]}` : ""}`);
+    if (!asked || !user) return "";
+    const { place } = resolveAlias(asked, currentVocabulary().aliases);
+    return findPage(await placeIndexFor(user, user.advanced, locale, config.defaultLocale), place.group, place.page)?.title ?? "";
+  }, { need: "member" });
+}
 
 /**
  * A PLACE PAGE (core 0.31.0): `/admin/<group>/<page>[/<tab>]`, built from what the installed modules declare (docs/PLACES.md). No contributor, no page (404).

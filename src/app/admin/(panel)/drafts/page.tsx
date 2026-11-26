@@ -9,8 +9,14 @@ import { PageHeader } from "@/components/admin/Page";
 import { ModulePill } from "@/components/admin/ModulePill";
 import { Pagination } from "@/components/site/Pagination";
 import { DRAFTS_HREF, entryHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 const PER_PAGE = 50;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("drafts.title"));
+}
 
 export default async function DraftsPage({ searchParams }: { searchParams: Promise<{ page?: string | string[] }> }) {
   const { t, locale, config, user } = await adminCtx("editor");

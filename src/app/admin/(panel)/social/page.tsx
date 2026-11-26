@@ -23,10 +23,16 @@ import { socialSourcesOf } from "@/core/socialRecognize";
 import { resolveIcon } from "@/core/icons";
 import { addNetwork, moveSocial } from "./actions";
 import { instanceHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const ORIGIN_CHIP = { network: ui.chip, channel: ui.chipOk, other: "inline-flex items-center gap-1 rounded-full bg-line/60 px-2.5 py-0.5 text-xs font-medium" } as const;
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("homemenu.tab.social"));
+}
 
 export default async function SocialPage({ searchParams }: { searchParams: Promise<{ error?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");

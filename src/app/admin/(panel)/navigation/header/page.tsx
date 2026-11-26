@@ -10,8 +10,14 @@ import { PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { getSetting, getSettingByLocale } from "@/core/settings";
 import { saveHeaderLinks } from "../actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("homemenu.tab.header"));
+}
 
 /** The "Link and button" tab: one link and one button at the very top of every page, next to the menu. */
 export default async function HeaderLinksPage() {

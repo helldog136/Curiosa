@@ -5,8 +5,14 @@ import { settingsSearchLabels } from "@/components/admin/settingsSearchLabels";
 import { hasRole } from "@/core/auth/access";
 import { searchContentEntries } from "@/core/content/adminSearch";
 import { searchEntriesFor } from "@/core/modules/placeSearchLoad";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("settingsSearch.title"));
+}
 
 /** (core 0.34.0) Settings search, full page: the answer is drawn by the server first (readable without a script), then the box filters it live. */
 export default async function SearchPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {

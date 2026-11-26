@@ -11,8 +11,14 @@ import { readConfig } from "@/core/backup/auto/config";
 import { formatBytes } from "@/core/backup/auto/message";
 import { autoBackupStatus, recipientForm } from "@/core/backup/auto/view";
 import { siteTimezone } from "@/core/siteTime";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("maint.tab.backup"));
+}
 
 export default async function BackupPage() {
   const { t, advanced, user, locale } = await adminCtx({ right: "core:backup" });

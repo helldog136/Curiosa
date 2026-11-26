@@ -29,10 +29,16 @@ import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsL
 import { addSourceAction, refreshCatalogueAction, refreshSourcesAction, removeSourceAction } from "./actions";
 import { HelpTip } from "@/components/admin/HelpTip";
 import { PendingButton } from "@/components/admin/PendingButton";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
 const fold = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => `${t("nav.extensions")} \u00b7 ${t("hub.tab.catalogue")}`);
+}
 
 export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string; origin?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");

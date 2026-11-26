@@ -36,8 +36,15 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { NumberField } from "@/components/admin/NumberField";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { MODE_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return adminTitle(async () => (await prisma.apiToken.findUnique({ where: { id } }))?.name ?? "", { need: { right: "core:mcp.tokens" } });
+}
 
 /** Un accès : ce qu'il peut faire, comment les actions à risque sont validées, et (en mode avancé) chaque action de chaque module. Modifiable en direct. */
 export default async function AccessPage({ params }: { params: Promise<{ id: string }> }) {

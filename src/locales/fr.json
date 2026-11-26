@@ -1101,6 +1101,7 @@
   "services.hint": "Tirez la flèche depuis la pastille du service jusqu'à un fournisseur (ou cliquez dessus).",
   "services.list": "Vue liste (clavier)",
   "nav.menu": "Menu",
+  "nav.skip": "Aller au contenu",
   "catalogue.details": "Voir le détail et installer",
   "catalogue.preview": "Voir le README avant d'installer",
   "catalogue.back": "Retour au catalogue",

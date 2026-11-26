@@ -14,6 +14,8 @@ import type { Translator } from "@/core/i18n/dictionary";
 import type { BadgeTone } from "@/core/blocks";
 import { deleteInertCopyAction, keepLegacyRowAction, removeLegacyRowAction, rerunLegacySweep, undoKeepLegacyRowAction } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +44,10 @@ function chipsOf(row: UpkeepRow, r: LegacyReport, t: Translator, advanced: boole
     case "absent": case "keptRows": case "finish": return [];
     default: return row.names;
   }
+}
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("legacy.title"));
 }
 
 export default async function LegacyPage({ searchParams }: { searchParams: Promise<{ done?: string }> }) {

@@ -22,8 +22,15 @@ import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
 import { deleteRedirect, reactivateRedirect, setRedirectActive, updateRedirect } from "../actions";
 import { REDIRECTS_HREF, instanceHref } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  return adminTitle(async () => { const r = await prisma.redirect.findUnique({ where: { id } }); return r ? `/${r.path}` : ""; }, { need: "editor" });
+}
 
 export default async function RedirectPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { t, advanced, locale, config } = await adminCtx("editor");

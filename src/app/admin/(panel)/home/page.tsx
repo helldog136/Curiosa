@@ -20,6 +20,12 @@ import { HomeBuilder, type HomeBlock, type HomeChoice } from "@/components/admin
 import { AssistantUndoNotice } from "@/components/admin/AssistantUndoNotice";
 import { homeRestorePoint } from "@/core/maintenance/siteHome";
 import { restoreAssistantHome, saveHome } from "./actions";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("nav.home"));
+}
 
 export default async function HomeAdminPage() {
   const { t, locale, config, advanced } = await adminCtx("admin");

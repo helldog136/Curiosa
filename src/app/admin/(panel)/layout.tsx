@@ -34,6 +34,7 @@ import { ASSISTANTS_HREF } from "@/core/services/mcp/assistantsLinks";
 import { getUpdateCheck, readVersion } from "@/core/updates/service";
 import { peekModulesReport } from "@/core/modules/updateStatus";
 import { MobileMenu } from "@/components/admin/MobileMenu";
+import { ADMIN_MAIN_ID, SkipLink } from "@/components/admin/SkipLink";
 import { CropLabelsProvider } from "@/components/admin/CropLabels";
 import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
@@ -141,6 +142,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
 
   return (
     <div className="flex min-h-screen flex-col">
+      <SkipLink label={t("nav.skip")} />
       <div className="flex flex-1 flex-col md:flex-row">
       <MobileMenu menuLabel={t("nav.menu")} brand={<a href={ADMIN_HREF} className="flex flex-col px-3 leading-tight"><span className="text-lg font-bold">{config.name}</span><span className="text-xs text-muted">{t("nav.adminTagline")}</span></a>}>
         <nav aria-label={t("nav.adminLabel")}>
@@ -201,7 +203,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
         </form>
       </MobileMenu>
-      <main className="min-w-0 flex-1 p-6 md:p-10">
+      <main id={ADMIN_MAIN_ID} tabIndex={-1} className="min-w-0 flex-1 p-6 outline-none md:p-10">
         {/* Une page qui a besoin de largeur (l'éditeur de pages d'overlay) porte data-admin-wide : la zone de contenu s'élargit alors, sans toucher aux autres pages. */}
         <div className="mx-auto max-w-4xl has-[[data-admin-wide]]:max-w-[112rem]">
           {legacyPending && (

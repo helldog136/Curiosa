@@ -5,8 +5,14 @@ import { countUsers } from "@/core/content/service";
 import { LoginForm } from "@/components/admin/LoginForm";
 import { ADMIN_HREF, FORGOT_PASSWORD_HREF, SETUP_HREF } from "@/core/adminLinks";
 import { isMailConfigured } from "@/core/services/mail";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("login.title"));
+}
 
 export default async function LoginPage({ searchParams }: { searchParams: Promise<{ changed?: string }> }) {
   if ((await countUsers()) === 0) redirect(SETUP_HREF);

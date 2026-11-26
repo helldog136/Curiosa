@@ -6,8 +6,14 @@ import { profileLines } from "@/core/services/mcp/profileTexts";
 import { GUIDE_KEYS, type GuideTexts } from "@/components/admin/McpConnectGuide";
 import { AssistantStep } from "./AssistantStep";
 import { ADMIN_HREF } from "@/core/adminLinks";
+import type { Metadata } from "next";
+import { adminTitle } from "@/core/adminTitle";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata(): Promise<Metadata> {
+  return adminTitle(({ t }) => t("setup.ai.title"));
+}
 
 /** Last, optional step of the setup: right after the account exists (an access needs an owner), the person can connect an AI assistant. Skipping creates nothing. */
 export default async function SetupAssistantPage({ searchParams }: { searchParams: Promise<{ modules?: string }> }) {
