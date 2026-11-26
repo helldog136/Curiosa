@@ -23,7 +23,7 @@ export type AdminScheme = "light" | "dark";
 export const ADMIN_COLOR_TOKENS = [
   "--cur-bg", // fond de la page
   "--cur-fg", // texte
-  "--cur-muted", // texte secondaire (4,5:1 sur le fond et sur les surfaces)
+  "--cur-muted", // texte secondaire (4,5:1 sur le fond, les surfaces et le fond survolé)
   "--cur-surface", // cartes et panneaux
   "--cur-line", // filets et séparateurs (décoratifs : ne portent jamais seuls une information)
   "--cur-accent", // accent (boutons, liens, focus) : 3:1 au moins sur le fond
@@ -35,6 +35,18 @@ export const ADMIN_COLOR_TOKENS = [
   "--cur-danger", // erreur
   "--cur-danger-fg",
   "--cur-focus", // anneau de focus (3:1 au moins sur le fond et sur les surfaces)
+  // Ajoutés pour le contraste AA (audit F-A11Y-004/005) : on ajoute, on ne retire jamais.
+  "--cur-line-strong", // bordure des champs, interrupteurs et cases : 3:1 au moins sur le fond et sur les surfaces (le filet `--cur-line` reste décoratif)
+  "--cur-accent-text", // texte d'accent (lien, élément actif du menu) : 4,5:1 sur le fond, les surfaces et la teinte
+  "--cur-accent-tint", // fond doux de l'élément actif (texte `--cur-accent-text` dessus)
+  "--cur-ok-text", // texte d'une pastille « réussi » (4,5:1 sur `--cur-ok-soft`)
+  "--cur-ok-soft", // fond d'une pastille « réussi »
+  "--cur-warn-text", // texte d'une pastille « à surveiller »
+  "--cur-warn-soft",
+  "--cur-danger-text", // texte d'une pastille « erreur »
+  "--cur-danger-soft",
+  "--cur-neutral-text", // texte d'une pastille neutre
+  "--cur-neutral-soft",
 ] as const;
 /** Les jetons de FORME et de TEXTE (mêmes valeurs en clair et en sombre). */
 export const ADMIN_SHAPE_TOKENS = [
@@ -58,8 +70,14 @@ const SHAPE: Record<(typeof ADMIN_SHAPE_TOKENS)[number], string> = {
   "--cur-font": ADMIN_FONT,
 };
 
-const LIGHT = { ...buildPalette("#faf7f2", "#6c5ce7"), "--v-surface": "#ffffff", "--v-fg": "#2b2622", "--v-muted": "#7a7066", "--v-line": "#ebe4d9" };
-const DARK = { ...buildPalette("#15141a", "#9b8cff"), "--v-surface": "#1e1d26", "--v-fg": "#ecebf2", "--v-muted": "#9d9bad", "--v-line": "#2d2b38" };
+const LIGHT = { ...buildPalette("#faf7f2", "#6c5ce7"), "--v-surface": "#ffffff", "--v-fg": "#2b2622", "--v-muted": "#6a6057", "--v-line": "#ebe4d9",
+  "--v-line-strong": "#8a7f73", "--v-accent-text": "#5b4bd6", "--v-accent-tint": "#efedfc",
+  "--v-ok-text": "#00664a", "--v-ok-soft": "#d9f0e5", "--v-warn-text": "#8f3d00", "--v-warn-soft": "#fbe9ce",
+  "--v-danger-text": "#a82a1f", "--v-danger-soft": "#fcebe8", "--v-neutral-text": "#4f463e", "--v-neutral-soft": "#ece6dc" };
+const DARK = { ...buildPalette("#15141a", "#9b8cff"), "--v-surface": "#1e1d26", "--v-fg": "#ecebf2", "--v-muted": "#a3a1b3", "--v-line": "#2d2b38",
+  "--v-line-strong": "#6b6880", "--v-accent-text": "#b3a8ff", "--v-accent-tint": "#2a2745",
+  "--v-ok-text": "#6fe0b0", "--v-ok-soft": "#16342a", "--v-warn-text": "#f5b266", "--v-warn-soft": "#3a2c14",
+  "--v-danger-text": "#ff9a8f", "--v-danger-soft": "#3d1d1f", "--v-neutral-text": "#c4c2d2", "--v-neutral-soft": "#2d2b38" };
 
 /** Jeton couleur → variable `--v-*` de la palette d'où vient sa valeur (l'accent sert aussi d'anneau de focus, comme dans globals.css). */
 const COLOR_SOURCE: Record<(typeof ADMIN_COLOR_TOKENS)[number], string> = {
@@ -67,6 +85,9 @@ const COLOR_SOURCE: Record<(typeof ADMIN_COLOR_TOKENS)[number], string> = {
   "--cur-accent": "--v-accent", "--cur-accent-fg": "--v-accent-fg",
   "--cur-ok": "--v-success", "--cur-ok-fg": "--v-success-fg", "--cur-warn": "--v-warning", "--cur-warn-fg": "--v-warning-fg",
   "--cur-danger": "--v-danger", "--cur-danger-fg": "--v-danger-fg", "--cur-focus": "--v-accent",
+  "--cur-line-strong": "--v-line-strong", "--cur-accent-text": "--v-accent-text", "--cur-accent-tint": "--v-accent-tint",
+  "--cur-ok-text": "--v-ok-text", "--cur-ok-soft": "--v-ok-soft", "--cur-warn-text": "--v-warn-text", "--cur-warn-soft": "--v-warn-soft",
+  "--cur-danger-text": "--v-danger-text", "--cur-danger-soft": "--v-danger-soft", "--cur-neutral-text": "--v-neutral-text", "--cur-neutral-soft": "--v-neutral-soft",
 };
 /** Ce que l'admin lit dans les jetons : `--v-*` (donc Tailwind `bg-bg`, `text-fg`…) = `var(--cur-*)`. Les trois autres variables de la palette (accent secondaire, dégradé) restent telles que calculées. */
 const ADMIN_READS: Record<string, AdminToken> = Object.fromEntries([
