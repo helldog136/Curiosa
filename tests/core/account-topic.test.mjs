@@ -18,6 +18,7 @@ const HIDDEN_COLUMNS = {
   advanced: "interface preference",
   sessionVersion: "session counter",
   mustChangePassword: "sign-in state",
+  suspendedAt: "sign-in state",
   totpSecret: "secret",
   totpPending: "secret",
   totpEnabledAt: "sign-in state",

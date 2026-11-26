@@ -11,9 +11,13 @@ import { nameFromEmail } from "@/core/auth/memberName";
 import { getSetting, setSetting } from "@/core/settings";
 import { audit } from "@/core/permissions";
 import { createRole, deleteRole, setUserRoles, updateRole, type RoleFailure } from "@/core/auth/roles";
+import { createInvitation, resendInvitation, revokeInvitation, type InvitationCreated, type InviteFailure, MAX_PENDING } from "@/core/auth/invitations";
+import { reactivateMember, suspendMember } from "@/core/auth/members";
+import { isMailConfigured } from "@/core/services/mail";
+import { siteUrl } from "@/core/config";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-/** Où s'affiche l'erreur d'un compte : SOUS le champ concerné (avec un exemple), sauf refus général. */
+/** Where an account error shows: UNDER the field concerned (with an example), except for a general refusal. */
 const memberErrors = (reason: MemberFailure, t: (key: string) => string): ActionState => {
   if (reason === "password") return { errors: { password: t("setup.error.password") } };
   if (reason === "exists") return { errors: { email: t("users.exists") } };
@@ -23,11 +27,10 @@ const memberErrors = (reason: MemberFailure, t: (key: string) => string): Action
 };
 
 /**
- * Nouveau compte. Les règles (qui peut attribuer quel niveau) sont dans `core/auth/members.ts` et `team.ts`, qui relisent l'acteur en base : seul le texte du
- * formulaire vient du navigateur. Un administrateur n'invite que des éditeurs ; un coordinateur, des administrateurs et des éditeurs ; le propriétaire seul nomme un coordinateur.
- * Le formulaire ne demande que l'e-mail et le rôle : sans nom, on prend le début de l'e-mail ; sans mot de passe de départ, le site en crée un et la personne devra en choisir
- * un à sa première connexion, comme pour un mot de passe temporaire. Ce mot de passe est renvoyé UNE fois, dans `secret` (jamais dans le texte `ok`, que la page garde affiché) :
- * ni la base (seulement son empreinte), ni le journal, ni l'adresse ne le retiennent, et le compte est créé « doit choisir le sien » dans la même écriture.
+ * New account WITH a first password (the older way, now under "More options" of the Team page: the default way to add a person is the invitation, `inviteAction`).
+ * The rules (who may grant which level) are in `core/auth/members.ts` and `team.ts`, which re-read the actor from the database: only the text of the form comes from the browser.
+ * The form asks for the e-mail and the role only: without a name, the start of the e-mail is used; without a first password, the site creates one and the person must choose their own
+ * at first sign-in. That password is returned ONCE, in `secret` (never in the `ok` text, which the page keeps displayed): the database keeps only its hash.
  */
 export async function createUser(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx("admin");
@@ -51,8 +54,8 @@ export async function createUser(_prev: ActionState, formData: FormData): Promis
 }
 
 /**
- * Les rôles d'une personne (puces cumulables). Droit `core:team` ; toutes les règles (propriétaire intouchable, coordinateur modifiable par le propriétaire seul, au moins un rôle,
- * `owner` jamais affecté, anti-élévation, identifiant forgé refusé) sont dans `core/auth/roles.ts`, qui relit l'acteur en base : seul l'identifiant de la cible vient de la page.
+ * The roles of a person (stackable chips). Right `core:team`; every rule (owner untouchable, coordinator editable by the owner only, at least one role, `owner` never assigned,
+ * anti-elevation, forged id refused) is in `core/auth/roles.ts`, which re-reads the actor from the database: only the target's id comes from the page.
  */
 export async function setUserRolesAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx({ right: "core:team" });
@@ -65,7 +68,7 @@ export async function setUserRolesAction(id: string, _prev: ActionState, formDat
 const roleError = (reason: RoleFailure): string => `roles.error.${reason}`;
 const rightsOf = (formData: FormData) => formData.getAll("right").map(String);
 
-/** Nouveau rôle personnalisé (propriétaire seulement ; droits revérifiés côté serveur : aucun droit réservé, inconnu, ou que l'acteur n'a pas). */
+/** New custom role (right `core:roles`; rights checked again on the server: none reserved, unknown, or that the actor does not hold). A preset only pre-fills this form: nothing here knows about presets. */
 export async function createRoleAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await createRole(user.id, { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
@@ -82,7 +85,7 @@ export async function updateRoleAction(id: string, _prev: ActionState, formData:
   return { ok: t("action.saved") };
 }
 
-/** Supprime un rôle personnalisé ; s'il est en usage, ses membres reçoivent le rôle choisi (`replacement`). */
+/** Deletes a custom role; if it is in use, its members receive the chosen role (`replacement`). */
 export async function deleteRoleAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await deleteRole(user.id, String(id ?? ""), String(formData.get("replacement") ?? "") || null);
@@ -91,32 +94,32 @@ export async function deleteRoleAction(id: string, _prev: ActionState, formData:
   return { ok: t("roles.deleted") };
 }
 
-/** Supprime un compte (règles dans `core/auth/members.ts` : propriétaire intouchable, coordinateur par le propriétaire seul, administrateur : éditeurs seulement). */
+/** Deletes an account (rules in `core/auth/members.ts`: owner untouchable, coordinator by the owner only, administrator: editors only). */
 export async function deleteUser(id: string): Promise<void> {
   const { user } = await adminCtx("admin");
   const r = await deleteMember(user.id, String(id ?? ""));
   if (r.ok) revalidatePath(USERS_HREF);
 }
 
-/** Débloque quelqu'un qui a trop essayé de se connecter (son e-mail redevient libre tout de suite). Droit `core:team`. */
+/** Unlocks someone who tried to sign in too often (their address is free at once). Right `core:team`. */
 export async function unlockUser(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
   if ((await unlockMember(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
-/** Coupe toutes les sessions ouvertes de quelqu'un (appareil perdu, compte douteux). Droit `core:team`. */
+/** Cuts every open session of someone (lost device, doubtful account). Right `core:team`. */
 export async function revokeUserSessions(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
   if ((await revokeMemberSessions(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
-/** Réinitialise la double vérification ET les clés d'accès de quelqu'un qui a perdu son téléphone et ses codes de secours (ses sessions ouvertes sont coupées). Droit `core:team`. */
+/** Resets the second factor AND the passkeys of someone who lost their phone and recovery codes (their open sessions are cut). Right `core:team`. */
 export async function resetUserTwoFactor(id: string): Promise<void> {
   const { user } = await adminCtx({ right: "core:team" });
   if ((await resetMemberTwoFactor(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }
 
-/** Exiger la double vérification de toute l'équipe — seulement si le propriétaire l'a lui-même activée (sinon il s'enfermerait dehors). */
+/** Require the second factor for the whole team, only if the person asking has it themselves (otherwise they would lock themselves out). */
 export async function setRequireTwoFactor(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const { user, t } = await adminCtx({ right: "core:security" });
   const on = formData.get("require") === "on";
@@ -130,12 +133,12 @@ export async function setRequireTwoFactor(_prev: ActionState, formData: FormData
   return { ok: t("action.saved") };
 }
 
-/** Ce que la boîte « mot de passe temporaire » reçoit. `password` n'est renvoyé que dans le mode « généré », cette seule fois : ni l'adresse, ni un cookie, ni la page ne le retiennent. */
+/** What the "temporary password" box receives. `password` is returned only in the "generated" mode, this one time: no address, cookie or page keeps it. */
 export type TemporaryPasswordState = { error?: string; password?: string; mailed?: boolean; name?: string; chosen?: boolean };
 
 /**
- * Le propriétaire (ou le coordinateur technique) fixe un mot de passe temporaire à un membre de l'équipe (généré par le site, ou choisi par lui). Les règles sont dans `core/auth/teamPassword.ts` ;
- * le droit est vérifié ici (`adminCtx({ right: "core:team" })`) ET relu en base là-bas. Les arguments arrivent dans le corps de la requête, jamais dans l'adresse.
+ * The owner (or a technical coordinator) sets a temporary password for a team member (generated by the site, or chosen). Rules are in `core/auth/teamPassword.ts`; the right is checked here
+ * (`adminCtx({ right: "core:team" })`) AND re-read from the database there. Arguments arrive in the request body, never in the address.
  */
 export async function setTemporaryPassword(id: string, mode: string, password?: string): Promise<TemporaryPasswordState> {
   const { user, t } = await adminCtx({ right: "core:team" });
@@ -150,4 +153,71 @@ export async function setTemporaryPassword(id: string, mode: string, password?: 
   }
   revalidatePath(USERS_HREF);
   return { name: r.name, mailed: r.mailed, ...(r.password ? { password: r.password } : { chosen: true }) };
+}
+
+/* ───────────── Invitations (next core version) ───────────── */
+
+const inviteErrors = (reason: InviteFailure, t: (key: string, params?: Record<string, string | number>) => string): ActionState => {
+  if (reason === "invalid") return { errors: { email: t("invite.error.email") } };
+  if (reason === "exists") return { errors: { email: t("invite.error.exists") } };
+  if (reason === "pending") return { errors: { email: t("invite.error.pending") } };
+  if (reason === "role") return { errors: { roleId: t("invite.error.role") } };
+  if (reason === "limit") return { error: t("invite.error.limit", { n: MAX_PENDING }) };
+  if (reason === "rate") return { error: t("invite.error.rate") };
+  if (reason === "state" || reason === "missing") return { error: t("invite.error.state") };
+  return { error: t("error.denied") };
+};
+
+/** What the person who invites sees: sent, or (when no e-mail left) the link, shown ONCE, with the plain reason. */
+function inviteResult(r: InvitationCreated, t: (key: string, params?: Record<string, string | number>) => string, locale: string, mailConfigured: boolean): ActionState {
+  const until = new Intl.DateTimeFormat(locale, { dateStyle: "long", timeStyle: "short" }).format(r.expiresAt);
+  if (r.mailed) return { ok: t("invite.sent", { email: r.email, until }) };
+  return {
+    ok: t("invite.created", { email: r.email }),
+    secret: {
+      value: r.link!, title: t("invite.secret.title", { email: r.email }),
+      notes: [t("invite.secret.once"), t(mailConfigured ? "invite.secret.mailFailed" : "invite.secret.noMail"), t("invite.secret.until", { until })],
+      copy: t("invite.copy"), copied: t("invite.copied"), done: t("invite.secret.done"),
+    },
+  };
+}
+
+/**
+ * Invite a person: e-mail and ONE role (predefined or custom). Right `core:team`; everything (who may grant which role, address, limits) is in `core/auth/invitations.ts`, which re-reads
+ * the actor from the database. The role is an id from the page, checked again there (forged id, owner role, role above the actor: refused).
+ */
+export async function inviteAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, locale } = await adminCtx({ right: "core:team" });
+  const mailConfigured = await isMailConfigured().catch(() => false);
+  const r = await createInvitation(user.id, { email: formData.get("email"), roleId: formData.get("roleId"), ttlHours: formData.get("ttl") || undefined, origin: siteUrl, mailConfigured });
+  if (!r.ok) return inviteErrors(r.reason, t);
+  revalidatePath(USERS_HREF);
+  return inviteResult(r, t, locale, mailConfigured);
+}
+
+/** Send an invitation again: a NEW link and a new expiry; the old link stops working at once. */
+export async function resendInvitationAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t, locale } = await adminCtx({ right: "core:team" });
+  const mailConfigured = await isMailConfigured().catch(() => false);
+  const r = await resendInvitation(user.id, String(id ?? ""), { origin: siteUrl, mailConfigured, ttlHours: formData.get("ttl") || undefined });
+  if (!r.ok) return inviteErrors(r.reason, t);
+  revalidatePath(USERS_HREF);
+  return inviteResult(r, t, locale, mailConfigured);
+}
+
+/** Withdraw an invitation: its link stops working at once. */
+export async function revokeInvitationAction(id: string): Promise<void> {
+  const { user } = await adminCtx({ right: "core:team" });
+  if ((await revokeInvitation(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
+}
+
+/** Suspend a person (reversible; sessions cut at once; content kept). Right `core:team`, rules in `core/auth/members.ts`. */
+export async function suspendUser(id: string): Promise<void> {
+  const { user } = await adminCtx({ right: "core:team" });
+  if ((await suspendMember(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
+}
+
+export async function reactivateUser(id: string): Promise<void> {
+  const { user } = await adminCtx({ right: "core:team" });
+  if ((await reactivateMember(user.id, String(id ?? ""))).ok) revalidatePath(USERS_HREF);
 }

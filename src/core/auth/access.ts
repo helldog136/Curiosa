@@ -46,12 +46,12 @@ export async function currentCatalogue(): Promise<RightInfo[]> {
  * Rôles et droits d'une ligne `User`, relus en base. Le niveau prédéfini vient TOUJOURS de `User.role` (même après un passage par un ancien cœur qui l'aurait changé) ;
  * les affectations `UserRole` n'ajoutent que les rôles personnalisés (une affectation prédéfinie qui ne correspond plus à `User.role` est ignorée).
  */
-export async function accessOf(user: { id: string; role: string; coordinator?: boolean }, catalogue?: RightInfo[]): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
+export async function accessOf(user: { id: string; role: string; coordinator?: boolean }, catalogue?: RightInfo[], db: Pick<typeof prisma, "userRole"> = prisma): Promise<{ level: Level; roles: string[]; rights: Set<string> }> {
   const level = levelOf(user);
   const cat = catalogue ?? (await currentCatalogue());
   const rights = systemRights(level, cat);
   const roles: string[] = level === "none" ? [] : [level];
-  const custom = await prisma.userRole.findMany({ where: { userId: user.id, role: { system: false } }, include: { role: { select: { key: true, rights: true } } }, orderBy: { roleId: "asc" } });
+  const custom = await db.userRole.findMany({ where: { userId: user.id, role: { system: false } }, include: { role: { select: { key: true, rights: true } } }, orderBy: { roleId: "asc" } });
   for (const ur of custom) {
     roles.push(ur.role.key);
     for (const r of parseStoredRights(ur.role.rights, cat)) rights.add(r);
@@ -73,7 +73,8 @@ async function adminUserOfRow(user: NonNullable<Awaited<ReturnType<typeof prisma
 export async function loadAdminUser(id: string | undefined, tokenVersion: unknown): Promise<AdminUser | null> {
   if (!id) return null;
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) return null;
+  // A suspended person has no session at all, whatever their token says (the suspension also raises the session number: two locks).
+  if (!user || user.suspendedAt) return null;
   // Session coupée (déconnexion de tous les appareils, mot de passe changé ou réinitialisé…) : le jeton d'avant ne vaut plus rien.
   if (!sessionIsCurrent(tokenVersion, user.sessionVersion)) return null;
   return adminUserOfRow(user);
@@ -82,7 +83,7 @@ export async function loadAdminUser(id: string | undefined, tokenVersion: unknow
 /** (0.46.0) The account of a user by id, with no session: for what acts FOR a user without a session (a personal AI). Null when the user does not exist. */
 export async function loadAdminUserById(id: string): Promise<{ user: AdminUser; personalAi: string } | null> {
   const row = await prisma.user.findUnique({ where: { id: String(id ?? "") } });
-  return row ? { user: await adminUserOfRow(row), personalAi: row.personalAi } : null;
+  return row && !row.suspendedAt ? { user: await adminUserOfRow(row), personalAi: row.personalAi } : null;
 }
 
 /**

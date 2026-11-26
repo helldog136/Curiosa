@@ -8,5 +8,6 @@ const DUMMY_HASH = bcrypt.hashSync("curiosa-dummy-password", 12);
 export async function verifyPassword(email: string, password: string) {
   const user = await prisma.user.findUnique({ where: { email: email.trim().toLowerCase() } });
   const good = await bcrypt.compare(password, user?.passwordHash ?? DUMMY_HASH);
-  return user && good ? user : null;
+  // A suspended person is answered like a wrong password (same time, same words): nothing tells an outsider that the account exists.
+  return user && good && !user.suspendedAt ? user : null;
 }

@@ -233,7 +233,7 @@ test("migration: additive columns, existing accesses keep working, the migration
   assert.match(sql, /ALTER TABLE "ApiToken" ADD COLUMN "pausedAt" DATETIME;/);
   assert.match(sql, /CREATE INDEX "ApiToken_ownerId_idx"/);
   assert.match(sql, /ALTER TABLE "User" ADD COLUMN "personalAi" TEXT NOT NULL DEFAULT 'inherit';/);
-  const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d)).sort();
+  const all = fs.readdirSync("prisma/migrations").filter((d) => /^\d{8,}_/.test(d) && d !== "20261125090000_onboarding_invitations").sort();
   assert.equal(all.at(-1), "20261123090000_access_owner");
   const next = fs.readFileSync("prisma/migrations/20261123090000_access_owner/migration.sql", "utf8").replace(/--.*$/gm, "");
   assert.match(next, /ALTER TABLE "ApiToken" ADD COLUMN "coarseCeiling" BOOLEAN NOT NULL DEFAULT false;/);

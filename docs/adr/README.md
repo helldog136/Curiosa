@@ -31,3 +31,4 @@ Rules: one decision per file; numbers are never reused; a changed decision gets 
 | [0007](0007-ai-access-owner-is-permanent.md) | The owner of an AI access is permanent; orphans are swept |
 | [0008](0008-service-caller-identity-is-set-by-the-core.md) | A service method learns who calls it from the core, never from the caller |
 | [0009](0009-module-secrets-are-sealed-per-instance.md) | Module secrets are sealed per instance, behind a permission |
+| [0010](0010-onboarding-by-invitation.md) | People join by invitation: an e-mail, a role and a single-use link |
