@@ -97,6 +97,10 @@ export function solidSurface(surface: string, fg: string | undefined): string {
   return hex(composite(c, light ? BLACK : WHITE));
 }
 
+const NOT_COMPOSED = ':not([data-ov-region="composition"]):not([data-ov-region="composition"] *)';
+/** Every element of the skinned page that is NOT part of a composition (and its pseudo-elements). */
+const reduceTargets = (id: string): string => { const r = `html[data-ov-skin="${id}"]`; return [`${r} *${NOT_COMPOSED}`, `${r} *${NOT_COMPOSED}::before`, `${r} *${NOT_COMPOSED}::after`].join(","); };
+
 export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** (0.47.0) The skin's fonts (skinFonts.ts `overlayFonts`): their `@font-face` rules come first in the sheet. */ fonts?: readonly OverlayFont[]; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean; /** (0.21.0) The site's retouches, written over the skin's tokens and before its rules. */ tweaks?: SkinTweaks }): SkinPayload {
   const { id } = input;
   const base = input.opaque && input.tokens["--ov-surface"] ? { ...input.tokens, "--ov-surface": solidSurface(input.tokens["--ov-surface"], input.tokens["--ov-fg"]) } : input.tokens;
@@ -142,7 +146,10 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   }
   // Idle motion presets of contract 3 (their rules are already inside `prefers-reduced-motion: no-preference`): the keyframes belong to the core.
   for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) { out.push(frames); motion = true; }
-  if (motion) out.push(`@media (prefers-reduced-motion:reduce){html[data-ov-skin="${id}"] *,html[data-ov-skin="${id}"] *::before,html[data-ov-skin="${id}"] *::after{animation:none!important;transition:none!important}}`);
+  // Reduced motion: the skin's decorative motion stops. A placed text of a composition (an alert's `[data-ov-region="composition"]` frame and everything in it) is
+  // EXCLUDED: its in/out animations are the TIMING of streamed content (the viewers are the audience, the preference is the streaming PC's), and the compose engine
+  // already degrades them to a plain fade under reduced motion (compose/render.ts `calm`).
+  if (motion) out.push(`@media (prefers-reduced-motion:reduce){${reduceTargets(id)}{animation:none!important;transition:none!important}}`);
   const colors = skinColors(tokens);
   return { id, version: input.version, css: out.filter(Boolean).join("\n"), ...(input.fonts?.length ? { fonts: [...input.fonts] } : {}), ...(colors ? { colors } : {}) };
 }

@@ -16,9 +16,17 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **Un lien « Aller au contenu » apparaît dès la première touche Tab.** Au clavier, vous passez directement au contenu de la page sans parcourir tout le menu.
 - **(English) A “Skip to content” link appears on the first Tab key.** With a keyboard you go straight to the page content without walking through the whole menu.
 
+### Corrections
+
+- **Les textes placés sur une alerte apparaissent à la seconde choisie, même quand l'ordinateur de diffusion demande moins d'animations.** Avant, OBS avec les animations coupées les affichait pendant toute l'alerte. Le moment est respecté ; le zoom ou le glissement devient un fondu.
+- **(English) Texts placed on an alert appear at the chosen second, even when the streaming computer asks for less animation.** Before, OBS with animations off showed them for the whole alert. The timing is kept; zoom or slide becomes a fade.
+- **Un texte placé qui entre ET sort à des secondes précises n'est plus visible avant son entrée.** La sortie prévue plus tard masquait l'entrée au début de l'alerte.
+- **(English) A placed text that has both an entrance and an exit at set seconds is no longer visible before its entrance.** The later exit was overriding the entrance at the start of the alert.
+
 ### Pour les développeurs
 
 - Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.
+- `compileSkin` : la règle `reduce` exclut `[data-ov-region="composition"]`. `composeEngine` met un fondu sous `reduce` (`opts.calm`, `data-calm`) et la sortie utilise `forwards`. Test : `tests/core/overlay-reduced-motion.test.mjs`.
 
 ## 0.50.0 — 2026-11-26
 
