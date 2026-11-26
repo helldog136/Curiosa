@@ -22,14 +22,14 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Texts placed on an alert appear at the chosen second, even when the streaming computer asks for less animation.** Before, OBS with animations off showed them for the whole alert. The timing is kept; zoom or slide becomes a fade.
 - **Un texte placé qui entre ET sort à des secondes précises n'est plus visible avant son entrée.** La sortie prévue plus tard masquait l'entrée au début de l'alerte.
 - **(English) A placed text that has both an entrance and an exit at set seconds is no longer visible before its entrance.** The later exit was overriding the entrance at the start of the alert.
-- **Les bandeaux, sondages et comptes à rebours gardent leur timing quand OBS demande moins d'animations.** Avant, un skin d'overlay coupait toutes les animations et transitions de la page : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Maintenant seules les animations décoratives du skin (entrée, lueur, mouvements d'ambiance) sont coupées.
-- **(English) Tickers, polls and countdowns keep their timing when OBS asks for less animation.** Before, an overlay skin cut every animation and transition of the page, so a sponsor ticker popped in or vanished. Now only the skin's decorative motion (entrance, glow, idle motion) is cut.
+- **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
+- **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
 
 ### Pour les développeurs
 
 - Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.
 - `compileSkin` : la règle `reduce` exclut `[data-ov-region="composition"]`. `composeEngine` met un fondu sous `reduce` (`opts.calm`, `data-calm`) et la sortie utilise `forwards`. Test : `tests/core/overlay-reduced-motion.test.mjs`.
-- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée (`--ov-anim`) est écrit dans `prefers-reduced-motion: no-preference`, et la seule règle `reduce` vise `[data-ov-calm]` (crochet documenté dans `docs/OVERLAY-SKINS.md`, « Reduced motion »). Les `transition` et `animation` des modules ne sont plus touchées. Tests : `tests/core/overlay-reduced-motion.test.mjs` (Chromium réel, `reduce` et `no-preference`), `tests/core/overlay-skins.test.mjs`.
+- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
 
 ## 0.50.0 — 2026-11-26
 
