@@ -9,12 +9,25 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ## Prochaine version (non publiée)
 
+### Corrections
+
+- **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
+- **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
+
+### Pour les développeurs
+
+- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
+
+## 0.51.0 — 2026-11-26
+
 ### Nouveautés
 
 - **Chaque page d'administration a son propre titre d'onglet : le nom de la page, puis celui du site.** Plusieurs onglets ouverts se distinguent enfin, et un lecteur d'écran annonce la page à chaque changement.
 - **(English) Every administration page has its own tab title: the page name, then the site name.** Several open tabs can finally be told apart, and a screen reader announces the page at each change.
 - **Un lien « Aller au contenu » apparaît dès la première touche Tab.** Au clavier, vous passez directement au contenu de la page sans parcourir tout le menu.
 - **(English) A “Skip to content” link appears on the first Tab key.** With a keyboard you go straight to the page content without walking through the whole menu.
+- **Les textes de l'administration sont plus lisibles : les couleurs atteignent le contraste AA.** Les textes secondaires et les pastilles se lisent mieux, en clair comme en sombre.
+- **(English) Administration text is easier to read: colours now reach AA contrast.** Secondary text and badges read better, in light and dark.
 
 ### Corrections
 
@@ -22,14 +35,12 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Texts placed on an alert appear at the chosen second, even when the streaming computer asks for less animation.** Before, OBS with animations off showed them for the whole alert. The timing is kept; zoom or slide becomes a fade.
 - **Un texte placé qui entre ET sort à des secondes précises n'est plus visible avant son entrée.** La sortie prévue plus tard masquait l'entrée au début de l'alerte.
 - **(English) A placed text that has both an entrance and an exit at set seconds is no longer visible before its entrance.** The later exit was overriding the entrance at the start of the alert.
-- **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
-- **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
 
 ### Pour les développeurs
 
 - Un relevé automatique de l'administration (`node scripts/admin-map.mjs`) liste, d'après le code, chaque page, chaque redirection d'ancienne adresse, chaque entrée du menu et qui la voit. Un test (`tests/core/admin-map.test.mjs`) compare ce relevé à un fichier de référence : une page ou une entrée de menu ajoutée, retirée ou dont l'accès change ne passe plus inaperçue.
 - `compileSkin` : la règle `reduce` exclut `[data-ov-region="composition"]`. `composeEngine` met un fondu sous `reduce` (`opts.calm`, `data-calm`) et la sortie utilise `forwards`. Test : `tests/core/overlay-reduced-motion.test.mjs`.
-- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
+- Décision d'architecture 0011, entrée « module » du glossaire et règles d'ergonomie R34 à R37 ajoutées à `docs/`.
 
 ## 0.50.0 — 2026-11-26
 
