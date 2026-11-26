@@ -97,6 +97,14 @@ test("adminTitle is absolute (the layout template never doubles it) and never re
   assert.match(s, /absolute: composeAdminTitle/);
   assert.ok(!/redirect\(/.test(s), "a title never redirects");
   assert.match(s, /accessGate\(/, "data-reading labels only run for someone who passes the gate");
+  assert.ok(!/allowForced|allowUnenrolled/.test(s.replace(/\/\*[\s\S]*?\*\//g, "")), "the title helper uses the strict session and gate: never allowForced / allowUnenrolled");
+  assert.match(s, /currentUser\(\)\.catch\(\(\) => null\)/, "an unreadable or restricted session is a null user");
+  assert.match(s, /opts\.need === undefined \|\| accessGate\(user, opts\.need\) === "ok"/, "a null or restricted user never passes the gate, so a data label gives the fallback");
+  // no page that a forced-password session may open reads data for its title: only static translated labels
+  for (const f of ["src/app/admin/(auth)/choose-password/page.tsx", "src/app/admin/(auth)/no-access/page.tsx", "src/app/admin/(auth)/login/page.tsx"]) {
+    const m = read(f).match(/adminTitle\(([^;]*)\);/);
+    assert.ok(m && !/need:|prisma|await/.test(m[1]), `${f}: static title only`);
+  }
 });
 
 test("skip link: first in the panel layout, targets the content area, visible on focus", () => {
