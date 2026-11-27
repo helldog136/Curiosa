@@ -87,7 +87,7 @@ export function RightsMatrix({ roles, groups, grants, labels, editRoleId = null,
   return (
     <div className="space-y-2" data-rights-matrix="" data-testid={testid ?? "rights-matrix"}>
       {editRole && <p className="sr-only" role="status" aria-live="polite" data-matrix-chosen="">{chosen}</p>}
-      <div className="overflow-x-auto rounded-2xl border border-line bg-surface">
+      <div className="relative overflow-x-auto rounded-2xl border border-line bg-surface">
         <table ref={table} onKeyDown={onKeyDown} className="w-full min-w-max border-collapse text-sm">
           <caption className="sr-only">{labels.region}</caption>
           <thead>
