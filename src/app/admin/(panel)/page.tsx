@@ -75,7 +75,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   );
   const first = user.name.split(" ")[0] ?? user.name;
   const draftsBlock = canEdit ? (
-    <section aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
+    <section key="drafts" aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
             {draftList.total > 0 && <a href={DRAFTS_HREF} data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
@@ -97,7 +97,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </section>
   ) : null;
   const numbersBlock = (
-    <section aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
+    <section key="numbers" aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
         <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
           {publishedStat(counts.published)}

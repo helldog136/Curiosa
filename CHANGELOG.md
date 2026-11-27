@@ -29,6 +29,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) A badly filled field is flagged under the field, in your language.** No more browser bubble, in English and over the label: an empty required field, an invalid address or a bad number show the same clear message, with an example, and the cursor goes to the first field to fix. What you typed stays.
 - **Le choix d'un fichier se lit dans la langue du site.** « Choisir un fichier » et le nom du fichier choisi remplacent le texte anglais du navigateur (restauration d'une sauvegarde, envoi d'une police).
 - **(English) Choosing a file reads in the site's language.** “Choose a file” and the chosen name replace the browser's English text (backup restore, font upload).
+- **Les interrupteurs des listes n'écrivent plus « Actif » sur chaque ligne.** Leur position, leur couleur et une coche ou un tiret disent l'état ; les lecteurs d'écran l'annoncent avec le nom de la ligne.
+- **(English) List switches no longer write “Active” on every row.** Their position, colour and a tick or a dash show the state; screen readers announce it together with the row name.
+- **Les tableaux annoncent leurs résultats et gardent des lignes régulières.** Le nombre de résultats d'une recherche est annoncé aux lecteurs d'écran, la colonne des actions a un en-tête lisible, les textes coupés se lisent en entier dans l'info-bulle et chaque ligne fait au moins 44 px.
+- **(English) Tables announce their results and keep regular rows.** The number of search results is announced to screen readers, the actions column has a readable header, cut-off text can be read in full in the tooltip, and every row is at least 44 px tall.
 
 ### Corrections
 
@@ -43,6 +47,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Les interrupteurs de ligne (`switch` d'une cellule de tableau) n'écrivent plus de mot d'état ; `onText` / `offText` ne servent qu'au nom accessible, et `switch.note` (facultatif, ajout sans risque) écrit l'exception à côté (voir `docs/MODULES.md`). Nouvelle brique `ResultCount` (région d'annonce) dans `LiveSearch.tsx`, `Switch` accepte `quiet`.
+- **(English)** Row switches (a table cell `switch`) no longer write a state word; `onText` / `offText` only feed the accessible name, and the optional `switch.note` (additive) writes the exception beside the switch (see `docs/MODULES.md`). New `ResultCount` brick (live region) in `LiveSearch.tsx`; `Switch` accepts `quiet`.
 - Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page.
 - Une tâche, une action ou une carte de module qui mène à une page que la personne ne peut pas ouvrir est maintenant masquée : le module doit aussi donner l'accès « ouvrir » aux rôles concernés. Le kit signale (conseil `dashboard.coreLinkRight`) un lien vers une page du cœur sans `right`.
 - Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
