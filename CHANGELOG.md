@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Pages d'administration : mêmes onglets, mêmes mots, moins de remplissage.** « Entretien » a la même barre d'onglets sur ses cinq pages et la page « Entretien » s'ouvre ; les titres n'ont plus d'émoji, « Équipe » est le nom partout. Les états vides disent quoi faire et les boutons en double disparaissent.
+- **(English) Admin pages: same tabs, same words, less filler.** “Maintenance” has the same tab bar on its five pages and the “Maintenance” address opens; headings lose their emoji and “Team” is the name everywhere. Empty states say what to do and duplicate buttons are gone.
 - **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.
 - **(English) A page section that cannot show says why, with one link.** It carries the “Not configured” or “Degraded” pill, the reason, then a single link to the module, instead of “Section unavailable” and a duplicated link.
 - **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».

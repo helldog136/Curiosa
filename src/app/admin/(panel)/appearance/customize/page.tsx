@@ -38,9 +38,9 @@ export default async function CustomizePage({ searchParams }: { searchParams?: P
   if (!def || (!def.customize && !hasOptions)) {
     return (
       <div className="space-y-4">
-        <p className={ui.help}>{back}</p>
         <h1 className={ui.pageTitle}>{t("appearance.cz.titleNone")}</h1>
         <p className={ui.pageIntro}>{def ? t("appearance.cz.empty") : t("appearance.cz.unavailable")}</p>
+        <p><Link href={APPEARANCE_HREF} className={ui.btnPrimary} data-testid="customize-open-appearance">{t("appearance.cz.openAppearance")}</Link></p>
       </div>
     );
   }

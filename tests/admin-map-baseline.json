@@ -171,6 +171,11 @@
    "shell": "auth",
    "guard": null
   },
+  "/admin/maintenance": {
+   "kind": "redirect",
+   "shell": "panel",
+   "guard": "member"
+  },
   "/admin/maintenance-ia": {
    "kind": "redirect",
    "shell": "panel",
