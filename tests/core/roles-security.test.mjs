@@ -563,9 +563,10 @@ test("les sites qui s'ouvrent à « tout accès » (member) sont connus : aucune
     // (C2b) The index of a group (« Accounts and connections ») opens to any access: it lists only what canOpen allows for that person (same rules as the sidebar), and 404s when there is nothing (only an administration sees the empty state).
     `${PANEL}/[group]/page.tsx`,
     `${PANEL}/account/actions.ts`, `${PANEL}/account/page.tsx`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`,
+    `${PANEL}/layout.tsx`,
     // (QA B) `/admin/maintenance` only redirects to the first Maintenance page this person may open (or to "no access"); that page applies its own gate and nothing is read or shown here.
     `${PANEL}/maintenance/page.tsx`,
-    `${PANEL}/layout.tsx`, `${PANEL}/mode/actions.ts`, `${PANEL}/mode/page.tsx`, `${PANEL}/page.tsx`,
+    `${PANEL}/mode/actions.ts`, `${PANEL}/mode/page.tsx`, `${PANEL}/page.tsx`,
     // (0.34.0) The settings search opens to any access: the index only lists what that person may reach (core sections by role, module sections by the same rules as the place pages).
     `${PANEL}/search/page.tsx`,
   ]);
