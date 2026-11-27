@@ -133,7 +133,8 @@ test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un 
   assert.match(page, /entriesHref\(p\.key, \{ state: "published" \}\)/);
   assert.match(page, /href=\{DRAFTS_HREF\}/);
   assert.match(page, /entryHref\(d\.id\)/);
-  assert.match(page, /dashboard\.draftsNone/, "état vide qui dit quoi");
+  assert.match(page, /canEdit && draftList\.total > 0/, "R33 : pas de brouillon, pas de carte (aucune phrase de remplissage)");
+  assert.doesNotMatch(page, /dashboard\.draftsNone/);
   assert.ok(page.indexOf('data-testid="to-finish"') < page.indexOf('data-testid="in-numbers"'), "les brouillons passent avant les chiffres");
   const numbers = page.slice(page.indexOf('data-testid="in-numbers"'));
   assert.match(numbers, /redirects > 0 &&/, "Liens courts masqués s'il n'y en a pas");
@@ -152,7 +153,7 @@ test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un 
 
 test("textes : français et anglais, vouvoiement, pas de jargon en mode simple", () => {
   const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["dashboard.toFinish", "dashboard.draftsAll", "dashboard.draftsNone", "dashboard.draftOpen", "dashboard.shortLinks", "dashboard.unlisted", "drafts.title", "drafts.intro", "drafts.empty", "drafts.count", "dashboard.extensions", "entries.chip.all", "entries.chip.published", "entries.chip.draft", "entries.chip.scheduled", "entries.chip.expired"]) {
+  for (const k of ["dashboard.toFinish", "dashboard.draftsAll", "dashboard.draftOpen", "dashboard.shortLinks", "dashboard.unlisted", "drafts.title", "drafts.intro", "drafts.empty", "drafts.count", "dashboard.extensions", "entries.chip.all", "entries.chip.published", "entries.chip.draft", "entries.chip.scheduled", "entries.chip.expired"]) {
     assert.ok(fr[k] && en[k], k);
     assert.deepEqual(fr[k].match(/\{\w+\}/g)?.sort(), en[k].match(/\{\w+\}/g)?.sort(), `variables ${k}`);
   }

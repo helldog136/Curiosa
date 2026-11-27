@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
+- **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
 - **(English) An installed piece is called “module”, everywhere.** “Extension” and “feature” are gone from the texts of the site, the AI assistant, the journal and the maintenance messages; page addresses do not change. An automatic check keeps these words from coming back.
 - **Le menu de l'administration est rangé autrement.** « En direct », « Agenda » et « Overlays » sont dans « Outils » ; « Comptes et connexions » (dans « Site ») remplace « Réseaux » et « Connexions » ; « Rôles » a son entrée, près d'« Équipe ».
