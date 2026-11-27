@@ -105,3 +105,14 @@ test("barre d'action collée : région nommée, au-dessus des fenêtres, jamais 
   assert.match(out, /max-w-\[calc\(100vw-2rem\)\]/);
   assert.match(fs.readFileSync("src/app/globals.css", "utf8"), /html:has\(\[data-sticky-bar\]\) \{ scroll-padding-bottom/, "un champ qui prend le focus ne se glisse pas sous la barre");
 });
+
+test("formulaires de module (adminForm) : les trois formulaires du bloc passent par la même validation, sous le champ", () => {
+  const src = fs.readFileSync("src/components/admin/AdminBlocks.tsx", "utf8");
+  assert.equal((src.match(/useClientChecks\(formRef\)/g) ?? []).length, 3, "action, fenêtre, fichier");
+  assert.equal((src.match(/noValidate/g) ?? []).length, 3);
+  assert.equal((src.match(/if \(!check\(e\.currentTarget\)\)/g) ?? []).length, 2, "action et fenêtre ; le formulaire fichier valide dans son envoi");
+  assert.match(src, /if \(!check\(form\)\) return;/);
+  const hook = fs.readFileSync("src/components/admin/useClientChecks.ts", "utf8");
+  assert.match(hook, /^"use client";/);
+  assert.match(hook, /useFieldErrorsDom\(form, errors \?\? undefined, errors\)/);
+});
