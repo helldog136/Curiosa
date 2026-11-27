@@ -5321,5 +5321,20 @@
   "settings.colorInvalid": "Enter a color in #rrggbb format.",
   "settings.contrast.text": "Tip: text is hard to read on this background (ratio {ratio}; 4.5 recommended for text). You can keep this color.",
   "settings.contrast.accent": "Tip: the accent barely stands out from the background (ratio {ratio}; 3 recommended for interface elements). You can keep this color.",
-  "settings.contrast.accent2": "Tip: the secondary color barely stands out from the background (ratio {ratio}; 3 recommended). You can keep this color."
+  "settings.contrast.accent2": "Tip: the secondary color barely stands out from the background (ratio {ratio}; 3 recommended). You can keep this color.",
+  "bricks.rights.region": "Access matrix",
+  "bricks.rights.corner": "Access",
+  "bricks.rights.yes": "Allowed",
+  "bricks.rights.no": "Not allowed",
+  "bricks.rights.locked": "Cannot be delegated",
+  "bricks.rights.sensitive": "Sensitive",
+  "bricks.rights.system": "Built-in preset",
+  "bricks.rights.people": "{n} people",
+  "bricks.rights.peopleOne": "1 person",
+  "bricks.rights.count": "{n} of {total}",
+  "bricks.rights.chosen": "{n} accesses chosen",
+  "bricks.rights.cell": "{right}, {role}",
+  "bricks.checklist.done": "Done",
+  "bricks.checklist.todo": "To do",
+  "bricks.checklist.progress": "{n} of {total} done"
 }

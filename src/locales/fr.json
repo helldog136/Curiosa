@@ -5321,5 +5321,20 @@
   "settings.colorInvalid": "Écrivez une couleur au format #rrggbb.",
   "settings.contrast.text": "Conseil : le texte est peu lisible sur ce fond (rapport {ratio} ; 4,5 recommandé pour le texte). Vous pouvez garder cette couleur.",
   "settings.contrast.accent": "Conseil : l'accent se distingue peu du fond (rapport {ratio} ; 3 recommandé pour les éléments d'interface). Vous pouvez garder cette couleur.",
-  "settings.contrast.accent2": "Conseil : la couleur secondaire se distingue peu du fond (rapport {ratio} ; 3 recommandé). Vous pouvez garder cette couleur."
+  "settings.contrast.accent2": "Conseil : la couleur secondaire se distingue peu du fond (rapport {ratio} ; 3 recommandé). Vous pouvez garder cette couleur.",
+  "bricks.rights.region": "Matrice des accès",
+  "bricks.rights.corner": "Accès",
+  "bricks.rights.yes": "Autorisé",
+  "bricks.rights.no": "Non autorisé",
+  "bricks.rights.locked": "Non délégable",
+  "bricks.rights.sensitive": "Sensible",
+  "bricks.rights.system": "Prédéfini",
+  "bricks.rights.people": "{n} personnes",
+  "bricks.rights.peopleOne": "1 personne",
+  "bricks.rights.count": "{n} sur {total}",
+  "bricks.rights.chosen": "{n} accès choisis",
+  "bricks.rights.cell": "{right}, {role}",
+  "bricks.checklist.done": "Fait",
+  "bricks.checklist.todo": "À faire",
+  "bricks.checklist.progress": "{n} sur {total} faites"
 }
