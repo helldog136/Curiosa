@@ -19,10 +19,10 @@ test("fonctionnalités : « installé » et « ajouter » sont deux onglets d'un
   assert.match(read("src/app/admin/(panel)/extensions/add/page.tsx"), /<ExtensionsHeader[^>]*current="add"/);
   assert.match(read("src/components/admin/ExtensionsHeader.tsx"), /<FeatureTabs current=\{current\}/);
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /href=\{EXTENSIONS_HREF\} also=\{\[MODULES_HREF/, "le lien reste surligné dans les trois onglets (préfixe /admin/extensions)");
+  assert.match(read("src/core/adminSidebar.ts"), /href: EXTENSIONS_HREF, also: \[MODULES_HREF/, "le lien reste surligné dans les trois onglets (préfixe /admin/extensions)");
   assert.ok(!layout.includes('href="/admin/catalogue"'), "plus d'entrée de menu séparée pour le catalogue");
   assert.match(read("src/components/admin/navCurrent.ts"), /\[href, \.\.\.\(opts\.also \?\? \[\]\)\]/, "`also` reste pris en compte");
-  assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also \}\)/);
+  assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also, hash,/);
 });
 
 test("réglages : la case « compter les visites » (et le blocage des robots d'IA) vivent dans l'onglet Confidentialité, pas sous le logo", () => {
@@ -38,8 +38,10 @@ test("réglages : la case « compter les visites » (et le blocage des robots d'
 
 test("menu : « Modules » n'est plus en haut ni en surbrillance ; le catalogue a une recherche, ses fiches s'ouvrent en fenêtre avec un bouton d'installation animé", () => {
   const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.ok(layout.includes("extensions: <NavLink") && layout.indexOf("adminEntries.map") > layout.indexOf("nav.site"), "Extensions est dans Administration, après le contenu et le site");
-  assert.equal((layout.match(/href=\{EXTENSIONS_HREF\}/g) ?? []).length, 1, "une seule entrée");
+  assert.ok(layout.indexOf("adminList.map") > layout.indexOf("nav.site"), "Extensions est dans Administration, après le contenu et le site");
+  const model = read("src/core/adminSidebar.ts");
+  assert.equal((model.match(/href: EXTENSIONS_HREF/g) ?? []).length, 1, "une seule entrée");
+  assert.doesNotMatch(layout, /href=\{EXTENSIONS_HREF\}/, "the layout draws it from the model");
   assert.ok(!/prominent/.test(read("src/components/admin/NavLink.tsx")), "aucune entrée en surbrillance permanente");
   const page = read("src/app/admin/(panel)/extensions/add/page.tsx");
   assert.match(page, /<CatalogueSearch/);

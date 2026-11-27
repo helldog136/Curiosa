@@ -28,7 +28,7 @@ export const dynamic = "force-dynamic";
 type Row = { id: string; kind: "page" | "extension"; name: string; size: string | null; active: boolean; address: string | null; settings: string };
 
 export async function generateMetadata(): Promise<Metadata> {
-  return adminTitle(({ t }) => t("ovp.obs.title"));
+  return adminTitle(({ t }) => `${t("ovp.title")}, ${t("ovp.obs.tab")}`);
 }
 
 export default async function ObsAddressesPage() {
@@ -48,27 +48,32 @@ export default async function ObsAddressesPage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title={t("ovp.obs.title")} intro={t("ovp.obs.intro")} />
+      <PageHeader title={t("ovp.title")} intro={t("ovp.obs.intro")} />
       <LinkTabs tabs={tabs} current="obs" label={t("ovp.list.tabs")} />
       {rows.length === 0 ? (
         <EmptyState icon="🎬" title={t("ovp.obs.empty")}><Link href={OVERLAY_PAGES_HREF} className={ui.btn}>{t("ovp.obs.emptyAction")}</Link></EmptyState>
       ) : (
         <section className={`${ui.card} space-y-4`} data-testid="obs-addresses">
-          <p className="flex items-center gap-1 text-sm text-muted">{t("ovp.obs.how")}<HelpTip help={t("ovp.obs.howHelp")} name={t("ovp.obs.title")} /></p>
-          <LiveSearch scope="obs" placeholder={t("ovp.obs.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
-            filters={[{ key: "kind", allLabel: t("ovp.obs.filter.all"), options: [{ value: "page", label: t("ovp.obs.kind.page"), count: count("page") }, { value: "extension", label: t("ovp.obs.kind.extension"), count: count("extension") }] }]} />
+          <div className="flex items-start gap-1">
+            <div className="min-w-0 flex-1">
+              <LiveSearch scope="obs" placeholder={t("ovp.obs.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
+                filters={[{ key: "kind", allLabel: t("ovp.obs.filter.all"), options: [{ value: "page", label: t("ovp.obs.kind.page"), count: count("page") }, { value: "extension", label: t("ovp.obs.kind.extension"), count: count("extension") }] }]} />
+            </div>
+            <HelpTip help={t("ovp.obs.howHelp")} name={t("ovp.obs.tab")} />
+          </div>
           <ul className="divide-y divide-line">
             {rows.map((r) => (
               <li key={r.id} data-live-item="obs" data-live-kind={r.kind} data-search={searchText([r.name, r.size, t(`ovp.obs.kind.${r.kind}`), r.active ? "" : t("ovp.off")])} data-testid="obs-row"
                 className="flex flex-wrap items-center gap-x-3 gap-y-2 py-3">
                 <div className="min-w-0 flex-1 basis-56">
                   <p className="flex min-w-0 items-center gap-2">
-                    <Link href={r.settings} className="truncate font-medium hover:text-accent hover:underline" title={r.name}>{r.name}</Link>
+                    <span className="truncate font-medium" title={r.name}>{r.name}</span>
                     <Badge tone={r.kind === "page" ? "accent" : "info"}>{t(`ovp.obs.kind.${r.kind}`)}</Badge>
                     {!r.active && <Badge tone="neutral">{t("ovp.off")}</Badge>}
                   </p>
                   {r.size && <p className="text-sm text-muted">{t("ovp.obs.size", { size: r.size })}</p>}
                 </div>
+                <Link href={r.settings} aria-label={`${r.kind === "page" ? t("ovp.edit") : t("ovp.obs.open")} ${r.name}`} className={`${ui.btn} min-h-11`}>{r.kind === "page" ? t("ovp.edit") : t("ovp.obs.open")}</Link>
                 {r.address ? <CopyAddress text={r.address} label={t("ovp.copy")} copied={t("ovp.copied")} manual={t("ovp.copyManual")} /> : <span className="text-sm text-amber-700">{t("ovp.addressLost")}</span>}
               </li>
             ))}

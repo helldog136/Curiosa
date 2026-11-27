@@ -27,6 +27,7 @@ import { placementOf } from "@/core/services/mcp/profiles";
 import { SETUP_TOOLS } from "@/core/services/mcp/profileTexts";
 import { Callout, DangerZone } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { applyGrantsAction, resetGrantsAction, revokeTokenAction, setUrlAccessAction } from "../actions";
 import { setFullPowersAction, turnOffFullPowersAction } from "../fullPowersActions";
 import { fullPowersLabels } from "../fullPowersLabels";
@@ -136,7 +137,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <div>
-        <a href={TEAM_HREF} className="text-sm text-muted hover:text-accent" data-testid="assistant-back">← {t("nav.users")}</a>
+        <a href={TEAM_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent" data-testid="assistant-back">← {t("nav.users")}</a>
         <h1 className={`mt-1 break-words ${ui.pageTitle}`}>{row.name} {advanced && <span className="font-mono text-base text-muted">{row.prefix}…</span>}</h1>
         {advanced && (
           <p className="mt-1 text-sm text-muted">
@@ -146,13 +147,13 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
         {revoked && <p className="mt-2 rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm" role="status" data-testid="access-revoked">{t("assistants.detail.revoked")}</p>}
         <p className="mt-2 max-w-2xl text-[15px] leading-6" data-testid="assistants-can">{can.map((a) => t(`assistants.can.${a}`)).join(" ")}{"\u00a0"}<HelpTip always help={t(advanced ? "mcp.accessIntro" : "assistants.detail.intro")} name={row.name} /></p>
         {!revoked && <p className="mt-2 text-sm"><a href={assistantHistoryHref(row.name)} className="text-accent underline underline-offset-2" data-testid="assistant-history">{t("team.ai.history")}</a></p>}
-        {token.scope === "read" && <p className="mt-2 rounded-lg border border-line bg-surface p-3 text-sm">{t(advanced ? "mcp.readCeiling" : "assistants.detail.readOnly")}</p>}
+        {token.scope === "read" && <p className="mt-2" data-testid="assistant-read-only"><StatusPill tone="info" title={t(advanced ? "mcp.readCeiling" : "assistants.detail.readOnly")}>{t("mcp.scope.read")}</StatusPill></p>}
       </div>
 
       {!revoked && (urlOn || !ownedNow) && (
         <section className={`${ui.card} space-y-3`} aria-label={t("mcp.url.title")} data-testid="mcp-url-access">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><span className="inline-flex items-center gap-1.5">{t("mcp.url.title")}<HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /></span> <span className={urlOn ? ui.chipWarn : ui.chip}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</span></h2>
+            <h2 className="flex flex-wrap items-center gap-2 text-lg font-semibold"><span className="inline-flex items-center gap-1.5">{t("mcp.url.title")}<HelpTip always help={advanced ? t("mcp.url.help", { siteUrl }) : t("assistants.url.help")} name={t("mcp.url.title")} /></span> <StatusPill tone={urlOn ? "warn" : "neutral"}>{urlOn ? t("mcp.url.stateOn") : t("mcp.url.stateOff")}</StatusPill></h2>
             <form action={setUrlAccessAction.bind(null, id, !urlOn)}>
               {urlOn ? <PendingButton>{t("mcp.url.disable")}</PendingButton> : !ownedNow && <ConfirmButton danger={false} message={t(advanced ? "mcp.url.enableConfirm" : "assistants.url.enableConfirm")}>{t("mcp.url.enable")}</ConfirmButton>}
             </form>
@@ -167,7 +168,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
             <h2 id="fullpowers-title" className="flex flex-wrap items-center gap-2 text-lg font-semibold">
               {t("fullpowers.title")}
               <HelpTip name={t("fullpowers.title")} help={t(writes ? "fullpowers.help" : "fullpowers.readOnly")} always />
-              {fullPowers && <span className={ui.chipDanger} data-testid="fullpowers-chip">{t("fullpowers.stateOn")}</span>}
+              {fullPowers && <StatusPill tone="danger" testid="fullpowers-chip">{t("fullpowers.stateOn")}</StatusPill>}
             </h2>
             {owner && writes && (fullPowers
               ? <form action={turnOffFullPowersAction.bind(null, id)}><PendingButton testid="fullpowers-off">{t("fullpowers.turnOff")}</PendingButton></form>
@@ -182,8 +183,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
 
       {!revoked && (
         <section className={`${ui.card} space-y-3`} aria-labelledby="limits-title" data-testid="access-limits">
-          <h2 id="limits-title" className="text-lg font-semibold">{t("aim.limits.title")}</h2>
-          <p className="text-sm leading-6 text-muted">{t("aim.limits.help")}</p>
+          <h2 id="limits-title" className="flex items-center gap-1 text-lg font-semibold">{t("aim.limits.title")}<HelpTip always help={t("aim.limits.help")} name={t("aim.limits.title")} /></h2>
           <ul className="space-y-1 text-[15px]" role="status">
             {(["risky", "content"] as const).map((cls) => (
               <li key={cls} data-testid={`limit-${cls}`}>

@@ -101,7 +101,7 @@ test("French site: the summaries come from the module's French texts; a tool wit
   assert.equal(by.order_count.summary, "Count the orders by state.");
   assert.equal(by.order_count.textLanguage, "en", "no French text: English, flagged");
   assert.match(s.toolsForYourAssistantInfo.languageGap, /1 de ces outils n'ont pas de texte dans votre langue \(fr\)/);
-  assert.match(s.toolsForYourAssistantInfo.note, /Outils que cette extension/);
+  assert.match(s.toolsForYourAssistantInfo.note, /Outils que ce module/);
   assert.match(s.toolsForYourAssistantInfo.sayToTheOwner, /Vous devriez cocher/);
 });
 

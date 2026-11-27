@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { RowMenu } from "@/components/admin/RowMenu";
 import { ui } from "@/components/admin/ui";
 import { useAL } from "./AppearanceLabels";
 import { InspectPanel } from "./InspectPanel";
@@ -13,7 +14,7 @@ export type CatalogueCardModel = {
   installed: boolean; installedVersion?: string; updateAvailable: boolean; compatible: boolean; needsNewerCore?: string; origin: "official" | "extra";
 };
 
-/** Une carte du catalogue : « Installer et utiliser » (un clic), « Installer », « Voir les détails » (lit le dépôt sans rien installer). */
+/** Une carte du catalogue : « Installer et utiliser » (un clic, le seul bouton plein), « Installer » seul dans le menu « ⋯ », « Voir les détails » (lit le dépôt sans rien installer). */
 export function CatalogueCard({ item, locale, canInstall }: { item: CatalogueCardModel; locale: "fr" | "en"; canInstall: boolean }) {
   const al = useAL();
   const [detail, setDetail] = useState<InspectView | null>(null);
@@ -48,9 +49,11 @@ export function CatalogueCard({ item, locale, canInstall }: { item: CatalogueCar
               <input type="hidden" name="id" value={item.id} />
               <input type="hidden" name="activate" value="1" />
             </ActionForm>
-            <ActionForm action={installFromCatalogueAction} submitLabel={al("appearance.install")} secondary pendingLabel={al("appearance.installing")} className="contents">
-              <input type="hidden" name="id" value={item.id} />
-            </ActionForm>
+            <RowMenu label={al("appearance.moreActions")}>
+              <ActionForm action={installFromCatalogueAction} submitLabel={al("appearance.install")} secondary pendingLabel={al("appearance.installing")} className="px-2 [&>button]:w-full">
+                <input type="hidden" name="id" value={item.id} />
+              </ActionForm>
+            </RowMenu>
           </>
         )}
       </div>

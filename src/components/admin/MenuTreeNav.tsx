@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { groupIconKey } from "@/core/adminSidebar";
 import { NavGroup } from "./NavGroup";
 import { groupStateId, nodeEntries, type MenuNode, type TreeItem } from "@/core/modules/menuPath";
 import type { NavState } from "@/core/modules/menuPlacement";
@@ -11,7 +12,7 @@ import type { NavState } from "@/core/modules/menuPlacement";
 export function MenuTreeNav<T extends TreeItem>({ node, state, targets, renderEntry, badgeLabel, depth = 0 }: { node: MenuNode<T>; state: NavState; targets: (item: T) => string[]; renderEntry: (item: T) => ReactNode; badgeLabel: string; depth?: number }) {
   const id = groupStateId(node.path);
   return (
-    <NavGroup id={id} title={node.title} icon={node.icon} tree targets={nodeEntries(node).flatMap(targets)} stored={state[id]} openByDefault={false} badge={node.badge} badgeLabel={badgeLabel}>
+    <NavGroup id={id} title={node.title} icon={groupIconKey(node.id)} tree targets={nodeEntries(node).flatMap(targets)} stored={state[id]} openByDefault={false} badge={node.badge} badgeLabel={badgeLabel}>
       <div data-testid={`nav-tree-${node.path.join(".")}`} data-depth={depth}>
         {node.entries.map(renderEntry)}
         {node.children.map((c) => <MenuTreeNav key={c.id} node={c} state={state} targets={targets} renderEntry={renderEntry} badgeLabel={badgeLabel} depth={depth + 1} />)}

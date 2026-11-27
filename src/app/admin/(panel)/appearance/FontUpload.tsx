@@ -1,5 +1,6 @@
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Checkbox, FieldLabel, TextField } from "@/components/admin/Field";
+import { FileButton } from "@/components/admin/FileButton";
 import { HelpBelow } from "@/components/admin/HelpTip";
 import { MoreOptions } from "@/components/admin/MoreOptions";
 import { ui } from "@/components/admin/ui";
@@ -17,7 +18,7 @@ export function FontUpload({ t, count }: { t: Translator; count: number }) {
     <ActionForm action={uploadFontAction} submitLabel={t("appearance.font.upload")} pendingLabel={t("appearance.font.uploading")} reset className="space-y-4">
       <div>
         <FieldLabel id="font" className={ui.label} help={t("appearance.font.fileHelp")} text={t("appearance.font.file")}>{t("appearance.font.file")}</FieldLabel>
-        <input id="font" name="font" type="file" accept=".woff2,.otf,.ttf,font/woff2,font/otf,font/ttf" required className={ui.input} />
+        <FileButton id="font" name="font" accept=".woff2,.otf,.ttf,font/woff2,font/otf,font/ttf" required />
         <p className={ui.help}>{t("appearance.font.fileLimit")}</p>
         <HelpBelow help={t("appearance.font.fileHelp")} className={ui.help} />
       </div>

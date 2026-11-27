@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 
+/** Sent when a tab is chosen (the fragment changes without a `hashchange`): the sidebar follows it (Team / Roles). */
+export const TAB_CHOSEN_EVENT = "curiosa:tab-chosen";
+
 export type TabDef = { id: string; label: string };
 
 /**
@@ -43,7 +46,7 @@ export function Tabs({ tabs, initial, children }: { tabs: TabDef[]; initial?: st
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hash]);
 
-  const choose = (id: string) => { setPicked(id); try { window.history.replaceState(null, "", `#${id}`); } catch { /* sans historique : tant pis */ } };
+  const choose = (id: string) => { setPicked(id); try { window.history.replaceState(null, "", `#${id}`); window.dispatchEvent(new Event(TAB_CHOSEN_EVENT)); } catch { /* sans historique : tant pis */ } };
   // Masquage par CSS (et non par rendu) : pas de clignotement au chargement, et tous les champs restent dans le formulaire.
   const css = tabs.map((t) => `[data-tabs-root][data-active="${t.id}"] [data-tab]:not([data-tab~="${t.id}"]){display:none}`).join("");
 

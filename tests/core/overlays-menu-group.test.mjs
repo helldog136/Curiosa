@@ -36,7 +36,7 @@ test("the group is called Overlays in both languages, in the vocabulary and in t
 });
 
 test("the ready-made page keeps its full title as heading and takes the short name in the group, in both languages", () => {
-  for (const [locale, short, full] of [["en", "Ready-made", "Ready-made overlays"], ["fr", "Prédéfinis", "Overlays prédéfinis"]]) {
+  for (const [locale, short, full] of [["en", "Built-in overlays", "Ready-made overlays"], ["fr", "Overlays intégrés", "Overlays prédéfinis"]]) {
     const idx = P.buildPlaceIndex([contrib("maze-overlay", "obs.overlays.maze")], VOCAB, locale);
     const page = P.findPage(idx, "obs", "overlays");
     assert.equal(page.menuTitle, short, locale);
@@ -51,8 +51,8 @@ test("the ready-made page keeps its full title as heading and takes the short na
   assert.deepEqual(Object.keys(hostile.menuTitles), ["obs.overlays"]);
 });
 
-test("the group lists Ready-made first, then Custom, in English and in French (alphabetical order would reverse them)", () => {
-  for (const [locale, d, names] of [["en", en, ["Ready-made", "Custom"]], ["fr", fr, ["Prédéfinis", "Personnalisés"]]]) {
+test("the group lists Built-in overlays first, then Overlay pages, in English and in French (alphabetical order would reverse them)", () => {
+  for (const [locale, d, names] of [["en", en, ["Built-in overlays", "Overlay pages"]], ["fr", fr, ["Overlays intégrés", "Pages d'overlay"]]]) {
     const idx = P.buildPlaceIndex([contrib("maze-overlay", "obs.overlays.maze")], VOCAB, locale);
     const ready = idx.groups.find((g) => g.id === "obs").pages.filter((p) => !p.core).map((p, i) => placeItem(p, i));
     const custom = { ...customItem(), name: d["nav.overlayCustom"] };
@@ -105,15 +105,16 @@ test("the current page opens the group: each child's addresses count, and the ch
 
 test("R12: the group name and its two children share no name and no first word with each other or with the core entries, in both languages", () => {
   const core = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount", "nav.viewSite"];
-  for (const [lang, d, group, ready] of [["en", en, "Overlays", "Ready-made"], ["fr", fr, "Overlays", "Prédéfinis"]]) {
+  for (const [lang, d, group, ready] of [["en", en, "Overlays", "Built-in overlays"], ["fr", fr, "Overlays", "Overlays intégrés"]]) {
+    // (C2b) The two entries are « Built-in overlays » and « Overlay pages »; the heading of the group is not an entry (it may share its word with the first one).
     const names = [group, ready, d["nav.overlayCustom"], ...core.map((k) => d[k]), d["family.overlays"]];
     assert.equal(new Set(names.map((n) => n.toLowerCase())).size, names.length, `${lang}: same name twice`);
-    const first = names.map((n) => n.toLowerCase().split(/\s+/)[0]);
+    const first = names.slice(1).map((n) => n.toLowerCase().split(/\s+/)[0]);
     assert.equal(new Set(first).size, first.length, `${lang}: same first word twice (${first.join(", ")})`);
   }
   // The runtime check of the layout agrees (nothing gets a qualifier).
   const labels = [
-    { id: "g:obs", label: "Overlays", group: "" }, { id: "place:obs.overlays", label: "Ready-made", group: "Overlays" }, { id: "core:overlays", label: "Custom", group: "Overlays" },
+    { id: "place:obs.overlays", label: "Built-in overlays", group: "Overlays" }, { id: "core:overlays", label: "Overlay pages", group: "Overlays" },
     { id: "core:extensions", label: en["nav.extensions"], group: "Administration" }, { id: "core:assistants", label: en["nav.assistants"], group: "Administration" },
   ];
   assert.equal(P.qualifyLabels(labels).labels.size, 0, "no label needed a qualifier");
@@ -126,8 +127,8 @@ test("layout: the entry « Overlay pages » is gone from Administration and the 
   assert.match(layout, /menuPath: \[\{ id: "obs", text: "obs" \}\]/);
   assert.match(layout, /<MenuTreeNav key=\{n\.id\} node=\{n\}/, "the same component as Networks and Calendar");
   assert.ok(!Object.hasOwn(A.SIDEBAR_R12_KEYS.admin.entries, "overlays"));
-  assert.equal(en["nav.overlayCustom"], "Custom");
-  assert.equal(fr["nav.overlayCustom"], "Personnalisés");
+  assert.equal(en["nav.overlayCustom"], "Overlay pages");
+  assert.equal(fr["nav.overlayCustom"], "Pages d'overlay");
 });
 
 test("the old key keeps its value for the places and the settings search (nothing else changes for them)", () => {

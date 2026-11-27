@@ -131,57 +131,64 @@ function readMaintenanceTabs(consts) {
   return { health: consts.HEALTH_HREF, backup: consts.BACKUP_HREF, updates: consts.UPDATES_HREF, upkeep: consts.UPKEEP_HREF, audit: consts.AUDIT_HREF };
 }
 
-const GUARD_WORDS = { canManage: "admin", editor: "editor" };
+const NEED_GUARD = { member: "member", editor: "editor", admin: "admin" };
+
+/** The fixed entries of the sidebar are DATA in src/core/adminSidebar.ts (one entry per line, in three lists); this names the heading each list sits under. */
+const MODEL_LISTS = [
+  { name: "DASHBOARD_LINK", section: "(top)" },
+  { name: "SITE_LINKS", section: "nav.site" },
+  { name: "CONNECTIONS_LINK", section: "nav.site" },
+  { name: "ADMIN_LINKS", section: "nav.admin" },
+  { name: "ACCOUNT_LINKS", section: "nav.account" },
+];
 
 /**
- * Every <NavLink> written in the panel layout, with the heading it sits under and the condition on its line.
- * The layout is read as text on purpose: that is what a developer edits, and a new link must show up here.
+ * Every entry of the sidebar: the fixed ones are read from the model (src/core/adminSidebar.ts, as text), the custom overlay pages from the layout line that
+ * builds them. The layout itself must not write an address of its own: `layoutLiteralNavLinks` counts the <NavLink> tags that do, and the test wants zero.
  */
 export function readSidebar(repo = REPO_ROOT) {
+  const model = read(path.join(repo, "src/core/adminSidebar.ts"));
   const layout = read(path.join(repo, "src/app/admin/(panel)/layout.tsx"));
   const consts = readHrefConstants(repo);
   const resolve = (expr) => {
     const e = expr.trim();
     if (/^"[^"]*"$/.test(e)) return e.slice(1, -1);
-    // The Maintenance entry points at its first visible tab (health when none): the tabs are listed in `also`.
-    if (e.includes("maintenanceTabList") && e.includes("HEALTH_HREF")) return consts.HEALTH_HREF;
     return consts[e] ?? `{${e}}`;
   };
-  const lines = layout.split("\n");
   const entries = [];
-  let heading = "(top)";
-  let literalLinks = 0;
-  for (const line of lines) {
-    const h = /<p className=\{group\}>\{t\("([\w.]+)"\)\}<\/p>/.exec(line);
-    if (h) heading = h[1];
-    for (const m of line.matchAll(/<NavLink\b([^>]*?\bhref=(?:\{[^}]+\}|"[^"]*")[^>]*)>\{?(?:t\("([\w.]+)"\)|[^<]*)/g)) {
-      const attrs = m[1];
-      const href = /\bhref=(\{[^}]+\}|"[^"]*")/.exec(attrs)?.[1];
-      if (!href) continue;
-      const hrefExpr = href.startsWith("{") ? href.slice(1, -1) : href;
-      if (hrefExpr.includes("entryHref") || hrefExpr.includes("m.id")) continue; // module entries (below)
-      literalLinks += 1;
-      const labelKey = /\{t\("([\w.]+)"\)\}[^{]*<\/NavLink>/.exec(line)?.[1] ?? m[2] ?? null;
-      const also = /\balso=\{\[([^\]]*)\]\}/.exec(attrs)?.[1]?.split(",").map((s) => s.trim()).filter((s) => s && !s.startsWith("...")).map(resolve) ?? [];
-      const maintenance = hrefExpr.includes("maintenanceTabList");
-      const adminKey = /^\s*(\w+): <NavLink key="/.exec(line)?.[1];
-      let guard = "member";
-      for (const [word, level] of Object.entries(GUARD_WORDS)) if (new RegExp(`\\{${word} && <NavLink`).test(line)) guard = level;
-      entries.push({
-        section: adminKey ? "nav.admin" : heading,
-        label: labelKey,
-        href: resolve(hrefExpr),
-        also: (maintenance ? Object.values(readMaintenanceTabs(consts)) : also).sort(),
-        guard: adminKey ? "see access.administration" : guard,
-        external: /\bexternal\b/.test(attrs),
-        slot: adminKey ?? null,
-      });
-    }
-    // Entries built from data rather than written as a tag (the custom overlay pages join the Overlays group).
+  let section = null;
+  let modelLines = 0;
+  for (const line of model.split("\n")) {
+    const list = /^export const (\w+)\b/.exec(line);
+    if (list) section = MODEL_LISTS.find((l) => l.name === list[1])?.section ?? null;
+    if (!section || !/\bid: "\w+", label: "nav\.\w+"/.test(line)) continue;
+    modelLines += 1;
+    const attrs = line;
+    const labelKey = /label: "([\w.]+)"/.exec(attrs)?.[1] ?? null;
+    const href = /\bhref: ([\w]+|"[^"]*")/.exec(attrs)?.[1];
+    if (!href) continue;
+    const alsoRaw = /\balso: \[([^\]]*)\]/.exec(attrs)?.[1] ?? "";
+    const also = alsoRaw.split(",").map((x) => x.trim()).filter((x) => x && !x.startsWith("...")).map(resolve);
+    const tabs = /\btabs: true\b/.test(attrs);
+    const need = /\bneed: "(\w+)"/.exec(attrs)?.[1] ?? "member";
+    entries.push({
+      section,
+      label: labelKey,
+      href: resolve(href),
+      also: (tabs ? Object.values(readMaintenanceTabs(consts)) : also).sort(),
+      guard: section === "nav.admin" ? "see access.administration" : NEED_GUARD[need] ?? need,
+      external: /\bexternal: true\b/.test(attrs),
+      slot: section === "nav.admin" ? /id: "(\w+)"/.exec(attrs)?.[1] ?? null : null,
+    });
+  }
+  for (const line of layout.split("\n")) {
+    // Entries built from data rather than listed in the model (the custom overlay pages join the Overlays group).
     const dyn = /id: "(core:[\w-]+)".*?href: (\w+)/.exec(line);
     if (dyn) entries.push({ section: "nav.dynamic", label: dyn[1], href: resolve(dyn[2]), also: [], guard: "admin (and a site that uses overlays)", external: false, slot: null });
   }
-  return { entries, literalLinks, layoutNavLinkTags: (layout.match(/<NavLink\b/g) ?? []).length };
+  // A <NavLink> of the layout that carries an address of its own (a literal or an `_HREF` constant) bypasses the model: the map could not see it.
+  const layoutLiteralNavLinks = [...layout.matchAll(/<NavLink\b[^>]*\bhref=(?:"[^"]*"|\{[A-Z_]+_HREF\})/g)].length;
+  return { entries, literalLinks: modelLines, parsedLinks: entries.filter((e) => e.section !== "nav.dynamic").length, layoutLiteralNavLinks, layoutNavLinkTags: (layout.match(/<NavLink\b/g) ?? []).length };
 }
 
 /** The dynamic parts of the sidebar, named once so that a rename is noticed: the four sections that modules fill, and what is built from data. */
@@ -282,7 +289,7 @@ export async function buildAdminMap({ repo = REPO_ROOT, extrasDir = null } = {})
       sidebar: { ...readSidebarShape(repo), entries: sidebar.entries },
       access: await readAccess(repo),
     },
-    sidebarParse: { literalLinks: sidebar.literalLinks, layoutNavLinkTags: sidebar.layoutNavLinkTags },
+    sidebarParse: { literalLinks: sidebar.literalLinks, parsedLinks: sidebar.parsedLinks, layoutLiteralNavLinks: sidebar.layoutLiteralNavLinks, layoutNavLinkTags: sidebar.layoutNavLinkTags },
   };
   if (extrasDir) map.modules = await readModules(extrasDir, repo);
   return map;

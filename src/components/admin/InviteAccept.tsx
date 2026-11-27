@@ -6,7 +6,7 @@ import { TextField } from "./Field";
 import { UsernameHint } from "./UsernameHint";
 import { forgetTokenAfter, useFragmentToken } from "./FragmentToken";
 
-export type InviteAcceptLabels = { loading: string; missing: string; invalid: string; rate: string; title: string; intro: string; account: string; name: string; nameExample: string; password: string; confirm: string; help: string; submit: string; pending: string };
+export type InviteAcceptLabels = { loading: string; missing: string; invalid: string; rate: string; intro: string; account: string; name: string; nameExample: string; password: string; confirm: string; help: string; submit: string; pending: string };
 type Look = { ok: true; email: string; role: string } | { ok: false; reason: "invalid" | "rate" };
 
 /** The invitation page: the token comes from the address fragment, is checked by the server, and travels only in the form body. */
@@ -33,7 +33,6 @@ export function InviteAccept({ peek, action, labels, minLength }: {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
-        <h1 className="text-2xl font-bold">{labels.title}</h1>
         <p className="text-sm leading-6 text-muted" data-testid="invite-intro">{labels.intro.replace("{role}", ok.role)}</p>
         <p className="break-all text-sm font-medium" data-testid="invite-email">{labels.account.replace("{email}", ok.email)}</p>
       </div>

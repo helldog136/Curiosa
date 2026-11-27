@@ -1,10 +1,12 @@
 import { adminCtx } from "@/core/admin";
-import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
+import { MaintenanceHeader, TabIntro } from "@/components/admin/MaintenanceHeader";
 import { legacyReport, legacyStatus, type LegacyReport } from "@/core/modules/legacyReport";
 import { upkeepRows, upkeepSummary, type UpkeepGroup, type UpkeepId, type UpkeepRow } from "@/core/modules/legacyUpkeep";
 import { ActionForm } from "@/components/admin/ActionForm";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { Callout, Panel } from "@/components/admin/Page";
 import { Badge } from "@/components/admin/Badge";
+import { StatusPill } from "@/components/admin/StatusPill";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { EXTENSIONS_UPDATES_HREF } from "@/core/modules/extensionsLinks";
 import { RemoveChoices } from "@/components/admin/RemoveSection";
@@ -127,22 +129,25 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
   return (
     <div className="space-y-6">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="upkeep" />
-      <PageHeader level={2} title={t("legacy.title")} intro={t("upkeep.intro")} />
+      <TabIntro title={t("legacy.title")} intro={t("upkeep.intro")} />
       {done && <Callout tone={done === "refused" || done === "copyRefused" ? "warn" : "ok"} role="status" testid="legacy-result">{t(`legacy.result.${done === "kept" || done === "removed" || done === "erased" || done === "copyDeleted" || done === "copyPartial" || done === "copyRefused" ? done : "refused"}`)}</Callout>}
-      {/* Un seul message, dit sans alarme : le site public fonctionne dans tous les cas. */}
-      <Callout tone={sum.state === "todo" ? "warn" : "ok"} role="status" testid={`upkeep-status-${sum.state}`}>
-        {sum.state === "todo" ? t("upkeep.status.todo", { n: sum.todo }) : sum.state === "kept" ? t("upkeep.status.kept") : t("upkeep.status.clean")}
-      </Callout>
+      {/* One state, in one pill: the public site works in every case. */}
+      <p><span role="status" data-testid={`upkeep-status-${sum.state}`}>
+        <StatusPill tone={sum.state === "todo" ? "warn" : sum.state === "kept" ? "info" : "ok"}>
+          {sum.state === "todo" ? t("upkeep.status.todo", { n: sum.todo }) : sum.state === "kept" ? t("upkeep.status.kept") : t("upkeep.status.clean")}
+        </StatusPill>
+      </span></p>
 
       {/* La recherche et les filtres servent dès qu'il y a quelque chose à lire ; sur un site propre il n'y a que la liste « Terminé », repliée. */}
       {sum.todo + sum.kept > 0 && (
         <LiveSearch scope="upkeep" placeholder={t("upkeep.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
-          filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
+          filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.filter((g) => g.id !== "done" || advanced).map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
       )}
 
       {GROUPS.map(({ id, tone }) => {
         const list = byGroup(id);
-        if (list.length === 0) return null;
+        // What is done needs no action (R33.1): the list of it is a record, kept for the advanced mode.
+        if (list.length === 0 || (id === "done" && !advanced)) return null;
         const body = <ul className="divide-y divide-line" data-testid={`upkeep-list-${id}`}>{list.map(renderRow)}</ul>;
         return (
           <section key={id} data-live-group="upkeep" data-testid={`upkeep-group-${id}`}>
@@ -159,8 +164,7 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
             ) : (
               <Panel testid={`upkeep-panel-${id}`}>
                 <div>
-                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold">{t(`upkeep.group.${id}`)}</h2><Badge tone={tone} testid={`upkeep-badge-${id}`}>{list.length}</Badge></div>
-                  <p className="mt-1 text-sm leading-6 text-muted">{t(`upkeep.group.${id}.help`)}</p>
+                  <div className="flex flex-wrap items-center gap-2"><h2 className="text-lg font-semibold">{t(`upkeep.group.${id}`)}</h2><HelpTip help={t(`upkeep.group.${id}.help`)} name={t(`upkeep.group.${id}`)} always /><Badge tone={tone} testid={`upkeep-badge-${id}`}>{list.length}</Badge></div>
                 </div>
                 {body}
                 {id === "todo" && needsRerun && (

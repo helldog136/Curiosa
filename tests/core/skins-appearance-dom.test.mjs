@@ -234,7 +234,8 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   const html = await page("fr");
   assert.match(html, /<h1[^>]*>Apparence<\/h1>/);
   assert.match(html, /data-testid="current-skin"[\s\S]*Skin de base/);
-  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 0, "le skin actuel n'est pas répété dans la liste (R33.7)");
+  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 1, "le skin actuel est la seule carte, marquée « Actuel » : pas de carte de résumé en double (R33.7)");
+  assert.equal(count(html, /data-testid="current-skin"/g), 1);
   assert.doesNotMatch(html, /data-testid="undo-banner"|data-testid="adjusted-notice"|data-testid="active-problem"|data-testid="reset-card"/);
   for (const f of ["background", "accent", "accent2", "surface", "text", "glow", "bgPreset", "headerLayout"]) assert.match(html, new RegExp(`name="${f}"`), f);
   assert.match(html, /data-testid="bg-layers"/);
@@ -276,7 +277,9 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.equal(count(manage, /<details/g), 1, "une seule zone repliée par ligne : le menu « ⋯ » (plus de zone repliée par skin)");
   assert.doesNotMatch(html, /data-manage=|Mises à jour et retrait/);
 
-  assert.match(html, /<option value="skin"[^>]*>Celui du skin<\/option>/, "halo et fond : « celui du skin »");
+  assert.match(html, /<input type="radio"[^>]*name="glow"[^>]*value="skin"[^>]*\/><span[^>]*>Celui du skin<\/span>/, "halo : « celui du skin », en boutons côte à côte (R19)");
+  assert.match(html, /<input type="radio"[^>]*name="bgPreset"[^>]*value="skin"[^>]*\/><span[^>]*>Celui du skin<\/span>/, "fond : « celui du skin », en boutons côte à côte (R19)");
+  assert.doesNotMatch(html, /<select[^>]*name="(glow|bgPreset)"/, "plus de liste déroulante pour 2 à 4 choix");
   assert.match(html, /name="light_background"[\s\S]*name="dark_accent"/);
   // anglais : même structure
   const en = await page("en");
@@ -322,17 +325,17 @@ test("Réglages : plus d'onglet Apparence ni de rappel vers Apparence ; le lien 
   assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
   assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
   const navigation = read("src/app/admin/(panel)/navigation/header/page.tsx");
-  assert.match(navigation, /name="headerSecondaryHref"/);
-  assert.match(navigation, /name="headerButtonHref"/);
+  assert.match(navigation, /hrefName: "headerSecondaryHref"/);
+  assert.match(navigation, /hrefName: "headerButtonHref"/);
   for (const gone of ["ThemePicker", "HeaderLayoutPicker", "bgPreset", "name=\"font\"", "name=\"glow\"", "data-testid=\"bg-layers\""]) assert.ok(!settings.includes(gone), `Réglages ne doit plus contenir ${gone}`);
   const actions = read("src/app/admin/(panel)/settings/actions.ts");
   for (const gone of ["theme.background", "theme.accent", "theme.glow", "theme.bgPreset", "header.layout", "theme.font"]) assert.ok(!actions.includes(gone), `saveSettings ne doit plus écrire ${gone}`);
   assert.ok(!/header\.socials|header\.secondary|header\.button/.test(actions), "saveSettings ne touche plus à l'en-tête");
   assert.match(read("src/app/admin/(panel)/social/actions.ts"), /"header\.socials"/);
   assert.match(read("src/app/admin/(panel)/navigation/actions.ts"), /header\.secondaryHref[\s\S]*header\.buttonHref/);
-  const layout = read("src/app/admin/(panel)/layout.tsx");
-  assert.match(layout, /<NavLink href=\{APPEARANCE_HREF\}>\{t\("nav\.appearance"\)\}<\/NavLink>/);
-  assert.ok(layout.indexOf("APPEARANCE_HREF") < layout.indexOf("SETTINGS_HREF"));
+  const model = read("src/core/adminSidebar.ts");
+  assert.match(model, /id: "appearance", label: "nav\.appearance", href: APPEARANCE_HREF/);
+  assert.ok(model.indexOf("href: APPEARANCE_HREF") < model.indexOf("href: SETTINGS_HREF"));
   const appearance = read("src/app/admin/(panel)/appearance/page.tsx");
   assert.match(appearance, /<ThemePicker|<ColorSection/);
   assert.match(appearance, /text=\{config\.textColor\}|textColor/);

@@ -100,7 +100,7 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
 
       <section aria-label={t("ovp.test")} className={`rounded-2xl border p-4 ${testing ? "border-amber-500/50 bg-amber-500/10" : "border-line bg-surface"}`} data-testid="test-mode">
         <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-base font-semibold">{t("ovp.test")}</h2>
+          <h2 className="flex items-center gap-1 text-base font-semibold">{t("ovp.test")}<HelpTip help={t("ovp.testHelp")} name={t("ovp.test")} /></h2>
           {testing ? (
             <>
               <p role="status" className="text-sm font-medium">{t("ovp.testOn", { time: endTime(page.testUntil!, locale, tz) })}</p>
@@ -109,12 +109,10 @@ export default async function OverlayPageEditor({ params }: { params: Promise<{ 
             </>
           ) : (
             <>
-              <p className="text-sm text-muted">{t("ovp.testOff")}</p>
               <form action={testAction.bind(null, page.id, "start")}><PendingButton variant="btn">{t("ovp.testStart")}</PendingButton></form>
             </>
           )}
         </div>
-        <p className={ui.help}>{t("ovp.testHelp")}</p>
       </section>
 
       {!page.active && <Callout tone="warn">{t("ovp.inactiveNote")}</Callout>}

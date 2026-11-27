@@ -207,7 +207,7 @@ test("barre bloquée : bouton inactif, raison écrite avec son lien ; prérequis
 test("fiche d'un module déjà installé : la barre renvoie vers sa page ; pour qui ne peut pas installer, pas de barre", () => {
   const installed = html(h(ExtensionFiche, props({ bar: { kind: "installed" }, manageHref: "/admin/modules/demo-mod" })));
   assert.match(installed, /Déjà sur votre site/);
-  assert.match(installed, /<a href="\/admin\/modules\/demo-mod"[^>]*>Gérer cette extension</);
+  assert.match(installed, /<a href="\/admin\/modules\/demo-mod"[^>]*>Gérer ce module</);
   assert.doesNotMatch(installed, /install-button|install-blocked/);
   assert.doesNotMatch(html(h(ExtensionFiche, props({ bar: { kind: "hidden" } }))), /install-bar/);
 });

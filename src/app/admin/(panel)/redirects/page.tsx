@@ -24,6 +24,12 @@ import { destinationSummary } from "@/core/redirectGroups";
 import { isMeasureEnabled } from "@/core/redirectMeasure";
 import { hasRole } from "@/core/permissions";
 import { Badge } from "@/components/admin/Badge";
+import { PageHeader } from "@/components/admin/Page";
+import { EmptyState } from "@/components/admin/EmptyState";
+import { FormDialog } from "@/components/admin/FormDialog";
+import { HelpTip } from "@/components/admin/HelpTip";
+import { LinkTabs } from "@/components/admin/LinkTabs";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { reconcileManaged } from "@/core/managedRedirects";
 import { getModule } from "@/core/modules/registry";
 import { localized } from "@/core/modules/types";
@@ -81,13 +87,31 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
   const showStates = list.counts.off + list.counts.ended > 0 || !!state;
   const endLabels = { date: t("redirects.endDate.date"), time: t("redirects.endDate.time"), timePlaceholder: t("redirects.endDate.noTime"), clear: t("redirects.endDate.clear"), at: t("datetime.at"), preview: t("redirects.endDate.preview") };
 
+  // The "new short link" window: opened by the page's one main button (or by the empty state's button when there is no link yet).
+  const createDialog = (
+    <FormDialog primary trigger={advanced ? t("redirects.add") : t("redirects.add.simple")} title={advanced ? t("redirects.add") : t("redirects.add.simple")} closeLabel={t("roles.close")} testid="redirect-create">
+      <ActionForm action={createRedirect} submitLabel={t("redirects.addButton")} pendingLabel={t("progress.creating")} reset>
+        <RedirectAddressFields suggest={suggestRedirectName} site={site} advanced={advanced}
+          labels={{ address: t("redirects.address"), addressHelp: t("redirects.addressHelp"), name: t("redirects.name"), nameHelp: advanced ? t("redirects.nameHelpAdvanced") : t("redirects.nameHelp"), namePlaceholder: t("redirects.namePlaceholder"), proposing: t("redirects.proposing") }} />
+        <MoreOptions title={t("instances.s.more")} summary={t("redirects.moreHint")}>
+          <DateTimeField name="end" optionalTime label={t("redirects.endDate")} help={t("redirects.endDateHelp", { zone: tz })} locale={locale} labels={endLabels} />
+          <TextArea name="endMessage" rows={3} label={t("redirects.endMessage")} help={t("redirects.endMessageHelp", { max: MAX_END_MESSAGE })} />
+          {advanced && withUrl.length > 0 && (
+            <Select name="entryId" label={t("redirects.entryLabel")} help={t("redirects.orEntryHelp")}
+              options={[{ value: "", label: t("redirects.entryNone") }, ...withUrl.map((e) => ({ value: e.id, label: `${e.translations[0]?.title ?? e.id} — ${e.url}` }))]} />
+          )}
+          {advanced && <Checkbox name="permanent" label={t("redirects.permanent")} help={t("redirects.permanentHelp")} />}
+        </MoreOptions>
+      </ActionForm>
+    </FormDialog>
+  );
+  const nothingYet = list.counts.all === 0 && !q && !state;
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className={ui.pageTitle}>{t("nav.redirects")}</h1>
-        <p className={ui.pageIntro}>{t("redirects.line", { site })}</p>
-        {advanced && <p className={ui.help}>{t("redirects.intro")}</p>}
-      </div>
+    <div className="space-y-6">
+      <PageHeader title={t("nav.redirects")} intro={<>{t("redirects.line", { site })}{advanced && <> <HelpTip help={t("redirects.intro")} name={t("nav.redirects")} always /></>}</>}>
+        {view === "all" && !nothingYet && createDialog}
+      </PageHeader>
 
       {siteUrlLooksLocal() && <p role="alert" className="rounded-xl border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-800">{t("redirects.localWarning", { site })}</p>}
       {managed.issues.map((i) => (
@@ -99,42 +123,19 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
           </div>
         </div>
       ))}
-      {sp.deleted && <p role="status" className="rounded-xl border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{t("redirects.deleted")}</p>}
+      {sp.deleted && <p role="status"><span className={ui.chipOk}>{t("redirects.deleted")}</span></p>}
 
-      <nav aria-label={t("redirects.view.label")} className="flex flex-wrap gap-2" data-testid="redirects-views">
-        {([["all", REDIRECTS_HREF, t("redirects.view.all")], ["destinations", `${REDIRECTS_HREF}?view=destinations`, t("redirects.view.byDestination")]] as const).map(([id, to, label]) => (
-          <Link key={id} href={to} aria-current={view === id ? "page" : undefined} className={`${view === id ? ui.btnPrimary : ui.btn} min-h-11`}>{label}</Link>
-        ))}
-      </nav>
+      <LinkTabs label={t("redirects.view.label")} testid="redirects-views" current={view}
+        tabs={[{ id: "all", href: REDIRECTS_HREF, label: t("redirects.view.all") }, { id: "destinations", href: `${REDIRECTS_HREF}?view=destinations`, label: t("redirects.view.byDestination") }]} />
 
       {view === "destinations" && (
         <section className="space-y-4" aria-labelledby="redirects-destinations">
-          <div>
-            <h2 id="redirects-destinations" className="text-lg font-semibold">{t("redirects.dest.title")}</h2>
-            <p className={ui.help}>{t("redirects.dest.intro")}</p>
-          </div>
+          <h2 id="redirects-destinations" className="flex items-center gap-1.5 text-lg font-semibold">{t("redirects.dest.title")}<HelpTip help={t("redirects.dest.intro")} name={t("redirects.dest.title")} always /></h2>
           <DestinationList summary={await destinationSummary()} t={t} format={(d) => dayFormat.format(new Date(`${d}T12:00:00Z`))} />
         </section>
       )}
 
       {view === "all" && <>
-      <section className={`${ui.card} space-y-4`}>
-        <h2 className="text-lg font-semibold">{advanced ? t("redirects.add") : t("redirects.add.simple")}</h2>
-        <ActionForm action={createRedirect} submitLabel={t("redirects.addButton")} pendingLabel={t("progress.creating")} reset>
-          <RedirectAddressFields suggest={suggestRedirectName} site={site} advanced={advanced}
-            labels={{ address: t("redirects.address"), addressHelp: t("redirects.addressHelp"), name: t("redirects.name"), nameHelp: advanced ? t("redirects.nameHelpAdvanced") : t("redirects.nameHelp"), namePlaceholder: t("redirects.namePlaceholder"), proposing: t("redirects.proposing") }} />
-          <MoreOptions title={t("instances.s.more")} summary={t("redirects.moreHint")}>
-            <DateTimeField name="end" optionalTime label={t("redirects.endDate")} help={t("redirects.endDateHelp", { zone: tz })} locale={locale} labels={endLabels} />
-            <TextArea name="endMessage" rows={3} label={t("redirects.endMessage")} help={t("redirects.endMessageHelp", { max: MAX_END_MESSAGE })} />
-            {advanced && withUrl.length > 0 && (
-              <Select name="entryId" label={t("redirects.entryLabel")} help={t("redirects.orEntryHelp")}
-                options={[{ value: "", label: t("redirects.entryNone") }, ...withUrl.map((e) => ({ value: e.id, label: `${e.translations[0]?.title ?? e.id} — ${e.url}` }))]} />
-            )}
-            {advanced && <Checkbox name="permanent" label={t("redirects.permanent")} help={t("redirects.permanentHelp")} />}
-          </MoreOptions>
-        </ActionForm>
-      </section>
-
       <section className="space-y-4" aria-labelledby="redirects-list">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <h2 id="redirects-list" className="text-lg font-semibold">{t("redirects.listTitle")}{all !== null ? ` (${all})` : ""}</h2>
@@ -144,7 +145,7 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
           <div className="space-y-3">
             {/* Recherche en direct, présente dès le premier lien (R15) : elle interroge le serveur pendant la frappe, donc toutes les pages, pas seulement celle qui est affichée. */}
             <LiveSearch mode="server" scope="redirects" action={REDIRECTS_HREF} keep={state ? { state } : {}} initialQuery={q}
-              placeholder={t("redirects.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
+              serverCount={q || state ? t("search.count", { shown: list.total, total: list.counts.all }) : undefined} placeholder={t("redirects.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
             {showStates && (
               <nav aria-label={t("redirects.state.label")} className="flex flex-wrap gap-2" data-testid="redirects-states">
                 {[["", t("table.all"), list.counts.all] as const, ...STATES.map((s) => [s, t(`redirects.state.pill.${s}`), list.counts[s]] as const)].map(([id, label, n]) => (
@@ -162,11 +163,8 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
           q || state ? (
             <NoResults message={t("search.none")} clearLabel={t("search.clear")} href={REDIRECTS_HREF} />
           ) : (
-            // État vide : on explique à quoi ça sert, avec des exemples, et le formulaire juste au-dessus est l'étape suivante.
-            <div className={`${ui.card} space-y-1 text-[15px] leading-6`}>
-              <p className="font-medium">{advanced ? t("redirects.empty") : t("redirects.empty.simple")}</p>
-              <p className="text-muted">{t("redirects.examples")}</p>
-            </div>
+            // R18: one sentence and one button (the window that creates the first link).
+            <EmptyState title={advanced ? t("redirects.empty") : t("redirects.empty.simple")} action={createDialog} testid="redirects-empty" />
           )
         ) : (
           <ul className="space-y-3" aria-busy={undefined}>
@@ -181,8 +179,9 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                     <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
                       <p className="flex flex-wrap items-center gap-2">
                         <Link href={redirectHref(r.id)} className="font-mono text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline">/{r.path}</Link>
-                        {/* Une étiquette seulement quand la ligne sort de l'ordinaire (R14) : « actif » est la règle, « désactivé » se lit sur l'interrupteur. */}
-                        {rowState === "ended" && <span className={ui.chipWarn}>{t("redirects.state.ended")}</span>}
+                        {/* Only what sets the row apart (R14, R37): "active" is the rule and says nothing; a paused or ended link says so. */}
+                        {rowState === "ended" && <StatusPill tone="warn" testid="redirect-ended">{t("redirects.state.ended")}</StatusPill>}
+                        {rowState === "off" && <StatusPill tone="neutral" testid="redirect-off">{t("redirects.state.off")}</StatusPill>}
                         {r.entryId && <span className={ui.chip}>{t("redirects.followsEntry")}</span>}
                         {/* Origine : seulement les liens qu'une extension gère (colorée ET écrite, R30). Les vôtres n'ont aucune étiquette (R14). */}
                         {owner && <Badge tone="info" testid="managed-badge">{t("redirects.origin.extension", { name: owner.name })}</Badge>}
@@ -194,8 +193,8 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      {owner ? <span className={ui.chipOk}>{t("redirects.state.active")}</span> : (
-                        <Switch label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")}
+                      {owner ? null : (
+                        <Switch quiet label={t("redirects.switch.label", { address: `/${r.path}` })} checked={r.active} onText={t("redirects.state.active")} offText={t("redirects.state.off")}
                           failedText={t("switch.failed")} onToggle={setRedirectActive.bind(null, r.id)} testid="redirect-switch" />
                       )}
                       <Link href={redirectHref(r.id)} className={`${ui.btn} min-h-11`}>{t("redirects.open")}</Link>
@@ -226,17 +225,14 @@ export default async function RedirectsPage({ searchParams }: { searchParams: Pr
       </>}
 
       <section className={`${ui.card} space-y-3`} aria-labelledby="redirects-measure" data-testid="measure-card">
-        <h2 id="redirects-measure" className={canChange ? "sr-only" : "text-lg font-semibold"}>{t("redirects.measure.title")}</h2>
+        <h2 id="redirects-measure" className={canChange ? "sr-only" : "flex items-center gap-1.5 text-lg font-semibold"}>{t("redirects.measure.title")}{!canChange && <HelpTip help={t("redirects.measure.help")} name={t("redirects.measure.title")} always />}</h2>
         {canChange ? (
           <ActionForm action={saveMeasureLinks} submitLabel={t("action.save")} secondary className="space-y-3">
-            <Checkbox name="measureLinks" label={t("redirects.measure.label")} help={t("redirects.measure.help")} defaultChecked={measure} />
-            {advanced && <p className={ui.help}>{t("redirects.measure.advanced")}</p>}
+            <Checkbox name="measureLinks" label={t("redirects.measure.label")} help={advanced ? `${t("redirects.measure.help")} ${t("redirects.measure.advanced")}` : t("redirects.measure.help")} defaultChecked={measure} />
           </ActionForm>
         ) : (
-          <div className="space-y-1.5 text-[15px]">
-            <p className="max-w-[70ch] text-muted">{t("redirects.measure.help")}</p>
-            <p>{measure ? t("redirects.measure.on") : t("redirects.measure.off")} {t("redirects.measure.adminOnly")}</p>
-          </div>
+          // Read only: the state, and who can change it, in the tooltip of the title (R32).
+          <p className="text-[15px]" title={t("redirects.measure.adminOnly")}>{measure ? t("redirects.measure.on") : t("redirects.measure.off")}</p>
         )}
       </section>
       {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}

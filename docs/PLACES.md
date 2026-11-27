@@ -130,7 +130,7 @@ Rules:
   when the module has sibling instances, or on a page defined inline; then its blocks, then its settings.
 - Saving: each section is its own form and its own transaction; one floating « Enregistrer » bar saves every modified section of the page. A failure in one
   section shows its errors under its fields and does not roll back the others.
-- Isolation: each section has 1.5 s; after that, or on an error: « Section indisponible (vient de X). Ouvrir l'extension → », the rest of the page shows.
+- Isolation: each section has 1.5 s; after that, or on an error, the section stays on the page as a card with a status line, « Section unavailable (from X). Open the module → » (the module name and a link to its page), and the rest of the page shows. A section that did not load is never turned into a table row (see "Table layout" below): it keeps its card so that the reason and the way out stay visible.
 - An empty tab says so and links to the contributing modules (R18).
 - Journal: `module.<instance>.place.<section>.save` with the place and the changed keys (never a value).
 
@@ -146,6 +146,16 @@ Three limits of 0.31.0 are gone. They only concern pages where sections of sever
   page with the module's namespaced parameters. The address comes from the browser and is re-checked: an admin address of the form `/admin/a/b[/c]`, no query, no fragment (`returnTarget`). Other answers (`/admin/…`) are unchanged.
 - **DOM ids are unique.** Two sections that show the same setting key (two instances, or two modules with `enabled`) had the same `id` in one tab. The fields of a place section now carry a prefix unique per
   (instance, section) (`fieldNamespace`); the server removes it before saving and puts it back on the errors it returns, so a message lands under the right field.
+
+### Table layout and group index pages (admin redesign)
+
+**`layout: "table"`** on a vocabulary page (see section 7) asks the core to draw the sections of that page that are **one single address each** (a profile link, nothing else) as the **rows of one table** instead of one card per module (rule R30: same schema, one table). The sections that are not a single address stay cards below the table. The core also decides it for its own page (`TABLE_PAGES` in `places.ts`, today `networks.accounts`); the catalogue may carry it for a page it defines, and the core reads it through `sanitizeVocabulary` (any other value is dropped). The table (`ConnectionsTable`, rows built by `classifySections` in `components/admin/connectionsLoad.tsx`) has a written and coloured origin column (Connection / Address), a state column, live search, quick filters with their counts, and **one** button per row; rare actions are in the « ⋯ » menu. A single-address row opens an edit dialog (`EditDialog`) from the page itself.
+
+**States.** A row that comes from a `connection` block (a module that connects the site to a service) says its state in the three words of the core: **Configured**, **Degraded**, **Not configured** (`connection.state.*`), with the reason and the way out for the last two; its one button is Edit, Fix or Set up accordingly (R3). A single-address row is Configured when the address is set, Not configured when it is empty. A row for a page that has no state of its own shows a link and, if the page has work waiting, its number. Rows that need attention come first. A section that could not load is not a row: it stays a card with the « Section unavailable » line described under Rendering.
+
+**Group index.** `/admin/<group>` (the group page, `[group]/page.tsx`) lists the pages of a group that the person may open (any member opens the index; `canOpen` filters it). For `networks` (« Accounts and connections ») the index is the table above and replaces the former Networks group and Connections section of the sidebar. An index with nothing to open does not show an entry in the menu.
+
+**Access.** A place page is one row of the access table (`src/core/adminAccess.ts`, `place: true`): any member opens the page and each section is shown by right. See [ADMIN-NAVIGATION.md](ADMIN-NAVIGATION.md).
 
 ### Search (0.34.0)
 
@@ -174,13 +184,14 @@ its places (groups, core pages): it never needs the network for them. Offline or
   "aliases": { "old.place": "new.place" },
   "deprecated": { "old.place": "why" } }
 // a page may also carry "sectionsReason": "why more than 3 sections of one module are fine here"
+// a page may also carry "layout": "table": its sections that are one single address each (a profile link) show as the rows of ONE table (core: networks.accounts)
 ```
 
 The catalogue can never set an address, a status, or a page of a reserved or additive core group.
 
 ### The Overlays group (0.49.0)
 
-The group `obs` is titled **Overlays** (it was « OBS »; the id and the addresses `/admin/obs/...` are unchanged, and a menu path or a place that says `OBS` or `Overlays` lands in it). In the sidebar it is one collapsible group, like Networks, with two entries: **Ready-made / Prédéfinis** (the place page `obs.overlays` of the catalogue, « Overlays prédéfinis » as the heading of the page) and **Custom / Personnalisés** (the core entry `/admin/overlay-pages`, which used to be « Overlay pages » under Administration). The short name comes from `menuTitles` of the core vocabulary (`BUILTIN_VOCABULARY`, by page id, never read from the catalogue): a page shows its short name next to the other entries of its group and its full title as the heading of the page, in the group-of-one case (only that page is visible: it is shown directly, without heading, under its full title) and in the settings search. « Custom » comes after the pages of the group; it exists while the person may manage overlay pages, and the group disappears when it has no visible entry.
+The group `obs` is titled **Overlays** (it was « OBS »; the id and the addresses `/admin/obs/...` are unchanged, and a menu path or a place that says `OBS` or `Overlays` lands in it). In the sidebar it is one collapsible group inside **Tools**, with two entries: **Built-in overlays / Overlays intégrés** (the place page `obs.overlays` of the catalogue, « Overlays prédéfinis » as the heading of the page) and **Overlay pages / Pages d'overlay** (the core entry `/admin/overlay-pages`, formerly « Custom / Personnalisés »). The short name comes from `menuTitles` of the core vocabulary (`BUILTIN_VOCABULARY`, by page id, never read from the catalogue): a page shows its short name next to the other entries of its group and its full title as the heading of the page, in the group-of-one case (only that page is visible: it is shown directly, without heading, under its full title) and in the settings search. « Overlay pages » comes after the pages of the group; it exists while the person may manage overlay pages, and the group disappears when it has no visible entry.
 
 ## 8. Stability
 

@@ -13,6 +13,8 @@ import { useProgressText } from "./ProgressLabels";
 import { clearSecrets } from "./keepValues";
 import { useTrackedRun } from "./useTrackedRun";
 import { SecretReveal, type OneTimeSecret } from "./OneTimeSecret";
+import { collectNativeErrors, validatableFields, type InvalidKey } from "./nativeValidation";
+import { StickyActionBar } from "./StickyActionBar";
 
 /** `error` : erreur GÉNÉRALE (bandeau). `errors` : erreurs PAR CHAMP, affichées sous chaque champ (voir FieldErrors.tsx) ; une action peut renvoyer l'une, l'autre ou les deux. */
 export type ActionState = {
@@ -49,6 +51,10 @@ type Props = {
   track?: string;
   /** Identifiant du formulaire : des champs ailleurs dans la page peuvent s'y rattacher par `form="…"` (leurs valeurs partent avec lui). */
   id?: string;
+  /** (C5c) Called once after each successful save (the edit window of an account closes itself with it). */
+  onSaved?: () => void;
+  /** (C5b) The send button is inactive (nothing to save yet: a role dialog whose choice has not changed). The server still checks everything. */
+  submitDisabled?: boolean;
 };
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
@@ -74,7 +80,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, submitDisabled, onSaved }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -89,18 +95,28 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
   const clearField = useCallback((path: string) => setCleared((c) => ({ for: state, keys: [...(c.for === state ? c.keys : []), path] })), [state]);
   // Valeur du contexte stable : l'éditeur (menu, grille…) ne se redessine que si une erreur change, pas à chaque rendu du formulaire.
   const fieldErrorsValue = useMemo(() => ({ errors: fieldErrors, clear: clearField }), [fieldErrors, clearField]);
-  useFieldErrorsDom(ref, state?.errors, state);
+  // Champs obligatoires, adresses, nombres : `noValidate` retire la bulle du navigateur (dans SA langue, sur le libellé) ; le même message que celui du serveur
+  // s'écrit sous le champ, avec un exemple et le focus sur le premier. La saisie reste.
+  const [clientErrors, setClientErrors] = useState<FieldErrorMap | null>(null);
+  useFieldErrorsDom(ref, clientErrors ?? state?.errors, clientErrors ?? state);
   // On n'utilise pas `<form action>` : React remettrait alors tous les champs à leur ancienne valeur après l'envoi (les listes et cases
   // reviendraient à ce qui était affiché avant l'enregistrement). On envoie nous-mêmes, et on ne vide que si `reset` le demande.
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
     const submitter = (e.nativeEvent as SubmitEvent).submitter ?? undefined;
+    const invalid = collectNativeErrors(validatableFields(form), (k: InvalidKey, v) => p(`invalid.${k}`, v));
+    if (Object.keys(invalid).length) { setClientErrors(invalid); return; }
+    setClientErrors(null);
     if (confirmMessage && !(await askConfirm(confirmMessage))) return;
     const data = new FormData(form, submitter as HTMLElement | undefined);
     if (track) data.set("_op", tracker.begin());
     startTransition(() => formAction(data));
   }
+  useEffect(() => {
+    if (state?.ok && !state.error && !state.errors) onSaved?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
   useEffect(() => {
     if (!state || !ref.current) return;
     if (state.ok && reset) ref.current.reset();
@@ -150,22 +166,21 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
 
   return (
     // `data-dirty` : lu par les onglets de la page (point sur l'onglet modifié, avertissement avant de quitter par un lien).
-    <form id={formId} ref={ref} method="post" onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
+    <form id={formId} ref={ref} method="post" noValidate onSubmit={onSubmit} className={className} data-dirty={floating && dirty ? "1" : undefined}>
       <FieldErrorsProvider value={fieldErrorsValue}>{children}</FieldErrorsProvider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
       {state?.ok && <p role="status" className="rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-700">{state.ok}</p>}
       {state?.secret && <SecretReveal key={state.secret.value} secret={state.secret} />}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <PendingButton pending={pending} pendingLabel={busyLabel} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
+          <PendingButton pending={pending} pendingLabel={busyLabel} disabled={submitDisabled} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
           {track && pending && <OperationProgress kind={track} snap={tracker.snap} lost={tracker.lost} unreachable={tracker.unreachable} className="mt-3 max-w-sm" />}
         </div>
       )}
-      {floating && <div aria-hidden="true" className="h-12" />}
+      {floating && <div aria-hidden="true" className="h-20" />}
       {/* La barre est rendue à la racine de la page : un formulaire peut se trouver dans un onglet masqué (page en onglets), sa barre reste visible. */}
       {floating && visible && slot <= 0 && typeof document !== "undefined" && createPortal(
-        <div role="region" aria-label={floating.dirty} data-testid="floating-bar" style={{ bottom: "1.25rem" }}
-          className="fixed left-1/2 z-[60] flex w-max max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-3 rounded-2xl border border-line bg-surface/95 px-4 py-2.5 shadow-lg backdrop-blur">
+        <StickyActionBar label={floating.dirty}>
           {dirty || anyDirty ? (
             <>
               <span className="hidden text-sm text-muted sm:inline">{floating.dirty}</span>
@@ -177,7 +192,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
           ) : (
             <span role="alert" className="text-sm font-medium text-red-700">{state?.error ?? p("fixFields")}</span>
           )}
-        </div>,
+        </StickyActionBar>,
         document.body,
       )}
     </form>

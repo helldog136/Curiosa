@@ -143,7 +143,8 @@ test("site propre (marqueur posé) : la page dit « Il ne reste rien d'une ancie
   assert.match(html, /data-testid="upkeep-status-clean"/);
   assert.match(html, /Il ne reste rien d(?:'|&#x27;)une ancienne version/);
   assert.doesNotMatch(html, /upkeep-group-todo|upkeep-group-kept/);
-  assert.match(html, /upkeep-group-done/, "le « terminé » est replié mais présent");
+  assert.doesNotMatch(html, /upkeep-group-done/, "ce qui est terminé n'appelle aucune action : absent en mode simple");
+  assert.match(await pageHtml(owner, true), /upkeep-group-done/, "…et gardé comme historique en mode avancé");
   const menu = link(await menuHtml());
   assert.match(menu, /Entretien/);
   assert.doesNotMatch(menu, /data-testid="admin-badge"/);
@@ -260,7 +261,8 @@ test("textes : aucun mot interdit (R9), libellés ≤ 60 caractères sans deux-p
     assert.deepEqual(forbiddenWords(d[k]), [], `${lang} ${k} : ${d[k]}`);
     assert.doesNotMatch(d[k], /!|veuillez/i, `${lang} ${k}`);
     assert.deepEqual(toneProblems(d[k], lang), [], `${lang} ${k} : ${d[k]}`);
-    assert.doesNotMatch(d[k], /collection|migration|h[ée]ritage|legacy|\bmodule\b/i, `${lang} ${k} : mot de développeur dans « ${d[k]} »`);
+    // R34 / ADR 0011: "module" is THE word for an installed piece, not developer jargon.
+    assert.doesNotMatch(d[k], /collection|migration|h[ée]ritage|legacy/i, `${lang} ${k} : mot de développeur dans « ${d[k]} »`);
   }
   for (const k of KEYS.filter((x) => /^upkeep\.(row|group|filter|action|search)\.?[\w.]*$/.test(x) && !/\.(text|help)$/.test(x) && !x.endsWith("absent.named")))
     for (const lang of [fr, en]) assert.deepEqual(labelProblems(lang[k]), [], k);

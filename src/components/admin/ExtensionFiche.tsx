@@ -2,6 +2,7 @@ import type { Translator } from "@/core/i18n/dictionary";
 import type { AddItem, BarState } from "@/core/modules/ficheView";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { ui } from "./ui";
+import { StatusPill } from "./StatusPill";
 import { AddsList, InstallBar, InstallBlockedButton, ReadmeFold, TechnicalDetails } from "./FicheParts";
 import { PreviewGallery, type GalleryItem, type GalleryLabels } from "./PreviewGallery";
 import { RetryButton } from "./RetryButton";
@@ -11,7 +12,7 @@ import { UPDATES_HREF } from "@/core/adminLinks";
 export function FicheFrame({ embedded, back, children }: { embedded: boolean; back: string; children: React.ReactNode }) {
   return embedded ? <div className="space-y-7">{children}</div> : (
     <div className="space-y-7">
-      <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
+      <a href={EXTENSIONS_ADD_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {back}</a>
       {children}
     </div>
   );
@@ -66,12 +67,12 @@ export type FicheProps = {
   firstProblem?: string;
   /** Le contrôle d'installation prêt à poser dans la barre (bouton, ou case à cocher et bouton pour un module non vérifié). */
   action: React.ReactNode;
-  /** Page de l'extension installée (barre « installed »). */
+  /** Page du module installé (barre « installed »). */
   manageHref?: string;
 };
 
 /**
- * La fiche d'une extension, dans l'ordre voulu (règle R31) : 1. ce que fait le module (description, visuels, ce qu'il ajoute, présentation),
+ * La fiche d'un module, dans l'ordre voulu (règle R31) : 1. ce que fait le module (description, visuels, ce qu'il ajoute, présentation),
  * 2. les détails techniques repliés (autorisations, données, dépendances, version, source), 3. la barre d'installation collée en bas.
  * Pure mise en page : DetailsView lit les données, ce composant ne fait que les montrer (donc testable sans serveur).
  */
@@ -85,7 +86,7 @@ export function ExtensionFiche(p: FicheProps) {
         <div className="min-w-0">
           <h1 className={ui.pageTitle}>{p.name}</h1>
           <p className="mt-2 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {p.origin === "official" ? <span className={ui.chipOk}>✔ {t("catalogue.verified")}</span> : <span className={ui.chipWarn}>⚠ {t(p.origin === "extra" ? "catalogue.origin.extra" : p.origin === "personal" ? "catalogue.origin.personal" : "catalogue.origin.custom")}</span>}
+            {p.origin === "official" ? <StatusPill tone="ok">{t("catalogue.verified")}</StatusPill> : <StatusPill tone="warn">{t(p.origin === "extra" ? "catalogue.origin.extra" : p.origin === "personal" ? "catalogue.origin.personal" : "catalogue.origin.custom")}</StatusPill>}
             {p.advanced && p.version && <span>v{p.version}</span>}
             {p.author && <span>{t("catalogue.by", { author: p.author })}</span>}
             {p.license && p.advanced && <span>· {p.license}</span>}
@@ -99,7 +100,7 @@ export function ExtensionFiche(p: FicheProps) {
 
       {/* Dépôt personnel sans module lisible (par exemple la racine d'un dépôt qui en regroupe plusieurs) : on le dit, sans proposer d'installer. */}
       {p.noModule && <p role="alert" data-testid="no-module" className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 text-sm">{t("modules.error.nomanifest")}</p>}
-      {p.keptCount > 0 && <p><span role="status" data-testid="kept-note" className={ui.chip} title={t("kept.detailsNote", { name: p.name, count: p.keptCount })}>🗂 {t("kept.chip")}</span></p>}
+      {p.keptCount > 0 && <p><span role="status" data-testid="kept-note" title={t("kept.detailsNote", { name: p.name, count: p.keptCount })}><StatusPill tone="neutral">{t("kept.chip")}</StatusPill></span></p>}
       {p.failed && p.accessSlot}
       {p.failed && !p.accessSlot && (
         <div role="alert" data-testid="fiche-failed" className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 p-4 text-sm">

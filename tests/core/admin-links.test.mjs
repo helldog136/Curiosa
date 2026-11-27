@@ -39,6 +39,7 @@ test("isAdminPath accepts the administration only", () => {
 // Files that legitimately mention "/admin" as a prefix to test or exclude, not as a link.
 const ALLOWED = new Set([
   "src/core/adminLinks.ts",
+  "src/core/adminAccess.ts", // the access table: patterns of addresses, matched against the pages (tests/core/admin-access.test.mjs reads both)
   "src/core/adminkit/image.ts",
   "src/core/adminkit/dialog.ts",
   "src/core/stats.ts",

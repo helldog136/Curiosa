@@ -29,7 +29,7 @@ export default async function NewEntryPage({ searchParams }: { searchParams: Pro
   return (
     <div className="space-y-6">
       <div>
-        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <h1 className="mt-1 text-2xl font-bold">{t("entries.new")}</h1>
         <p className="mt-1 text-sm text-muted">{t("entries.newIntro")}</p>
       </div>

@@ -89,9 +89,11 @@ test("feuille compilée : jetons prioritaires sur la racine et l'élément, rend
   const p = Sh.compileSkin({ id: "epic", version: "1.0.0", tokens: GOOD, css: `html[data-ov-skin="epic"] [data-ov-part="panel"]{color:#fff}` });
   assert.match(p.css, /^html\[data-ov-skin="epic"\],html\[data-ov-skin="epic"\] \[data-ov-region="element"\]\{--ov-fg:#ffffff!important/);
   assert.match(p.css, /font-family:var\(--ov-font\)/); assert.match(p.css, /box-shadow:var\(--ov-shadow\)/); assert.match(p.css, /@keyframes ov-rise/);
-  assert.match(p.css, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \*:not\(\[data-ov-region="composition"\]\):not\(\[data-ov-region="composition"\] \*\),html\[data-ov-skin="epic"\] \*:not\(\[data-ov-region="composition"\]\):not\(\[data-ov-region="composition"\] \*\)::before,html\[data-ov-skin="epic"\] \*:not\(\[data-ov-region="composition"\]\):not\(\[data-ov-region="composition"\] \*\)::after\{animation:none!important/);
+  assert.match(p.css, /@media \(prefers-reduced-motion:no-preference\)\{html\[data-ov-skin="epic"\] \[data-ov-part="panel"\][^}]*\{animation:ov-rise 0\.6s ease-out both\}\}/, "the entrance preset only exists without a reduced-motion request");
+  assert.doesNotMatch(p.css, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \*/, "no blanket rule: module animations and transitions are left alone");
+  assert.match(p.css, /prefers-reduced-motion:reduce\)\{html\[data-ov-skin="epic"\] \[data-ov-calm\],/, "the opt-in hook");
   const plain = Sh.compileSkin({ id: "plain", version: "1.0.0", tokens: { "--ov-fg": "#fff", "--ov-surface": "#000" }, css: "" });
-  assert.doesNotMatch(plain.css, /font-family|box-shadow|@keyframes|prefers-reduced-motion/, "an undefined token maps nothing: elements keep their own look");
+  assert.doesNotMatch(plain.css, /font-family|box-shadow|@keyframes/, "an undefined token maps nothing: elements keep their own look");
 });
 
 // ── look ─────────────────────────────────────────────────────────────────────────────────────────────────

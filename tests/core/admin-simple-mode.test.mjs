@@ -74,6 +74,7 @@ function fieldsPerTab(html) {
   const VOID = new Set(["input", "br", "hr", "img", "meta", "link", "path", "circle", "rect", "source"]);
   const stack = []; // { tag, tabs, folded }
   const counts = new Map();
+  const radios = new Set();
   const body = html.replace(/<script[\s\S]*?<\/script>/g, "").replace(/<style[\s\S]*?<\/style>/g, "");
   for (const m of body.matchAll(/<(\/?)([a-zA-Z][a-zA-Z0-9-]*)([^>]*?)(\/?)>/g)) {
     const [, close, rawTag, attrs, selfClose] = m; const tag = rawTag.toLowerCase();
@@ -83,7 +84,10 @@ function fieldsPerTab(html) {
     const folded = (parent?.folded ?? false) || (tag === "details" && !/\sopen(?:=|\s|$)/.test(attrs + " ")) || /\shidden(?:=|\s|$)/.test(attrs + " ") || /\sclass="[^"]*\bhidden\b/.test(attrs);
     const tabs = tabAttr ? tabAttr.split(/\s+/) : (parent?.tabs ?? ["(page)"]);
     const isField = tag === "select" || tag === "textarea" || (tag === "input" && !/\stype="(?:hidden|submit|button|image|file|reset)"/.test(attrs) && !/\stype="checkbox"[^>]*\sclass="[^"]*\bsr-only/.test(attrs));
-    if (isField && !folded && !/\sdisabled(?:=|\s|$)/.test(attrs + " ")) for (const t of tabs) counts.set(t, (counts.get(t) ?? 0) + 1);
+    // A radio group (segmented buttons) is ONE field, whatever its number of buttons.
+    const radio = tag === "input" && /\stype="radio"/.test(attrs) ? /\sname="([^"]*)"/.exec(attrs)?.[1] : undefined;
+    const seen = radio === undefined ? false : (radios.has(`${tabs.join(" ")}|${radio}`) || (radios.add(`${tabs.join(" ")}|${radio}`), false));
+    if (isField && !seen && !folded && !/\sdisabled(?:=|\s|$)/.test(attrs + " ")) for (const t of tabs) counts.set(t, (counts.get(t) ?? 0) + 1);
     if (!VOID.has(tag) && !selfClose) stack.push({ tag, tabs, folded });
   }
   return counts;
@@ -147,6 +151,7 @@ test("le compteur de champs sait compter (et ne compte ni le replié, ni le cach
   const c = fieldsPerTab(html);
   assert.equal(c.get("a"), 2);
   assert.equal(c.get("b"), 1);
+  assert.equal(fieldsPerTab('<div data-tab="a"><input type="radio" name="r" value="1"/><input type="radio" name="r" value="2"/><input type="text" name="t"/></div>').get("a"), 2, "un groupe de boutons radio est un seul champ");
 });
 
 test("la liste R9 attrape bien un texte technique (le garde-fou n'est pas muet)", () => {

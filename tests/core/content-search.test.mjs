@@ -7,7 +7,7 @@ const read = (p) => fs.readFileSync(new URL(`../../${p}`, import.meta.url), "utf
 
 test("content search: bounded, titles and addresses only, behind the editor role", () => {
   const route = read("src/app/api/admin/content-search/route.ts");
-  assert.match(route, /hasRole\(user, "editor"\)/);
+  assert.match(route, /canOpen\(user, ENTRIES_HREF\)/, "the editor gate, read from the access table (entries need the editor level)");
   assert.match(route, /private, no-store/);
   const core = read("src/core/content/adminSearch.ts");
   assert.match(core, /CONTENT_SEARCH_LIMIT = 20/);

@@ -81,8 +81,9 @@ const client = () => new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: 
     const html = await res.text();
     check(res.status === 200, "installation neuve : l'assistant répond (200)");
     check(!html.includes('name="presets"'), "installation neuve, catalogue injoignable : aucun module n'est proposé (pas de copie locale)");
-    check(html.includes("catalogue n&#x27;est pas joignable") || html.includes("catalogue n'est pas joignable") || html.includes("catalogue cannot be reached"), "installation neuve, catalogue injoignable : l'assistant le dit simplement");
-    check(html.includes("Passer cette étape") || html.includes("Skip this step"), "installation neuve : l'étape des modules offre de la passer");
+    // Since the three-screen wizard (C5i) the setup page no longer reads the module catalogue: the optional module step moved to the dashboard checklist. With the catalogue unreachable, the first screen must therefore draw normally (language and name fields) and say nothing about a broken catalogue.
+    check(html.includes('name="ownerName"') && html.includes('name="defaultLocale"'), "installation neuve, catalogue injoignable : le premier écran de l'assistant s'affiche (langue et nom)");
+    check(!/catalogue (n(&#x27;|')est pas joignable|cannot be reached)|Passer cette étape|Skip this step/.test(html), "installation neuve, catalogue injoignable : l'assistant ne parle ni de catalogue ni d'étape à passer");
     check(!/Application error|Internal Server Error/.test(html), "installation neuve : pas d'erreur côté serveur");
     check(!/swc|sharp/i.test(s.log()), "installation neuve : le serveur ne cherche ni le compilateur ni sharp (rien à télécharger au démarrage)");
   } finally { s.stop(); }

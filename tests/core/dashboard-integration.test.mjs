@@ -41,8 +41,12 @@ test("de bout en bout : la tâche, avec le réglage de l'instance, le libellé d
 
 test("de bout en bout : la rédaction a le droit déclaré (editor: true) et voit la tâche et l'action ; sans droit, rien", async () => {
   await setup();
-  assert.equal((await M.moduleTasks(env("editor"))).length, 1);
-  assert.equal((await M.moduleActions(env("editor"))).length, 1);
+  // R35 (C2a): the task and the action lead to the page of the instance, which asks for `<module>:open`: a person with the declared right but without that access sees neither.
+  assert.equal((await M.moduleTasks(env("editor"))).length, 0, "no access to the page it opens: not offered");
+  assert.equal((await M.moduleActions(env("editor"))).length, 0);
+  const withOpen = { ...user("editor"), rights: new Set([...user("editor").rights, "demo-dashboard:open"]) };
+  assert.equal((await M.moduleTasks({ ...env("editor"), viewer: withOpen })).length, 1);
+  assert.equal((await M.moduleActions({ ...env("editor"), viewer: withOpen })).length, 1);
   assert.deepEqual(await M.moduleTasks({ ...env("editor"), viewer: { ...user("editor"), rights: new Set() } }), []);
   assert.deepEqual(await M.moduleTasks(env("none")), []);
 });

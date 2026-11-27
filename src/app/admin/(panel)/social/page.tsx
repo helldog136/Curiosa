@@ -1,4 +1,4 @@
-import { SOCIAL_HREF } from "@/core/adminLinks";
+import { NETWORKS_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 import { HostedSections } from "@/components/admin/HostedSections";
 import { pickText } from "@/core/i18n/audit.mjs";
 import { adminCtx } from "@/core/admin";
@@ -13,7 +13,8 @@ import { prisma } from "@/core/db";
 import { EntryIcon } from "@/components/site/EntryIcon";
 import { ui } from "@/components/admin/ui";
 import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
-import { PageHeader } from "@/components/admin/Page";
+import { EmptyState } from "@/components/admin/EmptyState";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { SocialSwitch } from "@/components/admin/SocialSwitch";
 import { HeaderSocialsSwitch } from "@/components/admin/HeaderSocialsSwitch";
@@ -84,8 +85,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="space-y-8">
-      <HomeMenuHeader t={t} current="social" />
-      <PageHeader level={2} title={t("homemenu.tab.social")} intro={t("social.intro")} />
+      <HomeMenuHeader t={t} current="social" purpose={t("social.intro")} />
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error, { service: "" }) : t("error.generic")}</p>}
 
       {sources.length > 0 && (
@@ -101,11 +101,10 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           {rows.length > 0 && <p className={`text-sm ${shownCount > MAX_SOCIALS ? "font-medium text-amber-700" : "text-muted"}`} role="status" data-testid="social-count">{t("social.count", { shown: shownCount, max: MAX_SOCIALS })}</p>}
         </div>
         {rows.length === 0 ? (
-          <div className={`${ui.card} space-y-3 text-[15px] leading-6`} data-testid="social-empty">
-            <p className="font-medium">{t("social.none")}</p>
-            <p className="text-muted">{t("social.noneHelp")}</p>
-            <a href="#social-add" className={`${ui.btn} min-h-11`}>{t("social.addFirst")}</a>
-          </div>
+          // The form above already is the way to add one (R33.7): the button goes only where there is no such form.
+          sources.length > 0
+            ? <p className="text-sm text-muted" data-testid="social-empty">{t("social.none")}</p>
+            : <EmptyState testid="social-empty" title={t("social.none")} action={<a href="#social-add" className={`${ui.btn} min-h-11`}>{t("social.addFirst")}</a>} />
         ) : (
           <>
             {(duplicates > 0 || beyond > 0) && (
@@ -171,8 +170,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
             </div>
             <div className={`${ui.card} flex flex-wrap items-center justify-between gap-3`} data-testid="social-header">
               <div>
-                <p className="font-medium">{t("social.header.label")}</p>
-                <p className={ui.help}>{t("social.header.help")}</p>
+                <p className="flex items-center gap-1.5 font-medium">{t("social.header.label")}<HelpTip help={t("social.header.help")} name={t("social.header.label")} always /></p>
               </div>
               <HeaderSocialsSwitch label={t("social.header.label")} shown={config.header.socials} onText={t("social.state.shown")} offText={t("social.state.hidden")} failedText={t("social.failed")} />
             </div>
@@ -182,8 +180,10 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
 
       <section className="space-y-3" id="social-add" aria-labelledby="social-add-title">
         <div>
-          <h2 id="social-add-title" className="text-lg font-semibold">{t("social.add")}</h2>
-          {available.length > 0 && <p className={ui.help}>{t("social.addHelp")}</p>}
+          <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <h2 id="social-add-title" className="flex items-center gap-1.5 text-lg font-semibold">{t("social.add")}{available.length > 0 && <HelpTip help={t("social.addHelp")} name={t("social.add")} always />}</h2>
+            <a href={NETWORKS_HREF} className={`${ui.touch} text-sm font-medium text-accent underline-offset-2 hover:underline`} data-testid="social-accounts-link">{t("social.accountsLink")}</a>
+          </div>
         </div>
         {available.length === 0 ? <p className={ui.help}>{t("social.noneAvailable")}</p> : (
           <>

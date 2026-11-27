@@ -93,6 +93,9 @@
 @utility h-target { height: var(--sk-target, 2.75rem); }
 @utility border-y-token { border-block-style: var(--sk-border-style, solid); border-block-width: var(--sk-border-width, 1px); }
 
+/* Barre d'action collée en bas (StickyActionBar) : un champ qui prend le focus ne se glisse jamais dessous (WCAG 2.4.11). */
+html:has([data-sticky-bar]) { scroll-padding-bottom: 6rem; }
+
 /* Valeurs par défaut ; surchargées par le thème choisi dans l'admin. */
 :root {
   --v-bg: #121214;

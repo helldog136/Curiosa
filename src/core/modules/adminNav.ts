@@ -14,6 +14,8 @@ export type AdminNavItem = MenuEntry & {
   moduleId: string;
   name: string;
   icon: string;
+  /** Line icon of the menu chosen by the module (`menuIcon`), null = the one of its section. */
+  menuIcon: string | null;
   /** Choix de l'utilisateur (null = la règle par défaut s'applique). */
   pinned: Placement | null;
   /** Ce que donnerait la règle par défaut, pour l'afficher à côté du choix. */
@@ -68,6 +70,7 @@ export async function getAdminNav(locale: string, defaultLocale: string): Promis
       moduleId: instance.moduleId,
       name: labeler.label(instance),
       icon: mod.manifest.icon ?? "🧩",
+      menuIcon: mod.manifest.menuIcon ?? null,
       content: !!mod.manifest.content,
       section: defaultSection(mod.manifest),
       type: effectiveType(mod.manifest),

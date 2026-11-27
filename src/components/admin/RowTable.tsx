@@ -43,7 +43,7 @@ export function RowTable({ scope, columns, rows, actionsLabel, testid }: { scope
                 const cell = r.cells[c.key];
                 if (c.optional && (cell === null || cell === undefined || cell === false)) return <td key={c.key} role="cell" className="px-3 py-2 max-sm:hidden" />;
                 return (
-                  <td key={c.key} role="cell" data-label={c.label} title={r.titles?.[c.key]}
+                  <td key={c.key} role="cell" data-label={c.label} title={r.titles?.[c.key] ?? (typeof cell === "string" || typeof cell === "number" ? String(cell) : undefined)}
                     className="min-w-0 px-3 py-2.5 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-1 max-sm:py-1.5 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-muted max-sm:before:content-[attr(data-label)] max-sm:first:block max-sm:first:before:hidden">
                     <div className="min-w-0 max-sm:text-right max-sm:first:text-left">{cell}</div>
                   </td>

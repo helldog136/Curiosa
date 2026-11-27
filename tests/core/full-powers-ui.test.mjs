@@ -92,7 +92,7 @@ test("wiring: the chip is on the access row and the page header while any access
   assert.match(row, /full && t\("fullpowers\.chip"\)/, "searchable");
   const page = read(`${PANEL}/assistants/page.tsx`);
   assert.match(page, /fullPowers\.length > 0/);
-  assert.match(page, /data-testid="fullpowers-banner"/);
+  assert.match(page, /<AttentionCard[^>]*testid="fullpowers-banner"/);
   assert.match(page, /\{owner && <form action=\{turnOffFullPowersAction/);
   const access = read(`${PANEL}/assistants/[id]/page.tsx`);
   assert.match(access, /\(fullPowers \|\| \(owner && row\.ownerId && row\.coarseCeiling\)\)/, "only the owner, and only for an access that predates the owners and now has one");

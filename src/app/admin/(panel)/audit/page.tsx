@@ -1,6 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
-import { PageHeader } from "@/components/admin/Page";
+import { MaintenanceHeader, TabIntro } from "@/components/admin/MaintenanceHeader";
 import { JournalView } from "@/components/admin/JournalView";
 import { AUDIT_HREF } from "@/core/adminLinks";
 import type { Metadata } from "next";
@@ -17,7 +16,7 @@ export default async function AuditPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-6">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="audit" />
-      <PageHeader level={2} title={t("maint.tab.audit")} intro={t("journal.intro")} />
+      <TabIntro title={t("maint.tab.audit")} intro={t("journal.intro")} />
       <JournalView t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} sp={sp} path={AUDIT_HREF} />
     </div>
   );

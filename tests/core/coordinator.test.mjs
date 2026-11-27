@@ -133,10 +133,10 @@ test("une personne dont une ancienne version a changé User.role perd le niveau 
   assert.equal((await row(T.coord)).coordinator, false, "drapeau périmé effacé");
 });
 
-test("menu d'administration par niveau (sans changement pour owner, admin, editor)", () => {
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
-  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+test("menu d'administration par niveau (C2b : Rôles s'ajoute pour la personne propriétaire et la coordination ; rien ne change pour admin et editor)", () => {
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: false }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"]);
   assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "maintenance"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
 });

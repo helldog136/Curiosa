@@ -110,7 +110,7 @@ async function doReinstall(id: string): Promise<Outcome> {
   // itself (it stays when the catalogue is removed); if it cannot be read, the module is treated as personal.
   const row = await prisma.module.findUnique({ where: { id }, select: { id: true, repoUrl: true } });
   const personal = await personalIndex();
-  if (row && (!personal || personal.has(row))) return { ok: false, message: `"${id}" comes from a personal catalogue of the owner: only a human can reinstall it (Admin > Extensions).` };
+  if (row && (!personal || personal.has(row))) return { ok: false, message: `"${id}" comes from a personal catalogue of the owner: only a human can reinstall it (Admin > Modules).` };
   const r = await deps.reinstall(id);
   if (!r.ok) return { ok: false, message: `Reinstall of "${id}" failed: ${reason(r.error)}${r.rolledBack ? " (the previous code was put back)" : ""}.${r.loadError ? ` Cause: ${redactSecrets(r.loadError, 200)}.` : ""}` };
   const bad = r.migrations.some((x) => x.status === "failed" || x.status === "newer");

@@ -7,7 +7,7 @@ import { PageHeader } from "./Page";
 export function ExtensionsHeader({ t, advanced, isOwner, current, intro, tip }: { t: Translator; advanced: boolean; isOwner: boolean; current: FeatureTab; /** One short line (R1). Nothing when the tab name already says it. */ intro?: React.ReactNode; /** What does not fit in the line goes in the « ? » bubble (R32). */ tip?: string }) {
   return (
     <div className="space-y-6">
-      <PageHeader title={t("nav.extensions")} icon="🧩" intro={intro ? <IntroTip intro={intro} tip={tip} name={t("nav.extensions")} /> : undefined} />
+      <PageHeader title={t("nav.extensions")} intro={intro ? <IntroTip intro={intro} tip={tip} name={t("nav.extensions")} /> : undefined} />
       <FeatureTabs current={current} {...featureTabProps(t, advanced, isOwner)} />
     </div>
   );

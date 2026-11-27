@@ -101,7 +101,8 @@ test("utilisateurs : suppression et coupure de sessions sont rangées dans le me
 test("mises à jour : un parcours (ma version, la nouvelle, ce que ça change, un seul gros bouton) et une étape « en cours » qui suit la chaîne", () => {
   const page = read(`${PANEL}/updates/page.tsx`);
   const at = (s) => page.indexOf(s);
-  const order = [at('t("updates.yourVersion")'), at('t("updates.newVersion")'), at('t("updates.whatChanges")'), at('t("updates.whatHappens")'), at("<UpdateButton running={false}")];
+  // C5f: the one primary button comes right after the two versions (visible without scrolling); the notes and what happens are folded under it.
+  const order = [at('t("updates.yourVersion")'), at('t("updates.newVersion")'), at("<UpdateButton running={false}"), at('t("updates.whatChanges")'), at('t("updates.whatHappens")')];
   assert.ok(order.every((v, i) => v > 0 && (i === 0 || v > order[i - 1])), `ordre inattendu : ${order}`);
   assert.match(page, /describeProgress\(state\)/);
   assert.match(page, /<CoreUpdateProgress initial=\{coreUpdateSnapshot\(state\)\}/, "la barre est le composant commun, lu sur le serveur");
@@ -114,7 +115,8 @@ test("mises à jour : un parcours (ma version, la nouvelle, ce que ça change, u
 test("sauvegarde : le détail technique (openssl) est réservé au mode avancé, la restauration est présentée comme dangereuse", () => {
   const page = read(`${PANEL}/backup/page.tsx`);
   assert.match(page, /advanced && \(\s*<details[^]*openssl/);
-  assert.match(page, /<Panel title=\{t\("backup\.restoreTitle"\)\}[^>]*tone="danger"/);
+  assert.match(page, /<RestoreDanger title=\{t\("backup\.restoreTitle"\)\} loss=\{t\("backup\.restoreLoss"\)\}/, "restoring is a separate danger card that says what is lost");
+  assert.ok(page.indexOf("<BackupForm") < page.indexOf("<RestoreDanger"), "the backup button comes first, the danger zone last");
 });
 
 test("Assistants IA : réglages communs, suspension confirmée ; ajout et retrait dans l'Équipe, confirmés, états vides qui expliquent", () => {
@@ -122,7 +124,7 @@ test("Assistants IA : réglages communs, suspension confirmée ; ajout et retrai
   assert.ok(page.indexOf('"team.ai.where.title"') < page.indexOf('"assistants.master.title"'), "renvoi vers l'Équipe, puis suspension générale");
   assert.match(page, /ConfirmButton message=\{t\("assistants\.master\.confirm"\)\}/);
   const team = read(`${PANEL}/users/page.tsx`);
-  assert.ok(team.indexOf("<McpTokenCreator") > 0 && team.indexOf('testid="assistants-none"') > 0, "ajout dans l'Équipe, état vide qui dit quoi faire");
+  assert.ok(team.indexOf("<McpTokenCreator") > 0 && team.indexOf('testid="assistants-none"') < 0, "ajout dans l'Équipe, un seul chemin (le bouton du haut) : pas de second « Ajouter un assistant IA »");
   assert.match(read(`${PANEL}/users/assistantMembers.tsx`), /ConfirmButton menu message=\{t\("assistants\.revokeConfirm", \{ name: k\.name \}\)\}/);
 });
 

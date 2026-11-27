@@ -1,5 +1,6 @@
 import { adminCtx } from "@/core/admin";
 import { PageHeader } from "@/components/admin/Page";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { ui } from "@/components/admin/ui";
 import { setAdminMode } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
@@ -38,9 +39,8 @@ export default async function ModePage() {
   };
   return (
     <div className="space-y-8">
-      <PageHeader title={t("mode.page.title")} intro={t("mode.help")} />
+      <PageHeader title={<span className="inline-flex items-center gap-2">{t("mode.page.title")}<HelpTip help={t("mode.page.safe")} name={t("mode.page.title")} always /></span>} intro={t("mode.help")} />
       <div className="grid gap-4 sm:grid-cols-2">{[choice(false), choice(true)]}</div>
-      <p className="text-sm text-muted">{t("mode.page.safe")}</p>
     </div>
   );
 }

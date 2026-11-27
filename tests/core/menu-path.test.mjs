@@ -29,8 +29,8 @@ test("a path is refused when empty, too deep, with an empty segment, too long, o
 
 test("titles: well-known in both languages, an unknown group shows its own text title-cased, a module can label its group", () => {
   const seg = (raw) => M.parseMenuPath(raw)[0];
-  assert.equal(M.groupTitle(seg("Reseaux"), "fr"), "Réseaux");
-  assert.equal(M.groupTitle(seg("Réseaux"), "en"), "Networks");
+  assert.equal(M.groupTitle(seg("Reseaux"), "fr"), "Comptes et connexions");
+  assert.equal(M.groupTitle(seg("Réseaux"), "en"), "Accounts and connections");
   assert.equal(M.groupTitle(seg("youtube"), "fr"), "YouTube");
   assert.equal(M.groupTitle(seg("boutique"), "fr"), "Boutique");
   assert.equal(M.groupTitle(seg("ma-boutique"), "en"), "Ma Boutique");
@@ -46,11 +46,12 @@ test("the table of known groups: unique ids and titles, both languages, no clash
   // The four sections are the ones of the sidebar, with the sidebar's own words.
   for (const id of P.MENU_SECTIONS) { const g = M.KNOWN_GROUPS.find((k) => k.id === id); assert.equal(g.en, en[`nav.${id}`], id); assert.equal(g.fr, fr[`nav.${id}`], id); }
   for (const [lang, d] of [["en", en], ["fr", fr]]) {
-    const core = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount", "nav.viewSite", "nav.site", "nav.admin", "nav.account"].map((k) => d[k].toLowerCase().split(/\s+/)[0]);
-    for (const g of M.KNOWN_GROUPS) if (!P.MENU_SECTIONS.includes(g.id)) assert.ok(!core.includes(g[lang].toLowerCase().split(/\s+/)[0]), `${lang}: ${g.id} repeats a core entry`);
+    const core = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayPages", "nav.assistants", "nav.users", "nav.roles", "nav.accounts", "nav.maintenance", "nav.myAccount", "nav.viewSite", "nav.site", "nav.admin", "nav.account"].map((k) => d[k].toLowerCase().split(/\s+/)[0]);
+    // (C2b) The Networks group is the one that the « Accounts and connections » entry stands for: same words on purpose.
+    for (const g of M.KNOWN_GROUPS) if (!P.MENU_SECTIONS.includes(g.id) && g.id !== "networks") assert.ok(!core.includes(g[lang].toLowerCase().split(/\s+/)[0]), `${lang}: ${g.id} repeats a core entry`);
   }
   const nets = M.KNOWN_GROUPS.find((g) => g.id === "networks");
-  assert.deepEqual([nets.en, nets.fr], ["Networks", "Réseaux"]);
+  assert.deepEqual([nets.en, nets.fr], ["Accounts and connections", "Comptes et connexions"]);
 });
 
 test("the tree: groups appear only with entries, nested, well-known first, unknown alphabetical after", () => {
@@ -68,7 +69,7 @@ test("the tree: groups appear only with entries, nested, well-known first, unkno
   const tree = M.buildMenuTree(items, "fr");
   assert.deepEqual(tree.groups.map((g) => g.id), ["networks", "atelier", "boutique"], "networks first, then alphabetical");
   const nets = tree.groups[0];
-  assert.equal(nets.title, "Réseaux");
+  assert.equal(nets.title, "Comptes et connexions");
   assert.deepEqual(nets.children.map((c) => c.title), ["Twitch", "Discord"], "twitch before discord in the fixed order");
   assert.deepEqual(nets.entries, [], "Réseaux holds no entry of its own");
   assert.equal(nets.count, 2);
@@ -152,11 +153,12 @@ test("sidebar markup: the tree is built once, in the sections and before Connect
   const layout = read("src/app/admin/(panel)/layout.tsx");
   assert.match(layout, /const tree = buildMenuTree<Entry>\(\[\.\.\.nav, \.\.\.placeItems, \.\.\.overlayCustom\], locale\)/, "(0.31.0) module entries and place pages in one tree, (0.49.0) with the custom overlay pages entry");
   assert.match(layout, /data-testid="nav-tree"/);
-  assert.ok(layout.indexOf('data-testid="nav-tree"') < layout.indexOf('data-testid="nav-section-connections"'), "networks sit before Connections");
+  assert.ok(layout.indexOf('data-testid="nav-tree"') < layout.indexOf('data-testid="nav-section-site"'), "the groups a module invented sit before Site");
+  assert.ok(!layout.includes('data-testid="nav-section-connections"'), "(C2b) no Connections section: the Networks group and the Connections section moved to the Accounts and connections page");
   assert.match(layout, /\.\.\.treeItems\]\)/, "pages of an unpinned instance stay under Extensions, tree entries are not among them");
   const group = read("src/components/admin/NavGroup.tsx");
   assert.match(group, /<details open=\{open\}/);
-  assert.match(group, /"aria-expanded": open/);
+  assert.match(group, /aria-expanded=\{open\}/);
   assert.match(group, /min-h-11/);
   assert.match(group, /focus-visible:outline/);
   assert.match(group, /try \{[\s\S]*document\.cookie[\s\S]*catch/, "remembering the state never throws");
@@ -167,8 +169,8 @@ test("sidebar markup: the tree is built once, in the sections and before Connect
   assert.match(nav, /openByDefault=\{false\}/);
   assert.match(nav, /stored=\{state\[id\]\}/);
   assert.ok(!/<script|dangerouslySetInnerHTML/.test(nav));
-  // Old markup of the plain group: no new attribute, no new class, when `tree` is off.
-  assert.match(group, /\$\{tree \? "min-h-11[^"]*" : ""\}text-\[13px\] font-semibold \$\{tree && here \? "text-accent" : "text-muted"\}/);
+  // (C1c) every group heading is a 44 px target with a decorative chevron; the tree groups are a little quieter than the section headings.
+  assert.match(group, /tree \? "text-\[13px\] font-semibold text-muted"/);
   assert.match(group, /<summary[\s\S]*onClick=\{\(e\) => \{ e\.preventDefault\(\); if \(here\) return;/, "the group of the current page cannot be folded away");
 });
 

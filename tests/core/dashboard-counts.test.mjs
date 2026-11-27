@@ -133,13 +133,15 @@ test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un 
   assert.match(page, /entriesHref\(p\.key, \{ state: "published" \}\)/);
   assert.match(page, /href=\{DRAFTS_HREF\}/);
   assert.match(page, /entryHref\(d\.id\)/);
-  assert.match(page, /dashboard\.draftsNone/, "état vide qui dit quoi");
+  assert.match(page, /canEdit && draftList\.total > 0/, "R33 : pas de brouillon, pas de carte (aucune phrase de remplissage)");
+  assert.doesNotMatch(page, /dashboard\.draftsNone/);
   assert.ok(page.indexOf('data-testid="to-finish"') < page.indexOf('data-testid="in-numbers"'), "les brouillons passent avant les chiffres");
   const numbers = page.slice(page.indexOf('data-testid="in-numbers"'));
   assert.match(numbers, /redirects > 0 &&/, "Liens courts masqués s'il n'y en a pas");
-  assert.match(numbers, /advanced && stat\(t\("dashboard\.instances"/);
-  assert.match(numbers, /advanced && stat\(t\("dashboard\.modules"/);
-  assert.match(numbers, /stat\(t\("dashboard\.extensions"/);
+  // R35 (C2a): each number that leads to a page is shown only to someone who can open that page.
+  assert.match(numbers, /advanced && canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.instances"/);
+  assert.match(numbers, /advanced && canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.modules"/);
+  assert.match(numbers, /canOpen\(user, EXTENSIONS_HREF, owners\) && stat\(t\("dashboard\.extensions"/);
   assert.doesNotMatch(page, /dashboard\.drafts"/, "plus de carte « Brouillons » sans destination claire");
   const plain = page.slice(page.indexOf("const plain"), page.indexOf("const link"));
   assert.doesNotMatch(plain, /hover:/, "un bloc informatif n'a pas l'allure d'un bouton");
@@ -151,12 +153,12 @@ test("tableau de bord : flèche sur ce qui s'ouvre, rien sur ce qui n'est qu'un 
 
 test("textes : français et anglais, vouvoiement, pas de jargon en mode simple", () => {
   const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
-  for (const k of ["dashboard.toFinish", "dashboard.draftsAll", "dashboard.draftsNone", "dashboard.draftOpen", "dashboard.shortLinks", "dashboard.unlisted", "drafts.title", "drafts.intro", "drafts.empty", "drafts.count", "dashboard.extensions", "entries.chip.all", "entries.chip.published", "entries.chip.draft", "entries.chip.scheduled", "entries.chip.expired"]) {
+  for (const k of ["dashboard.toFinish", "dashboard.draftsAll", "dashboard.draftOpen", "dashboard.shortLinks", "dashboard.unlisted", "drafts.title", "drafts.intro", "drafts.empty", "drafts.count", "dashboard.extensions", "entries.chip.all", "entries.chip.published", "entries.chip.draft", "entries.chip.scheduled", "entries.chip.expired"]) {
     assert.ok(fr[k] && en[k], k);
     assert.deepEqual(fr[k].match(/\{\w+\}/g)?.sort(), en[k].match(/\{\w+\}/g)?.sort(), `variables ${k}`);
   }
   assert.equal(fr["dashboard.published"], "Contenus publiés");
   assert.doesNotMatch(Object.entries(fr).filter(([k]) => /^(dashboard\.(toFinish|draft|shortLinks|extensions)|drafts\.)/.test(k)).map(([, v]) => v).join(" "), /instance|entrée/i);
-  assert.equal(fr["dashboard.extensions"], "Extensions installées");
-  assert.doesNotMatch(fr["dashboard.extensions"], /instance|module/i);
+  assert.equal(fr["dashboard.extensions"], "Modules installés");
+  assert.doesNotMatch(fr["dashboard.extensions"], /instance/i);
 });

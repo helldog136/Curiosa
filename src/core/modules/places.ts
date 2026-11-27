@@ -67,6 +67,11 @@ export type VocabPage = Texts & {
   tabsReason?: string;
   /** (0.34.0) More than 3 sections of one module on this page is allowed with a written reason (owner decision 2026-11-18: the limit is a soft guideline). */
   sectionsReason?: string;
+  /**
+   * (C5c) `"table"`: the sections of this page that are one single address each (a profile link, nothing else) show as the rows of ONE table (search, filters, one "Edit" window),
+   * not as one card per module. The other sections of the page stay cards. Read from the catalogue; the core also decides it for its own pages (`TABLE_PAGES`).
+   */
+  layout?: "table";
 };
 export type Vocabulary = {
   version: 1; groups: VocabGroup[]; pages: VocabPage[]; aliases: Record<string, string>; deprecated: Record<string, string>;
@@ -98,7 +103,8 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
     { id: "community", en: "Community", fr: "Communauté", icon: "🙌", status: "open" },
     // (0.49.0) The group is called « Overlays »: its ready-made page (catalogue) and the custom overlay pages (core entry, `menuTitles`) sit under that one word.
     { id: "obs", en: "Overlays", fr: "Overlays", icon: "🎥", status: "open" },
-    { id: "networks", en: "Networks", fr: "Réseaux", icon: "🌐", status: "open" },
+    // (C2b) The group is called « Accounts and connections » (its index page `/admin/networks` replaces the Networks group and the Connections section of the sidebar).
+    { id: "networks", en: "Accounts and connections", fr: "Comptes et connexions", icon: "🔌", status: "open" },
     { id: "site", en: "Site", fr: "Site", icon: "🏠", status: "additive" },
     { id: "admin", en: "Administration", fr: "Administration", icon: "🛠️", status: "reserved" },
     { id: "account", en: "Account", fr: "Compte", icon: "👤", status: "reserved" },
@@ -117,8 +123,11 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
   ],
   aliases: {},
   deprecated: {},
-  menuTitles: { "obs.overlays": { en: "Ready-made", fr: "Prédéfinis" } },
+  menuTitles: { "obs.overlays": { en: "Built-in overlays", fr: "Overlays intégrés" } },
 };
+
+/** (C5c) Place pages the core shows as one table whatever the catalogue says (R30: same schema, one table). */
+export const TABLE_PAGES: readonly string[] = ["networks.accounts"];
 
 /** Pages of the core that are additive: modules may add labelled sections to their listed tabs, never new tabs. */
 const ADDITIVE_PAGES: readonly string[] = ["obs.pages"];
@@ -159,7 +168,7 @@ export function sanitizeVocabulary(raw: unknown): Vocabulary {
     const intro = texts(raw.intro, INTRO_MAX);
     const reason = clip(raw.tabsReason, 300);
     const sectionsReason = clip(raw.sectionsReason, 300);
-    out.pages.push({ id: pageId(parsed), ...t, ...(intro ? { intro } : {}), ...(tabs.length ? { tabs } : {}), ...(reason ? { tabsReason: reason } : {}), ...(sectionsReason ? { sectionsReason } : {}) });
+    out.pages.push({ id: pageId(parsed), ...t, ...(intro ? { intro } : {}), ...(tabs.length ? { tabs } : {}), ...(reason ? { tabsReason: reason } : {}), ...(sectionsReason ? { sectionsReason } : {}), ...(raw.layout === "table" ? { layout: "table" as const } : {}) });
   }
   for (const key of ["aliases", "deprecated"] as const) {
     const map = r[key];
@@ -187,6 +196,7 @@ export function mergeVocabulary(builtin: Vocabulary, catalogue: Vocabulary | nul
     if (status === "reserved" || status === "additive") continue;
     if (!pages.some((x) => x.id === p.id)) pages.push({ ...p, href: undefined });
   }
+  for (const id of TABLE_PAGES) { const i = pages.findIndex((x) => x.id === id && !x.href); if (i !== -1) pages[i] = { ...pages[i]!, layout: "table" }; }
   const aliases: Record<string, string> = {};
   for (const [from, to] of Object.entries({ ...(catalogue?.aliases ?? {}), ...builtin.aliases })) {
     const old = parsePlace(from)!;
@@ -469,6 +479,8 @@ export type IndexedPage = {
   menuTitle: string;
   /** A core page that keeps its own address (its sections show there from core 0.32.0). */
   core: boolean;
+  /** (C5c) `"table"`: the single-address sections of the page show as one table (see `VocabPage.layout`). */
+  layout: "table" | null;
   /** No vocabulary entry: the page was defined by a module (origin always shown). */
   inline: boolean;
   tabs: IndexedTab[];
@@ -579,7 +591,7 @@ export function buildPlaceIndex(contribs: readonly Contribution[], vocab: Vocabu
       tabs[0] = { ...tabs[0]!, sections: [...tabs[0]!.sections, ...extra.flatMap((t) => t.sections.map((s) => ({ ...s, title: `${t.title} · ${s.title}` })))] };
     }
     groups.get(shownGroup)!.pages.push({
-      id, group: gid, page: pid, title, menuTitle: vocab.menuTitles?.[id] ? L(vocab.menuTitles[id]!, locale) : title, intro: introDef ? L(introDef, locale) : null, href: vp?.href ?? placeHref(gid, pid), core: !!vp?.href, inline: !vp, tabs, modules,
+      id, group: gid, page: pid, title, menuTitle: vocab.menuTitles?.[id] ? L(vocab.menuTitles[id]!, locale) : title, intro: introDef ? L(introDef, locale) : null, href: vp?.href ?? placeHref(gid, pid), core: !!vp?.href, layout: vp?.layout ?? null, inline: !vp, tabs, modules,
     });
   }
   const order = (g: string) => { const i = knownGroups.indexOf(g); return g === OTHER_GROUP.id ? 1e7 : i === -1 ? 1e6 : i; };

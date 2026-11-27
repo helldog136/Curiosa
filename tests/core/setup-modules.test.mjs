@@ -72,16 +72,16 @@ test("assistant sans réseau : aucun module proposé (message dédié), rien n'e
   assert.deepEqual(await ids(), ["blog"], "dès que le catalogue revient, il est proposé");
 });
 
-test("assistant : étape facultative qui dit qu'on peut la passer sans risque ; seuls les modules proposés et cochés sont installés ; sans catalogue, un message simple et le tableau de bord le redit", () => {
+test("assistant : le choix des modules n'est plus un écran (C5i, il est dans « Mise en route ») ; seuls les modules proposés et cochés sont installés ; sans catalogue, le tableau de bord le redit", () => {
   const wizard = fs.readFileSync("src/app/admin/(auth)/setup/SetupWizard.tsx", "utf8");
-  assert.match(wizard, /data-step|section\("modules"\)/);
-  assert.doesNotMatch(wizard, /setup\.modules\.skip"/, "R33: no sentence next to a button that says what it does");
-  assert.match(wizard, /setup\.modules\.skipButton/);
-  assert.match(wizard, /setup\.modules\.unreachable/);
+  assert.doesNotMatch(wizard, /setup\.modules\.|name="presets"/, "R8 : trois écrans, plus de modules dans l'assistant");
+  const setup = fs.readFileSync("src/core/dashboard/setup.ts", "utf8");
+  assert.match(setup, /\{ id: "modules", done: facts\.modulesAdded, href: l\.modules \}/, "l'étape « modules » est dans la liste du tableau de bord");
   assert.ok(!/preselected/.test(wizard), "rien n'est coché d'avance");
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
-  assert.ok(!("setup.modules.skip" in fr), "la note « sans aucun risque » est retirée (R33)");
-  assert.equal(fr["dashboard.modulesFailed"], "Aucune extension n'a pu être installée (catalogue injoignable) : installez-les plus tard depuis Extensions › Ajouter.");
+  // C5a: the notice is an attention card, title + reason + the "Add a module" button (the information is still shown, with the action).
+  assert.equal(fr["dashboard.modulesFailed"], "Aucun module n'a pu être installé");
+  assert.equal(fr["dashboard.modulesReason"], "Le catalogue est injoignable. Réessayez plus tard.");
   const actions = fs.readFileSync("src/app/admin/(auth)/setup/actions.ts", "utf8");
   assert.match(actions, /installChosenModules\(presetIds\)/, "une valeur envoyée à la main n'ajoute aucun module : seuls les suggérés sont installés");
   assert.match(actions, /modules=failed/, "le site se crée même si le catalogue est injoignable, et le tableau de bord le dit");

@@ -13,7 +13,7 @@ import { fontFaceCss, type OverlayFont } from "./skinFonts";
  *     element's own `:root{--ov-…}` declaration, so every element that reads the tokens follows the skin without being touched;
  *  2. the core MAPPING of the new tokens onto the reserved parts (font, shadow, accent, case…), emitted ONLY for the tokens the skin defines;
  *  3. the sanitised rules of the skin (already prefixed with `html[data-ov-skin="<id>"]`);
- *  4. the motion presets (keyframes owned by the core) and the reduced-motion rule: no motion at all for people who ask for it.
+ *  4. the motion presets (keyframes owned by the core, only without a reduced-motion request) and the `data-ov-calm` opt-in rule of reduced motion.
  */
 const heading = ["title", "name", "subtitle", "kind", "label", "badge", "tag"];
 const bodyParts = ["body", "text", "message", "quote", "content", "summary"];
@@ -97,9 +97,8 @@ export function solidSurface(surface: string, fg: string | undefined): string {
   return hex(composite(c, light ? BLACK : WHITE));
 }
 
-const NOT_COMPOSED = ':not([data-ov-region="composition"]):not([data-ov-region="composition"] *)';
-/** Every element of the skinned page that is NOT part of a composition (and its pseudo-elements). */
-const reduceTargets = (id: string): string => { const r = `html[data-ov-skin="${id}"]`; return [`${r} *${NOT_COMPOSED}`, `${r} *${NOT_COMPOSED}::before`, `${r} *${NOT_COMPOSED}::after`].join(","); };
+/** The opt-in hook of a module element that wants calm behaviour under reduced motion: `data-ov-calm` on the element (it applies to the element and everything in it). */
+const calmTargets = (id: string): string => { const r = `html[data-ov-skin="${id}"] [data-ov-calm]`; return [r, `${r} *`, `${r}::before`, `${r}::after`, `${r} *::before`, `${r} *::after`].join(","); };
 
 export function compileSkin(input: { id: string; version: string; tokens: Readonly<Record<string, string>>; css: string; /** (0.47.0) The skin's fonts (skinFonts.ts `overlayFonts`): their `@font-face` rules come first in the sheet. */ fonts?: readonly OverlayFont[]; /** The owner chose an opaque background (core 0.11.0): the skin keeps its colours, its panel is solid. */ opaque?: boolean; /** (0.21.0) The site's retouches, written over the skin's tokens and before its rules. */ tweaks?: SkinTweaks }): SkinPayload {
   const { id } = input;
@@ -137,19 +136,19 @@ export function compileSkin(input: { id: string; version: string; tokens: Readon
   if (/var\(--ov-(dur|ease)-/.test(input.css)) out.push(motionCss(root(id)));
   out.push(input.css);
   const anim = tokens["--ov-anim"];
-  let motion = false;
   if (anim && anim !== "none" && ANIM_CSS[anim]) {
     out.push(ANIM_CSS[anim]!);
     const dur = has("--ov-anim-duration") ? "var(--ov-anim-duration)" : "0.6s";
-    rule(sel(id, containers), [`animation:ov-${anim} ${dur} ${anim === "glow" ? "ease-in-out 2.4s infinite alternate" : "ease-out both"}`]);
-    motion = true;
+    // The preset is the skin's own decoration: it exists only when the person has not asked for reduced motion (nothing to cut afterwards, so a module's own
+    // animation on the same part is never overridden or cancelled by the core under reduced motion).
+    out.push(`@media (prefers-reduced-motion:no-preference){${sel(id, containers)}{animation:ov-${anim} ${dur} ${anim === "glow" ? "ease-in-out 2.4s infinite alternate" : "ease-out both"}}}`);
   }
   // Idle motion presets of contract 3 (their rules are already inside `prefers-reduced-motion: no-preference`): the keyframes belong to the core.
-  for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) { out.push(frames); motion = true; }
-  // Reduced motion: the skin's decorative motion stops. A placed text of a composition (an alert's `[data-ov-region="composition"]` frame and everything in it) is
-  // EXCLUDED: its in/out animations are the TIMING of streamed content (the viewers are the audience, the preference is the streaming PC's), and the compose engine
-  // already degrades them to a plain fade under reduced motion (compose/render.ts `calm`).
-  if (motion) out.push(`@media (prefers-reduced-motion:reduce){${reduceTargets(id)}{animation:none!important;transition:none!important}}`);
+  for (const [name, frames] of Object.entries(KEYFRAMES)) if (input.css.includes(`ov-${name}`)) out.push(frames);
+  // Reduced motion: the core cuts ONLY what it generates itself (the entrance / glow preset above and the idle presets, both written inside
+  // `prefers-reduced-motion: no-preference`). Module-authored animations and transitions are NOT touched: they carry the timing and the visibility of streamed
+  // content (the preference is the streaming PC's, the viewers are the audience). An element opts into calm behaviour with `data-ov-calm`.
+  out.push(`@media (prefers-reduced-motion:reduce){${calmTargets(id)}{animation:none!important;transition:none!important}}`);
   const colors = skinColors(tokens);
   return { id, version: input.version, css: out.filter(Boolean).join("\n"), ...(input.fonts?.length ? { fonts: [...input.fonts] } : {}), ...(colors ? { colors } : {}) };
 }

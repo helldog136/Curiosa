@@ -57,7 +57,7 @@ test("anciennes pages : trois petites pages de redirection, sans route attrape-t
 });
 
 test("liens internes : plus aucune adresse d'avant dans le code (hors correspondance et pages de redirection)", () => {
-  const allowed = new Set(["src/core/adminLinks.ts", "src/core/services/mcp/assistantsLinks.ts", `${PANEL}/mcp/page.tsx`, `${PANEL}/mcp/[id]/page.tsx`, `${PANEL}/maintenance-ia/page.tsx`]);
+  const allowed = new Set(["src/core/adminLinks.ts", "src/core/adminAccess.ts" /* the access table lists the old addresses so a menu never offers a dead end */, "src/core/services/mcp/assistantsLinks.ts", `${PANEL}/mcp/page.tsx`, `${PANEL}/mcp/[id]/page.tsx`, `${PANEL}/maintenance-ia/page.tsx`]);
   const offenders = walk("src").filter((f) => /\.(ts|tsx)$/.test(f) && !allowed.has(f) && /["'`]\/admin\/(mcp|maintenance-ia)\b/.test(read(f)));
   assert.deepEqual(offenders, []);
   // L'API des clients déjà connectés ne bouge pas.
@@ -147,7 +147,9 @@ test("page : sous-titre « API & MCP » et réglages techniques seulement en mod
     assert.ok(!/(?<![.\w])created\.(token|byUrl)|\bk\.hash|\.prefix/.test(f), "la liste ne manipule aucun secret");
     assert.ok(!/hash/.test(f), "ni empreinte");
   }
-  assert.match(read(`${PANEL}/assistants/AssistantTabs.tsx`), /aria-current=\{here \? "page" : undefined\}/);
+  const tabs = read(`${PANEL}/assistants/AssistantTabs.tsx`);
+  assert.match(tabs, /<LinkTabs/, "the shared brick draws the tabs and marks the open one with aria-current");
+  assert.match(read("src/components/admin/LinkTabs.tsx"), /aria-current=\{here \? "page" : undefined\}/);
 });
 
 test("accès : la page d'un accès réunit droits et validation, le détail par outil est réservé au mode avancé", () => {

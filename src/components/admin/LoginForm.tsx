@@ -24,6 +24,11 @@ export function LoginForm({ labels }: { labels: Labels }) {
     clearSecrets(formRef.current);
     const code = formRef.current?.elements.namedItem("code");
     if (code instanceof HTMLInputElement) code.value = "";
+    // After a refusal the first field to retype takes the focus: the code on the second step, otherwise the password (the e-mail stays).
+    if (state.error) {
+      const first = formRef.current?.elements.namedItem(state.step === "code" && state.token ? "code" : "password");
+      if (first instanceof HTMLInputElement) first.focus();
+    }
   }, [state]);
   // Connexion sans mot de passe : l'appareil demande l'empreinte, le visage ou le code ; aucun e-mail à saisir.
   const signInWithPasskey = () => startPasskey(async () => {
@@ -42,7 +47,7 @@ export function LoginForm({ labels }: { labels: Labels }) {
           <input type="hidden" name="token" value={state!.token} />
           <div className="text-sm">
             <label className={ui.label} htmlFor="login-code">{labels.code}</label>
-            <input id="login-code" name="code" required autoFocus inputMode="text" autoComplete="one-time-code" autoCapitalize="off" spellCheck={false} className={`${ui.input} !text-lg tracking-widest`} data-testid="login-code" />
+            <input id="login-code" name="code" required autoFocus inputMode="text" autoComplete="one-time-code" autoCapitalize="off" spellCheck={false} aria-invalid={state?.error ? true : undefined} aria-describedby={state?.error ? "login-error" : undefined} className={`${ui.input} !text-lg tracking-widest`} data-testid="login-code" />
           </div>
           <p className={ui.help}>{labels.codeHelp}</p>
         </>
@@ -54,11 +59,11 @@ export function LoginForm({ labels }: { labels: Labels }) {
           </div>
           <div className="text-sm">
             <label className={ui.label} htmlFor="login-password">{labels.password}</label>
-            <PasswordInput id="login-password" name="password" required autoComplete="current-password" />
+            <PasswordInput id="login-password" name="password" required autoComplete="current-password" aria-invalid={state?.error ? true : undefined} aria-describedby={state?.error ? "login-error" : undefined} />
           </div>
         </>
       )}
-      {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{state.error}</p>}
+      {state?.error && <p id="login-error" role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{state.error}</p>}
       <div className="flex items-center gap-3">
         <PendingButton variant="primary" pending={pending}>{codeStep ? labels.codeSubmit : labels.submit}</PendingButton>
         {codeStep && <button type="button" className={ui.btn} onClick={() => window.location.reload()}>{labels.back}</button>}

@@ -10,15 +10,20 @@ const en = JSON.parse(read("src/locales/en.json"));
 test("pages d'administration du site : le titre porte le même nom que le menu, en mode simple comme en mode avancé", () => {
   assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
   // The menu page is a tab of "Home and menu": same name in both modes ("Navigation" is gone), see tests/core/home-menu-entry.test.mjs.
-  assert.match(page("navigation"), /title=\{t\("navigation\.title"\)\}/);
-  assert.match(page("redirects"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/, "one name, \"Short links\", in both modes");
+  assert.match(page("navigation"), /<HomeMenuHeader t=\{t\} current="menu" purpose=\{t\("navigation\.intro"\)\}/);
+  assert.match(page("navigation"), /adminTitle\(\(\{ t \}\) => t\("navigation\.title"\)\)/);
+  assert.match(page("redirects"), /<PageHeader title=\{t\("nav\.redirects"\)\}/, "one name, \"Short links\", in both modes");
 });
 
 test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui répète l'onglet), un seul enregistrement flottant, rien d'autre", () => {
   const p = page("settings");
   assert.ok(!/<h2 className="text-lg font-semibold">\{t\("settings\.(identity|languages|privacy|mail)"\)\}<\/h2>/.test(p), "le titre de l'onglet n'est pas répété");
   assert.match(p, /<ActionForm action=\{saveSettings\} floating=\{floatingLabels\(t\)\}/);
-  assert.equal((p.match(/floating=/g) ?? []).length, 1);
+  // C5e: every settings form (identity, search, sound, e-mail) opts in to the sticky bar, but the bar itself is shared: ActionForm renders it once per page
+  // (`slot <= 0`, checked in floating-bar.test.mjs) and its Save sends every modified form. The old count of 1 only counted source occurrences.
+  assert.equal((p.match(/floating=/g) ?? []).length, 4);
+  for (const a of ["saveSettings", "saveSearch", "saveSound", "saveMail"]) assert.match(p, new RegExp(`<ActionForm action=\\{${a}\\} floating=`));
+  assert.ok(!/hideSubmit/.test(p), "no second Save button next to the shared bar");
   // Le formulaire principal est masqué en entier sur l'onglet e-mail : pas de vide au-dessus du formulaire d'e-mail.
   assert.match(p, /<div data-tab="site languages privacy">\s*<ActionForm action=\{saveSettings\}/);
   // Contact et pied de page : dans les deux modes (en mode simple, replié sous « Plus d'options ») ; seul le fuseau horaire reste réservé au mode avancé.
@@ -32,7 +37,7 @@ test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui
 test("raccourcis : état vide explicatif avec exemples, formulaire sans « — » ni option inutile, entrée à suivre repliée et seulement s'il y en a", () => {
   const p = page("redirects");
   assert.match(p, /redirects\.length === 0 \?/);
-  assert.match(p, /t\("redirects\.examples"\)/);
+  assert.match(p, /<EmptyState title=\{advanced \? t\("redirects\.empty"\) : t\("redirects\.empty\.simple"\)\} action=\{createDialog\}/, "C5h: one sentence and the button that creates the first link");
   assert.match(p, /<(?:details|MoreOptions)[\s\S]*withUrl\.length > 0 && \(/, "l'entrée à suivre est dans une zone repliée, et seulement s'il y en a");
   assert.ok(!/label: "—"/.test(p));
   assert.match(p, /<ActionForm action=\{createRedirect\}[^>]*\breset\b/);
@@ -40,7 +45,8 @@ test("raccourcis : état vide explicatif avec exemples, formulaire sans « — �
 
 test("réseaux sociaux : liste compacte à ajouter, état vide qui dit quoi faire ensuite, et le nom de la page des réglages suit le mode", () => {
   const p = page("social");
-  assert.match(p, /t\("social\.noneHelp"\)/);
+  assert.match(p, /<EmptyState testid="social-empty" title=\{t\("social\.none"\)\}/);
+  assert.match(p, /t\("social\.addFirst"\)/);
   assert.match(p, /t\("social\.header\.label"\)/);
   assert.ok(!/ui\.btnPrimary/.test(p), "un bouton « Ajouter » par ligne reste discret");
   assert.match(p, /data-testid="social-available"/);

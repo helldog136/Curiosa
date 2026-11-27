@@ -17,7 +17,8 @@ test("upkeep: no sentence that says everything is fine; the bug report explanati
   assert.ok(!("updates.modulesLink.ok" in fr) && !("updates.modulesLink.ok" in en));
   const page = read("src/app/admin/(panel)/updates/page.tsx");
   assert.ok(!page.includes("updates.modulesLink.ok"));
-  assert.match(page, /<HelpTip always help=\{t\("bugReport\.help"\)\}/);
+  assert.doesNotMatch(page, /bugReport\./, "the one bug report link lives in the sidebar footer");
+  assert.match(read("src/app/admin/(panel)/layout.tsx"), /title=\{t\("bugReport\.help"\)\}/, "its explanation is an accessible title, not a sentence");
 });
 
 test("AI assistants: no reassurance sentence (a loss warning stays)", () => {
@@ -27,15 +28,16 @@ test("AI assistants: no reassurance sentence (a loss warning stays)", () => {
   assert.match(fr["aim.pending.help"], /expire/, "the expiry is a fact that matters, it stays");
   const tab = read("src/app/admin/(panel)/assistants/AccessTab.tsx");
   assert.ok(!tab.includes("team.ai.where.help"), "the title and the button already say where");
-  assert.match(tab, /\{!enabled && t\("assistants\.master\.off"\)\}/, "the chip says « Allowed »; the sentence only when suspended");
+  assert.match(tab, /<StatusPill tone="ok">\{t\("assistants\.master\.onChip"\)\}/, "the chip says « Allowed »; no sentence at all (the suspended card carries its own reason)");
 });
 
-test("appearance: the current skin is not listed twice, no « reviewed, install with confidence »", () => {
+test("appearance: the current skin is listed once (first, marked) with no summary card, no « reviewed, install with confidence »", () => {
   const page = read("src/app/admin/(panel)/appearance/page.tsx");
-  assert.match(page, /view\.cards\.filter\(\(c\) => !c\.active\)/);
+  assert.doesNotMatch(page, /data-testid="current-skin"|appearance\.current\.title/, "no summary card above the list");
+  assert.match(page, /\.\.\.view\.cards\.filter\(\(c\) => c\.active\), \.\.\.view\.cards\.filter\(\(c\) => !c\.active\)/, "the active skin leads the one list");
   assert.doesNotMatch(read("src/app/admin/(panel)/appearance/SkinCards.tsx"), /appearance\.base/);
   for (const v of both("appearance.add.help")) assert.doesNotMatch(v, /relus|confiance|reviewed|confidence/i);
-  assert.match(page, /view\.switchAvailable && <p className=\{ui\.help\}>/, "the light/dark explanation is not repeated when the switch is absent");
+  assert.match(page, /view\.switchAvailable && <HelpTip always help=\{t\("appearance\.visitors\.help"\)\}/, "the light/dark explanation is a tip, and only when the switch exists");
 });
 
 test("settings: the low-disk line is shown once per page, not under every upload field", () => {

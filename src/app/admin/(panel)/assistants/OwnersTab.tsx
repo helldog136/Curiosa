@@ -4,6 +4,7 @@ import { sweepOrphanedAccesses } from "@/core/personalAi/lifecycle";
 import { levelOfRow } from "@/core/personalAi/service";
 import { resolvePersonalOwner } from "@/core/personalAi/owner";
 import { Badge } from "@/components/admin/Badge";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { EmptyState, Panel } from "@/components/admin/Page";
@@ -55,7 +56,7 @@ export async function OwnersTab({ t }: { t: Translator }) {
         access: <span className="block truncate font-medium">{r.name}</span>,
         owner: owner ? <><span className="block truncate">{owner.name}</span><span className="block truncate text-muted">{owner.email}</span></> : <span className="text-muted">—</span>,
         level: <Badge tone="info" testid="owners-level">{levelText(levelOfRow(r))}</Badge>,
-        state: <Badge tone={TONE[state]} title={why} testid="owners-state">{t(`owners.state.${state}`)}</Badge>,
+        state: <StatusPill tone={TONE[state]} title={why} testid="owners-state">{t(`owners.state.${state}`)}</StatusPill>,
       },
       actions: (
         <>

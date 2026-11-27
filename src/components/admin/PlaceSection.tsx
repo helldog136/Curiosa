@@ -21,6 +21,7 @@ import { PlaceReturnProvider } from "./PlaceReturn";
 import { floatingLabels } from "./floating";
 import { HelpTip } from "./HelpTip";
 import { ModuleSettings } from "./ModuleSettings";
+import { StatusPill } from "./StatusPill";
 import { ui } from "./ui";
 
 export type SiteConfigLite = { defaultLocale: string; locales: string[] };
@@ -43,6 +44,20 @@ export async function loadPlaceSection(section: IndexedSection, active: ActiveIn
  * Two disclosure levels at most: the basic settings, then ONE "Advanced settings" fold (rare + advanced). Each section saves on its own (its own form, its own
  * transaction); the page has one floating "Save" bar that saves every modified section (ActionForm).
  */
+/**
+ * (C5k, F-MOD-001) Why a section could not show, in the vocabulary of the connection cards: "Not configured" (a required setting of the module is still empty,
+ * reason + one link to set it up) or "Degraded" (the module did not answer: reason + one link to open it). One link only, never repeated in the header.
+ */
+export async function sectionUnavailability(loaded: LoadedSection): Promise<{ state: "notConfigured" | "degraded"; reason: "notConfigured" | "timeout" | "failed" } | null> {
+  if (loaded.state === "ok") return null;
+  const { mod, instance } = loaded.active;
+  const stored: Record<string, Record<string, unknown>> = {};
+  for (const f of mod.manifest.settings) stored[f.key] = await getSettingByLocale(instanceSettingKey(instance.id, f.key));
+  const grouped = new Set((mod.manifest.optionalGroups ?? []).flatMap((g) => g.fields));
+  if (missingSettings(mod.manifest.settings, grouped, stored).length > 0) return { state: "notConfigured", reason: "notConfigured" };
+  return { state: "degraded", reason: loaded.state };
+}
+
 export async function PlaceSectionCard({ loaded, t, locale, config, advanced, showOrigin, base }: {
   loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean; showOrigin: boolean;
   /** (0.34.0) Address of the page that shows the section (`/admin/live/alerts`, or the core page that hosts it): the module's actions come back to it. */
@@ -55,6 +70,7 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
   const originTip = [t("places.origin.tip", { module: section.moduleName, version: active.mod.manifest.version }), advanced ? `${t("instances.technicalId")} ${section.instanceKey}` : ""].filter(Boolean).join(" · ");
   // An advanced section is folded in simple mode, unless it could not show: the "unavailable" line must be seen.
   const folded = section.section.level === "advanced" && !advanced && loaded.state === "ok";
+  const down = await sectionUnavailability(loaded);
   const summary = section.section.summary ? (/^fr/i.test(locale) ? section.section.summary.fr : section.section.summary.en) : null;
   return (
     <section id={anchor} aria-labelledby={titleId} className="scroll-mt-20" data-testid="place-section" data-section={anchor}>
@@ -62,6 +78,7 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
         <summary className="flex min-h-11 cursor-pointer list-none flex-wrap items-baseline gap-x-3 gap-y-1 [&::-webkit-details-marker]:hidden">
           <span aria-hidden className="inline-block text-sm text-muted transition-transform group-open:rotate-90">▶</span>
           <h2 id={titleId} className="text-lg font-semibold">{section.title}</h2>
+          {down && <StatusPill tone={down.state === "notConfigured" ? "neutral" : "warn"} testid="place-section-state">{t(`connection.state.${down.state}`)}</StatusPill>}
           {summary && <span className="text-sm text-muted group-open:hidden">{summary}</span>}
         </summary>
         {(showOrigin || section.section.level === "advanced") && (
@@ -69,13 +86,14 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
             {/* R14: when the card is already titled with the module's name, the origin is not repeated; the tooltip and the link stay. */}
             {showOrigin && section.title !== origin && <span>{t("places.origin", { origin })}</span>}
             {showOrigin && <HelpTip always help={originTip} name={origin} />}
-            {showOrigin && <a href={instanceHref(section.instanceId)} className="ml-2 underline hover:text-accent">{t("places.openModule")} →</a>}
+            {showOrigin && !down && <a href={instanceHref(section.instanceId)} className="ml-2 underline hover:text-accent">{t("places.openModule")} →</a>}
           </p>
         )}
         <div className="mt-4 space-y-6 [&_[data-section]>div]:rounded-none [&_[data-section]>div]:border-0 [&_[data-section]>div]:bg-transparent [&_[data-section]>div]:p-0 [&_[data-section]>div]:shadow-none">
-          {loaded.state !== "ok" && (
-            <p role="status" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm" data-testid="place-section-unavailable">
-              {t("places.unavailable", { module: section.moduleName })} <a href={instanceHref(section.instanceId)} className="font-medium underline">{t("places.openModule")} →</a>
+          {down && (
+            <p role="status" className="text-sm" data-testid="place-section-unavailable">
+              {t(`places.reason.${down.reason}`, { module: section.moduleName })}{" "}
+              <a href={instanceHref(section.instanceId)} className="font-medium underline">{down.state === "notConfigured" ? t("places.configure", { module: section.moduleName }) : t("places.openModule")} →</a>
             </p>
           )}
           {loaded.blocks.length > 0 && <PlaceReturnProvider value={base}><Blocks blocks={loaded.blocks} locale={locale} kit={adminKit} adminInstanceId={section.instanceId} /></PlaceReturnProvider>}
@@ -86,8 +104,8 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
   );
 }
 
-/** The declared settings of the section: the basic ones, then one "Advanced settings" fold. Rendered by the core settings form (ModuleSettings). */
-async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
+/** The fields of the declared settings of the section (hidden ids, the basic ones, then one "Advanced settings" fold), without the form around them: the card and the edit window of an account each wrap them. */
+export async function SectionFields({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
   const { active, section } = loaded;
   const { mod, instance } = active;
   const manifest = mod.manifest;
@@ -110,7 +128,7 @@ async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded
   const common = { t, locale, defaultLocale: config.defaultLocale, locales: config.locales, allFields: manifest.settings, groups: manifest.optionalGroups ?? [], stored, siteByLocale, theme, missing, instanceId: instance.id, choices, advanced, tabbed: true, ns: fieldNamespace(instance.key, section.section.id) } as const;
   const anyMoreSet = more.some((f) => Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
   return (
-    <ActionForm action={savePlaceSection} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6 [&>div[aria-hidden]]:hidden">
+    <>
       <input type="hidden" name="id" value={instance.id} />
       <input type="hidden" name="__section" value={section.section.id} />
       {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -123,6 +141,15 @@ async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded
           <div className="mt-4"><ModuleSettings {...common} fields={more} /></div>
         </details>
       )}
+    </>
+  );
+}
+
+/** The declared settings of the section as the card shows them: one form with its own save, and the floating bar of the page. */
+async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
+  return (
+    <ActionForm action={savePlaceSection} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6 [&>div[aria-hidden]]:hidden">
+      <SectionFields loaded={loaded} t={t} locale={locale} config={config} advanced={advanced} />
     </ActionForm>
   );
 }

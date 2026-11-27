@@ -7,6 +7,98 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.52.0 — 2026-11-27
+
+### Nouveautés
+
+- **Menu latéral plus court, cibles tactiles de 44 px.** Le bloc du compte tient sur trois lignes et l'entrée de la page ouverte reste visible dans le menu. Sur téléphone, boutons, champs, onglets et liens isolés atteignent 44 px.
+- **(English) Shorter sidebar, 44 px touch targets.** The account block takes three rows and the entry of the open page stays in view in the menu. On a phone, buttons, fields, tabs and standalone links reach 44 px.
+- **Tableau de bord : la pastille de santé mène aux lignes de « À faire ».** Chaque point de la pastille y est une ligne avec son action, ou une note quand la personne n'a pas la page : le nombre et la liste concordent.
+- **(English) Dashboard: the health pill leads to the “To do” lines.** Each point of the pill is a line there with its action, or a note when the person has no page for it: the count and the list agree.
+- **Pages d'administration : mêmes onglets, mêmes mots, moins de remplissage.** « Entretien » a la même barre d'onglets sur ses cinq pages et la page « Entretien » s'ouvre ; les titres n'ont plus d'émoji, « Équipe » est le nom partout. Les états vides disent quoi faire et les boutons en double disparaissent.
+- **(English) Admin pages: same tabs, same words, less filler.** “Maintenance” has the same tab bar on its five pages and the “Maintenance” address opens; headings lose their emoji and “Team” is the name everywhere. Empty states say what to do and duplicate buttons are gone.
+- **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.
+- **(English) A page section that cannot show says why, with one link.** It carries the “Not configured” or “Degraded” pill, the reason, then a single link to the module, instead of “Section unavailable” and a duplicated link.
+- **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».
+- **(English) “Home and menu”: one line per tab, a simpler link and button.** Each tab says what it is for in one line; “Link and button” only asks for the text and the address, other languages are folded; “Social buttons” links to “Accounts and connections”.
+- **Assistants IA : une file de validation claire.** Chaque demande en attente a un bouton principal (Approuver) et un refus discret ; recherche en direct sur les demandes, les validations par assistant et l'historique. Les accès, les droits et le journal sont inchangés.
+- **(English) AI assistants: a clear approval queue.** Each waiting request has one main button (Approve) and a quiet refusal; live search on requests, per-assistant approvals and history. Accesses, rights and the audit log are unchanged.
+- **L'entretien montre un état et une action principale par onglet.** Le bouton « Installer » des mises à jour est juste sous les versions, les notes et les options se replient, et la restauration d'une sauvegarde est une carte à part qui dit ce qui sera remplacé. Les états deviennent des pastilles.
+- **(English) Maintenance shows one state and one main action per tab.** The update “Install” button sits right under the versions, the notes and options fold away, and restoring a backup is a separate card that says what will be replaced. States become pills.
+- **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
+- **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
+- **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
+- **(English) Settings and Appearance: fewer fields, one Save.** Choices of two to four options are side-by-side buttons, the site presentation is folded, and search, sound and e-mail save from the bottom bar. The current skin shows once, first in the list, with “Customise”.
+- **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne, avec son type, son état et la raison. Recherche en direct, filtres et un seul bouton par ligne.
+- **(English) “Accounts and connections” is one table.** Each account and connection is one row, with its type, its state and the reason. Live search, filters and one button per row.
+- **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».
+- **(English) The overlay pages list reads like the other lists.** Live search, one switch per row, a “Copy the address” and an “Edit” button; the rest (duplicate, rename, change the secret address, delete) is in “⋯”.
+- **L'onglet « Adresses pour OBS » garde le titre « Pages d'overlay ».** Chaque ligne a un bouton vers la page ou le module qui produit l'adresse, et l'explication d'OBS passe dans une info-bulle.
+- **(English) The “Addresses for OBS” tab keeps the “Overlay pages” title.** Each row has a button to the page or module that produces the address, and the OBS how-to moves into a tooltip.
+- **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
+- **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
+- **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
+- **(English) An installed piece is called “module”, everywhere.** “Extension” and “feature” are gone from the texts of the site, the AI assistant, the journal and the maintenance messages; page addresses do not change. An automatic check keeps these words from coming back.
+- **Le catalogue de modules montre d'abord ce qu'on peut ajouter.** Les modules déjà installés passent derrière un interrupteur qui donne leur nombre, et ceux que votre version de Curiosa ne peut pas encore prendre sont repliés avec un lien pour la mettre à jour. La recherche annonce « n sur N ».
+- **(English) The module catalogue shows what you can add first.** Installed modules sit behind a switch that shows their count, and those your Curiosa version cannot take yet are folded, with a link to update it. The search announces “n of N”.
+- **Les listes de modules disent leur état avec des pastilles et leur nombre.** Les filtres et les groupes de « Installés » affichent combien de modules ils contiennent ; « À jour » est une pastille, et les onglets disent « Installés ».
+- **(English) Module lists show their state with pills and their count.** The filters and groups of “Installed” show how many modules they hold; “Up to date” is a pill, and the tabs say “Installés” in French.
+- **Le menu de l'administration est rangé autrement.** « En direct », « Agenda » et « Overlays » sont dans « Outils » ; « Comptes et connexions » (dans « Site ») remplace « Réseaux » et « Connexions » ; « Rôles » a son entrée, près d'« Équipe ».
+- **(English) The administration menu is laid out differently.** “Live”, “Calendar” and “Overlays” are inside “Tools”; “Accounts and connections” (in “Site”) replaces “Networks” and “Connections”; “Roles” has its own entry, near “Team”.
+- **Les pièces installées s'appellent « Modules » dans le menu, et les pages d'overlay « Pages d'overlay ».** L'entrée « Extensions » devient « Modules » ; « Personnalisés » devient « Pages d'overlay » et « Prédéfinis » devient « Overlays intégrés ».
+- **(English) Installed pieces are called “Modules” in the menu, and the custom overlay pages “Overlay pages”.** The “Extensions” entry becomes “Modules”; “Custom” becomes “Overlay pages” and “Ready-made” becomes “Built-in overlays”.
+- **Le menu de l'administration reste en place quand vous faites défiler la page.** Il garde sa hauteur, ses liens défilent à l'intérieur, et votre nom, « Mon compte », « Voir le site », « Signaler un bug » et « Se déconnecter » restent toujours sous la main en bas. Les rubriques se plient et se déplient, et le menu s'en souvient.
+- **(English) The administration menu stays in place when you scroll the page.** It keeps its height, its links scroll inside it, and your name, “My account”, “View site”, “Report a bug” and “Sign out” always stay at the bottom. Sections fold and unfold, and the menu remembers it.
+- **Des icônes fines remplacent les émojis du menu, et chaque ligne est facile à toucher.** Toutes les lignes font au moins 44 px de haut ; sur téléphone, le menu s'ouvre en volet que la touche Échap referme.
+- **(English) Thin icons replace the emoji in the menu, and every row is easy to tap.** All rows are at least 44 px tall; on a phone the menu opens as a sheet that the Escape key closes.
+- **Un module peut choisir l'icône de son entrée de menu.**
+- **(English) A module can pick the icon of its menu entry.**
+- **Chacun ne voit que ce qu'il peut ouvrir.** Le menu, le tableau de bord (chiffres, tâches, raccourcis, cartes des modules) et la recherche ne proposent plus un lien vers une page que votre rôle n'ouvre pas.
+- **(English) Everyone sees only what they can open.** The menu, the dashboard (numbers, tasks, shortcuts, module cards) and the search no longer offer a link to a page your role cannot open.
+- **Un refus dit ce qui manque.** Au lieu de « Vous n'avez pas le droit de faire cela », le bandeau nomme l'accès demandé et à qui le demander.
+- **(English) A refusal says what is missing.** Instead of “You do not have permission to do that”, the notice names the access needed and who to ask.
+- **Un champ mal rempli est signalé sous le champ, dans votre langue.** Fini la bulle du navigateur, en anglais et posée sur le titre : un champ obligatoire vide, une adresse ou un nombre invalide affichent le même message clair, avec un exemple, et le curseur se place sur le premier champ à corriger. Ce que vous avez écrit reste.
+- **(English) A badly filled field is flagged under the field, in your language.** No more browser bubble, in English and over the label: an empty required field, an invalid address or a bad number show the same clear message, with an example, and the cursor goes to the first field to fix. What you typed stays.
+- **Le choix d'un fichier se lit dans la langue du site.** « Choisir un fichier » et le nom du fichier choisi remplacent le texte anglais du navigateur (restauration d'une sauvegarde, envoi d'une police).
+- **(English) Choosing a file reads in the site's language.** “Choose a file” and the chosen name replace the browser's English text (backup restore, font upload).
+- **Les interrupteurs des listes n'écrivent plus « Actif » sur chaque ligne.** Leur position, leur couleur et une coche ou un tiret disent l'état ; les lecteurs d'écran l'annoncent avec le nom de la ligne.
+- **(English) List switches no longer write “Active” on every row.** Their position, colour and a tick or a dash show the state; screen readers announce it together with the row name.
+- **Les tableaux annoncent leurs résultats et gardent des lignes régulières.** Le nombre de résultats d'une recherche est annoncé aux lecteurs d'écran, la colonne des actions a un en-tête lisible, les textes coupés se lisent en entier dans l'info-bulle et chaque ligne fait au moins 44 px.
+- **(English) Tables announce their results and keep regular rows.** The number of search results is announced to screen readers, the actions column has a readable header, cut-off text can be read in full in the tooltip, and every row is at least 44 px tall.
+- **Les rôles ont leur page.** « Rôles », dans « Administration », montre chaque rôle et le nombre de personnes qui l'ont. Créez, renommez, dupliquez ou supprimez un rôle et choisissez ce qu'il permet, sans jamais pouvoir donner ce qui est réservé au propriétaire.
+- **(English) Roles have their own page.** “Roles”, under “Administration”, shows each role and how many people hold it. Create, rename, duplicate or delete a role and pick what it allows, never able to give what is reserved to the owner.
+- **Inviter une personne dit ce qui se passe.** Quand le site ne peut pas envoyer de courriel, le bouton s'appelle « Créer un lien d'invitation » et vous copiez le lien avec « Copier le lien d'invitation ». Le bouton « Enregistrer » du changement de rôle reste grisé tant que rien n'a changé.
+- **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
+- **Liens courts : un seul bouton pour créer, interrupteur discret.** La création s'ouvre dans une fenêtre, un lien en pause ou terminé porte une pastille. Les brouillons ont une recherche, les listes d'entrées et de modèles des lignes régulières.
+- **(English) Short links: one create button, a quiet switch.** Creating opens a window, a paused or ended link carries a pill. Drafts get a search, and the entries and templates lists use regular rows.
+- **L'assistant d'installation tient en trois écrans.** Langue et prénom, nom du site, e-mail et mot de passe ; le choix des modules et la connexion d'un assistant IA passent dans la liste « Mise en route » du tableau de bord.
+- **(English) The setup wizard fits on three screens.** Language and first name, site name, e-mail and password; choosing modules and connecting an AI assistant move to the “Getting started” list on the dashboard.
+
+### Corrections
+
+- **Le lien « Signaler un bug » n'apparaît plus qu'une fois.** Il vit dans le bas du menu ; les copies des pages Mises à jour et Assistants IA sont retirées.
+- **(English) The “Report a bug” link now appears only once.** It lives at the bottom of the menu; the copies on the Updates and AI assistants pages are gone.
+- **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
+- **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
+- **Les boutons à choix ne coupent plus un mot en deux.** Un libellé long comme « Remerciements » reste entier ; c'est le bouton qui passe à la ligne.
+- **(English) Choice buttons no longer split a word in two.** A long label such as “Thanks” stays whole; the whole button wraps to the next line.
+- **La barre « Enregistrer » collée en bas ne cache plus le dernier champ ni les boutons du bas.** La page lui laisse de la place, et un champ qui prend le focus ne passe pas dessous.
+- **(English) The “Save” bar stuck to the bottom no longer hides the last field or the buttons below.** The page leaves room for it, and a field that takes focus does not slide under it.
+
+### Pour les développeurs
+
+- Nouvelles briques de l'administration, pas encore utilisées : `StatusPill`, `EmptyState`, `AttentionCard` (sans action, rien n'est dessiné), `ChecklistCard` et `RightsMatrix` (un droit réservé n'y est jamais délégable). Textes dans `bricks.*` ; tests dans `bricks-c3c`.
+- **(English)** New admin bricks, not used yet: `StatusPill`, `EmptyState`, `AttentionCard` (nothing is drawn without an action), `ChecklistCard` and `RightsMatrix` (a reserved right is never delegable there). Texts in `bricks.*`; tests in `bricks-c3c`.
+- Les interrupteurs de ligne (`switch` d'une cellule de tableau) n'écrivent plus de mot d'état ; `onText` / `offText` ne servent qu'au nom accessible, et `switch.note` (facultatif, ajout sans risque) écrit l'exception à côté (voir `docs/MODULES.md`). Nouvelle brique `ResultCount` (région d'annonce) dans `LiveSearch.tsx`, `Switch` accepte `quiet`.
+- **(English)** Row switches (a table cell `switch`) no longer write a state word; `onText` / `offText` only feed the accessible name, and the optional `switch.note` (additive) writes the exception beside the switch (see `docs/MODULES.md`). New `ResultCount` brick (live region) in `LiveSearch.tsx`; `Switch` accepts `quiet`.
+- Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page.
+- Une tâche, une action ou une carte de module qui mène à une page que la personne ne peut pas ouvrir est maintenant masquée : le module doit aussi donner l'accès « ouvrir » aux rôles concernés. Le kit signale (conseil `dashboard.coreLinkRight`) un lien vers une page du cœur sans `right`.
+- Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
+- **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
+- `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
+- Formulaires : `ActionForm` et les formulaires de module envoient avec `noValidate` et valident eux-mêmes (`nativeValidation.ts`, `useClientChecks`, textes `progress.invalid.*`) ; `FileButton` et `StickyActionBar` sont partagés.
+- **(English)** Forms: `ActionForm` and module forms submit with `noValidate` and validate themselves (`nativeValidation.ts`, `useClientChecks`, `progress.invalid.*` texts); `FileButton` and `StickyActionBar` are shared.
+
 ## 0.51.0 — 2026-11-26
 
 ### Nouveautés

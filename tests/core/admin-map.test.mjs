@@ -26,17 +26,18 @@ test("the core map matches the committed baseline (routes, sidebar, access)", as
   assert.deepEqual(diff, [], `The administration map changed:\n${diff.join("\n")}\n${HOW}`);
 });
 
-test("the sidebar reader sees every <NavLink> the layout writes (a link it cannot read must not hide)", async () => {
+test("the sidebar reader sees every entry of the sidebar model (a link it cannot read must not hide)", async () => {
   const { core, sidebarParse } = await buildAdminMap();
-  // Tags built from data (`key={m.id}` module entries, `entryLink`) are not literal links; every other tag has to be read.
-  assert.ok(sidebarParse.literalLinks >= 10, "the reader found almost no sidebar link: has the layout markup changed?");
-  assert.ok(sidebarParse.layoutNavLinkTags - sidebarParse.literalLinks <= 3, `the layout has ${sidebarParse.layoutNavLinkTags} <NavLink> tags, the reader understood ${sidebarParse.literalLinks}: teach scripts/admin-map.mjs the new form`);
+  assert.ok(sidebarParse.literalLinks >= 10, "the reader found almost no sidebar entry: has src/core/adminSidebar.ts changed shape?");
+  assert.equal(sidebarParse.parsedLinks, sidebarParse.literalLinks, "an entry line of the model was not understood: keep one entry per line, in the shape scripts/admin-map.mjs reads");
+  // The layout draws entries from the model and from data; a <NavLink> with an address of its own would escape the map and the access filter.
+  assert.equal(sidebarParse.layoutLiteralNavLinks, 0, "the layout writes a <NavLink> with its own address: add the entry to src/core/adminSidebar.ts instead");
   for (const e of core.sidebar.entries) assert.ok(!e.href.includes("{"), `unresolved address in the sidebar: ${e.label} ${e.href}`);
 });
 
 test("every sidebar address is an existing route, or a place route, or the public site", async () => {
   const { core } = await buildAdminMap();
-  const patterns = Object.keys(core.routes).map((r) => r.replace(/ .*$/, "")).map((r) => new RegExp(`^${r.replace(/[.*+?^$|(){}\\]/g, "\\$&").replace(/\\\[\\\[\\\.\\\.\\\.\w+\\\]\\\]/g, "(?:/.*)?").replace(/\\\[[^\]]+\\\]/g, "[^/]+")}$`));
+  const patterns = Object.keys(core.routes).map((r) => r.replace(/ .*$/, "")).map((r) => new RegExp(`^${r.replace(/[.*+?^$|(){}\\\[\]]/g, "\\$&").replace(/\\\[\\\[\\\.\\\.\\\.\w+\\\]\\\]/g, "(?:/.*)?").replace(/\\\[[^\]]+\\\]/g, "[^/]+")}$`));
   for (const e of core.sidebar.entries) for (const href of [e.href, ...e.also]) {
     const bare = href.split(/[?#]/)[0];
     if (e.external || bare === "/") continue;

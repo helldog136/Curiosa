@@ -61,7 +61,7 @@ export default async function EditEntryPage({ params, searchParams }: {
   return (
     <div className="space-y-6">
       <div>
-        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <div className="mt-1 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-bold">{title ?? t("entries.new")}</h1>
           <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>

@@ -13,6 +13,8 @@ import { listPasskeys } from "@/core/auth/passkeys";
 import { remainingRecoveryCodes } from "@/core/auth/twoFactor";
 import { getSetting } from "@/core/settings";
 import { MyAccessesCard } from "./MyAccessesCard";
+import { mayOwnAccess } from "@/core/personalAi/owners";
+import { ownAccessStates } from "@/core/personalAi/service";
 import { AdminPreferences } from "@/components/admin/AdminPreferences";
 import { cookies } from "next/headers";
 import { ADMIN_THEME_COOKIE, parseAdminTheme } from "@/core/adminTheme";
@@ -35,24 +37,31 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
     { value: "", label: `${t("account.siteDefault")}` },
     ...[...new Set([...UI_LOCALES, ...config.locales])].map((l) => ({ value: l, label: `${localeName(l)}${UI_LOCALES.includes(l) ? "" : ` (${t("settings.fallbackEn")})`}` })),
   ];
+  // Jump links to the sections of this long page (same order as the page); the AI accesses link only exists when the card is shown.
+  const hasAccesses = (await mayOwnAccess(user.id)) || (await ownAccessStates(user.id)).length > 0;
+  const sections = [
+    { href: "#profile", label: t("account.profileTitle") }, { href: "#prefs", label: t("account.prefs.title") }, { href: "#password", label: t("account.password") }, { href: "#security", label: t("account.securityTitle") },
+    ...(hasAccesses ? [{ href: "#my-accesses", label: t("myai.title") }] : []), { href: "#devices", label: t("account.devicesTitle") },
+  ];
   const needs2fa = user.needsTwoFactor || need2fa === "1";
   return (
     <div className="space-y-10">
       <PageHeader title={t("nav.myAccount")} intro={t("account.intro")} />
+      <nav aria-label={t("account.nav")} className="flex flex-wrap gap-2" data-testid="account-nav">
+        {sections.map((s) => <a key={s.href} href={s.href} className="inline-flex min-h-11 items-center rounded-xl border border-line bg-surface px-4 text-sm font-medium hover:border-accent hover:text-accent">{s.label}</a>)}
+      </nav>
       {needs2fa && !user.totp && <Callout tone="warn" testid="need-2fa">{t("account.twofa.need")} <a href="#security" className="font-medium underline">{t("account.goSecurity")}</a></Callout>}
 
-      <Panel title={t("account.profileTitle")} testid="profile-card">
+      <Panel title={t("account.profileTitle")} id="profile" testid="profile-card">
         <ActionForm action={updateProfile} submitLabel={t("action.save")}>
           <TextField name="name" label={t("field.name")} defaultValue={user.name} required />
           <Select name="locale" label={t("account.language")} help={t("account.languageHelp")} defaultValue={user.locale ?? ""} options={options} />
         </ActionForm>
       </Panel>
 
-      <MyAccessesCard t={t} userId={user.id} />
-
       <AdminPreferences t={t} advanced={advanced} theme={theme} />
 
-      <Panel title={t("account.password")} help={t("account.passwordHelp")} testid="password-card">
+      <Panel title={t("account.password")} help={t("account.passwordHelp")} id="password" testid="password-card">
         <ActionForm action={changePassword} submitLabel={t("account.passwordButton")}>
           <UsernameHint value={user.email} />
           <div className="grid gap-4 sm:grid-cols-2">
@@ -77,7 +86,9 @@ export default async function AccountPage({ searchParams }: { searchParams: Prom
       />
       </section>
 
-      <Panel title={t("account.devicesTitle")} help={t("account.sessionsHelp")} testid="sessions-card">
+      <MyAccessesCard t={t} userId={user.id} />
+
+      <Panel title={t("account.devicesTitle")} help={t("account.sessionsHelp")} id="devices" testid="sessions-card">
         <DangerZone title={t("account.sessionsZone")}>
           <form action={signOutEverywhere}><ConfirmButton message={t("account.sessionsConfirm")}>{t("account.sessionsButton")}</ConfirmButton></form>
         </DangerZone>
