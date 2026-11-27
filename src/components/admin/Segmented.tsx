@@ -10,8 +10,8 @@ export const fitsSegmented = (count: number): boolean => count >= SEGMENTED_MIN 
 
 /**
  * BOUTONS SEGMENTÉS : 2 à 4 choix visibles d'un coup, un seul à la fois. De vrais boutons radio du navigateur (clavier : flèches, Tab ; lecteur d'écran :
- * « 2 sur 3 ») posés sous un habillage de bouton : aucun JavaScript, le choix part avec le formulaire sous `name`. Les libellés ne sont JAMAIS tronqués (ils
- * passent à la ligne) et chaque bouton fait au moins 44 px.
+ * « 2 sur 3 ») posés sous un habillage de bouton : aucun JavaScript, le choix part avec le formulaire sous `name`. Les libellés ne sont JAMAIS tronqués ni coupés au milieu d'un mot : chaque bouton prend au moins la largeur de son plus long mot, et c'est
+ * le bouton entier qui passe à la ligne quand la place manque. Chaque bouton fait au moins 44 px.
  */
 export function Segmented({ label, name, options, defaultValue, help, example, error, required }: {
   label: string; name: string; options: { value: string; label: string }[]; defaultValue?: string; help?: string; example?: string; error?: string; required?: boolean;
@@ -24,9 +24,9 @@ export function Segmented({ label, name, options, defaultValue, help, example, e
       <legend className={`${ui.label} max-w-full`}>{label}<HelpTip help={tip} name={label} /></legend>
       <div className="flex flex-wrap gap-1.5 rounded-2xl border border-line-strong bg-bg p-1" role="presentation">
         {options.map((o) => (
-          <label key={o.value} className="relative flex min-h-11 min-w-[7rem] flex-1 cursor-pointer items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-medium transition-colors hover:bg-surface has-[:checked]:bg-accent has-[:checked]:text-accent-fg has-[:checked]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
+          <label key={o.value} className="relative flex min-h-11 min-w-fit max-w-full flex-auto cursor-pointer items-center justify-center rounded-xl px-4 py-2 text-center text-sm font-medium transition-colors hover:bg-surface has-[:checked]:bg-accent has-[:checked]:text-accent-fg has-[:checked]:shadow-sm has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent">
             <input type="radio" name={name} value={o.value} defaultChecked={o.value === current} required={required} className="peer sr-only" />
-            <span className="[overflow-wrap:anywhere]">{o.label}</span>
+            <span className="[overflow-wrap:break-word] [hyphens:none]">{o.label}</span>
           </label>
         ))}
       </div>

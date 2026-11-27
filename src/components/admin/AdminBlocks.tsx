@@ -4,6 +4,7 @@ import { PLAIN_INPUT } from "./managerHints";
 import { createContext, startTransition, useActionState, useContext, useEffect, useId, useRef, useState, type FormEvent } from "react";
 import { clearSecrets, submitKeepingValues } from "./keepValues";
 import { useFieldErrorsDom } from "./FieldErrors";
+import { useClientChecks } from "./useClientChecks";
 import { PendingButton } from "./PendingButton";
 import { useRouter } from "next/navigation";
 import type { AdminField, Block } from "@/core/blocks";
@@ -181,10 +182,12 @@ function FileBlockForm({ instanceId, block, labels, form }: { instanceId: string
   const [pending, setPending] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
   useFieldErrorsDom(formRef, state?.errors, state);
+  const check = useClientChecks(formRef);
   const fileFields = block.fields.filter((f) => f.kind === "file");
   async function onSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const form = e.currentTarget;
+    if (!check(form)) return;
     const data = new FormData(form);
     for (const f of fileFields) {
       const max = Math.min(MAX_FILE, f.maxBytes && f.maxBytes > 0 ? f.maxBytes : MAX_FILE);
@@ -214,7 +217,7 @@ function FileBlockForm({ instanceId, block, labels, form }: { instanceId: string
     }
   }
   return (
-    <form ref={formRef} onSubmit={onSubmit} className={`${ui.card} space-y-4`}>
+    <form ref={formRef} noValidate onSubmit={onSubmit} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       <FormFields fields={block.fields} labels={form} />
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
@@ -243,13 +246,15 @@ function ActionBlockForm({ instanceId, block, entry, labels }: { instanceId: str
   const [extra, setExtra] = useState<ExtraResult>(null);
   useFieldErrorsDom(formRef, state?.errors, state);
   useFieldErrorsDom(formRef, extra?.errors, extra);
+  const check = useClientChecks(formRef);
+  const send = submitKeepingValues(action);
   // Une erreur garde ce qui a été tapé (pour le corriger). Un formulaire qui CRÉE quelque chose se vide après un succès ; un formulaire de modification (lien « annuler ») garde ses valeurs.
   useEffect(() => {
     if (!state?.ok || !formRef.current) return;
     if (block.cancelHref) clearSecrets(formRef.current); else formRef.current.reset();
   }, [state, block.cancelHref]);
   return (
-    <form ref={formRef} onSubmit={submitKeepingValues(action)} className={`${ui.card} space-y-4`}>
+    <form ref={formRef} noValidate onSubmit={(e) => { if (!check(e.currentTarget)) { e.preventDefault(); return; } send(e); }} className={`${ui.card} space-y-4`}>
       {block.title && <h3 className="text-lg font-semibold">{block.title}</h3>}
       <FormRun.Provider value={(a, data) => runner(instanceId, a, entry, back)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       {state?.error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm text-red-700">{state.error}</p>}
@@ -280,6 +285,8 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
   const [extra, setExtra] = useState<ExtraResult>(null);
   useFieldErrorsDom(formRef, state?.errors, state);
   useFieldErrorsDom(formRef, extra?.errors, extra);
+  const check = useClientChecks(formRef);
+  const send = submitKeepingValues(action);
   const title = block.title ?? block.submitLabel;
   const error = state?.error ?? secondState?.error ?? (secondState?.errors ? Object.values(secondState.errors)[0] : undefined);
   return (
@@ -298,7 +305,7 @@ function DialogBlockForm({ instanceId, block, labels, dialog }: { instanceId: st
       ) : undefined}>
       <DialogOutcome state={state} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />
       {secondary && <DialogOutcome state={secondState} formRef={formRef} instanceId={instanceId} saved={dialog.saved} />}
-      <form id={formId} ref={formRef} onSubmit={submitKeepingValues(action)} className="space-y-4" data-testid="edit-dialog-form">
+      <form id={formId} ref={formRef} noValidate onSubmit={(e) => { if (!check(e.currentTarget)) { e.preventDefault(); return; } send(e); }} className="space-y-4" data-testid="edit-dialog-form">
         <FormRun.Provider value={(a, data) => runner(instanceId, a, undefined, back)(null, data)}><FormFields fields={block.fields} labels={labels} /></FormRun.Provider>
       </form>
     </EditDialog>
