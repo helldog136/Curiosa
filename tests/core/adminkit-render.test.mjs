@@ -226,7 +226,11 @@ test("tableau enrichi : recherche, pastilles avec leur nombre, colonne d'origine
   assert.match(out, /rounded-full px-2\.5 py-0\.5 text-xs font-medium leading-5 bg-accent-tint text-accent-text[^>]*><span class="min-w-0 truncate">Les vôtres/, "pastille colorée");
   assert.match(out, /bg-sky-500\/15[^>]*><span class="min-w-0 truncate">Partenaires/);
   assert.equal((out.match(/role="switch"/g) ?? []).length, 3);
-  assert.match(out, /aria-label="Commande !merci active"/);
+  assert.match(out, /aria-label="Commande !merci active, Désactivé"/, "R37 : l'état reste dans le nom accessible");
+  assert.doesNotMatch(out, />(Actif|Désactivé|Activé)</, "R37 : aucun mot d'état écrit à côté d'un interrupteur de ligne");
+  assert.equal((out.match(/data-switch-cue="(on|off)"/g) ?? []).length, 3, "R37 : une coche ou un tiret dans le rail, pas la couleur seule");
+  assert.match(out, /<span class="sr-only">Actions<\/span>/, "F-A11Y-006 : la colonne des actions a un en-tête lu par les lecteurs d'écran");
+  assert.match(out, /data-testid="result-count"[^>]*><\/p>/, "la région d'annonce des résultats est toujours là");
   assert.equal((out.match(/data-testid="row-menu"/g) ?? []).length, 3, "un menu « ⋯ » par ligne");
   assert.match(out, /aria-label="Autres actions"/);
   assert.match(out, /role="menuitem"[^>]*>Supprimer/, "l'action destructive est rangée dans le menu");
@@ -467,4 +471,27 @@ test("période incomplète : le champ envoie une valeur NON vide (une date, fin 
   assert.match(mk("", true), /name="p__period" value="open"/);
   assert.match(mk(""), /name="p__period" value="closed"/);
   assert.match(mk("2026-12-01/", true), /name="p" value="2026-12-01\/"/, "période ouverte : une date suffit");
+});
+
+test("interrupteur de ligne (R37) : `quiet` écrit l'état dans le nom, pas à l'écran ; `switch.note` écrit seulement l'exception", () => {
+  const quiet = html(h(Switch, { quiet: true, label: "Lien /twitch", checked: false, onText: "activé", offText: "désactivé", onToggle: async () => {} }));
+  assert.match(quiet, /aria-label="Lien \/twitch, désactivé"/);
+  assert.doesNotMatch(quiet, />désactivé</);
+  assert.match(quiet, /data-switch-cue="off"/);
+  const loud = html(h(Switch, { label: "Lien /twitch", checked: true, onText: "Actif", offText: "Désactivé", onToggle: async () => {} }));
+  assert.match(loud, />Actif</, "hors liste le mot reste écrit (comportement inchangé)");
+  assert.match(loud, /data-switch-cue="on"/);
+  const b = block({ rows: [["!pause", { text: "x", badge: "accent" }, "Salut", { text: "Désactivé", switch: { on: false, action: "toggle", label: "Commande !pause", note: "En pause jusqu à lundi" } }]] });
+  const out = table(b);
+  assert.match(out, /data-testid="switch-note"[^>]*>En pause jusqu à lundi</);
+  assert.equal((table(block()).match(/data-testid="switch-note"/g) ?? []).length, 0, "sans `note`, rien n'est écrit");
+});
+
+test("tableau du cœur : texte coupé = info-bulle complète (F-TABLE-001) ; blocs du tableau de bord avec une clé React (F-SYS-002)", async () => {
+  const { RowTable } = await import("@/components/admin/RowTable");
+  const out = html(h(RowTable, { scope: "t", actionsLabel: "Actions", columns: [{ key: "mail", label: "Courriel" }], rows: [{ key: "1", search: [], cells: { mail: "etoile_nord@example.test" } }] }));
+  assert.match(out, /<td[^>]*title="etoile_nord@example\.test"/);
+  const dash = fs.readFileSync("src/app/admin/(panel)/page.tsx", "utf8");
+  assert.match(dash, /<section key="drafts"/);
+  assert.match(dash, /<section key="numbers"/);
 });

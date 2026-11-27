@@ -110,7 +110,8 @@ export type TableCell = string | {
   href?: string;
   title?: string;
   image?: { src: string; alt: string; fit?: "cover" | "contain" };
-  switch?: { on: boolean; action: string; /** Nom accessible : décrit la chose, pas l'action (« Commande !bonjour active »). */ label: string; onText?: string; offText?: string };
+  switch?: { on: boolean; action: string; /** Nom accessible : décrit la chose, pas l'action (« Commande !bonjour active »). */ label: string; onText?: string; offText?: string;
+    /** (additif ; un cœur plus ancien l'ignore) Dans une liste, l'interrupteur n'écrit AUCUN mot d'état (R37) : `onText` / `offText` ne servent qu'au nom accessible. `note` est l'exception, écrite à côté seulement sur les lignes qui sortent de l'ordinaire (« En pause », la raison) ; absente, rien n'est écrit. */ note?: string };
 };
 
 /**

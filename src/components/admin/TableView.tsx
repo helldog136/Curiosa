@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import type { BadgeTone, Block, TableCell } from "@/core/blocks";
 import { SERVER_SEARCH_DELAY_MS, serverSearchTarget, splitActions } from "@/core/adminkit/table";
 import { TABLE_PAGE_SIZE, pageSlice, pillOptions, rowPasses, searchText } from "@/core/adminkit/search";
-import { Pills, SearchField } from "./LiveSearch";
+import { Pills, ResultCount, SearchField } from "./LiveSearch";
 import { BADGE } from "./Badge";
 import { RowMenu } from "./RowMenu";
 import type { EntryScope } from "./AdminBlocks";
@@ -112,7 +112,7 @@ export function TableView({ block, instanceId, entry, labels, parts, server }: {
             <Pills key={i} pillKey={`f${i}`} label={block.columns[f.column] ?? ""} allLabel={f.allLabel ?? labels.all} value={pills[`f${i}`] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [`f${i}`]: v }))}
               options={pillOptions(rows.map((r) => r.cells[f.column]?.text ?? "")).map((o) => ({ value: o.value, label: o.value, count: o.count }))} />
           ))}
-          <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite">{!server && active && shown.length > 0 ? labels.count.replace("{shown}", String(shown.length)).replace("{total}", String(rows.length)) : ""}</p>
+          <ResultCount text={!server && active && shown.length > 0 ? labels.count.replace("{shown}", String(shown.length)).replace("{total}", String(rows.length)) : ""} />
         </div>
       )}
       {notice && <p role="status" data-testid="table-saved" className={noticeRow ? "sr-only" : "rounded-xl border border-emerald-500/40 bg-emerald-500/10 px-4 py-2.5 text-sm font-medium text-emerald-800"}>{noticeRow ? "" : "✓ "}{notice.message}</p>}
@@ -135,7 +135,7 @@ export function TableView({ block, instanceId, entry, labels, parts, server }: {
             {view.items.map((r) => {
               const id = block.rowIds?.[r.index];
               return (
-                <tr key={r.index} role="row" data-skin-part="table-row" data-row-saved={noticeRow === r ? "" : undefined} className={`${noticeRow === r ? "bg-emerald-500/10 " : ""}border-t-token border-line align-middle max-sm:mb-3 max-sm:block max-sm:rounded-2xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:p-3`}>
+                <tr key={r.index} role="row" data-skin-part="table-row" data-row-saved={noticeRow === r ? "" : undefined} className={`${noticeRow === r ? "bg-emerald-500/10 " : ""}border-t-token border-line align-middle sm:h-14 max-sm:mb-3 max-sm:block max-sm:rounded-2xl max-sm:border max-sm:border-line max-sm:bg-surface max-sm:p-3`}>
                   {r.cells.map((c, i) => (
                     <td key={i} role="cell" data-skin-part="table-cell" data-label={block.columns[i]}
                       className={`px-3 py-2 max-sm:flex max-sm:items-center max-sm:justify-between max-sm:gap-3 max-sm:px-1 max-sm:py-1.5 max-sm:before:shrink-0 max-sm:before:text-xs max-sm:before:text-muted max-sm:before:content-[attr(data-label)] ${cut.has(i) ? "max-w-[26ch] max-sm:max-w-none" : "whitespace-pre-wrap"}`}>
@@ -145,7 +145,7 @@ export function TableView({ block, instanceId, entry, labels, parts, server }: {
                   ))}
                   {hasActions && (
                     <td role="cell" className="whitespace-nowrap px-3 py-2 max-sm:flex max-sm:justify-end max-sm:px-1 max-sm:pt-2">
-                      <div className="flex items-center gap-2">
+                      <div className="flex min-h-11 items-center gap-2">
                         {visibleActions.map((a) => (
                           <RowActionButton key={a.label} instanceId={instanceId!} label={a.label} action={a.action} href={href(a, id)} id={id} confirm={a.confirm} danger={a.danger} entry={entry} presentation={a.presentation} />
                         ))}
@@ -178,7 +178,11 @@ export function TableView({ block, instanceId, entry, labels, parts, server }: {
 function CellView({ cell, cut, pictured, instanceId, entry, id, labels, parts }: { parts?: TableParts; cell: Cell; cut: boolean; pictured?: boolean; instanceId?: string; entry?: EntryScope; id?: string; labels: TableLabels }) {
   if (cell.sw) {
     // Interrupteur : actif dans le panneau d'admin ; ailleurs (ou sans identifiant de ligne), seulement l'état écrit.
-    if (instanceId && parts) return <parts.RowSwitch instanceId={instanceId} action={cell.sw.action} id={id} on={cell.sw.on} label={cell.sw.label} onText={cell.sw.onText ?? labels.on} offText={cell.sw.offText ?? labels.off} entry={entry} failedText={labels.failed} savedText={labels.saved} />;
+    // (R37) Aucun mot d'état répété à côté de l'interrupteur : le nom accessible garde l'état ; un `text` de cellule n'est que l'exception (« En pause », la raison).
+    if (instanceId && parts) {
+      const row = <parts.RowSwitch instanceId={instanceId} action={cell.sw.action} id={id} on={cell.sw.on} label={cell.sw.label} onText={cell.sw.onText ?? labels.on} offText={cell.sw.offText ?? labels.off} entry={entry} failedText={labels.failed} savedText={labels.saved} />;
+      return cell.sw.note ? <span className="inline-flex flex-wrap items-center gap-x-2">{row}<span className="min-w-0 text-sm text-muted" data-testid="switch-note">{cell.sw.note}</span></span> : row;
+    }
     return <span>{cell.text || (cell.sw.on ? cell.sw.onText ?? labels.on : cell.sw.offText ?? labels.off)}</span>;
   }
   const body = cell.badge
