@@ -325,8 +325,8 @@ test("Réglages : plus d'onglet Apparence ni de rappel vers Apparence ; le lien 
   assert.ok(!/id: "appearance"|data-tab="appearance"/.test(settings), "plus d'onglet Apparence dans Réglages");
   assert.ok(!/headerSecondaryHref|headerButtonHref|headerSocials/.test(settings), "le lien, le bouton et les icônes de l'en-tête ne sont plus dans Réglages");
   const navigation = read("src/app/admin/(panel)/navigation/header/page.tsx");
-  assert.match(navigation, /name="headerSecondaryHref"/);
-  assert.match(navigation, /name="headerButtonHref"/);
+  assert.match(navigation, /hrefName: "headerSecondaryHref"/);
+  assert.match(navigation, /hrefName: "headerButtonHref"/);
   for (const gone of ["ThemePicker", "HeaderLayoutPicker", "bgPreset", "name=\"font\"", "name=\"glow\"", "data-testid=\"bg-layers\""]) assert.ok(!settings.includes(gone), `Réglages ne doit plus contenir ${gone}`);
   const actions = read("src/app/admin/(panel)/settings/actions.ts");
   for (const gone of ["theme.background", "theme.accent", "theme.glow", "theme.bgPreset", "header.layout", "theme.font"]) assert.ok(!actions.includes(gone), `saveSettings ne doit plus écrire ${gone}`);
