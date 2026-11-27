@@ -1,10 +1,11 @@
 import { HelpTip } from "@/components/admin/HelpTip";
 import { adminCtx } from "@/core/admin";
-import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
+import { MaintenanceHeader, TabIntro } from "@/components/admin/MaintenanceHeader";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ContentCheckButton } from "@/components/admin/ContentCheckButton";
 import { Checkbox, TextArea } from "@/components/admin/Field";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { Panel } from "@/components/admin/Page";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ui } from "@/components/admin/ui";
 import { checkIsRunning, tally, visibleGroups } from "@/core/maintenance/content/run";
@@ -18,6 +19,7 @@ import { adminTitle } from "@/core/adminTitle";
 export const dynamic = "force-dynamic";
 
 const CHIP: Record<Severity, string> = { important: ui.chipDanger, advised: ui.chipWarn, info: ui.chip };
+const CHIP_TONE: Record<Severity, "danger" | "warn" | "info"> = { important: "danger", advised: "warn", info: "info" };
 
 export async function generateMetadata(): Promise<Metadata> {
   return adminTitle(({ t }) => t("content.title"));
@@ -45,17 +47,17 @@ export default async function ContentHealthPage() {
   return (
     <div className="space-y-6">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="health" />
-      <PageHeader level={2} title={t("content.title")} intro={t("content.intro")} />
+      <TabIntro title={t("content.title")} intro={t("content.intro")} />
 
       {verdict === "none" ? null : verdict === "good" ? (
-        <p><span role="status" data-testid="content-verdict-good" className={ui.chipOk} title={t("content.verdict.goodHelp", { date: when(report?.doneAt ?? report?.at) })}>✔ {t("content.verdict.good")}</span></p>
+        <p><span role="status" data-testid="content-verdict-good"><StatusPill tone="ok" title={t("content.verdict.goodHelp", { date: when(report?.doneAt ?? report?.at) })}>{t("content.verdict.good")}</StatusPill></span></p>
       ) : (
-        <Callout tone="info" role="status" testid="content-verdict-look"><strong>{t("content.verdict.look")}</strong> {t("content.verdict.lookHelp", { date: when(report?.doneAt ?? report?.at) })}</Callout>
+        <p><span role="status" data-testid="content-verdict-look"><StatusPill tone="warn" title={t("content.verdict.lookHelp", { date: when(report?.doneAt ?? report?.at) })}>{t("content.verdict.look")}</StatusPill></span></p>
       )}
 
       {report && (
         <ul className="flex flex-wrap gap-2" aria-label={t("content.chips")} data-testid="content-chips">
-          {SEVERITIES.map((s) => <li key={s} className={`${CHIP[s]} !px-3 !py-1 !text-sm`} data-testid={`content-chip-${s}`}>{t(`content.sev.${s}`)} · {counts[s]}</li>)}
+          {SEVERITIES.map((s) => <li key={s} data-testid={`content-chip-${s}`}><StatusPill tone={CHIP_TONE[s]}>{t(`content.sev.${s}`)} · {counts[s]}</StatusPill></li>)}
         </ul>
       )}
 
@@ -76,8 +78,7 @@ export default async function ContentHealthPage() {
         return (
           <section key={sev} className="space-y-3" data-testid={`content-section-${sev}`} aria-labelledby={`sev-${sev}`}>
             <div>
-              <h2 id={`sev-${sev}`} className="flex items-center gap-2 text-lg font-semibold"><span className={CHIP[sev]}>{t(`content.sev.${sev}`)}</span></h2>
-              <p className="mt-1 text-sm text-muted">{t(`content.sev.${sev}.help`)}</p>
+              <h2 id={`sev-${sev}`} className="flex items-center gap-2 text-lg font-semibold"><span className={CHIP[sev]}>{t(`content.sev.${sev}`)}</span><HelpTip help={t(`content.sev.${sev}.help`)} name={t(`content.sev.${sev}`)} always /></h2>
             </div>
             {here.map((g) => {
               const v = describeGroup(g, t, config.defaultLocale);

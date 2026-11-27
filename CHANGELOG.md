@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **L'entretien montre un état et une action principale par onglet.** Le bouton « Installer » des mises à jour est juste sous les versions, les notes et les options se replient, et la restauration d'une sauvegarde est une carte à part qui dit ce qui sera remplacé. Les états deviennent des pastilles.
+- **(English) Maintenance shows one state and one main action per tab.** The update “Install” button sits right under the versions, the notes and options fold away, and restoring a backup is a separate card that says what will be replaced. States become pills.
 - **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
 - **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.

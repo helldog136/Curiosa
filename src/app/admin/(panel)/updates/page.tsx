@@ -1,5 +1,5 @@
 import { adminCtx } from "@/core/admin";
-import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
+import { MaintenanceHeader, TabIntro } from "@/components/admin/MaintenanceHeader";
 import { inspectHosting } from "@/core/updates/hosting";
 import { checkForUpdate, dockerUpdatePlan, getInstallInfo, getUpdateCheck, isAutoUpdateEnabled, readStartupState, readUpdateLog, readUpdateState } from "@/core/updates/service";
 import { describeProgress, failureKey, hasRemaining } from "@/core/updates/progress";
@@ -9,7 +9,9 @@ import { CoreUpdateProgress } from "@/components/admin/CoreUpdateProgress";
 import { coreUpdateSnapshot } from "@/core/operations/coreUpdate";
 import { Markdown } from "@/components/site/Markdown";
 import { Checkbox } from "@/components/admin/Field";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { Callout, Panel } from "@/components/admin/Page";
+import { StatusPill } from "@/components/admin/StatusPill";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { ui } from "@/components/admin/ui";
 import { loadModulesUpdates } from "@/components/admin/ModulesUpdatesSection";
 import { checkNow, saveAutoUpdate, saveChannel } from "./actions";
@@ -66,7 +68,7 @@ export default async function UpdatesPage() {
   const modulesSection = !running && (
     <section className={`${ui.card} flex flex-wrap items-center justify-between gap-4 ${highlightModules ? "border-accent bg-accent/5" : ""}`} data-testid="modules-updates-link">
       <div className="min-w-0">
-        <h2 className="text-lg font-semibold">🧩 {t("updates.modules.title")}</h2>
+        <h2 className="text-lg font-semibold">{t("updates.modules.title")}</h2>
         {highlightModules && <p className="mt-1 text-sm font-semibold text-accent" data-testid="modules-remind">{t("updates.modules.remind")}</p>}
         {moduleRows.length > 0 && <p className="mt-1 text-sm leading-6 text-muted">{t("updates.modulesLink.behind", { n: moduleRows.length })}</p>}
       </div>
@@ -78,7 +80,7 @@ export default async function UpdatesPage() {
   return (
     <div className="space-y-8">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="updates" />
-      <PageHeader level={2} title={t("maint.tab.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
+      <TabIntro title={t("maint.tab.updates")} intro={t(docker ? "updates.introDocker" : "updates.intro")} />
 
       {!info.canCheck && (
         <Panel title={t("updates.yourVersion")}>
@@ -90,15 +92,14 @@ export default async function UpdatesPage() {
       {info.canUpdate && progress && (
         <section className={`${ui.card} space-y-5`} data-testid="update-running" aria-live="polite">
           <div>
-            <h2 className="text-lg font-semibold">⏳ {t("updates.runningTitle", { version: state.target ?? "" })}</h2>
-            <p className="mt-1 text-sm text-muted">{t("updates.runningHelp")}</p>
+            <h2 className="flex items-center gap-1.5 text-lg font-semibold">{t("updates.runningTitle", { version: state.target ?? "" })}<HelpTip help={t("updates.runningHelp")} name={t("updates.runningTitle", { version: state.target ?? "" })} always /></h2>
           </div>
           <CoreUpdateProgress initial={coreUpdateSnapshot(state)} unitTemplate={t("updates.versionOf", { index: "{index}", total: "{total}" })} />
           {progress.chain.length > 0 && (
             <ol className="space-y-1.5 text-sm" data-testid="update-chain">
               {progress.chain.map((c) => (
                 <li key={c.tag} className={`flex items-center gap-2 ${c.status === "waiting" ? "text-muted" : ""} ${c.status === "current" ? "font-semibold" : ""}`}>
-                  <span aria-hidden>{c.status === "done" ? "✅" : c.status === "current" ? "⏳" : "○"}</span>
+                  <span aria-hidden>{c.status === "done" ? "✓" : c.status === "current" ? "●" : "○"}</span>
                   {c.tag}
                   <span className="text-xs font-normal text-muted">{t(`updates.chain.${c.status}`)}</span>
                 </li>
@@ -111,7 +112,7 @@ export default async function UpdatesPage() {
       )}
 
       {info.canUpdate && !running && failed && fail && (
-        <Panel tone="danger" title={`❌ ${t("updates.failedTitle")}`} testid="update-failed">
+        <Panel tone="danger" title={t("updates.failedTitle")} testid="update-failed">
           <p className="text-sm leading-6">{t(fail.key)}{state.rolledBack ? ` ${t("updates.rolledBack")}` : ""}</p>
           {state.diagnostic && (
             <Callout tone="warn" testid="update-diagnostic">
@@ -126,7 +127,7 @@ export default async function UpdatesPage() {
 
       {hosting.length > 0 && (
         <Callout tone="warn" testid="update-hosting">
-          <p className="font-semibold">⚠️ {t("updates.hosting.title")}</p>
+          <p className="font-semibold">{t("updates.hosting.title")}</p>
           <ul className="mt-1 list-disc space-y-1 pl-5">
             {hosting.map((w) => <li key={`${w.code}-${w.unit ?? w.pid}`}>{t(`updates.hosting.${w.code}`, { who: w.manager === "pm2" ? `pm2${w.unit ? `, ${w.unit}` : ""}` : w.unit ?? "?" })}</li>)}
           </ul>
@@ -135,7 +136,7 @@ export default async function UpdatesPage() {
 
       {info.canUpdate && !running && partial && (
         <Callout tone="warn" testid="update-partial">
-          <p className="font-semibold">⏸️ {t("updates.partialTitle", { version: state.target ?? "" })}</p>
+          <p className="font-semibold">{t("updates.partialTitle", { version: state.target ?? "" })}</p>
           <p className="mt-1">{t("updates.partialHelp", { n: state.remaining?.length ?? 0 })}</p>
           <p className="mt-1 text-muted">{(state.remaining ?? []).join(" → ")}</p>
         </Callout>
@@ -157,7 +158,7 @@ export default async function UpdatesPage() {
                 </VersionCard>
               </>
             ) : (
-              <p className="flex-1 text-lg font-semibold" data-testid="update-uptodate">✅ {t("updates.upToDate")}</p>
+              <p className="flex-1" data-testid="update-uptodate"><StatusPill tone="ok">{t("updates.upToDate")}</StatusPill></p>
             )}
           </div>
 
@@ -165,27 +166,36 @@ export default async function UpdatesPage() {
           {check.available && check.prerelease && <Callout tone="warn">{t("updates.rcWarning")}</Callout>}
           {check.available && check.level === "major" && <Callout tone="warn">{t("updates.majorWarning")}</Callout>}
 
-          {check.available && (
-            <div className="space-y-2">
-              <h2 className="text-base font-semibold">{t("updates.whatChanges")}</h2>
-              {check.notes ? (
-                <div className="max-h-80 overflow-auto rounded-xl border border-line bg-bg p-4 text-sm" data-testid="update-notes" aria-label={t("updates.whatsNew", { version: check.latest ?? "" })}>
-                  <Markdown text={check.notes} anchors={false} />
-                </div>
-              ) : <p className="text-sm text-muted">{t("updates.noNotes")}</p>}
+          {check.available && !docker && (
+            <div className="space-y-2" data-testid="update-action">
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                <UpdateButton running={false} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} labels={updateLabels} />
+                <StatusPill tone="warn">{t("updates.status.available")}</StatusPill>
+              </div>
+              <p className="text-sm text-muted" data-testid="update-restart">{t(`updates.restart.${info.restart}`)}</p>
             </div>
           )}
 
-          {check.available && !docker && (
-            <div className="space-y-3 border-t border-line pt-5">
-              <h2 className="text-base font-semibold">{t("updates.whatHappens")}</h2>
-              <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted">
-                <li>{t("updates.happens.backup")}</li>
-                <li>{t(`updates.restart.${info.restart}`)}</li>
-                <li>{t("updates.chainNote")}</li>
-              </ul>
-              <div className="flex justify-center sm:justify-start"><UpdateButton running={false} confirm={check.prerelease ? `${t("updates.rcWarning")}\n\n${t("updates.confirm")}` : t("updates.confirm")} labels={updateLabels} /></div>
-            </div>
+          {check.available && (
+            <details className="rounded-xl border border-line" data-testid="update-details" open={check.level === "major"}>
+              <summary className="flex min-h-11 cursor-pointer select-none items-center px-4 text-base font-semibold">{t("updates.whatChanges")}</summary>
+              <div className="space-y-4 border-t border-line p-4">
+                {check.notes ? (
+                  <div className="max-h-80 overflow-auto rounded-xl border border-line bg-bg p-4 text-sm" data-testid="update-notes" aria-label={t("updates.whatsNew", { version: check.latest ?? "" })}>
+                    <Markdown text={check.notes} anchors={false} />
+                  </div>
+                ) : <p className="text-sm text-muted">{t("updates.noNotes")}</p>}
+                {!docker && (
+                  <div className="space-y-2">
+                    <h2 className="text-base font-semibold">{t("updates.whatHappens")}</h2>
+                    <ul className="list-disc space-y-1 pl-5 text-sm leading-6 text-muted">
+                      <li>{t("updates.happens.backup")}</li>
+                      <li>{t("updates.chainNote")}</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </details>
           )}
 
           {plan && (
@@ -229,27 +239,36 @@ export default async function UpdatesPage() {
       {!highlightModules && modulesSection}
 
       {info.canUpdate && (
-        <Panel title={t("updates.autoTitle")}>
-          <ActionForm action={saveAutoUpdate} submitLabel={t("action.save")} className="space-y-3">
-            <Checkbox name="auto" label={t("updates.auto")} help={t("updates.autoHelp")} defaultChecked={auto} />
-          </ActionForm>
-        </Panel>
-      )}
-
-      {info.canUpdate && advanced && (
-        <Panel title={t("updates.channelTitle")} help={t("updates.channelHelp")}>
-          <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
-            <Checkbox name="rc" label={t("updates.channelRc")} defaultChecked={check.channel === "rc"} />
-            <Checkbox name="rcRisk" label={t("updates.channelRisk")} help={t("updates.channelRiskHelp")} defaultChecked={check.channel === "rc"} />
-          </ActionForm>
-        </Panel>
+        <details className="rounded-2xl border border-line bg-surface" data-testid="update-options">
+          <summary className="flex min-h-11 cursor-pointer select-none flex-wrap items-center gap-x-3 gap-y-1 px-5 py-3 text-lg font-semibold">
+            <span>{t("updates.optionsTitle")}</span>
+            <StatusPill tone={auto ? "ok" : "neutral"}>{t(auto ? "updates.autoOn" : "updates.autoOff")}</StatusPill>
+          </summary>
+          <div className="space-y-5 border-t border-line px-5 py-4">
+            <section className="space-y-3" data-testid="update-auto">
+              <h2 className="flex items-center gap-1.5 text-base font-semibold">{t("updates.autoTitle")}<HelpTip help={t("updates.autoHelp")} name={t("updates.autoTitle")} always /></h2>
+              <ActionForm action={saveAutoUpdate} submitLabel={t("action.save")} className="space-y-3">
+                <Checkbox name="auto" label={t("updates.auto")} defaultChecked={auto} />
+              </ActionForm>
+            </section>
+            {advanced && (
+              <section className="space-y-3 border-t border-line pt-5" data-testid="update-channel">
+                <h2 className="flex items-center gap-1.5 text-base font-semibold">{t("updates.channelTitle")}<HelpTip help={t("updates.channelHelp")} name={t("updates.channelTitle")} always /></h2>
+                <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
+                  <Checkbox name="rc" label={t("updates.channelRc")} defaultChecked={check.channel === "rc"} />
+                  <Checkbox name="rcRisk" label={t("updates.channelRisk")} help={t("updates.channelRiskHelp")} defaultChecked={check.channel === "rc"} />
+                </ActionForm>
+              </section>
+            )}
+          </div>
+        </details>
       )}
 
       {info.canUpdate && finished && !running && (
         <Panel title={t("updates.last")} testid="update-last">
           <p className="text-sm">
-            {state.status === "success" && (partial ? <>⏸️ {t("updates.partialShort", { version: state.target ?? "" })}</> : <>✅ {t("updates.success", { version: state.target ?? "" })}</>)}
-            {failed && <>❌ {t("updates.failedShort", { version: state.target ?? "" })}</>}
+            {state.status === "success" && (partial ? <StatusPill tone="warn">{t("updates.partialShort", { version: state.target ?? "" })}</StatusPill> : <StatusPill tone="ok">{t("updates.success", { version: state.target ?? "" })}</StatusPill>)}
+            {failed && <StatusPill tone="danger">{t("updates.failedShort", { version: state.target ?? "" })}</StatusPill>}
             <span className="ml-2 text-muted">{when(state.finishedAt ?? state.startedAt)}</span>
           </p>
           {log && (advanced || failed) && (
