@@ -34,24 +34,27 @@ export default async function TemplatesPage({ searchParams }: { searchParams: Pr
   return (
     <div className="space-y-6">
       <div>
-        <a href={entriesHref(collection.key)} className="text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
+        <a href={entriesHref(collection.key)} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {t("entries.backTo", { name })}</a>
         <h1 className="mt-1 text-2xl font-bold">{t("entries.templates.title")}</h1>
         <p className="mt-1 text-sm text-muted">{t("entries.templates.intro")}</p>
       </div>
-      <ul className="grid gap-4 sm:grid-cols-2" data-testid="entry-templates">
-        {templates.map((tpl) => (
-          <li key={tpl.id} className={`${ui.card} flex flex-col gap-3`}>
-            <div className="min-w-0 flex-1">
-              <h2 className="text-lg font-semibold">{pickLocalized(tpl.name, locale)}</h2>
-              {tpl.description && <p className="mt-1 text-sm text-muted">{pickLocalized(tpl.description, locale)}</p>}
-            </div>
-            <form action={createFromTemplate}>
-              <input type="hidden" name="instanceKey" value={collection.key} />
-              <input type="hidden" name="template" value={tpl.id} />
-              <PendingButton variant="btn" className="min-h-11">{t("entries.templates.use")}</PendingButton>
-            </form>
-          </li>
-        ))}
+      <ul className={`${ui.card} divide-y divide-line !p-0`} data-testid="entry-templates">
+        {templates.map((tpl) => {
+          const description = tpl.description ? pickLocalized(tpl.description, locale) : "";
+          return (
+            <li key={tpl.id} className="flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3.5 sm:px-6">
+              <div className="min-w-0 flex-1 basis-56">
+                <h2 className="truncate font-medium" title={pickLocalized(tpl.name, locale)}>{pickLocalized(tpl.name, locale)}</h2>
+                {description && <p className="truncate text-sm text-muted" title={description}>{description}</p>}
+              </div>
+              <form action={createFromTemplate}>
+                <input type="hidden" name="instanceKey" value={collection.key} />
+                <input type="hidden" name="template" value={tpl.id} />
+                <PendingButton variant="btn" className="min-h-11">{t("entries.templates.use")}</PendingButton>
+              </form>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );

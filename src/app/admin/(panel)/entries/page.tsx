@@ -11,13 +11,17 @@ import { parsePageParam } from "@/core/content/pagination";
 import { entryState, type EntryState } from "@/core/content/state";
 import { entryStateCounts } from "@/core/content/dashboardCounts";
 import { ui } from "@/components/admin/ui";
+import { EmptyState } from "@/components/admin/EmptyState";
+import { HelpTip } from "@/components/admin/HelpTip";
+import { StatusPill } from "@/components/admin/StatusPill";
+import type { BadgeTone } from "@/core/blocks";
 import { LiveSearch, NoResults } from "@/components/admin/LiveSearch";
 import { Pagination } from "@/components/site/Pagination";
 import { ENTRIES_HREF, entriesHref, entryHref, entryNewHref, entryTemplatesHref, instanceHref } from "@/core/adminLinks";
 import type { Metadata } from "next";
 import { adminTitle } from "@/core/adminTitle";
 
-const CHIP: Record<EntryState, string> = { draft: ui.chipWarn, scheduled: ui.chip, expired: ui.chipWarn, published: ui.chipOk };
+const TONE: Record<EntryState, BadgeTone> = { draft: "warn", scheduled: "info", expired: "warn", published: "ok" };
 
 export async function generateMetadata({ searchParams }: { searchParams: Promise<{ c?: string }> }): Promise<Metadata> {
   const { c } = await searchParams;
@@ -60,20 +64,16 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
         icon={active?.mod.manifest.icon ?? "🧩"} active="entries" content canConfigure={canConfigure} />
 
       {list.total === 0 && !filtered ? (
-        <div className={`${ui.card} flex flex-col items-center gap-4 py-12 text-center`}>
-          <p className="text-lg font-semibold">{t("entries.emptyTitle")}</p>
-          <p className="max-w-md text-sm text-muted">{t("entries.emptyHelp")}</p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a href={newHref} className={ui.btnPrimary}>{t("entries.createFirst")}</a>
-            {templatesHref && <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a>}
-          </div>
-        </div>
+        // R18: one sentence and one button; the templates are a way in, never an obligation.
+        <EmptyState title={t("entries.emptyTitle")} action={<a href={newHref} className={ui.btnPrimary}>{t("entries.createFirst")}</a>}
+          example={templatesHref ? <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a> : undefined} testid="entries-empty" />
       ) : (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="text-sm text-muted">
-              {list.pages > 1 ? t("entries.rangeCount", { from: (list.page - 1) * list.perPage + 1, to: (list.page - 1) * list.perPage + entries.length, n: list.total }) : t("entries.count", { n: list.total })} · {t("entries.orderedBy", { sort: t(`sort.${sort}`) })}
-              {canConfigure && <> · <a href={instanceHref(collection.id)} className="underline hover:text-accent">{t("entries.changeOrder")}</a></>}
+            <p className="flex flex-wrap items-center gap-x-2 text-sm text-muted">
+              {list.pages > 1 ? t("entries.rangeCount", { from: (list.page - 1) * list.perPage + 1, to: (list.page - 1) * list.perPage + entries.length, n: list.total }) : t("entries.count", { n: list.total })}
+              <HelpTip help={t("entries.orderedBy", { sort: t(`sort.${sort}`) })} name={t("entries.count", { n: list.total })} always />
+              {canConfigure && <a href={instanceHref(collection.id)} className="inline-flex min-h-11 items-center underline hover:text-accent">{t("entries.changeOrder")}</a>}
             </p>
             <div className="flex flex-wrap items-center gap-2">
               {templatesHref && <a href={templatesHref} className={ui.btn} data-testid="entries-templates-link">{t("entries.templates.open")}</a>}
@@ -88,7 +88,7 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
             ))}
           </nav>
           <LiveSearch mode="server" scope="entries" action={ENTRIES_HREF} keep={{ c: collection.key, ...(state !== "all" ? { state } : {}) }} initialQuery={q}
-            placeholder={t("entries.searchPlaceholder")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
+            serverCount={filtered ? t("search.count", { shown: list.total, total: counts.all }) : undefined} placeholder={t("entries.searchPlaceholder")} noneLabel={t("search.none")} clearLabel={t("search.clear")} busyLabel={t("search.busy")} />
           {entries.length === 0 && <NoResults message={t("entries.noMatch")} clearLabel={t("search.clear")} href={entriesHref(collection.key, state !== "all" ? { state } : {})} />}
           {entries.length > 0 && <ul className={`${ui.card} divide-y divide-line !p-0`}>
             {entries.map(({ e, main }) => {
@@ -101,14 +101,14 @@ export default async function EntriesPage({ searchParams }: { searchParams: Prom
               return (
                 <li key={e.id} className="flex flex-wrap items-center gap-x-4 gap-y-1 px-5 py-3.5 sm:px-6">
                   <div className="min-w-0 flex-1 basis-56">
-                    <a href={entryHref(e.id)} className="font-medium hover:text-accent">
+                    <a href={entryHref(e.id)} className="block truncate font-medium hover:text-accent" title={main?.title || undefined}>
                       {e.featured && <span title={t("field.featured")} aria-label={t("field.featured")}>★ </span>}{main?.title ?? "—"}
                     </a>
                     <p className="mt-0.5 text-xs text-muted">{t("entries.updatedOn", { date: fmt.format(e.updatedAt) })}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     {/* Only what sets the row apart (R14): "Published" is the norm, and the active state filter already says it. */}
-                    {state !== "published" && state !== stateFilter && <span className={CHIP[state]}>{t(`entries.state.${state}`)}</span>}
+                    {state !== "published" && state !== stateFilter && <StatusPill tone={TONE[state]} testid="entry-state">{t(`entries.state.${state}`)}</StatusPill>}
                     {note && <span className="text-xs text-muted">{note}</span>}
                   </div>
                   {config.locales.length > 1 && (

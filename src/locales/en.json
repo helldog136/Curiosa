@@ -5382,6 +5382,8 @@
   "catalogue.showInstalledAction": "Show installed modules",
   "catalogue.allInstalledTitle": "Every module of the catalogue is on your site",
   "catalogue.unavailable": "Not available ({n})",
+  "search.results": "{n} results",
+  "search.results.one": "{n} result",
   "theme.ember": "Teal and ember",
   "theme.arcade": "Arcade",
   "theme.vinyl": "Vinyl",

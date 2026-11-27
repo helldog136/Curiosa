@@ -52,7 +52,7 @@ test("raccourcis (kit d'administration) : recherche en direct dès le départ, i
   assert.match(list, /<LiveSearch mode="server"/, "recherche en direct qui interroge le serveur (liste paginée)");
   assert.doesNotMatch(list, /list\.total > 8/, "plus de seuil : elle est là dès le premier lien");
   assert.ok(!/redirects\.searchButton/.test(list), "pas de bouton « Chercher »");
-  assert.match(list, /<Switch label=\{t\("redirects\.switch\.label"/);
+  assert.match(list, /<Switch quiet label=\{t\("redirects\.switch\.label"/);
   assert.match(list, /onToggle=\{setRedirectActive\.bind\(null, r\.id\)\}/);
   assert.ok(!/action\.disable|action\.enable|toggleRedirect/.test(list), "plus de bouton « Désactiver / Activer »");
   assert.match(list, /<RowMenu[\s\S]*<ConfirmButton menu[\s\S]*redirects\.deleteMenu/, "« Supprimer » est rangé dans le menu ⋯");

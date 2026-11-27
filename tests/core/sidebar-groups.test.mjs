@@ -53,7 +53,7 @@ test("Short links: one name in both modes, for the sidebar, the page title and t
   assert.match(layout, /NavLink/);
   assert.match(read("src/core/adminSidebar.ts"), /id: "redirects", label: "nav\.redirects", href: REDIRECTS_HREF/);
   const page = read(`${PANEL}/redirects/page.tsx`);
-  assert.match(page, /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/);
+  assert.match(page, /<PageHeader title=\{t\("nav\.redirects"\)\}/);
   assert.match(page, /t\("redirects\.line", \{ site \}\)/);
   assert.match(en["redirects.line"], /^A short address on your site that sends visitors elsewhere\. Example: /);
   assert.match(fr["redirects.line"], /^Une adresse courte de votre site qui envoie votre public ailleurs\. Par exemple : /);
