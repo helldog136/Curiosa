@@ -382,11 +382,11 @@ test("blocs : le journal (ce qui s'est passé) est le dernier bloc, dans tous le
 
 test("blocs : chaque palier voit les siens, le mode simple en a moins", () => {
   const plan = (u, advanced) => L.dashboardPlan(u, advanced);
-  assert.deepEqual(plan(editor, false).blocks, ["todo", "drafts", "create", "visits", "modules", "numbers", "activity"]);
+  assert.deepEqual(plan(editor, false).blocks, ["todo", "create", "drafts", "modules", "numbers", "visits", "activity"]);
   assert.deepEqual(plan(coordinator, false).blocks, ["health", "todo", "modules", "numbers", "storage", "activity"]);
-  assert.deepEqual(plan(admin, false).blocks, ["setup", "health", "todo", "drafts", "create", "visits", "modules", "numbers", "storage", "activity"]);
+  assert.deepEqual(plan(admin, false).blocks, ["health", "todo", "setup", "create", "drafts", "modules", "numbers", "visits", "storage", "activity"]);
   assert.deepEqual(plan(owner, true).blocks, plan(admin, false).blocks);
-  assert.deepEqual(plan(none, true).blocks, ["todo", "drafts", "create", "modules", "numbers", "activity"]);
+  assert.deepEqual(plan(none, true).blocks, ["todo", "create", "drafts", "modules", "numbers", "activity"]);
   assert.deepEqual([plan(admin, false).cards, plan(admin, true).cards], [2, 4]);
   assert.ok(!plan(editor, true).blocks.includes("setup") && !plan(editor, true).blocks.includes("health"));
   for (const u of [owner, admin, coordinator, editor, none]) for (const adv of [false, true]) assert.ok(L.dashboardPlan(u, adv).blocks.every((b) => L.BLOCKS.includes(b)));

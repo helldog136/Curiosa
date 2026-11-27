@@ -11,8 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
-- **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne : type (Connexion, Adresse, Page), état (Configuré, Dégradé, Non configuré) avec la raison, recherche en direct, filtres avec leur nombre et un seul bouton par ligne. L'adresse d'un profil se modifie dans une fenêtre ; une connexion renvoie à la page qui la produit. La page « Autres comptes » montre aussi ses adresses en tableau.
-- **(English) “Accounts and connections” is one table.** Each account and connection is a row: type (Connection, Address, Page), state (Configured, Degraded, Not configured) with the reason, live search, filters with their numbers and one button per row. A profile address is edited in a window; a connection leads to the page that produces it. The “Other accounts” page also shows its addresses as a table.
+- **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne, avec son type, son état et la raison. Recherche en direct, filtres et un seul bouton par ligne.
+- **(English) “Accounts and connections” is one table.** Each account and connection is one row, with its type, its state and the reason. Live search, filters and one button per row.
+- **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
+- **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
 - **(English) An installed piece is called “module”, everywhere.** “Extension” and “feature” are gone from the texts of the site, the AI assistant, the journal and the maintenance messages; page addresses do not change. An automatic check keeps these words from coming back.
 - **Le menu de l'administration est rangé autrement.** « En direct », « Agenda » et « Overlays » sont dans « Outils » ; « Comptes et connexions » (dans « Site ») remplace « Réseaux » et « Connexions » ; « Rôles » a son entrée, près d'« Équipe ».
