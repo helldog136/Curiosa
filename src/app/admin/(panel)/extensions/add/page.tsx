@@ -16,6 +16,9 @@ import { localized } from "@/core/modules/types";
 import { TextField } from "@/components/admin/Field";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
 import { ui } from "@/components/admin/ui";
+import { StatusPill } from "@/components/admin/StatusPill";
+import { EmptyState } from "@/components/admin/EmptyState";
+import { ShowInstalledSwitch } from "@/components/admin/ShowInstalledSwitch";
 import Link from "next/link";
 import { CatalogueDetailsLink } from "@/components/admin/CatalogueDetailsLink";
 import { CatalogueSearch } from "@/components/admin/CatalogueSearch";
@@ -31,6 +34,7 @@ import { HelpTip } from "@/components/admin/HelpTip";
 import { PendingButton } from "@/components/admin/PendingButton";
 import type { Metadata } from "next";
 import { adminTitle } from "@/core/adminTitle";
+import { UPDATES_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -40,9 +44,10 @@ export async function generateMetadata(): Promise<Metadata> {
   return adminTitle(({ t }) => `${t("nav.extensions")} \u00b7 ${t("hub.tab.catalogue")}`);
 }
 
-export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string; origin?: string }> }) {
+export default async function CataloguePage({ searchParams }: { searchParams: Promise<{ error?: string; topic?: string; origin?: string; installed?: string }> }) {
   const { t, locale, config, user, advanced } = await adminCtx("admin");
-  const { error, topic: rawTopic, origin: rawOrigin } = await searchParams;
+  const { error, topic: rawTopic, origin: rawOrigin, installed: rawInstalled } = await searchParams;
+  const showInstalled = rawInstalled === "1";
   const topic = parseTopic(rawTopic);
   const isOwner = canDo(user, "core:modules.install"); // peut installer des extensions
   // (0.47.0) The entries of personal catalogues are shown only to those who may install (the names of a private repository are not for everyone).
@@ -70,9 +75,50 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const shown = filterByTopic(entries, topic, topicsByEntry).filter((e) => !origin || (origin === "personal") === !!e.personal);
   const originHref = (o: "personal" | "official" | null) => withQuery(EXTENSIONS_ADD_HREF, { ...(topic ? { topic } : {}), ...(o ? { origin: o } : {}) });
   const personalCount = new Set(entries.filter((e) => e.personal).map((e) => e.personal!.id)).size;
-  const groups = [{ id: "recognized", title: advanced ? t("catalogue.community") : t("catalogue.community.simple"), list: shown }];
+  // What can be added comes first; what is already on the site is behind a switch (with its count); what this site cannot take yet is folded (finding F-INFO-001).
+  const canUpdateCore = canDo(user, "core:updates");
+  const blocked = (e: (typeof entries)[number]) => !e.compatible || !!e.needsNewerCore;
+  const addable = shown.filter((e) => !installed.has(e.id) && !blocked(e));
+  const unavailable = shown.filter((e) => !installed.has(e.id) && blocked(e));
+  const alreadyThere = shown.filter((e) => installed.has(e.id));
+  const hasInstalledEntries = alreadyThere.length > 0;
+  const showHref = (on: boolean) => withQuery(EXTENSIONS_ADD_HREF, { ...(topic ? { topic } : {}), ...(origin ? { origin } : {}), ...(on ? { installed: "1" } : {}) });
+  const visible = showInstalled ? [...addable, ...alreadyThere] : addable;
   // Sans réseau ni dernière copie reçue, la liste est vide : on le dit (jamais une copie locale), et « Actualiser » réessaie.
   const unreachable = source.source === "none" && entries.length === 0;
+
+  const card = (e: (typeof entries)[number]) => (
+    <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id} ${(topicsByEntry.get(e.id) ?? []).map((x) => topicTitle(x, vocab, locale)).join(" ")}`)} className={`${ui.card} flex flex-col gap-4`}>
+      <div className="flex items-start gap-4">
+        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{e.icon ?? "🧩"}</span>
+        <div className="min-w-0">
+          <p className="text-lg font-semibold leading-tight">{L(e.name)}{advanced && e.version && <span className="ml-2 text-xs font-normal text-muted">v{e.version}</span>}</p>
+          <p className="mt-1 line-clamp-4 text-sm leading-5 text-muted">{L(e.description)}</p>
+          {advanced && e.repo && e.origin === "extra" && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
+        </div>
+      </div>
+      {(topicsByEntry.get(e.id) ?? []).length > 0 && (
+        <p className="text-sm text-muted" data-testid={`topics-${e.id}`}>
+          {t("catalogue.addsTo")}{" "}
+          {(topicsByEntry.get(e.id) ?? []).map((x, i) => <span key={x}>{i > 0 ? ", " : ""}<a href={`${EXTENSIONS_ADD_HREF}?topic=${x}`} className="underline hover:text-accent">{topicTitle(x, vocab, locale)}</a></span>)}
+        </p>
+      )}
+      {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
+      {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
+      <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
+        <span className="flex flex-wrap items-center gap-2">{e.personal ? <StatusPill tone="warn" testid={`origin-${e.id}`}>{t(personalCount > 1 ? "catalogue.pill.personalNamed" : "catalogue.pill.personal", { name: e.personal.name })}</StatusPill> : e.origin === "extra" && <StatusPill tone="warn">{t("catalogue.origin.extra")}</StatusPill>}{e.suggested && <StatusPill tone="ok">{t("catalogue.suggested")}</StatusPill>}</span>
+        {installed.has(e.id) ? (
+          <span className="flex flex-wrap items-center gap-2"><StatusPill tone="ok">{t("catalogue.installed")}</StatusPill><a href={EXTENSIONS_HREF} className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline">{t("catalogue.installedOpen")}</a></span>
+        ) : !e.compatible ? (
+          <StatusPill tone="warn">{t("catalogue.incompatible")}</StatusPill>
+        ) : e.needsNewerCore ? (
+          <span className="flex flex-wrap items-center gap-2"><StatusPill tone="warn">{t("modules.core.badge", { version: e.needsNewerCore, current: getCoreVersion() })}</StatusPill>{canUpdateCore && <a href={UPDATES_HREF} className="inline-flex min-h-11 items-center text-sm font-medium text-accent hover:underline" data-testid={`core-update-${e.id}`}>{t("catalogue.updateCore")}</a>}</span>
+        ) : (
+          <CatalogueDetailsLink href={withQuery(EXTENSIONS_ADD_DETAILS_HREF, { id: e.id })} query={`id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary} pendingLabel={t("progress.opening")}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</CatalogueDetailsLink>
+        )}
+      </div>
+    </li>
+  );
 
   return (
     <div className="space-y-8">
@@ -80,7 +126,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       {/* R2: the task is finding an extension, so the search and the one compact filter come first; the freshness of the list is one small line (exact time in the tooltip). */}
       <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3">
-        <div className="min-w-0 flex-1 basis-full sm:basis-64"><CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} /></div>
+        <div className="min-w-0 flex-1 basis-full sm:basis-64"><CatalogueSearch placeholder={t("catalogue.search")} noneLabel={t("catalogue.searchNone")} clearLabel={t("catalogue.searchClear")} countLabel={t("search.count")} /></div>
         <TopicPicker options={facets.map((f) => ({ ...f, href: `${EXTENSIONS_ADD_HREF}?topic=${f.id}` }))} current={topic} allHref={EXTENSIONS_ADD_HREF}
           labels={{ label: t("catalogue.addsTo"), search: t("catalogue.topicSearch"), none: t("catalogue.topicNoMatch"), all: t("catalogue.topicAll"), remove: t("catalogue.topicRemove", { name: "{name}" }), list: t("catalogue.addsTo") }} />
       </div>
@@ -94,45 +140,27 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       </div>
       {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error.startsWith("modules.error.") ? t(error) : t("error.generic")}</p>}
 
-      {groups.map((g) => g.list.length > 0 && (
-        <section key={g.id} data-catalogue-section className="space-y-4">
-          <h2 className="sr-only">{g.title}</h2>
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {g.list.map((e) => (
-              <li key={e.id} data-catalogue-item data-search={fold(`${L(e.name)} ${L(e.description)} ${e.id} ${(topicsByEntry.get(e.id) ?? []).map((x) => topicTitle(x, vocab, locale)).join(" ")}`)} className={`${ui.card} flex flex-col gap-4`}>
-                <div className="flex items-start gap-4">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-2xl" aria-hidden>{e.icon ?? "🧩"}</span>
-                  <div className="min-w-0">
-                    <p className="text-lg font-semibold leading-tight">{L(e.name)}{advanced && e.version && <span className="ml-2 text-xs font-normal text-muted">v{e.version}</span>}</p>
-                    <p className="mt-1 line-clamp-4 text-sm leading-5 text-muted">{L(e.description)}</p>
-                    {advanced && e.repo && e.origin === "extra" && <p className="mt-1 break-all font-mono text-xs text-muted">{e.repo}{e.ref ? `#${e.ref}` : ""}</p>}
-                  </div>
-                </div>
-                {(topicsByEntry.get(e.id) ?? []).length > 0 && (
-                  <p className="text-sm text-muted" data-testid={`topics-${e.id}`}>
-                    {t("catalogue.addsTo")}{" "}
-                    {(topicsByEntry.get(e.id) ?? []).map((x, i) => <span key={x}>{i > 0 ? ", " : ""}<a href={`${EXTENSIONS_ADD_HREF}?topic=${x}`} className="underline hover:text-accent">{topicTitle(x, vocab, locale)}</a></span>)}
-                  </p>
-                )}
-                {keptIds.has(e.id) && <p className="rounded-xl bg-accent/10 px-3 py-2 text-sm" data-testid={`kept-card-${e.id}`}>🗂 {t("kept.cardNote", { name: L(e.name) })}</p>}
-                {plans.get(e.id) && <DependencyPlanBox view={plans.get(e.id)!} t={t} names={names} compact />}
-                <div className="mt-auto flex flex-wrap items-center justify-between gap-3">
-                  <span className="flex flex-wrap items-center gap-2">{e.personal ? <span className={ui.chipWarn} data-testid={`origin-${e.id}`}>⚠ {t(personalCount > 1 ? "catalogue.pill.personalNamed" : "catalogue.pill.personal", { name: e.personal.name })}</span> : e.origin === "extra" && <span className={ui.chipWarn}>⚠ {t("catalogue.origin.extra")}</span>}{e.suggested && <span className={ui.chipOk}>⭐ {t("catalogue.suggested")}</span>}</span>
-                  {installed.has(e.id) ? (
-                    <a href={EXTENSIONS_HREF} className="text-sm font-medium text-accent hover:underline">{t("catalogue.installed")}</a>
-                  ) : !e.compatible ? (
-                    <span className="text-sm text-muted">{t("catalogue.incompatible")}</span>
-                  ) : e.needsNewerCore ? (
-                    <span className="text-sm text-muted">{t("modules.core.badge", { version: e.needsNewerCore, current: getCoreVersion() })}</span>
-                  ) : (
-                    <CatalogueDetailsLink href={withQuery(EXTENSIONS_ADD_DETAILS_HREF, { id: e.id })} query={`id=${encodeURIComponent(e.id)}`} className={ui.btnPrimary} pendingLabel={t("progress.opening")}>{advanced ? t("catalogue.details") : t("catalogue.details.simple")}</CatalogueDetailsLink>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
+      {hasInstalledEntries && (
+        <ShowInstalledSwitch on={showInstalled} onHref={showHref(true)} offHref={showHref(false)} label={t("catalogue.showInstalled", { n: alreadyThere.length })} />
+      )}
+      {visible.length > 0 && (
+        <section data-catalogue-section className="space-y-4">
+          <h2 className="sr-only">{advanced ? t("catalogue.community") : t("catalogue.community.simple")}</h2>
+          <ul className="grid gap-4 sm:grid-cols-2">{visible.map((e) => card(e))}</ul>
         </section>
-      ))}
+      )}
+      {visible.length === 0 && entries.length > 0 && !topic && !origin && addable.length === 0 && alreadyThere.length > 0 && unavailable.length === 0 && (
+        <EmptyState testid="catalogue-all-installed" title={t("catalogue.allInstalledTitle")} action={<a href={showHref(true)} className={ui.btn}>{t("catalogue.showInstalledAction")}</a>} />
+      )}
+      {unavailable.length > 0 && (
+        <details data-catalogue-section className="group rounded-2xl border border-line bg-surface" data-testid="catalogue-unavailable">
+          <summary className="flex min-h-11 cursor-pointer list-none items-center gap-2 px-4 py-2 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+            <span aria-hidden className="text-[10px] text-muted transition-transform group-open:rotate-90">▶</span>
+            {t("catalogue.unavailable", { n: unavailable.length })}
+          </summary>
+          <ul className="grid gap-4 border-t border-line p-4 sm:grid-cols-2">{unavailable.map((e) => card(e))}</ul>
+        </details>
+      )}
       {keptGroups.length > 0 && (
         <section className="space-y-3" data-testid="kept-groups">
           <div>
@@ -166,7 +194,9 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         </div>
       )}
       {topic && shown.length === 0 && entries.length > 0 && <p className="text-muted" data-testid="topic-none">{t("catalogue.topicNone")} <a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("catalogue.topicClear")}</a></p>}
-      {entries.length === 0 && !unreachable && <p className="text-muted">{t("catalogue.empty")}</p>}
+      {entries.length === 0 && !unreachable && (isOwner
+        ? <EmptyState testid="catalogue-empty" title={t("catalogue.empty")} action={<form action={refreshCatalogueAction}><PendingButton pendingLabel={t("progress.checking")}>{t("catalogue.refresh")}</PendingButton></form>} />
+        : <p className="text-muted">{t("catalogue.empty")}</p>)}
 
       {isOwner && advanced && (
         <section className={`${ui.card} space-y-4`}>
