@@ -925,7 +925,7 @@
    "request": false,
    "source": "maintenance",
    "audited": true,
-   "sha": "ddcf4d35a845369c"
+   "sha": "101f1355223fffde"
   },
   {
    "name": "maintenance_available_operations",
@@ -947,7 +947,7 @@
    "request": false,
    "source": "maintenance",
    "audited": true,
-   "sha": "209b86da6c966228"
+   "sha": "d8f5f1daa2c354c3"
   },
   {
    "name": "maintenance_health",
@@ -1389,44 +1389,44 @@
   {
    "action": "module_update",
    "audit": "etoile-nord",
-   "en": "Update the feature \"ETOILE-NORD\" from version 1.0.0 to version 1.1.0.",
-   "fr": "Mettre à jour la fonctionnalité « ETOILE-NORD » de la version 1.0.0 vers la version 1.1.0."
+   "en": "Update the module \"ETOILE-NORD\" from version 1.0.0 to version 1.1.0.",
+   "fr": "Mettre à jour le module « ETOILE-NORD » de la version 1.0.0 vers la version 1.1.0."
   },
   {
    "action": "modules_update_all",
    "audit": "etoile-nord 1.0.0>1.1.0, lune-douce 2.0.0>2.0.1",
-   "en": "Update 2 features: ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1).",
-   "fr": "Mettre à jour 2 fonctionnalités : ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1)."
+   "en": "Update 2 modules: ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1).",
+   "fr": "Mettre à jour 2 modules : ETOILE-NORD (1.0.0 → 1.1.0), LUNE-DOUCE (2.0.0 → 2.0.1)."
   },
   {
    "action": "module_uninstall",
    "audit": "etoile-nord keepData",
-   "en": "Uninstall the feature \"ETOILE-NORD\", keeping its data aside (it comes back if the feature is installed again).",
-   "fr": "Désinstaller la fonctionnalité « ETOILE-NORD » en gardant ses données de côté (elles reviennent si elle est réinstallée)."
+   "en": "Uninstall the module \"ETOILE-NORD\", keeping its data aside (it comes back if the module is installed again).",
+   "fr": "Désinstaller le module « ETOILE-NORD » en gardant ses données de côté (elles reviennent si le module est réinstallé)."
   },
   {
    "action": "module_uninstall",
    "audit": "etoile-nord erase",
-   "en": "Uninstall the feature \"ETOILE-NORD\" AND erase all its data.",
-   "fr": "Désinstaller la fonctionnalité « ETOILE-NORD » ET effacer toutes ses données."
+   "en": "Uninstall the module \"ETOILE-NORD\" AND erase all its data.",
+   "fr": "Désinstaller le module « ETOILE-NORD » ET effacer toutes ses données."
   },
   {
    "action": "module_install",
    "audit": "journal 1.2.0 key=journal-news + fournisseur, autre",
-   "en": "Install the feature \"Journal\" (version 1.2.0) and create its first instance. It comes with: Fournisseur, AUTRE.",
-   "fr": "Installer la fonctionnalité « Journal » (version 1.2.0) et lui créer sa première instance. Elle arrive avec : Fournisseur, AUTRE."
+   "en": "Install the module \"Journal\" (version 1.2.0) and create its first instance. It comes with: Fournisseur, AUTRE.",
+   "fr": "Installer le module « Journal » (version 1.2.0) et lui créer sa première instance. Il arrive avec : Fournisseur, AUTRE."
   },
   {
    "action": "module_install",
    "audit": "journal 1.2.0",
-   "en": "Install the feature \"Journal\" (version 1.2.0) and create its first instance.",
-   "fr": "Installer la fonctionnalité « Journal » (version 1.2.0) et lui créer sa première instance."
+   "en": "Install the module \"Journal\" (version 1.2.0) and create its first instance.",
+   "fr": "Installer le module « Journal » (version 1.2.0) et lui créer sa première instance."
   },
   {
    "action": "module_install",
    "audit": "journal 1.2.0, liens 0.3.0",
-   "en": "Install 2 features in one go. Read each one before approving. “JOURNAL” (version 1.2.0). “LIENS” (version 0.3.0). It comes with: JOURNAL.",
-   "fr": "Installer 2 fonctionnalités d'un coup. Lisez chacune avant d'approuver. « JOURNAL » (version 1.2.0). « LIENS » (version 0.3.0). Elle arrive avec : JOURNAL."
+   "en": "Install 2 modules in one go. Read each one before approving. “JOURNAL” (version 1.2.0). “LIENS” (version 0.3.0). It comes with: JOURNAL.",
+   "fr": "Installer 2 modules d'un coup. Lisez chacun avant d'approuver. « JOURNAL » (version 1.2.0). « LIENS » (version 0.3.0). Il arrive avec : JOURNAL."
   },
   {
    "action": "skin_install",
@@ -1479,8 +1479,8 @@
   {
    "action": "instance_add",
    "audit": "journal \"Actus\"",
-   "en": "Add another one of the feature \"JOURNAL\", named \"Actus\".",
-   "fr": "Ajouter un exemplaire de plus de la fonctionnalité « JOURNAL », nommé « Actus »."
+   "en": "Add another one of the module \"JOURNAL\", named \"Actus\".",
+   "fr": "Ajouter un exemplaire de plus du module « JOURNAL », nommé « Actus »."
   },
   {
    "action": "entry_publish",

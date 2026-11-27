@@ -147,7 +147,7 @@ test("module_install {modules}: ONE request the owner approves as a whole; the o
   assert.equal(await db.prisma.module.count(), 0);
   assert.equal((await Q.listRequests()).filter((x) => x.status === "pending").length, 1, "a bundle counts as one request");
   const text = describeRequest(await Q.getRequest(r.requestId), makeTranslator("en"), (x) => x);
-  assert.match(text, /Install 2 features in one go/);
+  assert.match(text, /Install 2 modules in one go/);
   assert.ok(text.includes("Workshop") && text.includes("Journal") && text.includes("Address book"), "every module and what comes along are written out");
   // the same call returns the waiting request
   assert.equal((await call(token, "maintenance_module_install", { modules: ["atelier", "journal"] })).value.requestId, r.requestId);
@@ -192,7 +192,7 @@ test("instance_add: another instance of a module that allows several; ALWAYS wai
   const r = (await call(token, "maintenance_instance_add", { module: "journal", nickname: "News" })).value;
   assert.equal(r.status, "pending_approval", "even in \"act without asking\": a new instance may get a public page");
   assert.equal(await db.prisma.moduleInstance.count({ where: { moduleId: "journal" } }), 1);
-  assert.match(describeRequest(await Q.getRequest(r.requestId), makeTranslator("en"), (x) => x), /Add another one of the feature "journal", named "News"/);
+  assert.match(describeRequest(await Q.getRequest(r.requestId), makeTranslator("en"), (x) => x), /Add another one of the module "journal", named "News"/);
   assert.equal((await M.approveRequest(r.requestId, owner)).ok, true);
   const rows = await db.prisma.moduleInstance.findMany({ where: { moduleId: "journal" } });
   assert.equal(rows.length, 2);

@@ -158,6 +158,6 @@ test("textes : français et anglais, vouvoiement, pas de jargon en mode simple",
   }
   assert.equal(fr["dashboard.published"], "Contenus publiés");
   assert.doesNotMatch(Object.entries(fr).filter(([k]) => /^(dashboard\.(toFinish|draft|shortLinks|extensions)|drafts\.)/.test(k)).map(([, v]) => v).join(" "), /instance|entrée/i);
-  assert.equal(fr["dashboard.extensions"], "Extensions installées");
-  assert.doesNotMatch(fr["dashboard.extensions"], /instance|module/i);
+  assert.equal(fr["dashboard.extensions"], "Modules installés");
+  assert.doesNotMatch(fr["dashboard.extensions"], /instance/i);
 });

@@ -97,7 +97,7 @@ export type CatalogueRead =
 export async function readCatalogue(): Promise<CatalogueRead> {
   const got = await withTimeout(deps.catalogue().catch(() => null), deps.catalogTimeoutMs);
   if (!got.ok || !got.value || got.value.source === "none") {
-    return { ok: false, reply: { available: false, reason: "catalogue_unreachable", message: "The module catalogue cannot be reached right now (no network answer and no earlier copy). Nothing is wrong with the site. Try again in a few minutes; the owner can also look at Admin > Extensions > Add an extension." } };
+    return { ok: false, reply: { available: false, reason: "catalogue_unreachable", message: "The module catalogue cannot be reached right now (no network answer and no earlier copy). Nothing is wrong with the site. Try again in a few minutes; the owner can also look at Admin > Modules > Add a module." } };
   }
   // Entries of a PRIVATE personal repository are not shown to an assistant at all (their names are the owner's business); those of a public one are, flagged "personal" and never installable.
   return { ok: true, entries: await visibleToAssistant(got.value.entries), source: got.value.source, fetchedAt: got.value.fetchedAt };
@@ -116,8 +116,8 @@ const originOf = (e: CatalogueEntry): "official" | "extra" | "personal" => (e.pe
 export function installability(e: CatalogueEntry): { installable: true } | { installable: false; reason: string } {
   if (!e.compatible) return { installable: false, reason: "It was made for another generation of Curiosa modules." };
   if (e.needsNewerCore) return { installable: false, reason: `It needs Curiosa ${e.needsNewerCore} or newer; this site runs ${getCoreVersion()}. Updating Curiosa first would unlock it.` };
-  if (e.personal) return { installable: false, reason: `It comes from a personal catalogue (${text(e.personal.name, 40)}) that the owner registered: only the owner can install or update it, by hand, in Admin > Extensions > Add an extension. An assistant never does.` };
-  if (e.origin === "extra") return { installable: false, reason: "It is not verified by the official catalogue: only the owner can install it, by hand, in Admin > Extensions > Add an extension." };
+  if (e.personal) return { installable: false, reason: `It comes from a personal catalogue (${text(e.personal.name, 40)}) that the owner registered: only the owner can install or update it, by hand, in Admin > Modules > Add a module. An assistant never does.` };
+  if (e.origin === "extra") return { installable: false, reason: "It is not verified by the official catalogue: only the owner can install it, by hand, in Admin > Modules > Add a module." };
   return { installable: true };
 }
 

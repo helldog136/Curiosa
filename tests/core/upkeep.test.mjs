@@ -260,7 +260,8 @@ test("textes : aucun mot interdit (R9), libellés ≤ 60 caractères sans deux-p
     assert.deepEqual(forbiddenWords(d[k]), [], `${lang} ${k} : ${d[k]}`);
     assert.doesNotMatch(d[k], /!|veuillez/i, `${lang} ${k}`);
     assert.deepEqual(toneProblems(d[k], lang), [], `${lang} ${k} : ${d[k]}`);
-    assert.doesNotMatch(d[k], /collection|migration|h[ée]ritage|legacy|\bmodule\b/i, `${lang} ${k} : mot de développeur dans « ${d[k]} »`);
+    // R34 / ADR 0011: "module" is THE word for an installed piece, not developer jargon.
+    assert.doesNotMatch(d[k], /collection|migration|h[ée]ritage|legacy/i, `${lang} ${k} : mot de développeur dans « ${d[k]} »`);
   }
   for (const k of KEYS.filter((x) => /^upkeep\.(row|group|filter|action|search)\.?[\w.]*$/.test(x) && !/\.(text|help)$/.test(x) && !x.endsWith("absent.named")))
     for (const lang of [fr, en]) assert.deepEqual(labelProblems(lang[k]), [], k);

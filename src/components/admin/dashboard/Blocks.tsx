@@ -316,7 +316,7 @@ export async function CardsBlock({ c, max }: { c: BlockCtx; max: number }) {
   const cards = (await moduleCards(env(c)).catch(() => [])).slice(0, max);
   if (cards.length === 0) return null;
   return (
-    <section aria-label="Extensions" data-testid="dash-cards" className="grid gap-4 sm:grid-cols-2">
+    <section aria-label="Modules" data-testid="dash-cards" className="grid gap-4 sm:grid-cols-2">
       {cards.map((card) => {
         const body = (
           <>
