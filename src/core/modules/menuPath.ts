@@ -27,7 +27,7 @@ export const KNOWN_GROUPS: readonly KnownGroup[] = [
   { id: "live", en: "Live", fr: "En direct", icon: "🔴", aliases: ["en-direct"] },
   { id: "calendar", en: "Calendar", fr: "Agenda", icon: "📅", aliases: ["agenda"] },
   { id: "obs", en: "Overlays", fr: "Overlays", icon: "🎥" },
-  { id: "networks", en: "Networks", fr: "Réseaux", icon: "🌐", aliases: ["network", "reseaux", "reseau"] },
+  { id: "networks", en: "Accounts and connections", fr: "Comptes et connexions", icon: "🔌", aliases: ["network", "reseaux", "reseau"] },
   { id: "twitch", en: "Twitch", fr: "Twitch", icon: "🟣" },
   { id: "youtube", en: "YouTube", fr: "YouTube", icon: "▶️" },
   { id: "discord", en: "Discord", fr: "Discord", icon: "💬" },
@@ -192,4 +192,40 @@ export function buildMenuTree<T extends TreeItem>(items: readonly T[], locale: s
 /** Every address-bearing entry below a node, for "is the current page in this group". */
 export function nodeEntries<T extends TreeItem>(n: MenuNode<T>): T[] {
   return [...n.entries, ...n.children.flatMap(nodeEntries)];
+}
+
+// ─── Arrangement of the root groups (C2b) ───────────────────────────────────
+
+/** Root groups that live INSIDE the Tools section (Live, Calendar, Overlays), in display order. */
+export const TOOLS_SUBGROUPS: readonly string[] = ["live", "calendar", "obs"];
+/** Root groups that no longer have a place in the sidebar: their pages are listed on the Accounts and connections page. */
+export const CONNECTION_GROUPS: readonly string[] = ["networks"];
+
+/**
+ * Splits the top-level groups of the tree: the ones that nest under Tools, the ones that move to the Accounts and connections page, and the others
+ * (a group a module invented keeps its own place, as before). The order of each list is the order of the tree.
+ */
+export function arrangeGroups<T extends TreeItem>(groups: readonly MenuNode<T>[]): { tools: MenuNode<T>[]; connections: MenuNode<T>[]; rest: MenuNode<T>[] } {
+  const tools = groups.filter((g) => TOOLS_SUBGROUPS.includes(g.id));
+  const connections = groups.filter((g) => CONNECTION_GROUPS.includes(g.id));
+  const rest = groups.filter((g) => !TOOLS_SUBGROUPS.includes(g.id) && !CONNECTION_GROUPS.includes(g.id));
+  return { tools, connections, rest };
+}
+
+/** What the Accounts and connections page lists: a heading (null: the entries of the section itself) and its entries, groups flattened one level. */
+export type ConnectionBlock<T extends TreeItem> = { id: string; title: string | null; entries: T[] };
+
+/**
+ * The content of the Accounts and connections page, from what the sidebar used to show: the pinned modules of the Connections section, then the Networks group
+ * (its own entries, then one block per sub-group: Twitch, YouTube...). Nothing is dropped; an empty block is not returned.
+ */
+export function connectionBlocks<T extends TreeItem>(tree: MenuTree<T>, sectionEntries: readonly T[]): ConnectionBlock<T>[] {
+  const section = tree.sections.connections;
+  const nets = tree.groups.filter((g) => CONNECTION_GROUPS.includes(g.id));
+  const own = [...sectionEntries, ...(section?.entries ?? []), ...nets.flatMap((g) => g.entries)];
+  const out: ConnectionBlock<T>[] = own.length > 0 ? [{ id: "connections", title: null, entries: own }] : [];
+  const push = (n: MenuNode<T>) => { if (n.entries.length > 0) out.push({ id: n.path.join("."), title: n.title, entries: n.entries }); n.children.forEach(push); };
+  section?.children.forEach(push);
+  nets.forEach((g) => g.children.forEach(push));
+  return out;
 }

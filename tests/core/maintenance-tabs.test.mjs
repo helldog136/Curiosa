@@ -39,8 +39,8 @@ test("onglets d'Entretien par rôle et par mode", () => {
 });
 
 test("une seule entrée « Entretien » dans Administration, plus les cinq anciennes", () => {
-  assert.deepEqual(M.administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
-  assert.deepEqual(M.administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"], "le journal d'activité ne rajoute pas d'entrée");
+  assert.deepEqual(M.administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"]);
+  assert.deepEqual(M.administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"], "le journal d'activité ne rajoute pas d'entrée");
   assert.ok(!M.administrationEntries({ role: "editor", advanced: true }).includes("maintenance"));
   const layout = read("src/app/admin/(panel)/layout.tsx");
   for (const gone of ["nav.health", "nav.backup", "nav.updates", "nav.upkeep\"", "nav.audit"]) assert.ok(!layout.includes(gone), gone);

@@ -18,7 +18,7 @@ import { pendingTwinOffer } from "@/core/overlays/twinOffer";
 import { NavLink } from "@/components/admin/NavLink";
 import { NavGroup } from "@/components/admin/NavGroup";
 import { MenuTreeNav } from "@/components/admin/MenuTreeNav";
-import { buildMenuTree, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
+import { arrangeGroups, buildMenuTree, connectionBlocks, nodeEntries, type TreeItem } from "@/core/modules/menuPath";
 import { currentVocabulary, fullyPlacedInstances, placeIndexFor } from "@/core/modules/placesLoad";
 import { placeBadges, qualifyLabels } from "@/core/modules/places";
 import { SettingsSearch } from "@/components/admin/SettingsSearch";
@@ -40,7 +40,7 @@ import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { MenuIcon } from "@/components/admin/MenuIcon";
-import { ACCOUNT_LINKS, DASHBOARD_LINK, SECTION_STATE_ID, SECTIONS_CLOSED_BY_DEFAULT, adminLink, capEntries, entryAlso, entryHref, entryIconKey, entryTargets, groupIconKey, initialOf, moreStateId, siteLinks, unpinnedPageTargets, type MenuIconKey, type SidebarLink } from "@/core/adminSidebar";
+import { ACCOUNT_LINKS, CONNECTIONS_LINK, DASHBOARD_LINK, SECTION_STATE_ID, SECTIONS_CLOSED_BY_DEFAULT, adminLink, capEntries, entryAlso, entryHref, entryIconKey, entryTargets, groupIconKey, initialOf, moreStateId, siteLinks, unpinnedPageTargets, type MenuIconKey, type SidebarLink } from "@/core/adminSidebar";
 import { ADMIN_HREF, LOGIN_HREF, OVERLAY_PAGES_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +91,11 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   type Entry = (typeof nav)[number] | PlaceItem;
   const tree = buildMenuTree<Entry>([...nav, ...placeItems, ...overlayCustom], locale);
   const treeItems = [...Object.values(tree.sections).flatMap((n) => (n ? nodeEntries(n) : [])), ...tree.groups.flatMap(nodeEntries)];
+  // (C2b) Live, Calendar and Overlays live inside Tools; the Networks group and the Connections section leave the sidebar for the « Accounts and connections » entry of Site.
+  const arranged = arrangeGroups(tree.groups);
+  const connectionLinks = connectionBlocks(tree, menu.connections).flatMap((b) => b.entries);
+  // Shown to whoever has something to open there, and to the administration (whose page then says how to add a connection).
+  const showConnections = connectionLinks.length > 0 || canManage;
   const navState = parseNavState((await cookies()).get(NAV_STATE_COOKIE)?.value);
   const isPlace = (m: Entry): m is PlaceItem => "place" in m;
   const badgeText = (m: Entry) => (isPlace(m) && m.badgeTip ? `${t("nav.badge.todo")} — ${m.badgeTip}` : t("nav.badge.todo"));
@@ -124,9 +129,9 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     const extra = tree.sections[id];
     for (const m of [...menu[id], ...(extra ? nodeEntries(extra) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections[id]) });
   }
-  for (const n of tree.groups) for (const m of nodeEntries(n)) r12.push({ id: m.id, label: alone(n) ? (m as PlaceItem).fullName! : m.name, group: n.title });
-  for (const m of [...menu.connections, ...(tree.sections.connections ? nodeEntries(tree.sections.connections) : [])]) r12.push({ id: m.id, label: m.name, group: t(K.sections.connections) });
+  for (const n of [...arranged.tools, ...arranged.rest]) for (const m of nodeEntries(n)) r12.push({ id: m.id, label: alone(n) ? (m as PlaceItem).fullName! : m.name, group: n.title });
   for (const [id, key] of K.site.entries) r12.push({ id: `core:${id}`, label: t(key), group: t(K.site.heading) });
+  if (showConnections) r12.push({ id: `core:${CONNECTIONS_LINK.id}`, label: t(K.site.connections), group: t(K.site.heading) });
   for (const id of adminEntries) r12.push({ id: `core:${id}`, label: t(K.admin.entries[id]), group: t(K.admin.heading) });
   for (const [id, key] of K.account.entries) r12.push({ id: `core:${id}`, label: t(key), group: t(K.account.heading) });
   const qualified = qualifyLabels(r12).labels;
@@ -136,14 +141,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     extensions: { count: extensions.count, label: extensionsLabel },
     assistants: { count: aiWaiting, label: t("nav.badge.ai") },
     users: { count: 0, label: "" },
+    roles: { count: 0, label: "" },
     maintenance: { count: maintenanceBadge, label: t("nav.badge.maintenance") },
   };
   const coreLink = (l: SidebarLink, badge?: { count: number; label: string }) => (
-    <NavLink key={l.id} href={l.href} also={[...l.also]} icon={l.icon} badge={badge?.count ?? 0} badgeLabel={badge?.label} {...(l.exact ? { exact: true } : {})} {...(l.external ? { external: true, newTabLabel: t("nav.newTab") } : {})}>{t(l.label)}</NavLink>
+    <NavLink key={l.id} href={l.href} also={[...l.also]} icon={l.icon} {...(l.exceptHash ? { exceptHash: l.exceptHash } : {})} badge={badge?.count ?? 0} badgeLabel={badge?.label} {...(l.exact ? { exact: true } : {})} {...(l.external ? { external: true, newTabLabel: t("nav.newTab") } : {})}>{t(l.label)}</NavLink>
   );
   const stateOf = (id: keyof typeof SECTION_STATE_ID) => navState[SECTION_STATE_ID[id]];
   const openDefault = (id: keyof typeof SECTION_STATE_ID) => !SECTIONS_CLOSED_BY_DEFAULT.includes(SECTION_STATE_ID[id]);
-  const siteList = openable(user, siteLinks({ canManage, editor }), owners);
+  const connectionsLink: SidebarLink | null = showConnections && canOpen(user, CONNECTIONS_LINK.href, owners) ? { ...CONNECTIONS_LINK, also: connectionLinks.flatMap(entryTargets) } : null;
+  const siteList = [...openable(user, siteLinks({ canManage, editor }), owners), ...(connectionsLink ? [connectionsLink] : [])];
   const adminList = adminEntries.map((id) => ({ id, link: adminLink(id, { tabs: maintenanceTabList, unpinnedPages }) })).filter(({ link }) => canOpen(user, link.href, owners));
   const targetsOf = (ls: readonly { href: string; also: readonly string[] }[]) => ls.flatMap((l) => [l.href, ...l.also]);
   const sectionBadge = (items: Entry[], extra?: { badge: number }) => items.reduce((n, m) => n + m.badge, 0) + (extra?.badge ?? 0);
@@ -183,12 +190,13 @@ export default async function PanelLayout({ children }: { children: React.ReactN
           {coreLink(DASHBOARD_LINK)}
           {([["content", menu.content], ["community", menu.community], ["tools", menu.tools]] as const).map(([id, items]) => {
             const extra = tree.sections[id];
-            if (items.length === 0 && !extra) return null;
+            const groupsInside = id === "tools" ? arranged.tools : [];
+            if (items.length === 0 && !extra && groupsInside.length === 0) return null;
             const { shown: first, more } = capEntries<Entry>(items);
-            const targets = [...items.flatMap(treeTargets), ...(extra ? nodeEntries(extra).flatMap(treeTargets) : [])];
+            const targets = [...items.flatMap(treeTargets), ...(extra ? nodeEntries(extra).flatMap(treeTargets) : []), ...groupsInside.flatMap(nodeEntries).flatMap(treeTargets)];
             return (
               <div key={id} data-testid={`nav-section-${id}`}>
-                <NavGroup id={SECTION_STATE_ID[id]} title={t(`nav.${id}`)} icon={groupIconKey(id)} targets={targets} stored={stateOf(id)} openByDefault={openDefault(id)} badge={sectionBadge(items, extra)} badgeLabel={t("nav.badge.todo")}>
+                <NavGroup id={SECTION_STATE_ID[id]} title={t(`nav.${id}`)} icon={groupIconKey(id)} targets={targets} stored={stateOf(id)} openByDefault={openDefault(id)} badge={sectionBadge(items, extra) + groupsInside.reduce((n, g) => n + g.badge, 0)} badgeLabel={t("nav.badge.todo")}>
                   {first.map(entryLink)}
                   {more.length > 0 && (
                     <NavGroup id={moreStateId(id)} plain title={t("nav.more", { n: more.length })} icon="plus" targets={more.flatMap(treeTargets)} stored={navState[moreStateId(id)]} openByDefault={false} badge={sectionBadge(more)} badgeLabel={t("nav.badge.todo")}>
@@ -197,25 +205,16 @@ export default async function PanelLayout({ children }: { children: React.ReactN
                   )}
                   {extra?.entries.map(entryLink)}
                   {extra && treeNodes(extra.children)}
+                  {treeNodes(groupsInside)}
                 </NavGroup>
               </div>
             );
           })}
-          {tree.groups.length > 0 && (
+          {arranged.rest.length > 0 && (
             <div data-testid="nav-tree">
-              {treeNodes(tree.groups)}
+              {treeNodes(arranged.rest)}
             </div>
           )}
-          {(menu.connections.length > 0 || tree.sections.connections) && (
-            <div data-testid="nav-section-connections">
-              <NavGroup id="connections" title={t("nav.connections")} icon="plug" targets={[...menu.connections.flatMap(treeTargets), ...(tree.sections.connections ? nodeEntries(tree.sections.connections).flatMap(treeTargets) : [])]} stored={navState.connections} openByDefault={false} badge={menu.connections.reduce((n, m) => n + m.badge, 0) + (tree.sections.connections?.badge ?? 0)} badgeLabel={t("nav.badge.todo")}>
-                {menu.connections.map(entryLink)}
-                {tree.sections.connections?.entries.map(entryLink)}
-                {tree.sections.connections && treeNodes(tree.sections.connections.children)}
-              </NavGroup>
-            </div>
-          )}
-
           {siteList.length > 0 && (
             <div data-testid="nav-section-site">
               <NavGroup id={SECTION_STATE_ID.site} title={t("nav.site")} icon="globe" targets={targetsOf(siteList)} stored={stateOf("site")} openByDefault badgeLabel="">

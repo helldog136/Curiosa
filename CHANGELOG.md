@@ -11,6 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Le menu de l'administration est rangé autrement.** « En direct », « Agenda » et « Overlays » sont dans « Outils » ; « Comptes et connexions » (dans « Site ») remplace « Réseaux » et « Connexions » ; « Rôles » a son entrée, près d'« Équipe ».
+- **(English) The administration menu is laid out differently.** “Live”, “Calendar” and “Overlays” are inside “Tools”; “Accounts and connections” (in “Site”) replaces “Networks” and “Connections”; “Roles” has its own entry, near “Team”.
+- **Les pièces installées s'appellent « Modules » dans le menu, et les pages d'overlay « Pages d'overlay ».** L'entrée « Extensions » devient « Modules » ; « Personnalisés » devient « Pages d'overlay » et « Prédéfinis » devient « Overlays intégrés ».
+- **(English) Installed pieces are called “Modules” in the menu, and the custom overlay pages “Overlay pages”.** The “Extensions” entry becomes “Modules”; “Custom” becomes “Overlay pages” and “Ready-made” becomes “Built-in overlays”.
 - **Le menu de l'administration reste en place quand vous faites défiler la page.** Il garde sa hauteur, ses liens défilent à l'intérieur, et votre nom, « Mon compte », « Voir le site », « Signaler un bug » et « Se déconnecter » restent toujours sous la main en bas. Les rubriques se plient et se déplient, et le menu s'en souvient.
 - **(English) The administration menu stays in place when you scroll the page.** It keeps its height, its links scroll inside it, and your name, “My account”, “View site”, “Report a bug” and “Sign out” always stay at the bottom. Sections fold and unfold, and the menu remembers it.
 - **Des icônes fines remplacent les émojis du menu, et chaque ligne est facile à toucher.** Toutes les lignes font au moins 44 px de haut ; sur téléphone, le menu s'ouvre en volet que la touche Échap referme.

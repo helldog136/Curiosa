@@ -112,7 +112,7 @@ test("threat model: spoofing core pages and other modules", () => {
   const issues = (d) => P.placeIssues(man({ places: [{ id: "x", place: "shop.orders", ...d }] }));
   assert.ok(issues({ define: { group: { title: { en: "Account security", fr: "Sécurité du compte" } } } }).some((m) => /kept for the core/.test(m)), "words of the core's own pages");
   assert.ok(issues({ define: { group: { title: { en: "Re-enter your password", fr: "Saisir le mot de passe" } } } }).some((m) => /kept for the core/.test(m)));
-  assert.ok(issues({ define: { group: { title: { en: "Networks", fr: "Réseaux" } } } }).some((m) => /reads like a title/.test(m)), "confusable with a vocabulary title");
+  assert.ok(issues({ define: { group: { title: { en: "Accounts and connections", fr: "Comptes et connexions" } } } }).some((m) => /reads like a title/.test(m)), "confusable with a vocabulary title");
   assert.ok(issues({ define: { page: { title: { en: "Overlay pages", fr: "Pages d’overlay" } } } }).some((m) => /reads like a title/.test(m)), "confusable after NFKC, accents and punctuation");
   assert.ok(issues({ title: { en: "Shop settings", fr: "Réglages boutique" } }).some((m) => /repeats a word/.test(m)), "no redundant word in titles");
   assert.ok(issues({ title: { en: "Only English" } }).some((m) => /both "en" and "fr"/.test(m)), "EN+FR both present (R29)");
@@ -121,7 +121,7 @@ test("threat model: spoofing core pages and other modules", () => {
   assert.ok(P.placeIssues(man({ place: "site.newpage" })).some((m) => /not a page of the core/.test(m)));
   // At runtime too: a refused inline title falls back to a derived one; a section titled like another contributing module shows its own module's name.
   const idx = P.buildPlaceIndex([
-    ...contrib("etoile", [sec("x", "shop.orders", { define: { group: { title: { en: "Account security", fr: "Sécurité du compte" } }, page: { title: { en: "Networks", fr: "Réseaux" } } } })]),
+    ...contrib("etoile", [sec("x", "shop.orders", { define: { group: { title: { en: "Account security", fr: "Sécurité du compte" } }, page: { title: { en: "Accounts and connections", fr: "Comptes et connexions" } } } })]),
     ...contrib("lune", [sec("y", "live.alerts", { title: { en: "Demo alerts", fr: "Alertes de démo" } })], { name: "Lune" }),
     ...contrib("alerts", [sec("z", "live.alerts")], { name: "Demo alerts" }),
   ], VOCAB, "en");

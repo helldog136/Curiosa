@@ -137,6 +137,7 @@ const NEED_GUARD = { member: "member", editor: "editor", admin: "admin" };
 const MODEL_LISTS = [
   { name: "DASHBOARD_LINK", section: "(top)" },
   { name: "SITE_LINKS", section: "nav.site" },
+  { name: "CONNECTIONS_LINK", section: "nav.site" },
   { name: "ADMIN_LINKS", section: "nav.admin" },
   { name: "ACCOUNT_LINKS", section: "nav.account" },
 ];

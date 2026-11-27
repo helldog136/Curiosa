@@ -98,7 +98,8 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
     { id: "community", en: "Community", fr: "Communauté", icon: "🙌", status: "open" },
     // (0.49.0) The group is called « Overlays »: its ready-made page (catalogue) and the custom overlay pages (core entry, `menuTitles`) sit under that one word.
     { id: "obs", en: "Overlays", fr: "Overlays", icon: "🎥", status: "open" },
-    { id: "networks", en: "Networks", fr: "Réseaux", icon: "🌐", status: "open" },
+    // (C2b) The group is called « Accounts and connections » (its index page `/admin/networks` replaces the Networks group and the Connections section of the sidebar).
+    { id: "networks", en: "Accounts and connections", fr: "Comptes et connexions", icon: "🔌", status: "open" },
     { id: "site", en: "Site", fr: "Site", icon: "🏠", status: "additive" },
     { id: "admin", en: "Administration", fr: "Administration", icon: "🛠️", status: "reserved" },
     { id: "account", en: "Account", fr: "Compte", icon: "👤", status: "reserved" },
@@ -117,7 +118,7 @@ export const BUILTIN_VOCABULARY: Vocabulary = {
   ],
   aliases: {},
   deprecated: {},
-  menuTitles: { "obs.overlays": { en: "Ready-made", fr: "Prédéfinis" } },
+  menuTitles: { "obs.overlays": { en: "Built-in overlays", fr: "Overlays intégrés" } },
 };
 
 /** Pages of the core that are additive: modules may add labelled sections to their listed tabs, never new tabs. */

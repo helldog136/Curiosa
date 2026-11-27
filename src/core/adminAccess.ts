@@ -47,6 +47,7 @@ export const ACCESS_RULES: readonly AccessRule[] = [
   { pattern: "/admin/instances/:id", need: "instance", files: ["(panel)/instances/[id]/InstanceView.tsx"] },
   { pattern: "/admin/overlay-pages/**", need: "admin", files: ["(panel)/overlay-pages/page.tsx", "(panel)/overlay-pages/obs/page.tsx", "(panel)/overlay-pages/[id]/page.tsx", "(panel)/overlay-pages/[id]/skin/page.tsx"] },
   { pattern: "/admin/users", need: "admin", files: ["(panel)/users/page.tsx"] },
+
   { pattern: "/admin/assistants/**", need: { right: "core:mcp.tokens" }, files: ["(panel)/assistants/page.tsx", "(panel)/assistants/[id]/page.tsx"] },
   { pattern: "/admin/maintenance/content", need: "admin", files: ["(panel)/maintenance/content/page.tsx"] },
   { pattern: "/admin/maintenance/legacy", need: { right: "core:updates" }, files: ["(panel)/maintenance/legacy/page.tsx"] },
@@ -61,6 +62,8 @@ export const ACCESS_RULES: readonly AccessRule[] = [
   { pattern: "/admin/mcp/**", need: { right: "core:mcp.tokens" }, files: [] },
   { pattern: "/admin/maintenance-ia", need: { right: "core:mcp.tokens" }, files: [] },
   // The place pages (docs/PLACES.md): `/admin/<group>/<page>[/<tab>]`. Any member opens the page; each SECTION of it is shown by right (placeIndexFor), so this row is the page, not its sections.
+  // (C2b) The index of a group (`/admin/networks` is "Accounts and connections"): any member opens it, and it lists only what this person may open.
+  { pattern: "/admin/:group", need: "member", place: true, files: ["(panel)/[group]/page.tsx"] },
   { pattern: "/admin/:group/:page/**", need: "member", place: true, files: ["(panel)/[group]/[page]/[[...tab]]/page.tsx"] },
 ];
 

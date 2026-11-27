@@ -6,6 +6,11 @@
    "shell": "panel",
    "guard": "member"
   },
+  "/admin/[group]": {
+   "kind": "page",
+   "shell": "panel",
+   "guard": "member"
+  },
   "/admin/[group]/[page]/[[...tab]]": {
    "kind": "page",
    "shell": "panel",
@@ -432,47 +437,15 @@
    "content": "nav.content",
    "community": "nav.community",
    "tools": "nav.tools",
-   "connections": "nav.connections",
+   "connections": "nav.accounts",
    "heading": "nav.account",
    "extensions": "nav.extensions",
    "assistants": "nav.assistants",
    "users": "nav.users",
+   "roles": "nav.roles",
    "maintenance": "nav.maintenance"
   },
   "entries": {
-   "nav.dynamic | core:overlays": {
-    "href": "/admin/overlay-pages",
-    "also": [],
-    "guard": "admin (and a site that uses overlays)"
-   },
-   "nav.admin | nav.extensions": {
-    "href": "/admin/extensions",
-    "also": [
-     "/admin/modules"
-    ],
-    "guard": "see access.administration"
-   },
-   "nav.admin | nav.assistants": {
-    "href": "/admin/assistants",
-    "also": [],
-    "guard": "see access.administration"
-   },
-   "nav.admin | nav.users": {
-    "href": "/admin/users",
-    "also": [],
-    "guard": "see access.administration"
-   },
-   "nav.admin | nav.maintenance": {
-    "href": "/admin/maintenance/content",
-    "also": [
-     "/admin/audit",
-     "/admin/backup",
-     "/admin/maintenance/content",
-     "/admin/maintenance/legacy",
-     "/admin/updates"
-    ],
-    "guard": "see access.administration"
-   },
    "(top) | nav.dashboard": {
     "href": "/admin",
     "also": [],
@@ -502,6 +475,44 @@
     "also": [],
     "guard": "editor"
    },
+   "nav.site | nav.accounts": {
+    "href": "/admin/networks",
+    "also": [],
+    "guard": "member"
+   },
+   "nav.admin | nav.extensions": {
+    "href": "/admin/extensions",
+    "also": [
+     "/admin/modules"
+    ],
+    "guard": "see access.administration"
+   },
+   "nav.admin | nav.assistants": {
+    "href": "/admin/assistants",
+    "also": [],
+    "guard": "see access.administration"
+   },
+   "nav.admin | nav.users": {
+    "href": "/admin/users",
+    "also": [],
+    "guard": "see access.administration"
+   },
+   "nav.admin | nav.roles": {
+    "href": "/admin/users#roles",
+    "also": [],
+    "guard": "see access.administration"
+   },
+   "nav.admin | nav.maintenance": {
+    "href": "/admin/maintenance/content",
+    "also": [
+     "/admin/audit",
+     "/admin/backup",
+     "/admin/maintenance/content",
+     "/admin/maintenance/legacy",
+     "/admin/updates"
+    ],
+    "guard": "see access.administration"
+   },
    "nav.account | nav.myAccount": {
     "href": "/admin/account",
     "also": [],
@@ -512,6 +523,11 @@
     "also": [],
     "guard": "member",
     "external": true
+   },
+   "nav.dynamic | core:overlays": {
+    "href": "/admin/overlay-pages",
+    "also": [],
+    "guard": "admin (and a site that uses overlays)"
    }
   }
  },
@@ -522,6 +538,7 @@
     "overlays",
     "assistants",
     "users",
+    "roles",
     "maintenance"
    ],
    "owner/advanced": [
@@ -529,6 +546,7 @@
     "overlays",
     "assistants",
     "users",
+    "roles",
     "maintenance"
    ],
    "coordinator/simple": [
@@ -536,6 +554,7 @@
     "overlays",
     "assistants",
     "users",
+    "roles",
     "maintenance"
    ],
    "coordinator/advanced": [
@@ -543,6 +562,7 @@
     "overlays",
     "assistants",
     "users",
+    "roles",
     "maintenance"
    ],
    "admin/simple": [

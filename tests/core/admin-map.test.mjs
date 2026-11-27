@@ -37,7 +37,7 @@ test("the sidebar reader sees every entry of the sidebar model (a link it cannot
 
 test("every sidebar address is an existing route, or a place route, or the public site", async () => {
   const { core } = await buildAdminMap();
-  const patterns = Object.keys(core.routes).map((r) => r.replace(/ .*$/, "")).map((r) => new RegExp(`^${r.replace(/[.*+?^$|(){}\\]/g, "\\$&").replace(/\\\[\\\[\\\.\\\.\\\.\w+\\\]\\\]/g, "(?:/.*)?").replace(/\\\[[^\]]+\\\]/g, "[^/]+")}$`));
+  const patterns = Object.keys(core.routes).map((r) => r.replace(/ .*$/, "")).map((r) => new RegExp(`^${r.replace(/[.*+?^$|(){}\\\[\]]/g, "\\$&").replace(/\\\[\\\[\\\.\\\.\\\.\w+\\\]\\\]/g, "(?:/.*)?").replace(/\\\[[^\]]+\\\]/g, "[^/]+")}$`));
   for (const e of core.sidebar.entries) for (const href of [e.href, ...e.also]) {
     const bare = href.split(/[?#]/)[0];
     if (e.external || bare === "/") continue;

@@ -12,13 +12,15 @@ const P = await import("@/core/modules/menuPlacement");
 const L = await import("@/core/adminLinks");
 
 // The entries of the sidebar that belong to the core, in display order (keys as used in layout.tsx).
-const CORE_ENTRIES = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayCustom", "nav.assistants", "nav.users", "nav.maintenance", "nav.myAccount", "nav.viewSite"];
+const CORE_ENTRIES = ["nav.dashboard", "nav.homeMenu", "nav.appearance", "nav.settings", "nav.redirects", "nav.extensions", "nav.overlayCustom", "nav.assistants", "nav.users", "nav.roles", "nav.accounts", "nav.maintenance", "nav.myAccount", "nav.viewSite"];
 const HEADINGS = ["nav.content", "nav.community", "nav.tools", "nav.connections", "nav.site", "nav.admin", "nav.account"];
 
 test("every core entry key is used by the layout, in both languages", () => {
   const layout = read(`${PANEL}/layout.tsx`) + read("src/core/adminSidebar.ts");
   for (const k of [...CORE_ENTRIES, ...HEADINGS]) {
     assert.ok(en[k] && fr[k], `${k} exists in EN and FR`);
+    // (C2b) « Connections » is no longer a section of the sidebar: the word stays for the group of modules (menu-path.test.mjs), the page is « Accounts and connections ».
+    if (k === "nav.connections") continue;
     // nav.content, nav.community and nav.tools are built as `nav.${id}` from the section list.
     const used = layout.includes(`"${k}"`) || (["nav.content", "nav.community", "nav.tools"].includes(k) && layout.includes("t(`nav.${id}`)"));
     assert.ok(used, `${k} is used by layout.tsx`);
@@ -64,13 +66,16 @@ test("old addresses: the Short links page, the site menu and the social page kee
   for (const f of ["redirects/page.tsx", "navigation/page.tsx", "social/page.tsx", "home/page.tsx"]) assert.ok(fs.existsSync(`${PANEL}/${f}`), f);
 });
 
-test("Connections is a collapsed group (open on its own pages, state kept in the cookie); the other sections are collapsible, open by default", () => {
+test("(C2b) Connections is not a section any more: one entry of Site lists it; Live, Calendar and Overlays sit inside Tools", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  assert.match(layout, /<NavGroup id="connections" title=\{t\("nav\.connections"\)\}/);
-  assert.match(layout, /openByDefault=\{false\}/);
-  assert.match(layout, /menu\.connections\.length > 0/, "an empty Connections group is not shown");
-  assert.match(layout, /items\.length === 0 && !extra\) return null/, "an empty section is not shown (a section extended by a module path is)");
+  assert.doesNotMatch(layout, /<NavGroup id="connections"/);
+  assert.match(layout, /showConnections = connectionLinks\.length > 0 \|\| canManage/, "shown to whoever has something to open, and to the administration");
+  assert.match(layout, /arrangeGroups\(tree\.groups\)/, "the groups are split once");
+  assert.match(layout, /treeNodes\(groupsInside\)/, "Live, Calendar and Overlays are drawn inside the Tools section");
+  assert.match(layout, /treeNodes\(arranged\.rest\)/, "a group a module invented keeps its own place");
+  assert.match(layout, /items\.length === 0 && !extra && groupsInside\.length === 0\) return null/, "an empty section is not shown (a section extended by a module path or by groups is)");
   assert.ok(!layout.includes("menu.community.items") && !layout.includes("collapsible"), "no sub-groups inside Community any more");
+  assert.deepEqual(en["nav.accounts"], "Accounts and connections"); assert.equal(fr["nav.accounts"], "Comptes et connexions");
 });
 
 test("pages of an unpinned instance stay under Extensions, whatever section they would have had", () => {
