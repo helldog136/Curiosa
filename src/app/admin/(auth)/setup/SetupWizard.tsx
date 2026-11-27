@@ -11,8 +11,6 @@ import { PendingButton } from "@/components/admin/PendingButton";
 import { clearSecrets, submitKeepingValues } from "@/components/admin/keepValues";
 import { PasswordInput } from "@/components/admin/PasswordInput";
 import { useFieldErrorsDom } from "@/components/admin/FieldErrors";
-import { MoreOptions } from "@/components/admin/MoreOptions";
-import { applyProfile, profileSamples } from "./profileChoice";
 import { ProgressLabelsProvider } from "@/components/admin/ProgressLabels";
 
 type Props = {
@@ -21,31 +19,19 @@ type Props = {
   locales: { code: string; name: string }[];
   /** The language the wizard starts in (from the browser, else English). */
   initialLang?: string;
-  /** Texts below are resolved on the server for every language (requested language -> English): the wizard never picks another language by itself. */
-  presets: { id: string; icon: string; collectsLinks: boolean; names: Record<string, string>; descriptions: Record<string, string>; templates?: { id: string; name: Record<string, string>; description: Record<string, string> }[] }[];
-  /** Profils de départ (« Vous êtes… ? ») tenus par le dépôt de modules ; aucun : la question n'est pas posée. */
-  profiles?: { id: string; icon: string; names: Record<string, string>; descriptions: Record<string, string>; modules: string[]; samples: string[] }[];
-  /** Le catalogue n'a pas pu être lu : aucune suggestion, le site se crée quand même. */
-  catalogueUnreachable?: boolean;
   needsToken: boolean;
 };
 
-const STEPS = ["welcome", "identity", "profile", "modules", "links", "account"] as const;
+/** Three screens, no more (R8): language and name, site name, e-mail and password. The optional steps (modules, links, AI assistant…) live in the dashboard checklist. */
+const STEPS = ["welcome", "identity", "account"] as const;
 
-export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", presets, profiles = [], needsToken, catalogueUnreachable = false }: Props) {
+export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", needsToken }: Props) {
   const [mode, setMode] = useState<"new" | "restore">("new");
   const [step, setStep] = useState(0);
   const [lang, setLang] = useState(initialLang);
   const [ownerName, setOwnerName] = useState("");
   // L'e-mail se retient d'une étape à l'autre ; le mot de passe, jamais (la section « accès » n'existe dans la page qu'à la dernière étape).
   const [ownerEmail, setOwnerEmail] = useState("");
-  const [chosen, setChosen] = useState<string[]>([]);
-  // Le profil ne fait que pré-cocher (extensions) et proposer (pages d'exemple) : tout reste modifiable à l'étape suivante. `null` = aucun (sauter, ou « Autre »).
-  const [profile, setProfile] = useState<string | null>(null);
-  const [samples, setSamples] = useState<string[]>([]);
-  // « Autre » est un vrai choix (il garde la carte cochée) mais ne change rien ; tant que rien n'est touché, aucune carte n'est cochée.
-  const [profileTouched, setProfileTouched] = useState(false);
-  const [linkRows, setLinkRows] = useState([0]);
   const formRef = useRef<HTMLFormElement>(null);
   const [state, action, pending] = useActionState(completeSetup, null);
   // Une erreur garde tout ce qui a été saisi, sauf le mot de passe et le code d'installation (champs secrets).
@@ -57,14 +43,9 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
   // L'assistant parle à la personne par son prénom dès qu'elle l'a donné.
   const first = ownerName.trim().split(/\s+/)[0] ?? "";
   const t = (key: string) => (ui18n[key] ?? key).replaceAll("{name}", first || "…");
-  // Requested language, then English. Never "the first language of the object".
-  const pick = (m: Record<string, string>) => m[lang] || m.en || "";
 
-  // L'étape "liens" n'a de sens que si la collection de liens est choisie.
-  const wantsLinks = presets.some((p) => p.collectsLinks && chosen.includes(p.id));
-  const visibleSteps = STEPS.filter((s) => (s !== "links" || wantsLinks) && (s !== "profile" || profiles.length > 0));
-  const current = visibleSteps[Math.min(step, visibleSteps.length - 1)]!;
-  const isLast = step >= visibleSteps.length - 1;
+  const current = STEPS[Math.min(step, STEPS.length - 1)]!;
+  const isLast = step >= STEPS.length - 1;
 
   function next() {
     const box = formRef.current?.querySelector<HTMLElement>(`[data-step="${current}"]`);
@@ -73,22 +54,11 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
     setStep((s) => s + 1);
   }
 
-  function chooseProfile(id: string | null) {
-    const next = applyProfile({ chosen, samples }, profiles.find((p) => p.id === profile) ?? null, profiles.find((p) => p.id === id) ?? null);
-    setProfile(id); setChosen(next.chosen); setSamples(next.samples);
-  }
-  // Les pages d'exemple proposées par le profil, tant que leur extension est cochée.
-  const offeredSamples = profileSamples(profiles.find((p) => p.id === profile) ?? null, chosen);
-  const templateOf = (ref: string) => {
-    const [moduleId, templateId] = ref.split(":");
-    return presets.find((p) => p.id === moduleId)?.templates?.find((x) => x.id === templateId);
-  };
-  const keptSamples = offeredSamples.filter((ref) => samples.includes(ref));
-
   // The page language follows the wizard language (screen readers, hyphenation), and the action buttons speak it too.
   useEffect(() => { document.documentElement.lang = lang; document.title = ui18n["setup.title"] ?? document.title; }, [lang, ui18n]);
   const progressLabels = Object.fromEntries(Object.entries(ui18n).filter(([k]) => k.startsWith("progress.")).map(([k, v]) => [k.slice(9), v]));
 
+  const stepText = t("setup.stepOf").replace("{n}", String(stepNumber(step))).replace("{total}", String(STEPS.length));
   const section = (id: (typeof STEPS)[number]) => ({ "data-step": id, hidden: current !== id, className: "space-y-4" });
 
   // Restaurer une sauvegarde : une autre façon de configurer un site neuf (les textes de la restauration viennent du dictionnaire « backup. »).
@@ -113,9 +83,9 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
   return (
     <ProgressLabelsProvider labels={progressLabels}>
     <div className="mx-auto max-w-xl px-4 py-10 sm:py-16">
-      <div className="mb-6 flex items-center gap-3" role="progressbar" aria-valuenow={progressPercent(step, isLast)} aria-valuemin={0} aria-valuemax={100} aria-label={`${t("setup.step")} ${stepNumber(step)}`}>
+      <div className="mb-6 flex items-center gap-3" role="progressbar" aria-valuenow={progressPercent(step, isLast)} aria-valuemin={0} aria-valuemax={100} aria-label={stepText}>
         <div className="h-2 flex-1 overflow-hidden rounded-full bg-line"><div className="h-full rounded-full bg-accent transition-all" style={{ width: `${progressPercent(step, isLast)}%` }} /></div>
-        <span className="text-sm text-muted" data-testid="setup-step">{t("setup.step")} {stepNumber(step)}</span>
+        <span className="text-sm text-muted" data-testid="setup-step">{stepText}</span>
       </div>
       <div className={`${ui.card} !p-6 sm:!p-9`}>
       {/* Un vrai formulaire POST : si le script ne s'est pas encore chargé, rien (surtout pas le mot de passe) ne part dans l'adresse. */}
@@ -161,93 +131,6 @@ export function SetupWizard({ strings, uiLocales, locales, initialLang = "en", p
             <label className={ui.label} htmlFor="siteName">{t("setup.identity.name")}</label>
             <input {...PLAIN_INPUT} id="siteName" name="siteName" required className={`${ui.input} !py-3 !text-lg`} />
           </div>
-          <div>
-            <label className={ui.label} htmlFor="tagline">{t("setup.identity.tagline")}</label>
-            <input {...PLAIN_INPUT} id="tagline" name="tagline" className={ui.input} />
-          </div>
-        </div>
-
-        <div {...section("profile")}>
-          <fieldset className="space-y-4">
-            <legend className="text-2xl font-semibold tracking-tight">{t("setup.profile.title")}</legend>
-            <p className="text-[15px] text-muted">{t("setup.profile.help")}</p>
-            <div className="grid gap-3 sm:grid-cols-2" data-testid="setup-profiles">
-              {[...profiles.map((p) => ({ id: p.id, icon: p.icon, name: pick(p.names), help: pick(p.descriptions) })), { id: "other", icon: "✨", name: t("setup.profile.other"), help: "" }].map((p) => {
-                const selected = p.id === "other" ? profile === null && profileTouched : profile === p.id;
-                return (
-                  <label key={p.id} className={`relative flex min-h-11 cursor-pointer items-start gap-3 rounded-2xl border p-4 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-accent ${selected ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
-                    <input
-                      type="radio" name="profile" value={p.id} className="peer sr-only" checked={selected}
-                      onChange={() => { setProfileTouched(true); chooseProfile(p.id === "other" ? null : p.id); }}
-                    />
-                    <span aria-hidden className="text-2xl leading-none">{p.icon}</span>
-                    <span className="min-w-0">
-                      <span className="block text-[17px] font-medium [overflow-wrap:anywhere]">{p.name}{selected && <span className="ml-2 text-accent" aria-hidden>✓</span>}</span>
-                      {p.help && <span className="block text-sm text-muted [overflow-wrap:anywhere]">{p.help}</span>}
-                    </span>
-                  </label>
-                );
-              })}
-            </div>
-          </fieldset>
-          <button type="button" className={ui.btn} data-testid="profile-skip" onClick={() => { chooseProfile(null); setProfileTouched(false); setStep((s) => s + 1); }}>{t("setup.profile.skipButton")} →</button>
-        </div>
-
-        <div {...section("modules")}>
-          <h2 className="text-2xl font-semibold tracking-tight">{t("setup.modules.title")}</h2>
-          <p className="text-[15px] text-muted">{t("setup.modules.help")}</p>
-          {presets.length === 0 && <p data-testid="modules-none" className="rounded-2xl border border-line p-4 text-sm text-muted">{t(catalogueUnreachable ? "setup.modules.unreachable" : "setup.modules.none")}</p>}
-          {presets.map((p) => (
-            <label key={p.id} className={`flex cursor-pointer items-start gap-4 rounded-2xl border p-4 transition-colors ${chosen.includes(p.id) ? "border-accent bg-accent/5" : "border-line hover:border-accent/50"}`}>
-              <input
-                type="checkbox" name="presets" value={p.id} className="mt-1 h-5 w-5 shrink-0 accent-[var(--v-accent)]"
-                checked={chosen.includes(p.id)}
-                onChange={(e) => setChosen((c) => (e.target.checked ? [...c, p.id] : c.filter((x) => x !== p.id)))}
-              />
-              <span>
-                <span className="block text-[17px] font-medium"><span aria-hidden>{p.icon}</span> {pick(p.names)}</span>
-                <span className="block text-sm text-muted">{pick(p.descriptions)}</span>
-              </span>
-            </label>
-          ))}
-          {offeredSamples.length > 0 && (
-            <MoreOptions title={t("setup.samples.title")} summary={keptSamples.length === 0 ? "" : t(keptSamples.length === 1 ? "setup.samples.summary.one" : "setup.samples.summary").replace("{n}", String(keptSamples.length))}>
-              <p className="text-sm text-muted">{t("setup.samples.help")}</p>
-              {offeredSamples.map((ref) => {
-                const tpl = templateOf(ref);
-                return (
-                  <label key={ref} className="flex min-h-11 cursor-pointer items-start gap-3">
-                    <input type="checkbox" name="samples" value={ref} className="mt-1 h-5 w-5 shrink-0 accent-[var(--v-accent)]"
-                      checked={samples.includes(ref)} onChange={(e) => setSamples((c) => (e.target.checked ? [...c, ref] : c.filter((x) => x !== ref)))} />
-                    <span>
-                      <span className="block text-[15px] font-medium">{tpl ? pick(tpl.name) : ref}</span>
-                      {tpl && pick(tpl.description) && <span className="block text-sm text-muted">{pick(tpl.description)}</span>}
-                    </span>
-                  </label>
-                );
-              })}
-            </MoreOptions>
-          )}
-          <button type="button" className={ui.btn} onClick={() => { setChosen([]); setSamples([]); setStep((s) => s + 1); }}>{t("setup.modules.skipButton")} →</button>
-        </div>
-
-        <div {...section("links")}>
-          <h2 className="text-2xl font-semibold tracking-tight">{t("setup.links.title")}</h2>
-          <p className="text-[15px] text-muted">{t("setup.links.help")}</p>
-          {linkRows.map((row) => (
-            <div key={row} className="space-y-3 rounded-2xl border border-line p-4">
-              <div className="grid gap-3 sm:grid-cols-2">
-                <input {...PLAIN_INPUT} name="linkLabel" placeholder={t("setup.links.label")} aria-label={t("setup.links.label")} className={ui.input} />
-                <input {...PLAIN_INPUT} name="linkIcon" placeholder={t("setup.links.icon")} aria-label={t("setup.links.icon")} className={ui.input} />
-              </div>
-              <input {...PLAIN_INPUT} name="linkUrl" type="url" placeholder={t("setup.links.url")} aria-label={t("setup.links.url")} className={ui.input} />
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="linkShortcut" value={row} defaultChecked className="h-4 w-4 accent-[var(--v-accent)]" /> {t("setup.links.shortcut")}
-              </label>
-            </div>
-          ))}
-          <p className={ui.help}>{t("setup.links.iconHelp")}</p>
-          <button type="button" className={ui.btn} onClick={() => setLinkRows((r) => [...r, (r.at(-1) ?? 0) + 1])}>＋ {t("setup.links.add")}</button>
         </div>
 
         {/* Les champs d'accès n'existent dans la page qu'à la dernière étape, tous dans CE formulaire : e-mail (identifiant), mot de passe, confirmation.

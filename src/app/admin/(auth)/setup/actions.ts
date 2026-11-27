@@ -1,5 +1,5 @@
 "use server";
-import { SETUP_ASSISTANT_HREF } from "@/core/adminLinks";
+import { ADMIN_HREF } from "@/core/adminLinks";
 
 import bcrypt from "bcryptjs";
 import crypto from "node:crypto";
@@ -18,8 +18,8 @@ import { isSafeExternalUrl } from "@/core/url";
 import { slugify } from "@/core/slug";
 import type { ActionState } from "@/components/admin/ActionForm";
 
-/** The optional last step ("Connect your AI assistant"); skipping it leads to the dashboard. */
-const SETUP_NEXT = SETUP_ASSISTANT_HREF;
+/** Where the new owner lands: the dashboard, whose "Getting started" list carries the optional steps (modules, AI assistant…). */
+const SETUP_NEXT = `${ADMIN_HREF}?welcome=1`;
 
 function localizedText(v: string | Record<string, string> | undefined, locale: string): string {
   if (!v) return "";
@@ -158,7 +158,7 @@ export async function completeSetup(_prev: ActionState, formData: FormData): Pro
   for (const run of afterCommit) await run();
   await audit(email, "setup.completed", failed.length ? `modules not installed (catalogue): ${failed.join(", ")}` : "");
   try {
-    await signIn("credentials", { email, password, redirectTo: !failed.length ? SETUP_NEXT : wanted.length ? `${SETUP_NEXT}?modules=partial` : `${SETUP_NEXT}?modules=failed` });
+    await signIn("credentials", { email, password, redirectTo: !failed.length ? SETUP_NEXT : wanted.length ? `${SETUP_NEXT}&modules=partial` : `${SETUP_NEXT}&modules=failed` });
   } catch (error) {
     if (error instanceof AuthError) return { error: t("setup.error.generic") };
     throw error;

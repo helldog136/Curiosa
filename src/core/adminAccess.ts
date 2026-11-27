@@ -50,6 +50,7 @@ export const ACCESS_RULES: readonly AccessRule[] = [
   { pattern: "/admin/users/roles", need: { right: "core:roles" }, files: ["(panel)/users/roles/page.tsx"] },
 
   { pattern: "/admin/assistants/**", need: { right: "core:mcp.tokens" }, files: ["(panel)/assistants/page.tsx", "(panel)/assistants/[id]/page.tsx"] },
+  { pattern: "/admin/setup/assistant", need: { right: "core:mcp.tokens" }, files: ["(auth)/setup/assistant/page.tsx"] },
   { pattern: "/admin/maintenance/content", need: "admin", files: ["(panel)/maintenance/content/page.tsx"] },
   { pattern: "/admin/maintenance/legacy", need: { right: "core:updates" }, files: ["(panel)/maintenance/legacy/page.tsx"] },
   { pattern: "/admin/backup", need: { right: "core:backup" }, files: ["(panel)/backup/page.tsx"] },

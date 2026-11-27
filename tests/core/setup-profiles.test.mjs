@@ -11,7 +11,6 @@ const cat = createCatalogue();
 const P = await import("@/core/modules/profiles");
 const S = await import("@/core/modules/starter");
 const { parseManifest } = await import("@/core/modules/manifest");
-const C = await import("@/app/admin/(auth)/setup/profileChoice");
 
 beforeEach(async () => { await db.reset(); await cat.clear(); });
 after(() => { cat.close(); return db.close(); });
@@ -169,63 +168,28 @@ test("pages d'exemple : créées en BROUILLON (jamais publiées), dans l'instanc
   assert.equal(await S.createSampleDrafts(prisma, ["pages:about"], [], "fr", owner.id), 0, "sans instance créée : rien");
 });
 
-/* ───────────── le choix du profil : pré-cocher, sauter, revenir en arrière ───────────── */
-const asso = { modules: ["pages", "blog"], samples: ["pages:about", "pages:hours"] };
-const solo = { modules: ["links"], samples: ["pages:me"] };
-
-test("choix d'un profil : coche les extensions et propose les exemples ; sauter ne coche rien", () => {
-  const start = { chosen: [], samples: [] };
-  assert.deepEqual(C.applyProfile(start, null, asso), { chosen: ["pages", "blog"], samples: ["pages:about", "pages:hours"] });
-  assert.deepEqual(C.applyProfile(start, null, null), start, "sauter (ou « Autre ») ne change rien");
-});
-
-test("retour arrière : changer de profil remplace ce que l'ancien avait coché, garde ce que la personne a coché elle-même ; revenir à « aucun » défait le profil", () => {
-  const afterAsso = C.applyProfile({ chosen: ["links"], samples: [] }, null, asso);
-  assert.deepEqual(afterAsso.chosen, ["links", "pages", "blog"]);
-  const afterSolo = C.applyProfile(afterAsso, asso, solo);
-  assert.deepEqual(afterSolo, { chosen: ["links"], samples: ["pages:me"] }, "pages et blog retirés, « links » (coché à la main) gardé");
-  assert.deepEqual(C.applyProfile(afterAsso, asso, null), { chosen: ["links"], samples: [] });
-  assert.deepEqual(C.applyProfile({ chosen: ["pages"], samples: ["pages:about"] }, asso, asso).chosen, ["pages", "blog"], "même profil : stable, sans doublon");
-});
-
-test("pages d'exemple proposées : seulement tant que leur extension est cochée", () => {
-  assert.deepEqual(C.profileSamples(asso, ["pages", "blog"]), ["pages:about", "pages:hours"]);
-  assert.deepEqual(C.profileSamples(asso, ["blog"]), [], "« pages » décoché : plus d'exemple de pages");
-  assert.deepEqual(C.profileSamples(null, ["pages"]), []);
-});
-
-/* ───────────── l'écran : budgets, sauter, mots, parité ───────────── */
+/* ───────────── l'écran : trois étapes, les choix facultatifs sont au tableau de bord (C5i) ───────────── */
 const read = (p) => fs.readFileSync(p, "utf8");
 const wizard = read("src/app/admin/(auth)/setup/SetupWizard.tsx");
 
-test("assistant : la question est une étape facultative (sauter = chemin par défaut), 6 cartes au plus dont « Autre », rien n'est obligatoire", () => {
-  assert.match(wizard, /"profile"/);
-  assert.match(wizard, /profiles\.length > 0/, "pas de profil dans le dépôt : la question n'est pas posée");
-  assert.match(wizard, /data-testid="profile-skip"/);
-  assert.match(wizard, /setup\.profile\.skipButton/);
-  assert.match(wizard, /id: "other"/, "« Autre » est celui du cœur, il ne change rien");
-  assert.match(wizard, /type="radio" name="profile"/, "de vrais boutons radio : clavier et lecteur d'écran");
-  assert.ok(P.MAX_PROFILES + 1 <= 6);
-  assert.doesNotMatch(wizard, /preselected|always/);
-  assert.match(wizard, /<MoreOptions[^>]*setup\.samples\.title/, "les pages d'exemple sont repliées avec un résumé (R7)");
-  assert.match(wizard, /name="samples"/);
-  assert.match(wizard, /min-h-11/, "cibles d'au moins 44 px");
+test("assistant : trois écrans, plus de question de profil ni de modules (ils vivent dans « Mise en route »), mais le serveur relit toujours les modèles cochés", () => {
+  assert.doesNotMatch(wizard, /"profile"|"modules"|"links"|name="samples"|name="presets"|linkLabel/);
+  assert.match(wizard, /const STEPS = \["welcome", "identity", "account"\] as const/);
   const actions = read("src/app/admin/(auth)/setup/actions.ts");
-  assert.match(actions, /createSampleDrafts\(tx, sampleRefs/, "les exemples sont créés avec le site, en brouillon");
+  assert.match(actions, /createSampleDrafts\(tx, sampleRefs/, "les exemples restent créés en brouillon quand ils sont envoyés");
   assert.doesNotMatch(actions, /formData\.get\("profile"\)/, "le serveur ne se fie qu'aux modules et aux modèles, jamais au profil envoyé");
 });
 
-test("assistant : la progression n'affiche toujours aucun total et ne recule jamais avec l'étape du profil", async () => {
+test("assistant : la progression a un total connu (3) et ne recule jamais", async () => {
   const prog = await import("@/app/admin/(auth)/setup/progress");
-  assert.equal(prog.MAX_STEPS, 6);
-  const seq = [0, 1, 2, 3, 4, 5].map((s) => prog.progressPercent(s, s === 5));
+  assert.equal(prog.MAX_STEPS, 3);
+  const seq = [0, 1, 2].map((s) => prog.progressPercent(s, s === 2));
   assert.deepEqual(seq, [...seq].sort((a, b) => a - b));
   assert.equal(seq.at(-1), 100);
 });
 
 const fr = JSON.parse(read("src/locales/fr.json")), en = JSON.parse(read("src/locales/en.json"));
-const KEYS = ["setup.profile.title", "setup.profile.help", "setup.profile.other", "setup.profile.skipButton", "setup.samples.title", "setup.samples.help", "setup.samples.summary", "setup.samples.summary.one",
-  "entries.templates.title", "entries.templates.intro", "entries.templates.use", "entries.templates.open", "entries.createdFromTemplate"];
+const KEYS = ["entries.templates.title", "entries.templates.intro", "entries.templates.use", "entries.templates.open", "entries.createdFromTemplate"];
 
 test("textes : FR et EN à parité (mêmes clés, mêmes {variables}), avant le groupe final theme.custom … settings.contrast.accent2", () => {
   const vars = (s) => [...new Set([...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]))].sort().join(",");
@@ -246,7 +210,7 @@ test("textes : mots interdits (R9), libellés courts sans deux-points (R10), ton
     assert.doesNotMatch(lang[k], /!|veuillez/i, k);
     assert.deepEqual(toneProblems(lang[k]), [], k);
   }
-  for (const k of ["setup.profile.title", "setup.profile.other", "setup.profile.skipButton", "setup.samples.title", "entries.templates.title", "entries.templates.use", "entries.templates.open"])
+  for (const k of ["entries.templates.title", "entries.templates.use", "entries.templates.open"])
     for (const lang of [fr, en]) assert.deepEqual(labelProblems(lang[k]), [], k);
 });
 
