@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».
+- **(English) “Home and menu”: one line per tab, a simpler link and button.** Each tab says what it is for in one line; “Link and button” only asks for the text and the address, other languages are folded; “Social buttons” links to “Accounts and connections”.
 - **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
 - **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
 - **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
