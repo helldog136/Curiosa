@@ -5,7 +5,6 @@ import { adminCtx } from "@/core/admin";
 import { localeName } from "@/core/i18n/locales";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
-import { PageHeader } from "@/components/admin/Page";
 import { LegacyHash } from "@/components/admin/LegacyHash";
 import { NAVIGATION_HEADER_HREF } from "@/core/adminLinks";
 import { NavEditor, type ENode } from "@/components/admin/NavEditor";
@@ -57,9 +56,8 @@ export default async function NavigationPage() {
   const strings = Object.fromEntries(STRINGS.map((k) => [k, t(`navigation.${k}`)]));
   return (
     <div className="space-y-6">
-      <HomeMenuHeader t={t} current="menu" />
+      <HomeMenuHeader t={t} current="menu" purpose={t("navigation.intro")} />
       <LegacyHash map={{ header: NAVIGATION_HEADER_HREF }} />
-      <PageHeader level={2} title={t("navigation.title")} intro={t("navigation.intro")} />
       {undo && <AssistantUndoNotice text={t("aim.undo.navigation", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.navigation.button")} action={restoreAssistantMenu} />}
       <ActionForm action={saveNavigation} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <NavEditor
