@@ -13,6 +13,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».
 - **(English) “Home and menu”: one line per tab, a simpler link and button.** Each tab says what it is for in one line; “Link and button” only asks for the text and the address, other languages are folded; “Social buttons” links to “Accounts and connections”.
+- **L'entretien montre un état et une action principale par onglet.** Le bouton « Installer » des mises à jour est juste sous les versions, les notes et les options se replient, et la restauration d'une sauvegarde est une carte à part qui dit ce qui sera remplacé. Les états deviennent des pastilles.
+- **(English) Maintenance shows one state and one main action per tab.** The update “Install” button sits right under the versions, the notes and options fold away, and restoring a backup is a separate card that says what will be replaced. States become pills.
 - **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
 - **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
 - **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
@@ -59,6 +61,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
 - **Liens courts : un seul bouton pour créer, interrupteur discret.** La création s'ouvre dans une fenêtre, un lien en pause ou terminé porte une pastille. Les brouillons ont une recherche, les listes d'entrées et de modèles des lignes régulières.
 - **(English) Short links: one create button, a quiet switch.** Creating opens a window, a paused or ended link carries a pill. Drafts get a search, and the entries and templates lists use regular rows.
+- **L'assistant d'installation tient en trois écrans.** Langue et prénom, nom du site, e-mail et mot de passe ; le choix des modules et la connexion d'un assistant IA passent dans la liste « Mise en route » du tableau de bord.
+- **(English) The setup wizard fits on three screens.** Language and first name, site name, e-mail and password; choosing modules and connecting an AI assistant move to the “Getting started” list on the dashboard.
 
 ### Corrections
 

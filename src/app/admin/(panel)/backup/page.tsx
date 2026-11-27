@@ -1,10 +1,11 @@
 import { adminCtx } from "@/core/admin";
-import { MaintenanceHeader } from "@/components/admin/MaintenanceHeader";
+import { MaintenanceHeader, TabIntro } from "@/components/admin/MaintenanceHeader";
 import { MIN_PASSWORD_LENGTH } from "@/core/backup/crypto";
 import { BackupForm } from "@/components/admin/BackupForm";
 import { RestorePanel } from "@/components/admin/RestorePanel";
 import { RESTORE_KEYS } from "@/components/admin/restoreKeys";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { Callout, Panel } from "@/components/admin/Page";
+import { RestoreDanger } from "@/components/admin/RestoreDanger";
 import { AutoBackupPanel, type AutoPanelView } from "@/components/admin/AutoBackupPanel";
 import { SETTINGS_HREF } from "@/core/adminLinks";
 import { readConfig } from "@/core/backup/auto/config";
@@ -27,7 +28,7 @@ export default async function BackupPage() {
   return (
     <div className="space-y-8">
       <MaintenanceHeader t={t} level={user.level} advanced={advanced} current="backup" />
-      <PageHeader level={2} title={t("maint.tab.backup")} intro={t("backup.intro")} />
+      <TabIntro title={t("maint.tab.backup")} intro={t("backup.intro")} />
 
       <Panel title={t("backup.createTitle")} help={t("backup.createHelp")}>
         <Callout tone="warn">{t("backup.passwordWarning", { n: MIN_PASSWORD_LENGTH })}</Callout>
@@ -45,9 +46,9 @@ export default async function BackupPage() {
         <AutoBackupPanel view={auto} labels={Object.fromEntries(AUTO_LABELS.map((k) => [k, t(`autobackup.${k}`)]))} />
       </Panel>
 
-      <Panel title={t("backup.restoreTitle")} help={t("backup.restoreHelp")} tone="danger">
+      <RestoreDanger title={t("backup.restoreTitle")} loss={t("backup.restoreLoss")} help={t("backup.restoreHelp")} openLabel={t("backup.restoreOpen")} closeLabel={t("backup.cancel")}>
         <RestorePanel labels={labels} />
-      </Panel>
+      </RestoreDanger>
     </div>
   );
 }

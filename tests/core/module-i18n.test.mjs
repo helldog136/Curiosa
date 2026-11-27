@@ -21,7 +21,6 @@ const M = await import("@/core/modules/catalogue");
 const { moduleI18nReport } = await import("@/core/i18n/moduleStatus");
 const { toolDescription } = await import("@/core/modules/mcpProvider");
 const { initialSetupLanguage } = await import("@/app/admin/(auth)/setup/language");
-const { setupView } = await import("@/app/admin/(auth)/setup/view");
 const { getAllSetupStrings } = await import("@/app/admin/(auth)/setup/strings");
 const React = (await import("react")).default;
 const { renderToStaticMarkup } = await import("react-dom/server");
@@ -73,7 +72,7 @@ test("translator: a partial language falls back to the site main language, then 
     assert.equal(makeTranslator("xx", "xy")("action.save"), "Save", "main language without the text -> English");
     assert.equal(t("a.empty"), "a.empty", "an empty text in a skeleton is not shown: key as last resort");
     assert.equal(makeTranslator("fr", "fr")("cle.inconnue"), "cle.inconnue");
-    assert.equal(makeTranslator("fr")("setup.samples.summary", { n: 1 }), makeTranslator("fr")("setup.samples.summary.one", { n: 1 }));
+    assert.equal(makeTranslator("fr")("drafts.count", { n: 1 }), makeTranslator("fr")("drafts.count.one", { n: 1 }));
   } finally { delete DICTIONARIES.xx; delete DICTIONARIES.xy; }
 });
 
@@ -193,13 +192,12 @@ test("catalogue entries: names and descriptions are localized values (requested 
 
 /* ───────────── the setup wizard ───────────── */
 
-const FR_SENTINELS = /Phrase française|Notes alpha|Modèle|Bienvenue|Suivant|Retour|Enregistrer|Ajoutez|votre|Vous êtes/;
-const EN_SENTINELS = /English sentence|Alpha notes|Template|Welcome|\bNext\b|\bBack\b|Your site|Add your/;
+const FR_SENTINELS = /Bienvenue|Suivant|Retour|Enregistrer|Ajoutez|votre|Vous êtes/;
+const EN_SENTINELS = /Welcome|\bNext\b|\bBack\b|Your site|Add your/;
 
-async function wizardHtml(lang, data) {
+function wizardHtml(lang) {
   const locales = Object.entries(KNOWN_LOCALES).map(([code, name]) => ({ code, name }));
-  const view = setupView(data, locales.map((l) => l.code));
-  return renderToStaticMarkup(React.createElement(SetupWizard, { strings: getAllSetupStrings(), uiLocales: UI_LOCALES, locales, initialLang: lang, presets: view.presets, profiles: view.profiles, needsToken: false }));
+  return renderToStaticMarkup(React.createElement(SetupWizard, { strings: getAllSetupStrings(), uiLocales: UI_LOCALES, locales, initialLang: lang, needsToken: false }));
 }
 
 async function publishBilingual() {
@@ -208,41 +206,29 @@ async function publishBilingual() {
   await cat.suggest(["alpha"]);
 }
 
-test("setup wizard in English: bilingual extensions show their English texts and no French sentinel word appears anywhere", async () => {
-  await publishBilingual();
-  const html = await wizardHtml("en", await S.setupModules());
-  assert.match(html, /English sentence sentinel\./);
-  assert.match(html, /Alpha notes/);
+test("setup wizard in English: three screens, English texts and no French sentinel word anywhere", () => {
+  const html = wizardHtml("en");
   assert.doesNotMatch(html, FR_SENTINELS);
-  const view = setupView(await S.setupModules(), ["en", "fr", "nl"]);
-  assert.equal(view.presets[0].templates[0].description.en, "English template sentence.");
-  assert.equal(view.presets[0].templates[0].description.fr, "Phrase française du modèle.");
-  assert.equal(view.presets[0].templates[0].description.nl, "English template sentence.", "no Dutch text: English");
   assert.match(html, /<h1[^>]*>Welcome/);
+  assert.match(html, /Step 1 of 3/);
+  assert.equal((html.match(/data-step="/g) ?? []).length, 2, "the account fields exist only on the last screen");
 });
 
-test("setup wizard in French: the French texts, no English sentinel word", async () => {
-  await publishBilingual();
-  const html = await wizardHtml("fr", await S.setupModules());
-  assert.match(html, /Phrase française sentinelle\./);
-  assert.match(html, /Notes alpha/);
+test("setup wizard in French: the French texts, no English sentinel word", () => {
+  const html = wizardHtml("fr");
+  assert.match(html, /Étape 1 sur 3/);
   assert.doesNotMatch(html, EN_SENTINELS);
 });
 
-test("setup wizard: an older index (one plain text of unknown language) does not hide the texts of the manifest: the wizard reads the manifest", async () => {
+test("setup wizard: the modules suggested by the catalogue keep their texts per language (the dashboard checklist sends the person to the module catalogue)", async () => {
   await publishBilingual();
-  await cat.setIndex({ id: "alpha", name: "Notes alpha", description: "Phrase française sentinelle.", repo: cat.https, subdir: "modules/alpha", ref: "alpha-v1.0.0", version: "1.0.0", apiVersion: 2 });
-  await cat.suggest(["alpha"]);
-  const html = await wizardHtml("en", await S.setupModules());
-  assert.match(html, /English sentence sentinel\./);
-  assert.doesNotMatch(html, /Phrase française sentinelle/);
+  const offer = await S.setupModules();
+  assert.equal(offer.modules[0].templates[0].description.en, "English template sentence.");
+  assert.equal(offer.modules[0].templates[0].description.fr, "Phrase française du modèle.");
+  assert.doesNotMatch(wizardHtml("en"), /Alpha notes|English sentence sentinel/, "the wizard no longer lists modules");
 });
 
-test("setup wizard: a language without text for an extension shows English, never another language; the first language comes from the browser, else English", async () => {
-  await publishBilingual();
-  const html = await wizardHtml("nl", await S.setupModules());
-  assert.match(html, /English sentence sentinel\./);
-  assert.doesNotMatch(html, /Phrase française sentinelle/);
+test("setup wizard: the first language comes from the browser, else English, never French by default", () => {
   const known = Object.keys(KNOWN_LOCALES);
   assert.equal(initialSetupLanguage("de-DE,de;q=0.9,en;q=0.8", known), "de");
   assert.equal(initialSetupLanguage("xx,fr;q=0.5,nl;q=0.9", known), "nl");
