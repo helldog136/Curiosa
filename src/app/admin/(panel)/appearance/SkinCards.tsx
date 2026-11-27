@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ui } from "@/components/admin/ui";
 import type { SkinCardModel, Swatch } from "@/core/skins/appearanceView";
@@ -39,7 +40,7 @@ function ModePills({ modes }: { modes: ("light" | "dark")[] }) {
 }
 
 /** « Choisir un skin » : une grille de cartes (une colonne sur téléphone) avec aperçu, nom, une phrase, clair / sombre, auteur, licence. */
-export function SkinCards({ cards, locale, pages, canChoose }: { cards: SkinCardModel[]; locale: Loc; pages: PreviewPage[]; canChoose: boolean }) {
+export function SkinCards({ cards, locale, pages, canChoose, customizeHref }: { cards: SkinCardModel[]; locale: Loc; pages: PreviewPage[]; canChoose: boolean; /** Where the active skin is customised (only given when it can be). */ customizeHref?: string }) {
   const al = useAL();
   return (
     <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-testid="skin-cards">
@@ -48,7 +49,7 @@ export function SkinCards({ cards, locale, pages, canChoose }: { cards: SkinCard
         const shot = c.previews[0];
         const usable = c.status === "ok";
         return (
-          <li key={c.id} data-skin-card={c.id} aria-current={c.active ? "true" : undefined}
+          <li key={c.id} data-skin-card={c.id} aria-current={c.active ? "true" : undefined} data-testid={c.active ? "current-skin" : undefined}
             className={`${ui.card} flex flex-col gap-3 !p-4 ${c.active ? "border-accent ring-2 ring-accent" : ""}`}>
             {shot
               // eslint-disable-next-line @next/next/no-img-element -- aperçu servi par l'administration (route réservée), pas une image du site
@@ -70,6 +71,7 @@ export function SkinCards({ cards, locale, pages, canChoose }: { cards: SkinCard
             </div>
             {usable && (
               <div className="flex flex-wrap items-center gap-2">
+                {c.active && customizeHref && <Link href={customizeHref} className={`${ui.btnPrimary} min-h-11`} data-testid="customize-link">{al("appearance.cz.open")}</Link>}
                 <PreviewButton skinId={c.id} skinName={name} bothModes={c.modes.length === 2} pages={pages} canChoose={canChoose} active={c.active} />
                 {!c.active && canChoose && (
                   <ActionForm action={chooseSkinAction} submitLabel={al("appearance.use")} pendingLabel={al("appearance.using")} className="contents">
