@@ -265,7 +265,7 @@ export async function Blocks({ blocks, locale, adminInstanceId: panelInstanceId,
               <thead data-skin-part="table-head" className="text-muted">
                 <tr data-skin-part="table-row">
                   {block.columns.map((c) => <th key={c} data-skin-part="table-cell" className="px-3 py-2 font-medium">{c}</th>)}
-                  {adminInstanceId && block.rowActions && <th />}
+                  {adminInstanceId && block.rowActions && <th><span className="sr-only">{makeTranslator(locale)("table.actions")}</span></th>}
                 </tr>
               </thead>
               <tbody>

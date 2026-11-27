@@ -368,13 +368,14 @@ export function RowActionButton({ instanceId, label, action, href, id, confirm: 
 /**
  * (0.6.0) Interrupteur d'état dans une ligne de tableau : un clic appelle l'adminAction du module avec `{ id, enabled: "1" | "0" }` (l'action DIT l'état voulu, elle
  * n'inverse rien : un double clic ne défait donc jamais le premier). Retour là où on a cliqué, retour arrière si l'action échoue.
+ * (R37) Aucun mot d'état à côté : `onText` / `offText` ne servent plus qu'au nom accessible (« Commande !salut, activée »).
  */
 export function RowSwitch({ instanceId, action, id, on, label, onText, offText, entry, failedText, savedText }: {
   instanceId: string; action: string; id?: string; on: boolean; label: string; onText?: string; offText?: string; entry?: EntryScope; failedText: string; savedText: string;
 }) {
   const back = usePlaceReturn();
   return (
-    <Switch label={label} checked={on} onText={onText} offText={offText} failedText={failedText} disabled={!id}
+    <Switch quiet label={label} checked={on} onText={onText} offText={offText} failedText={failedText} disabled={!id}
       onToggle={async (next) => {
         const data = new FormData();
         data.set("id", id ?? "");

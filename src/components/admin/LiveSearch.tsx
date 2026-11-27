@@ -34,6 +34,14 @@ export function SearchField({ value, onChange, onClear, placeholder, clearLabel,
   );
 }
 
+/**
+ * Le compte des résultats, annoncé aux lecteurs d'écran (région `status` polie, toujours présente pour que l'annonce soit lue quand le texte change) : « 3 sur 12 »,
+ * « Recherche en cours… ». Une seule brique pour les listes du cœur et le bloc `table` ; `text` vide = rien d'écrit (la région reste, elle garde sa hauteur).
+ */
+export function ResultCount({ text }: { text: string }) {
+  return <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite" aria-atomic="true" data-testid="result-count">{text}</p>;
+}
+
 /** Une rangée de pastilles de filtre (une seule active) : le nombre de lignes de chacune est écrit dedans. */
 export function Pills({ label, allLabel, options, value, onChange, pillKey }: {
   label: string; allLabel: string; options: { value: string; label: string; count?: number }[]; value: string; onChange: (v: string) => void; pillKey: string;
@@ -149,7 +157,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
       {filters.map((f) => (
         <Pills key={f.key} pillKey={f.key} label={f.allLabel} allLabel={f.allLabel} options={f.options} value={pills[f.key] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [f.key]: v }))} />
       ))}
-      <p className="min-h-5 text-sm text-muted" role="status" aria-live="polite">{busy && busyLabel ? busyLabel : none ? "" : count}</p>
+      <ResultCount text={busy && busyLabel ? busyLabel : none ? "" : count} />
       {none && (
         <div role="status" className={`${ui.card} space-y-2 text-[15px]`} data-testid="live-search-none">
           <p className="font-medium">{noneLabel}</p>
