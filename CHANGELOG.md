@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Assistants IA : une file de validation claire.** Chaque demande en attente a un bouton principal (Approuver) et un refus discret ; recherche en direct sur les demandes, les validations par assistant et l'historique. Les accès, les droits et le journal sont inchangés.
+- **(English) AI assistants: a clear approval queue.** Each waiting request has one main button (Approve) and a quiet refusal; live search on requests, per-assistant approvals and history. Accesses, rights and the audit log are unchanged.
 - **L'entretien montre un état et une action principale par onglet.** Le bouton « Installer » des mises à jour est juste sous les versions, les notes et les options se replient, et la restauration d'une sauvegarde est une carte à part qui dit ce qui sera remplacé. Les états deviennent des pastilles.
 - **(English) Maintenance shows one state and one main action per tab.** The update “Install” button sits right under the versions, the notes and options fold away, and restoring a backup is a separate card that says what will be replaced. States become pills.
 - **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
