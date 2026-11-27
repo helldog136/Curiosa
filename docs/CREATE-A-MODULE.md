@@ -717,7 +717,7 @@ personnalisés. Les entrées alimentent le sujet `core.entry` : n'importe quel o
 2. Votre module est un dépôt git **avec au moins un commit** : `git init && git add . && git commit -m "first version"`.
 3. Admin → passez en **mode avancé** (menu de gauche : « Afficher les réglages avancés » ; en mode simple, l'installation depuis un dépôt est cachée) → **Extensions** → **Catalogue** → **Installer un dépôt personnel (non vérifié)** → saisissez `file:///chemin/absolu/vers/votre/depot`, cochez la case de confiance. Le module est installé **actif** (l'accord se donne par cette case, avant).
 4. **Extensions** → « Réglages » (une fenêtre) : ajoutez une instance, ouvrez-la : réglages, panneau d'admin, page publique, section sur l'accueil (admin → Accueil).
-5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Extensions → Réglages → Chercher une mise à jour → Mettre à jour**. Le module est rechargé depuis le dernier commit.
+5. Vous avez modifié le code ? **Validez** (`git commit`), puis **Extensions → Réglages → Chercher une mise à jour → Mettre à jour**. **Augmentez `version` dans `module.json`** : sans numéro plus haut, rien n'est proposé. Le module est rechargé depuis le dernier commit.
 
 Si l'installation est refusée, le message vous dit pourquoi : manifeste invalide (`module.json: settings.2.key — …`), `apiVersion` différente, `main` introuvable, lien symbolique, plus de 10 Mo…
 Le serveur journalise aussi les erreurs d'exécution de votre module (un module en erreur ne casse jamais le site).
@@ -775,7 +775,7 @@ Lancez : `node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON --test mon-module.
 
 - **Versionnez** : `version` dans `module.json` suit `x.y.z`. Marquez chaque version publiée d'un **tag git** : `git tag v1.2.0 && git push --tags`.
 - **Installer une version précise** : l'adresse du dépôt accepte `#tag` ou `#branche` : `https://github.com/<vous>/<depot>#v1.2.0`. Sans `#`, c'est la dernière version de la branche par défaut,
-  et « Chercher une mise à jour » détecte les nouveaux commits. Une installation épinglée à une **étiquette** voit, elle, les nouvelles étiquettes stables (`vX.Y.Z`) de votre dépôt : publier `v1.3.0` suffit pour qu'elle propose « mettre à jour », **sans perte de données** (une version majeure est signalée) ; si votre nouvelle version est invalide, l'ancienne est rétablie. Une installation épinglée à un commit ne bouge pas.
+  et « Chercher une mise à jour » détecte une `version` plus haute dans `module.json` (un commit sous le même numéro n'est pas une mise à jour). Une installation épinglée à une **étiquette** voit, elle, les nouvelles étiquettes stables (`vX.Y.Z`) de votre dépôt : publier `v1.3.0` suffit pour qu'elle propose « mettre à jour », **sans perte de données** (une version majeure est signalée) ; si votre nouvelle version est invalide, l'ancienne est rétablie. Une installation épinglée à un commit ne bouge pas.
 - **Compatibilité** : tant que `apiVersion` est celle du cœur (`2`), votre module continue de fonctionner quand le cœur évolue ; si l'API change, un module d'une autre version est refusé plutôt que cassé.
 - **Hôtes** : l'administrateur d'un site n'accepte que les dépôts `https://` des hôtes autorisés (`MODULES_ALLOWED_HOSTS`, par défaut GitHub, GitLab, Codeberg, Bitbucket). Un dépôt privé GitHub est possible avec un code d'accès en lecture seule (cœur 0.42.0, voir docs/SKINS.md §21.4b).
 

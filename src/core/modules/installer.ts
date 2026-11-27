@@ -25,7 +25,7 @@ import { eraseInstanceRows } from "../instanceLifecycle";
 import { forgetAuto } from "./autoInstalled";
 import { migrateModuleInstances, type MigrationOutcome } from "./dataMigrations";
 import { incompatWithThisCore, requirementOf, type CoreRequirement } from "./compat";
-import { classify, compareVersions, isReleaseTag, pickLatestTag, PREFIXED_TAG_RE, tagPrefix, TAG_RE, type UpdateLevel } from "../updates/versions";
+import { classify, compareVersions, isReleaseTag, pickLatestTag, PREFIXED_TAG_RE, tagPrefix, TAG_RE, versionSignal, type UpdateLevel } from "../updates/versions";
 import { opStep } from "../operations/tracker";
 import { reconcileManaged } from "../managedRedirects";
 import { accessCodeFor, accessEnv, accessEnvLegacy, accessTarget, GIT_LEGACY_HELPER, GitAccessError, hasAnyAccess, isGitAccessError, scrub, testSeam } from "../gitAccess";
@@ -611,25 +611,27 @@ const sameCommit = (a: string, b: string) => a.length >= 7 && b.length >= 7 && (
  * Récupère (superficiellement) un dépôt à une étiquette, une branche ou un commit, et lit le dossier du module. L'empreinte `tree` est celle du CONTENU de ce
  * dossier : elle ne change que si ce module change, pas quand un autre module du même dépôt évolue.
  */
-async function fetchSubdirSource(url: string, ref: string | null | undefined, subdir: string): Promise<Fetched> {
+/** The shallow copy of (url, ref): shared inside a pass, private (and to be cleaned) outside one. */
+async function sourceOf(url: string, ref: string | null | undefined): Promise<{ source: SharedSource; cleanup: () => void }> {
   const pass = sharedPass.getStore();
-  let source: SharedSource;
-  if (pass) {
-    const key = passKey(url, ref);
-    let hit = pass.sources.get(key);
-    if (!hit) { hit = fetchSource(url, ref); pass.sources.set(key, hit); }
-    source = await hit;
-  } else {
-    source = await fetchSource(url, ref);
-  }
-  const cleanup = pass ? () => {} : source.cleanup;
+  if (!pass) { const source = await fetchSource(url, ref); return { source, cleanup: source.cleanup }; }
+  const key = passKey(url, ref);
+  let hit = pass.sources.get(key);
+  if (!hit) { hit = fetchSource(url, ref); pass.sources.set(key, hit); }
+  return { source: await hit, cleanup: () => {} };
+}
+
+const readManifestAt = (root: string): ParsedManifest | null => {
+  try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(root, "module.json"), "utf8"))); return p.ok ? p.manifest : null; } catch { return null; }
+};
+
+async function fetchSubdirSource(url: string, ref: string | null | undefined, subdir: string): Promise<Fetched> {
+  const { source, cleanup } = await sourceOf(url, ref);
   try {
     const root = path.join(source.checkout, subdir);
     if (!isInside(source.checkout, root)) throw Object.assign(new Error("subdir"), { code: "modules.error.nosubdir" });
     const tree = await git(["rev-parse", `HEAD:${subdir}`], source.checkout);
-    let manifest: ParsedManifest | null = null;
-    try { const p = parseManifest(JSON.parse(fs.readFileSync(path.join(root, "module.json"), "utf8"))); manifest = p.ok ? p.manifest : null; } catch { manifest = null; }
-    return { root, commit: source.commit, tree, manifest, cleanup };
+    return { root, commit: source.commit, tree, manifest: readManifestAt(root), cleanup };
   } catch (error) {
     cleanup();
     throw error;
@@ -648,6 +650,19 @@ export async function subdirTarget(row: Module): Promise<{ ref: string | null; f
   return { ref: same ? entry!.ref ?? null : row.ref, fromCatalogue: !!same };
 }
 
+/**
+ * (0.52.1) The ONE rule that says whether a module that follows a branch (or a folder of a repository) has an update: the version of the remote manifest must be a
+ * higher, stable version than the installed one. A change of content with the SAME version number is not an update (it is work in progress, or a release candidate),
+ * and a lower version is never one. Only when a side has no version that can be compared (see `versionSignal`) does the content decide, as before; the target shown
+ * is then the version when it differs, never a commit. The check, the update itself and the reports all go through here.
+ */
+export function judgeModuleUpdate(installed: string, remote: string | null | undefined, contentChanged: boolean): { available: boolean; target?: string; level?: UpdateLevel } {
+  const signal = versionSignal(installed, remote);
+  if (signal === "newer") return { available: true, target: remote!, level: classify(installed, remote!) ?? undefined };
+  if (signal === "none" || !contentChanged) return { available: false };
+  return { available: true, ...(remote && remote !== installed ? { target: remote } : {}) };
+}
+
 async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
   const { ref, fromCatalogue } = await subdirTarget(row);
   if (!fromCatalogue && isCommitRef(row.ref)) return { available: false };   // épinglé sur un commit : c'est le but
@@ -658,12 +673,9 @@ async function checkSubdirUpdate(row: Module): Promise<ModuleUpdateCheck> {
   }
   const f = await fetchSubdirSource(row.repoUrl!, ref, row.subdir!);
   try {
-    const available = f.tree !== row.tree;
-    const version = f.manifest?.version;
+    const { available, target, level } = judgeModuleUpdate(row.version, f.manifest?.version, f.tree !== row.tree);
     return {
-      available, remote: f.commit,
-      target: available ? (version && version !== row.version ? version : f.commit.slice(0, 7)) : undefined,
-      level: available && version ? classify(row.version, version) ?? undefined : undefined,
+      available, remote: f.commit, target, level,
       needsCore: available ? incompatWithThisCore(f.manifest ? requirementOf(f.manifest) : undefined)?.needs : undefined,
     };
   } finally { f.cleanup(); }
@@ -687,6 +699,8 @@ async function updateSubdirModule(row: Module, chain: string[], toRef?: string):
     opStep("verify");
     if (fetched.tree === row.tree) return { ok: false, error: "modules.error.uptodate" };
     const manifest = fetched.manifest;
+    // Same rule as the check: the same or a lower version number, or a pre-release, is not an update (a step of a restored backup is exempt: it walks releases in order).
+    if (!toRef && !judgeModuleUpdate(row.version, manifest?.version, true).available) return { ok: false, error: "modules.error.uptodate" };
     if (!manifest) throw refusal("modules.error.nomanifest");
     // Contrôle de chargement dans un processus tout neuf, AVANT de toucher à quoi que ce soit : un code qui ne se charge pas n'est pas échangé.
     await validateCandidate(fetched.root, manifest, { expectId: id, core: "last" });
@@ -777,7 +791,10 @@ async function checkGitUpdate(row: Module): Promise<{ check: ModuleUpdateCheck; 
     }
     const out = await git(["ls-remote", "--", row.repoUrl!, row.ref ? `refs/heads/${row.ref}` : "HEAD"]);
     const remote = out.split(/\s+/)[0];
-    return { check: { available: !!remote && remote !== row.commit, remote, target: remote?.slice(0, 7) }, failed: false };
+    if (!remote || remote === row.commit) return { check: { available: false, remote: remote || undefined }, failed: false };
+    // The head moved: only the version of its manifest can make it an update (a commit alone never does).
+    const { source, cleanup } = await sourceOf(row.repoUrl!, row.ref);
+    try { return { check: { ...judgeModuleUpdate(row.version, readManifestAt(source.checkout)?.version, true), remote: source.commit }, failed: false }; } finally { cleanup(); }
   } catch {
     return { check: { available: false }, failed: true };
   }
@@ -837,6 +854,8 @@ async function updateModuleWithin(id: string, chain: string[]): Promise<InstallR
     await git(["fetch", "--depth", "1", "--", "origin", fetchRef], dir);
     opStep("verify");
     const incoming = await git(["show", "FETCH_HEAD:module.json"], dir).then((t) => parseManifest(JSON.parse(t))).catch(() => null);   // illisible : le contrôle habituel plus bas s'en charge
+    // A branch only moves to a HIGHER stable version (see judgeModuleUpdate); the tag path above already decided by the tag itself.
+    if (!isStableTag(row.ref, row.id) && incoming?.ok && !judgeModuleUpdate(row.version, incoming.manifest.version, (await git(["rev-parse", "FETCH_HEAD"], dir)) !== previous).available) return { ok: false, error: "modules.error.uptodate" };
     if (incoming?.ok) {
       assertCore(requirementOf(incoming.manifest));   // (the core first, before the new code is even laid out)
       targetVersion = incoming.manifest.version;
