@@ -283,7 +283,10 @@ test("réglage en mode simple : un onglet « Recherche », une phrase d'introduc
   assert.ok(visibleFields(s) <= 2, `${visibleFields(s)} champs visibles`);
   assert.match(s, /<details(?![^>]*\sopen)[^>]*data-more-options[\s\S]*Plus d&#x27;options[\s\S]*En-tête · 10 résultats par page · Tous les contenus|<details(?![^>]*\sopen)[^>]*data-more-options[\s\S]*Plus d&#x27;options/);
   assert.match(s, /name="searchPlacement"[\s\S]*name="searchPerPage"/, "les options repliées partent avec le formulaire");
-  assert.match(s, /Enregistrer la recherche/, "un seul bouton, un verbe précis");
+  assert.doesNotMatch(s, /type="submit"/, "pas de second bouton : l'enregistrement est dans la barre collée en bas de la page");
+  const src = fs.readFileSync("src/app/admin/(panel)/settings/page.tsx", "utf8");
+  assert.match(src, /<ActionForm action=\{saveSearch\} floating=\{floatingLabels\(t\)\} submitLabel=\{t\("settings\.searchSave"\)\}/, "un seul bouton, un verbe précis, dans la barre collée");
+  assert.equal(JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"))["settings.searchSave"], "Enregistrer la recherche");
   assert.match(s, /href="\/search"[^>]*>Essayer la recherche/);
   assert.deepEqual(forbiddenWords(s.replace(/<[^>]*>/g, " ")), []);
 });

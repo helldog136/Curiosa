@@ -78,6 +78,14 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
     </>
   );
 
+  const aboutFields = (
+    <>
+      {config.locales.map((l) => (
+        <TextArea key={l} name={`site.about__${l}`} label={`${t("settings.about")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />
+      ))}
+    </>
+  );
+
   const contactFields = (
     <>
       <input type="hidden" name="__contact" value="1" />
@@ -104,16 +112,18 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
         <section data-tab="site" className="space-y-5">
           <div className={`${ui.card} space-y-5`}>
             <h3 className="font-semibold">{t("settings.who")}</h3>
-            <Select name="entityType" label={t("settings.entity")} help={t("settings.entityHelp")} defaultValue={entity}
+            <Segmented name="entityType" label={t("settings.entity")} help={t("settings.entityHelp")} defaultValue={entity}
               options={[{ value: "organization", label: t("settings.entity.organization") }, { value: "person", label: t("settings.entity.person") }]} />
             {config.locales.map((l) => (
               <fieldset key={l} className="space-y-4">
                 {config.locales.length > 1 && <legend className="mb-2 text-sm font-medium text-muted">{localeName(l)}</legend>}
                 <TextField name={`site.name__${l}`} label={t("settings.siteName")} defaultValue={String(values["site.name"]?.[l] ?? "")} />
                 <TextField name={`site.tagline__${l}`} label={t("settings.tagline")} help={t("settings.taglineHelp")} defaultValue={String(values["site.tagline"]?.[l] ?? "")} />
-                <TextArea name={`site.about__${l}`} label={t("settings.about")} help={t("settings.aboutHelp")} rows={4} defaultValue={String(values["site.about"]?.[l] ?? "")} />
               </fieldset>
             ))}
+            {advanced ? aboutFields : (
+              <MoreOptions title={t("settings.about")} defaultOpen={Object.values(values["site.about"] ?? {}).some(Boolean)}>{aboutFields}</MoreOptions>
+            )}
           </div>
           <div className={`${ui.card} space-y-4`}>
             <h3 className="font-semibold">{t("settings.logos")}</h3>
@@ -183,21 +193,17 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
           </div>
           <div className={`${ui.card} space-y-4`} id="ai-robots" data-testid="ai-settings">
             <input type="hidden" name="__ai" value="1" />
-            <div>
-              <h3 className="font-semibold">{t("settings.aiCard")}</h3>
-              <p className={ui.help}>{t("settings.aiExplain")}</p>
-            </div>
+            <h3 className="flex items-center gap-1.5 font-semibold">{t("settings.aiCard")}<HelpTip help={t("settings.aiExplain")} name={t("settings.aiCard")} always /></h3>
             {ai.fromLegacy && ai.blockAnswers && <p role="note" className="rounded-lg border border-line bg-bg p-3 text-sm" data-testid="ai-legacy-note">{t("settings.aiLegacyNote")}</p>}
-            <Select name="aiTraining" label={t("settings.aiTraining")} help={t("settings.aiTrainingHelp")} defaultValue={ai.blockTraining ? "block" : "allow"}
+            <Segmented name="aiTraining" label={t("settings.aiTraining")} help={t("settings.aiTrainingHelp")} defaultValue={ai.blockTraining ? "block" : "allow"}
               options={[{ value: "block", label: t("settings.aiBlocked") }, { value: "allow", label: t("settings.aiAllowed") }]} />
-            <Select name="aiAnswers" label={t("settings.aiAnswers")} help={t("settings.aiAnswersHelp")} defaultValue={ai.blockAnswers ? "block" : "allow"}
+            <Segmented name="aiAnswers" label={t("settings.aiAnswers")} help={t("settings.aiAnswersHelp")} defaultValue={ai.blockAnswers ? "block" : "allow"}
               options={[{ value: "allow", label: t("settings.aiAllowed") }, { value: "block", label: t("settings.aiBlocked") }]} />
             <Checkbox name="llmsTxt" label={t("settings.llmsTxt")} help={t("settings.llmsTxtHelp")} defaultChecked={llmsTxt} />
             <a href={SETTINGS_AI_HREF} className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.aiSeeChecks")}</a>
           </div>
           <div className={`${ui.card} space-y-4`}>
-            <h3 className="font-semibold">{t("settings.privacyPage")}</h3>
-            <p className={ui.help}>{t("settings.privacyPageHelp")}</p>
+            <h3 className="flex items-center gap-1.5 font-semibold">{t("settings.privacyPage")}<HelpTip help={t("settings.privacyPageHelp")} name={t("settings.privacyPage")} always /></h3>
             {config.locales.map((l) => (
               <TextArea key={l} name={`privacy.extra__${l}`} label={`${t("settings.privacyExtra")}${config.locales.length > 1 ? ` — ${localeName(l)}` : ""}`} rows={6} defaultValue={String(values["privacy.extra"]?.[l] ?? "")} help={t("settings.privacyExtraHelp")} />
             ))}
@@ -215,7 +221,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
 
       <section data-tab="search" className="space-y-5">
         <p className={ui.help}>{t("settings.searchIntro")}</p>
-        <ActionForm action={saveSearch} submitLabel={t("settings.searchSave")} pendingLabel={t("progress.saving")} className="space-y-5">
+        <ActionForm action={saveSearch} floating={floatingLabels(t)} submitLabel={t("settings.searchSave")} pendingLabel={t("progress.saving")} className="space-y-5">
           <div className={`${ui.card} space-y-3`}>
             <SwitchField name="searchEnabled" label={t("settings.searchSwitch")} defaultChecked={search.enabled} onText={t("settings.searchOn")} offText={t("settings.searchOff")} />
             {search.enabled && <a href="/search" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.searchTry")} ↗</a>}
@@ -247,7 +253,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
 
       <section data-tab="sound" className="space-y-5" data-testid="settings-sound">
         <p className={ui.help}>{t("settings.soundIntro")}</p>
-        <ActionForm action={saveSound} submitLabel={t("settings.soundSave")} pendingLabel={t("progress.saving")} className="space-y-5">
+        <ActionForm action={saveSound} floating={floatingLabels(t)} submitLabel={t("settings.soundSave")} pendingLabel={t("progress.saving")} className="space-y-5">
           <div className={`${ui.card} space-y-4`}>
             <SwitchField name="soundEnabled" label={t("settings.soundSwitch")} defaultChecked={sound.enabled} onText={t("settings.soundOn")} offText={t("settings.soundOff")} />
             <p data-testid="sound-state"><span className={sound.enabled && sound.file ? ui.chipOk : ui.chipWarn}>{t(!sound.enabled ? "settings.soundState.off" : !sound.file ? "settings.soundState.waiting" : `settings.soundState.${sound.pages}`)}</span></p>
@@ -284,7 +290,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
       {isOwner && (
         <section data-tab="mail" className="space-y-5">
           <p><span className={mail ? ui.chipOk : ui.chipWarn}>{mail ? t("settings.mailStatusOn") : t("settings.mailStatusOff")}</span></p>
-          <ActionForm action={saveMail} submitLabel={t("settings.mailSave")} className="space-y-5">
+          <ActionForm action={saveMail} floating={floatingLabels(t)} submitLabel={t("settings.mailSave")} className="space-y-5">
             <div className={`${ui.card} space-y-4`}>
               <h3 className="font-semibold">{t("settings.mailServer")}</h3>
               {/* Mode simple : le serveur seul ; le port et la connexion sécurisée (réglés d'avance sur les valeurs courantes) sont rangés sous « Plus d'options ». Les champs repliés partent avec le formulaire : rien n'est perdu. */}
