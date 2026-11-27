@@ -1,5 +1,6 @@
 import { prisma } from "@/core/db";
-import { stateWhere, type AdminState } from "./adminList";
+import type { Prisma } from "@prisma/client";
+import { caseVariants, cleanQuery, stateWhere, type AdminState } from "./adminList";
 
 /** Ce que le tableau de bord sait compter d'une extension : seules celles qui ont une liste d'entrées à ouvrir (contenu, pas en erreur). */
 export type CountableItem = { id: string; key: string; name: string; icon: string; content: boolean; error: boolean };
@@ -45,10 +46,14 @@ export type DraftRow = { id: string; title: string; updatedAt: Date; key: string
  * Les brouillons à finir, tous modules confondus, les plus récemment touchés d'abord : seulement ceux d'extensions qui ont une liste (donc qu'on peut ouvrir).
  * `total` est le nombre complet, `rows` en montre `limit` au plus (`skip` pour paginer).
  */
-export async function listDrafts(items: CountableItem[], defaultLocale: string, opts: { limit: number; skip?: number }): Promise<{ total: number; rows: DraftRow[] }> {
+export async function listDrafts(items: CountableItem[], defaultLocale: string, opts: { limit: number; skip?: number; q?: string }): Promise<{ total: number; rows: DraftRow[] }> {
   const byId = new Map(items.filter((i) => i.content && !i.error).map((i) => [i.id, i]));
   if (byId.size === 0) return { total: 0, rows: [] };
-  const where = { AND: [{ instanceId: { in: [...byId.keys()] } }, stateWhere("draft", new Date())] };
+  const and: Prisma.EntryWhereInput[] = [{ instanceId: { in: [...byId.keys()] } }, stateWhere("draft", new Date())];
+  // (C5h) The search of the drafts page: the title or the address of any translation, with the same case handling as the entries list.
+  const q = cleanQuery(opts.q);
+  if (q) and.push({ translations: { some: { OR: caseVariants(q).flatMap((t) => [{ title: { contains: t } }, { slug: { contains: t } }]) } } });
+  const where = { AND: and };
   const [total, found] = await Promise.all([
     prisma.entry.count({ where }),
     prisma.entry.findMany({ where, include: { translations: true }, orderBy: [{ updatedAt: "desc" }, { id: "desc" }], take: opts.limit, skip: opts.skip ?? 0 }),

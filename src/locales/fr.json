@@ -5382,6 +5382,8 @@
   "catalogue.showInstalledAction": "Afficher les modules installés",
   "catalogue.allInstalledTitle": "Tous les modules du catalogue sont sur votre site",
   "catalogue.unavailable": "Pas disponibles ({n})",
+  "search.results": "{n} résultats",
+  "search.results.one": "{n} résultat",
   "account.nav": "Sections de Mon compte",
   "theme.ember": "Sarcelle et braise",
   "theme.arcade": "Arcade",

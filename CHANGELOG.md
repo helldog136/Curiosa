@@ -55,6 +55,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Roles have their own page.** “Roles”, under “Administration”, shows each role and how many people hold it. Create, rename, duplicate or delete a role and pick what it allows, never able to give what is reserved to the owner.
 - **Inviter une personne dit ce qui se passe.** Quand le site ne peut pas envoyer de courriel, le bouton s'appelle « Créer un lien d'invitation » et vous copiez le lien avec « Copier le lien d'invitation ». Le bouton « Enregistrer » du changement de rôle reste grisé tant que rien n'a changé.
 - **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
+- **Liens courts : un seul bouton pour créer, interrupteur discret.** La création s'ouvre dans une fenêtre, un lien en pause ou terminé porte une pastille. Les brouillons ont une recherche, les listes d'entrées et de modèles des lignes régulières.
+- **(English) Short links: one create button, a quiet switch.** Creating opens a window, a paused or ended link carries a pill. Drafts get a search, and the entries and templates lists use regular rows.
 
 ### Corrections
 

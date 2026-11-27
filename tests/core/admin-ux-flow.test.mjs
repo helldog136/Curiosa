@@ -11,7 +11,7 @@ test("pages d'administration du site : le titre porte le même nom que le menu, 
   assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
   // The menu page is a tab of "Home and menu": same name in both modes ("Navigation" is gone), see tests/core/home-menu-entry.test.mjs.
   assert.match(page("navigation"), /title=\{t\("navigation\.title"\)\}/);
-  assert.match(page("redirects"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.redirects"\)\}<\/h1>/, "one name, \"Short links\", in both modes");
+  assert.match(page("redirects"), /<PageHeader title=\{t\("nav\.redirects"\)\}/, "one name, \"Short links\", in both modes");
 });
 
 test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui répète l'onglet), un seul enregistrement flottant, rien d'autre", () => {
@@ -36,7 +36,7 @@ test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui
 test("raccourcis : état vide explicatif avec exemples, formulaire sans « — » ni option inutile, entrée à suivre repliée et seulement s'il y en a", () => {
   const p = page("redirects");
   assert.match(p, /redirects\.length === 0 \?/);
-  assert.match(p, /t\("redirects\.examples"\)/);
+  assert.match(p, /<EmptyState title=\{advanced \? t\("redirects\.empty"\) : t\("redirects\.empty\.simple"\)\} action=\{createDialog\}/, "C5h: one sentence and the button that creates the first link");
   assert.match(p, /<(?:details|MoreOptions)[\s\S]*withUrl\.length > 0 && \(/, "l'entrée à suivre est dans une zone repliée, et seulement s'il y en a");
   assert.ok(!/label: "—"/.test(p));
   assert.match(p, /<ActionForm action=\{createRedirect\}[^>]*\breset\b/);

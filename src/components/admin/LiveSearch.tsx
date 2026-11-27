@@ -80,10 +80,12 @@ type Props = {
   initialQuery?: string;
   /** « Recherche en cours… » (mode serveur). */
   busyLabel?: string;
+  /** (C5h) Server mode: the count of the page being shown ("3 of 12"), written by the page while a search or a filter is active. */
+  serverCount?: string;
   className?: string;
 };
 
-export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLabel, filters = [], mode = "page", action, keep = {}, param = "q", initialQuery = "", busyLabel, className = "" }: Props) {
+export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLabel, filters = [], mode = "page", action, keep = {}, param = "q", initialQuery = "", busyLabel, serverCount, className = "" }: Props) {
   const router = useRouter();
   const [query, setQuery] = useState(initialQuery);
   const [pills, setPills] = useState<Record<string, string>>({});
@@ -157,7 +159,7 @@ export function LiveSearch({ scope, placeholder, noneLabel, clearLabel, countLab
       {filters.map((f) => (
         <Pills key={f.key} pillKey={f.key} label={f.allLabel} allLabel={f.allLabel} options={f.options} value={pills[f.key] ?? "all"} onChange={(v) => setPills((p) => ({ ...p, [f.key]: v }))} />
       ))}
-      <ResultCount text={busy && busyLabel ? busyLabel : none ? "" : count} />
+      <ResultCount text={busy && busyLabel ? busyLabel : mode === "server" ? (serverNone ? "" : serverCount ?? "") : none ? "" : count} />
       {none && (
         <div role="status" className={`${ui.card} space-y-2 text-[15px]`} data-testid="live-search-none">
           <p className="font-medium">{noneLabel}</p>
