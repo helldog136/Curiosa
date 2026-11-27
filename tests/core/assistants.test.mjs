@@ -147,7 +147,9 @@ test("page : sous-titre « API & MCP » et réglages techniques seulement en mod
     assert.ok(!/(?<![.\w])created\.(token|byUrl)|\bk\.hash|\.prefix/.test(f), "la liste ne manipule aucun secret");
     assert.ok(!/hash/.test(f), "ni empreinte");
   }
-  assert.match(read(`${PANEL}/assistants/AssistantTabs.tsx`), /aria-current=\{here \? "page" : undefined\}/);
+  const tabs = read(`${PANEL}/assistants/AssistantTabs.tsx`);
+  assert.match(tabs, /<LinkTabs/, "the shared brick draws the tabs and marks the open one with aria-current");
+  assert.match(read("src/components/admin/LinkTabs.tsx"), /aria-current=\{here \? "page" : undefined\}/);
 });
 
 test("accès : la page d'un accès réunit droits et validation, le détail par outil est réservé au mode avancé", () => {

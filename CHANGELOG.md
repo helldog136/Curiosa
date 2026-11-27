@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Assistants IA : une file de validation claire.** Chaque demande en attente a un bouton principal (Approuver) et un refus discret ; recherche en direct sur les demandes, les validations par assistant et l'historique. Les accès, les droits et le journal sont inchangés.
+- **(English) AI assistants: a clear approval queue.** Each waiting request has one main button (Approve) and a quiet refusal; live search on requests, per-assistant approvals and history. Accesses, rights and the audit log are unchanged.
 - **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
 - **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
 - **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
