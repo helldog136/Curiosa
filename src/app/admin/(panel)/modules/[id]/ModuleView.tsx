@@ -15,6 +15,7 @@ import { RemoveSection } from "@/components/admin/RemoveSection";
 import { listRetired } from "@/core/modules/retired";
 import { readBlockedUpdate } from "@/core/modules/blockedUpdate";
 import { ui } from "@/components/admin/ui";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { ModuleUpdateButton } from "@/components/admin/ModuleUpdateButton";
 import { ModuleMaintenance } from "@/components/admin/ModuleMaintenance";
 import { peekModulesReport } from "@/core/modules/updateStatus";
@@ -82,7 +83,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
         <div className="min-w-0">
           <h1 className={ui.pageTitle}>{name}</h1>
           <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-            {behind && <span className={ui.chipWarn}>⬆ {t("modules.updateBadge")}</span>}
+            {behind && <StatusPill tone="warn">{t("modules.updateBadge")}</StatusPill>}
             {advanced && <span>v{row.version}{row.source === "git" ? " · git" : ""}</span>}
             {advanced && <span className={`rounded px-2 py-0.5 text-xs ${moduleOrigin(row, market) === "custom" ? "bg-amber-500/20" : "bg-line"}`}>{t(`catalogue.origin.${moduleOrigin(row, market)}`)}</span>}
           </p>
@@ -92,7 +93,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
       {refusalText && <Callout tone="danger" role="alert"><span data-testid="module-error">{refusalText}</span></Callout>}
       {blocked && blocked.to !== row.version && <Callout tone="warn" role="status"><span data-testid="module-blocked">{t("modules.blockedNotice", { version: blocked.to, date: new Date(blocked.at).toLocaleDateString(locale, { dateStyle: "long" }), current: row.version })}</span></Callout>}
       {/* A status, not a banner (R32): one word in a chip, the full sentence in its tooltip. */}
-      {update && <p><span role="status" className={update === "yes" ? ui.chipWarn : ui.chipOk} title={update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}>{update === "yes" ? t("modules.chip.update") : t("modules.chip.upToDate")}</span></p>}
+      {update && <p role="status"><StatusPill tone={update === "yes" ? "warn" : "ok"} title={update === "yes" ? (to ? t("modules.updateAvailableTo", { module: name, version: to }) : t("modules.updateAvailable")) : t("modules.upToDate")}>{update === "yes" ? t("modules.chip.update") : t("modules.chip.upToDate")}</StatusPill></p>}
       {update === "yes" && level === "major" && <Callout tone="warn" role="alert">{t("modules.updateMajor")}</Callout>}
 
       <section className={`${ui.card} space-y-3`}>

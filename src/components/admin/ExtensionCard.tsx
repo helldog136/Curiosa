@@ -7,6 +7,7 @@ import { CopyText } from "@/components/site/CopyText";
 import { InstanceState } from "./InstanceState";
 import { RowMenu } from "./RowMenu";
 import { ui } from "./ui";
+import { StatusPill } from "./StatusPill";
 import { PendingButton } from "./PendingButton";
 import { entriesHref, instanceHref, moduleHref } from "@/core/adminLinks";
 
@@ -44,17 +45,17 @@ function Chips({ t, m }: { t: Translator; m: InstalledModule }) {
   return (
     <>
       {(m.attention === "setup" || m.attention === "error") && <InstanceState t={t} state={m.attention} missing={m.setup} />}
-      {m.update && <span className={ui.chipWarn} data-testid={`module-behind-${m.id}`}>⬆ {t("modules.updateBadge")}</span>}
-      {m.missing && <span className={ui.chipWarn} data-testid={`module-missing-${m.id}`}>⚠ {t("deps.missing.badge")}</span>}
-      {m.auto && <span className={ui.chip} data-testid={`module-auto-${m.id}`}>🔗 {t("deps.auto.badge")}</span>}
-      {m.kept > 0 && <span className={ui.chip} data-testid={`module-kept-${m.id}`}>🗂 {t("kept.badge")}</span>}
-      {m.platform && m.platform !== m.name && <span className={ui.chip} data-testid="platform-chip">{m.platform}</span>}
+      {m.update && <StatusPill tone="warn" testid={`module-behind-${m.id}`}>{t("modules.updateBadge")}</StatusPill>}
+      {m.missing && <StatusPill tone="warn" testid={`module-missing-${m.id}`}>{t("deps.missing.badge")}</StatusPill>}
+      {m.auto && <StatusPill tone="info" testid={`module-auto-${m.id}`}>{t("deps.auto.badge")}</StatusPill>}
+      {m.kept > 0 && <StatusPill tone="neutral" testid={`module-kept-${m.id}`}>{t("kept.badge")}</StatusPill>}
+      {m.platform && m.platform !== m.name && <StatusPill tone="neutral" testid="platform-chip">{m.platform}</StatusPill>}
     </>
   );
 }
 
 /**
- * Une extension installée = UNE ligne : icône, nom, courte description, pastilles utiles, et une seule action visible (« Réglages », qui ouvre une fenêtre
+ * Un module installé = UNE ligne : icône, nom, courte description, pastilles utiles, et une seule action visible (« Réglages », qui ouvre une fenêtre
  * par-dessus la liste : réglages, instances, adresse OBS, retrait… voir extensions/@modal). Le reste tient dans « ⋯ ». Une seule instance : jamais montrée
  * à part (même nom). Plusieurs : repliées sous la ligne. Il n'y a pas d'interrupteur : une extension installée tourne, pour ne plus l'avoir on la retire.
  */
