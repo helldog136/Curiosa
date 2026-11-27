@@ -310,3 +310,17 @@ test("a page with no vocabulary entry and ONE contributing module takes that mod
   const two = P.buildPlaceIndex([...contrib("a-mod", [sec("main", "content.shared")], { name: "Un" }), ...contrib("b-mod", [sec("main", "content.shared")], { name: "Deux" })], bare, "fr");
   assert.equal(two.groups[0].pages[0].title, "Shared", "several modules: nothing to prefer, the derived title stays");
 });
+
+/* ───────────── F-MOD-001: an unavailable section speaks the connection vocabulary, with one link ───────────── */
+
+test("an unavailable placed section shows a state pill, its reason and a single link", () => {
+  const code = read("src/components/admin/PlaceSection.tsx");
+  assert.match(code, /connection\.state\.\$\{down\.state\}/, "state word comes from the connection vocabulary (Not configured / Degraded)");
+  assert.match(code, /showOrigin && !down/, "the header link is not repeated when the section line already links to the module");
+  assert.ok(!/places\.unavailable"/.test(code), "the old 'unavailable' sentence is gone");
+  for (const lang of ["en", "fr"]) {
+    const j = JSON.parse(read(`src/locales/${lang}.json`));
+    for (const k of ["places.reason.notConfigured", "places.reason.timeout", "places.reason.failed", "places.configure"]) assert.ok(j[k], `${lang} ${k}`);
+    assert.ok(!("places.unavailable" in j));
+  }
+});

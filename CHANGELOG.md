@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.
+- **(English) A page section that cannot show says why, with one link.** It carries the “Not configured” or “Degraded” pill, the reason, then a single link to the module, instead of “Section unavailable” and a duplicated link.
 - **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
 - **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
 - **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
