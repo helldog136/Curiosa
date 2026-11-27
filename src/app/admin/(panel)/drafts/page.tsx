@@ -1,5 +1,6 @@
 import { adminCtx } from "@/core/admin";
-import { can } from "@/core/auth/access";
+import { can, hasRole } from "@/core/auth/access";
+import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { navItemVisible } from "@/core/modules/adminMenu";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { listDrafts } from "@/core/content/dashboardCounts";
@@ -31,15 +32,17 @@ export default async function DraftsPage({ searchParams }: { searchParams: Promi
   const first = await listDrafts(nav, config.defaultLocale, { limit: PER_PAGE, skip: (wanted - 1) * PER_PAGE, q });
   const pages = Math.max(1, Math.ceil(first.total / PER_PAGE));
   const fmt = new Intl.DateTimeFormat(locale, { dateStyle: "medium" });
-  // The way out of an empty list: write something in the first list of entries the person can open (the dashboard when there is none).
+  // The way out of an empty list: write something in the first list of entries the person can open; with none, add a module (administration) or go back to the dashboard.
   const writeIn = nav.find((m) => m.content && !m.error);
   const none = first.total === 0 && !q;
   return (
     <div className="space-y-6">
       <PageHeader title={t("drafts.title")} intro={t("drafts.intro")} />
       {none ? (
-        <EmptyState title={t("drafts.empty")} testid="drafts-empty"
-          action={writeIn ? <a href={entryNewHref(writeIn.key)} className={ui.btnPrimary}>{t("entries.new")}</a> : <a href={ADMIN_HREF} className={ui.btn}>{t("nav.dashboard")}</a>} />
+        <EmptyState title={writeIn ? t("drafts.empty") : t("drafts.emptyNoModule")} testid="drafts-empty"
+          action={writeIn ? <a href={entryNewHref(writeIn.key)} className={ui.btnPrimary}>{t("entries.new")}</a>
+            : hasRole(user, "admin") ? <a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("connections.emptyAction")}</a>
+            : <a href={ADMIN_HREF} className={ui.btn}>{t("nav.dashboard")}</a>} />
       ) : (
         <>
           {/* R15: the search is there from the first draft, and asks the server (the list is paginated). */}

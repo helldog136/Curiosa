@@ -93,16 +93,27 @@ for (const advanced of [false, true]) {
       assert.doesNotMatch(html, /^redirect:/);
       assert.match(html, /data-testid="maintenance-tabs"/);
       assert.equal((html.match(/<h1[ >]/g) ?? []).length, 1, "un seul titre de niveau 1");
-      assert.match(html, /<h1[^>]*>[^<]*<span aria-hidden="true">🛠️(?:<!-- -->)? <\/span>Entretien<\/h1>/);
+      assert.match(html, /<h1[^>]*>Entretien<\/h1>/, "le titre n'a pas d'émoji (les icônes restent dans le menu)");
       const current = [...html.matchAll(/<a [^>]*href="([^"]+)"[^>]*aria-current="page"[^>]*data-tab="(\w+)"/g)];
-      assert.deepEqual(current.map((m) => m[2]), [tab], "un seul onglet ouvert, le bon");
-      assert.equal(current[0][1], L.MAINTENANCE_TAB_HREFS[tab]);
+      const inBar = M.maintenanceTabs({ role: "owner", advanced }).includes(tab);
+      assert.deepEqual(current.map((m) => m[2]), inBar ? [tab] : [], "un seul onglet ouvert, le bon (aucun si la page, ouverte à la main, n'est pas dans la barre du mode)");
+      if (inBar) assert.equal(current[0][1], L.MAINTENANCE_TAB_HREFS[tab]);
       const shown = [...html.matchAll(/data-tab="(\w+)"/g)].map((m) => m[1]);
-      const expected = ["health", "backup", "updates", "upkeep", "audit"].filter((id) => id === tab || M.maintenanceTabs({ role: "owner", advanced }).includes(id));
-      assert.deepEqual(shown, expected, "les onglets visibles = ceux du rôle et du mode, plus la page ouverte à la main");
+      const expected = ["health", "backup", "updates", "upkeep", "audit"].filter((id) => M.maintenanceTabs({ role: "owner", advanced }).includes(id));
+      assert.deepEqual(shown, expected, "la même barre sur les cinq pages : les onglets du rôle et du mode, jamais un de plus selon la page ouverte");
       const labels = [...html.matchAll(/data-tab="\w+"[^>]*>([^<]+)</g)].map((m) => m[1]);
       assert.equal(new Set(labels).size, labels.length, "deux onglets ne portent jamais le même nom");
       assert.ok(labels.every((l) => l.length <= 24), `libellés courts : ${labels}`);
     });
   }
 }
+
+test("/admin/maintenance ouvre la première page d'Entretien que la personne peut ouvrir", async () => {
+  const page = read("src/app/admin/(panel)/maintenance/page.tsx");
+  assert.match(page, /adminCtx\("member"\)/);
+  assert.match(page, /maintenanceTabs\(\{ role: user\.level, advanced \}\)/);
+  for (const advanced of [false, true]) {
+    await prisma.user.update({ where: { id: owner.id }, data: { advanced } });
+    assert.equal(await render("maintenance/page.tsx"), `redirect:${L.MAINTENANCE_TAB_HREFS.health}`);
+  }
+});

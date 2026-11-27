@@ -10,6 +10,7 @@ import { moduleNames } from "@/core/modules/updateStatus";
 import type { Translator } from "@/core/i18n/dictionary";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { Callout, EmptyState, Panel } from "@/components/admin/Page";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { ui } from "@/components/admin/ui";
 import { approveRequestAction, denyRequestAction, saveNotifyAction, setApprovalAction } from "./requestsActions";
 import { describeRequest } from "./requestsShared";
@@ -47,7 +48,7 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
 
       <Panel title={t("aim.pending.title")} help={t("aim.pending.help")} testid="ai-requests">
         {pending.length === 0 ? (
-          <EmptyState icon="✅" title={t("aim.pending.none")} />
+          <p className="flex items-center gap-1.5 text-sm text-muted" data-testid="ai-requests-none">{t("aim.pending.none")}<HelpTip help={t("aim.pending.noneHelp")} name={t("aim.pending.title")} always /></p>
         ) : (
           <div className="space-y-3">
           <LiveSearch scope="requests" placeholder={t("assistants.requests.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} />

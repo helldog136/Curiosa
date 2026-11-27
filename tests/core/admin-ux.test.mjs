@@ -124,7 +124,7 @@ test("Assistants IA : réglages communs, suspension confirmée ; ajout et retrai
   assert.ok(page.indexOf('"team.ai.where.title"') < page.indexOf('"assistants.master.title"'), "renvoi vers l'Équipe, puis suspension générale");
   assert.match(page, /ConfirmButton message=\{t\("assistants\.master\.confirm"\)\}/);
   const team = read(`${PANEL}/users/page.tsx`);
-  assert.ok(team.indexOf("<McpTokenCreator") > 0 && team.indexOf('testid="assistants-none"') > 0, "ajout dans l'Équipe, état vide qui dit quoi faire");
+  assert.ok(team.indexOf("<McpTokenCreator") > 0 && team.indexOf('testid="assistants-none"') < 0, "ajout dans l'Équipe, un seul chemin (le bouton du haut) : pas de second « Ajouter un assistant IA »");
   assert.match(read(`${PANEL}/users/assistantMembers.tsx`), /ConfirmButton menu message=\{t\("assistants\.revokeConfirm", \{ name: k\.name \}\)\}/);
 });
 

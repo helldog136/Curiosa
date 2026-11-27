@@ -38,15 +38,14 @@ export default async function GroupIndexPage({ params, searchParams }: { params:
   const { group } = await params;
   const { user, t, locale, config, advanced } = await adminCtx("member");
   const index = await loadGroupIndex(user, { group, advanced, locale, defaultLocale: config.defaultLocale });
+  const emptyNetworks = () => (
+    <div className="space-y-6">
+      <PageHeader title={t("nav.accounts")} intro={t("connections.intro")} />
+      <EmptyState icon="🔌" title={t("connections.emptyTitle")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("connections.emptyAction")}</a>}>{t("connections.emptyHelp")}</EmptyState>
+    </div>
+  );
   if (!index) {
-    if (group === NETWORKS && hasRole(user, "admin")) {
-      return (
-        <div className="space-y-6">
-          <PageHeader title={t("nav.accounts")} intro={t("connections.intro")} />
-          <EmptyState icon="🔌" title={t("connections.emptyTitle")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("connections.emptyAction")}</a>}>{t("connections.emptyHelp")}</EmptyState>
-        </div>
-      );
-    }
+    if (group === NETWORKS && hasRole(user, "admin")) return emptyNetworks();
     notFound();
   }
   if (group === NETWORKS) {
@@ -63,6 +62,11 @@ export default async function GroupIndexPage({ params, searchParams }: { params:
         </div>
       );
     }
+  }
+  // The index holds nothing to open (no module that connects the site is installed): say what to do, never a blank page (R18).
+  if (group === NETWORKS && index.blocks.every((b) => b.links.length === 0)) {
+    if (hasRole(user, "admin")) return emptyNetworks();
+    notFound();
   }
   const title = group === NETWORKS ? t("nav.accounts") : index.title;
   return (

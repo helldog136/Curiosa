@@ -141,12 +141,13 @@ export default async function LegacyPage({ searchParams }: { searchParams: Promi
       {/* La recherche et les filtres servent dès qu'il y a quelque chose à lire ; sur un site propre il n'y a que la liste « Terminé », repliée. */}
       {sum.todo + sum.kept > 0 && (
         <LiveSearch scope="upkeep" placeholder={t("upkeep.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
-          filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
+          filters={[{ key: "state", allLabel: t("upkeep.filter.all"), options: GROUPS.filter((g) => g.id !== "done" || advanced).map((g) => ({ value: g.id, label: t(`upkeep.group.${g.id}`), count: counts[g.id] })) }]} />
       )}
 
       {GROUPS.map(({ id, tone }) => {
         const list = byGroup(id);
-        if (list.length === 0) return null;
+        // What is done needs no action (R33.1): the list of it is a record, kept for the advanced mode.
+        if (list.length === 0 || (id === "done" && !advanced)) return null;
         const body = <ul className="divide-y divide-line" data-testid={`upkeep-list-${id}`}>{list.map(renderRow)}</ul>;
         return (
           <section key={id} data-live-group="upkeep" data-testid={`upkeep-group-${id}`}>

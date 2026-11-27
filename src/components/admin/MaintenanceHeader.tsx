@@ -11,11 +11,12 @@ import { ui } from "./ui";
 /**
  * Haut de chaque page de l'entrée « Entretien » : le titre, une phrase, et les onglets (Contrôle du site, Sauvegarde, Mises à jour, Restes, Journal d'activité).
  * Chaque onglet est une page qui garde sa propre adresse ; la barre ne montre que ce que la personne a le droit d'ouvrir (maintenanceTabs).
- * L'onglet de la page ouverte est toujours présent, même si le mode ou le droit ne le proposerait pas (adresse ouverte à la main).
+ * La barre est la même sur les cinq pages : une page ouverte à la main que le mode n'affiche pas (le journal en mode simple) n'ajoute pas son onglet.
  */
 export async function MaintenanceHeader({ t, level, advanced, current }: { t: Translator; level: Level; advanced: boolean; current: MaintenanceTab }) {
   const visible = maintenanceTabs({ role: level, advanced });
-  const ids = (["health", "backup", "updates", "upkeep", "audit"] as const).filter((id) => id === current || visible.includes(id));
+  // The same bar on the five pages: what this person may open, in one order. The page that is open never adds a tab of its own (it would make the bars differ).
+  const ids = (["health", "backup", "updates", "upkeep", "audit"] as const).filter((id) => visible.includes(id));
   const updateAvailable = ids.includes("updates") && visible.includes("updates") && (await getUpdateCheck().catch(() => null))?.available === true;
   const todo = ids.includes("upkeep") && visible.includes("upkeep") ? ((await legacyUpkeepSummary().catch(() => null))?.todo ?? 0) : 0;
   const tabs: LinkTab[] = ids.map((id) => ({
@@ -27,7 +28,7 @@ export async function MaintenanceHeader({ t, level, advanced, current }: { t: Tr
   }));
   return (
     <div className="space-y-4" data-testid="maintenance-header">
-      <PageHeader title={t("nav.maintenance")} icon="🛠️" intro={t("maint.intro")} />
+      <PageHeader title={t("nav.maintenance")} intro={t("maint.intro")} />
       <LinkTabs tabs={tabs} current={current} label={t("maint.tabs.label")} testid="maintenance-tabs" />
     </div>
   );

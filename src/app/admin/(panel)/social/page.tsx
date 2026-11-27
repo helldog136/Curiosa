@@ -101,7 +101,10 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
           {rows.length > 0 && <p className={`text-sm ${shownCount > MAX_SOCIALS ? "font-medium text-amber-700" : "text-muted"}`} role="status" data-testid="social-count">{t("social.count", { shown: shownCount, max: MAX_SOCIALS })}</p>}
         </div>
         {rows.length === 0 ? (
-          <EmptyState testid="social-empty" title={t("social.none")} action={<a href="#social-add" className={`${ui.btn} min-h-11`}>{t("social.addFirst")}</a>} />
+          // The form above already is the way to add one (R33.7): the button goes only where there is no such form.
+          sources.length > 0
+            ? <p className="text-sm text-muted" data-testid="social-empty">{t("social.none")}</p>
+            : <EmptyState testid="social-empty" title={t("social.none")} action={<a href="#social-add" className={`${ui.btn} min-h-11`}>{t("social.addFirst")}</a>} />
         ) : (
           <>
             {(duplicates > 0 || beyond > 0) && (
