@@ -225,3 +225,17 @@ test("wiring: the Team page keeps its gates and offers the invitation honestly",
   for (const k of keys) { assert.ok(en[k], k); assert.ok(fr[k], k); assert.deepEqual((en[k].match(/\{\w+\}/g) ?? []).sort(), (fr[k].match(/\{\w+\}/g) ?? []).sort(), `${k}: same variables`); }
   assert.equal(Object.keys(en).at(-1), "settings.contrast.accent2");
 });
+
+test("look-alike names: a custom role cannot be named like a built-in role, in any language, on create, rename and duplicate", async () => {
+  for (const bad of ["Administration", "administration", "  OWNER ", "Propriétaire", "proprietaire", "Technical coordination", "Coordination technique", "Rédaction", "Editorial"]) {
+    assert.equal((await R.createRole(T.owner.id, { name: bad, rights: [] })).reason, "name", bad);
+  }
+  const id = await make("Moderation", ["core:entries.edit"]);
+  assert.equal((await R.updateRole(T.owner.id, id, { name: "Administration", rights: ["core:entries.edit"] })).reason, "name");
+  assert.equal((await R.duplicateRole(T.owner.id, id, { name: "Owner" })).reason, "name");
+  const admin = await prisma.role.findUnique({ where: { key: "admin" } });
+  const copy = await R.duplicateRole(T.owner.id, admin.id, {});
+  assert.equal(copy.ok, true);
+  assert.equal(R.isBuiltInRoleName(copy.name), false, "an empty name for a built-in source gets a number, never the built-in label");
+  assert.equal((await R.createRole(T.owner.id, { name: "Moderators", rights: [] })).ok, true);
+});

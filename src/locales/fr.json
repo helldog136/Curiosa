@@ -4977,7 +4977,7 @@
   "bricks.checklist.progress": "{n} sur {total} faites",
   "users.tabs.label": "Équipe et rôles",
   "roles.intro": "Les rôles du site, et ce que chacun permet.",
-  "roles.group.reserved": "Réservé au propriétaire et à la coordination technique",
+  "roles.group.reserved": "Réservé à la personne propriétaire et à la coordination technique",
   "roles.new.column": "Nouveau rôle",
   "roles.duplicate": "Dupliquer",
   "roles.duplicateTitle": "Dupliquer le rôle {name}",

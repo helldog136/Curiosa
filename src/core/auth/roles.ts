@@ -11,6 +11,7 @@
  *   (le coordinateur s'écrit « admin » + drapeau, voir `columnsOf`).
  */
 import { prisma } from "../db";
+import { DICTIONARIES } from "@/locales/index";
 import { accessOf, currentCatalogue, levelOf } from "./access";
 import { columnsOf, parseStoredRights, isReserved, isSystemKey, levelFromKeys, systemRights, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
 import { canManageMember, grantableLevels } from "./team";
@@ -20,6 +21,21 @@ export const ROLE_NAME_MAX = 60;
 export const ROLE_DESCRIPTION_MAX = 300;
 /** Plafond de rôles personnalisés (dézoom permanent : la page Équipe reste lisible et bornée). */
 export const MAX_CUSTOM_ROLES = 50;
+
+/**
+ * A custom role may not carry the name of a built-in role in ANY language of the site ("Administration", "Owner", "Propriétaire"…, case and accents aside): a look-alike
+ * would pass for the real one in the team list and in the invitation picker.
+ */
+const fold = (v: string) => v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+export function isBuiltInRoleName(name: string): boolean {
+  const n = fold(name);
+  if (!n) return false;
+  for (const key of [...SYSTEM_ROLE_KEYS, "none"]) {
+    if (n === fold(key)) return true;
+    for (const dict of Object.values(DICTIONARIES)) { const label = dict[`role.${key}`]; if (label && fold(label) === n) return true; }
+  }
+  return false;
+}
 
 async function audit(actor: string, action: string, target = ""): Promise<void> {
   await prisma.auditLog.create({ data: { actor, action, target } }).catch(() => {});
@@ -122,7 +138,7 @@ export async function createRole(actorId: string, input: { name?: unknown; descr
   const rights = checkRights(input.rights, actor.rights, catalogue);
   if (!rights) return { ok: false, reason: "rights" };
   if ((await prisma.role.count({ where: { system: false } })) >= MAX_CUSTOM_ROLES) return { ok: false, reason: "limit" };
-  if (await prisma.role.findFirst({ where: { name: text.name } })) return { ok: false, reason: "name" };
+  if (isBuiltInRoleName(text.name) || (await prisma.role.findFirst({ where: { name: text.name } }))) return { ok: false, reason: "name" };
   await ensureSystemRoles();
   const base = `r-${slugify(text.name)}`;
   let key = base;
@@ -145,7 +161,7 @@ export async function updateRole(actorId: string, roleId: string, input: { name?
   if (!text) return { ok: false, reason: "name" };
   const rights = checkRights(input.rights, actor.rights, catalogue);
   if (!rights) return { ok: false, reason: "rights" };
-  if (await prisma.role.findFirst({ where: { name: text.name, NOT: { id: role.id } } })) return { ok: false, reason: "name" };
+  if (isBuiltInRoleName(text.name) || (await prisma.role.findFirst({ where: { name: text.name, NOT: { id: role.id } } }))) return { ok: false, reason: "name" };
   await prisma.role.update({ where: { id: role.id }, data: { name: text.name, description: text.description, rights: JSON.stringify(rights) } });
   await audit(actor.email, "role.update", `${role.key}:${rights.join(",")}`);
   return { ok: true };
@@ -170,10 +186,11 @@ export async function duplicateRole(actorId: string, sourceId: string, input: { 
     : storedRights(source.rights, catalogue);
   if (!withinRights(sourceRights, actor)) return { ok: false, reason: "rights" };
   if ((await prisma.role.count({ where: { system: false } })) >= MAX_CUSTOM_ROLES) return { ok: false, reason: "limit" };
-  const wanted = String(input.name ?? "").replace(/\s+/g, " ").trim() || source.name;
-  if (wanted.length > ROLE_NAME_MAX) return { ok: false, reason: "name" };
+  const typed = String(input.name ?? "").replace(/\s+/g, " ").trim();
+  const wanted = typed || source.name;
+  if (wanted.length > ROLE_NAME_MAX || (typed && isBuiltInRoleName(typed))) return { ok: false, reason: "name" };
   let name = wanted;
-  for (let i = 2; await prisma.role.findFirst({ where: { name } }); i++) {
+  for (let i = 2; isBuiltInRoleName(name) || (await prisma.role.findFirst({ where: { name } })); i++) {
     const suffix = ` ${i}`;
     name = `${wanted.slice(0, ROLE_NAME_MAX - suffix.length)}${suffix}`;
   }
