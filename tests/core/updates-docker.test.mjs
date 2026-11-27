@@ -76,8 +76,8 @@ test("last start result and data-version marker: written for the page, read back
 test("the Updates page: Docker shows the command (copyable) instead of the Install button; texts exist in EN and FR", () => {
   const page = fs.readFileSync("src/app/admin/(panel)/updates/page.tsx", "utf8");
   assert.ok(page.includes('data-testid="update-docker"') && page.includes("dockerUpdatePlan(check.latest)"), "the Docker block uses the shared plan");
-  assert.ok(/\{check\.available && !docker && \(\s*<div[^>]*>\s*<h2[^>]*>\{t\("updates\.whatHappens"\)\}/.test(page), "the Install block is hidden in Docker");
-  assert.ok(page.includes("{info.canUpdate && (\n        <Panel title={t(\"updates.autoTitle\")}"), "automatic updates stay out of Docker");
+  assert.ok(/\{check\.available && !docker && \(\s*<div[^>]*data-testid="update-action"[^>]*>[^]*?<UpdateButton running=\{false\}/.test(page), "the Install block is hidden in Docker");
+  assert.ok(page.includes("{info.canUpdate && (\n        <details") && page.includes('data-testid="update-auto"'), "automatic updates stay out of Docker");
   for (const lang of ["en", "fr"]) {
     const t = JSON.parse(fs.readFileSync(`src/locales/${lang}.json`, "utf8"));
     for (const k of ["title", "one", "many", "step", "wait", "unplanned", "backup", "lastOk", "lastRefused", "refused.below-floor", "refused.newer-than-image", "refused.backup-failed", "refused.migrate-failed"]) assert.ok(t[`updates.docker.${k}`], `${lang}: updates.docker.${k}`);
