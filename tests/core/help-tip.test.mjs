@@ -203,7 +203,7 @@ test("textes : « help.tip » existe en FR et en EN avec {name}", () => {
 test("branché partout où une aide est rendue sous un champ de formulaire d'administration", () => {
   const wired = [
     "src/components/admin/Field.tsx", "src/components/admin/AdminBlocks.tsx", "src/components/admin/FileField.tsx", "src/components/admin/ChoicePicker.tsx",
-    "src/components/admin/MarkdownField.tsx", "src/components/admin/ModuleSettings.tsx", "src/app/admin/(panel)/users/RolesPanel.tsx",
+    "src/components/admin/MarkdownField.tsx", "src/components/admin/ModuleSettings.tsx", "src/app/admin/(panel)/users/roles/RolesPanel.tsx",
   ];
   for (const f of wired) {
     const src = read(f);

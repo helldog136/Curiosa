@@ -87,7 +87,7 @@ export const CONNECTIONS_LINK = { id: "connections", label: "nav.accounts", href
 export const ADMIN_LINKS = {
   extensions: { id: "extensions", label: "nav.extensions", href: EXTENSIONS_HREF, also: [MODULES_HREF], icon: "box", need: "member" },
   assistants: { id: "assistants", label: "nav.assistants", href: ASSISTANTS_HREF, also: [], icon: "chat", need: "member" },
-  users: { id: "users", label: "nav.users", href: USERS_HREF, also: [], icon: "users", need: "member", exceptHash: ["roles"] },
+  users: { id: "users", label: "nav.users", href: USERS_HREF, also: [], icon: "users", need: "member", exact: true },
   roles: { id: "roles", label: "nav.roles", href: ROLES_HREF, also: [], icon: "shield", need: "member" },
   maintenance: { id: "maintenance", label: "nav.maintenance", href: HEALTH_HREF, also: [], tabs: true, icon: "wrench", need: "member" },
 } as const satisfies Record<SidebarAdminEntry, SidebarLink & { tabs?: true }>;

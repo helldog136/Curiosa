@@ -54,7 +54,7 @@ export function MemberRoleDialog({ memberName, action, base, extra, held, allowN
   const title = labels.title.replace("{name}", memberName);
   return (
     <FormDialog trigger={labels.open} triggerLabel={`${labels.open} : ${memberName}`} title={title} intro={labels.intro} closeLabel={labels.closeLabel} closeWhen={done} onClose={reset} testid="member-role-open">
-      <ActionForm action={run} submitLabel={labels.submit} pendingLabel={labels.pending} className="space-y-4">
+      <ActionForm action={run} submitLabel={labels.submit} pendingLabel={labels.pending} submitDisabled={lost.length === 0 && gained.length === 0} className="space-y-4">
         <fieldset className="space-y-2">
           <legend className="mb-1 text-[15px] font-medium">{labels.base}</legend>
           {/* Le choix de base part sous le même nom que les rôles en plus (`roleId`), comme avant ; « aucun » n'envoie rien. */}

@@ -1,5 +1,5 @@
 "use server";
-import { USERS_HREF } from "@/core/adminLinks";
+import { ROLES_HREF, USERS_HREF } from "@/core/adminLinks";
 
 import { revalidatePath } from "next/cache";
 import { adminCtx } from "@/core/admin";
@@ -10,7 +10,7 @@ import { generateTemporaryPassword } from "@/core/auth/passwordPolicy";
 import { nameFromEmail } from "@/core/auth/memberName";
 import { getSetting, setSetting } from "@/core/settings";
 import { audit } from "@/core/permissions";
-import { createRole, deleteRole, setUserRoles, updateRole, type RoleFailure } from "@/core/auth/roles";
+import { createRole, deleteRole, duplicateRole, setUserRoles, updateRole, type RoleFailure } from "@/core/auth/roles";
 import { createInvitation, resendInvitation, revokeInvitation, type InvitationCreated, type InviteFailure, MAX_PENDING } from "@/core/auth/invitations";
 import { reactivateMember, suspendMember } from "@/core/auth/members";
 import { isMailConfigured } from "@/core/services/mail";
@@ -65,6 +65,8 @@ export async function setUserRolesAction(id: string, _prev: ActionState, formDat
   return { ok: t("action.saved") };
 }
 
+/** The roles page and the team page (it lists the roles in the person dialog and the invitation form) both show roles. */
+const revalidateRoles = () => { revalidatePath(ROLES_HREF); revalidatePath(USERS_HREF); };
 const roleError = (reason: RoleFailure): string => `roles.error.${reason}`;
 const rightsOf = (formData: FormData) => formData.getAll("right").map(String);
 
@@ -73,7 +75,7 @@ export async function createRoleAction(_prev: ActionState, formData: FormData): 
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await createRole(user.id, { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath(USERS_HREF);
+  revalidateRoles();
   return { ok: t("roles.created") };
 }
 
@@ -81,8 +83,20 @@ export async function updateRoleAction(id: string, _prev: ActionState, formData:
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await updateRole(user.id, String(id ?? ""), { name: formData.get("name"), description: formData.get("description"), rights: rightsOf(formData) });
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath(USERS_HREF);
+  revalidateRoles();
   return { ok: t("action.saved") };
+}
+
+/**
+ * (C5b) Copies a role into a new custom role (right `core:roles`). Every rule (owner role never copied, nothing reserved, only rights the actor holds, the limit of 50 roles, a name nobody
+ * uses) is in `duplicateRole`, which re-reads the actor from the database: the page sends only the id of the source and the wanted name (an empty name keeps the source name + a number).
+ */
+export async function duplicateRoleAction(id: string, _prev: ActionState, formData: FormData): Promise<ActionState> {
+  const { user, t } = await adminCtx({ right: "core:roles" });
+  const r = await duplicateRole(user.id, String(id ?? ""), { name: formData.get("name") });
+  if (!r.ok) return r.reason === "name" ? { errors: { name: t(roleError("name")) } } : { error: t(roleError(r.reason)) };
+  revalidateRoles();
+  return { ok: t("roles.duplicated", { name: r.name }) };
 }
 
 /** Deletes a custom role; if it is in use, its members receive the chosen role (`replacement`). */
@@ -90,7 +104,7 @@ export async function deleteRoleAction(id: string, _prev: ActionState, formData:
   const { user, t } = await adminCtx({ right: "core:roles" });
   const r = await deleteRole(user.id, String(id ?? ""), String(formData.get("replacement") ?? "") || null);
   if (!r.ok) return { error: t(roleError(r.reason)) };
-  revalidatePath(USERS_HREF);
+  revalidateRoles();
   return { ok: t("roles.deleted") };
 }
 

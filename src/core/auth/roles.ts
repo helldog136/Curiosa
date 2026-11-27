@@ -12,7 +12,7 @@
  */
 import { prisma } from "../db";
 import { accessOf, currentCatalogue, levelOf } from "./access";
-import { columnsOf, parseStoredRights, isReserved, isSystemKey, levelFromKeys, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
+import { columnsOf, parseStoredRights, isReserved, isSystemKey, levelFromKeys, systemRights, SYSTEM_ROLE_KEYS, type Level, type RightInfo } from "./rights";
 import { canManageMember, grantableLevels } from "./team";
 
 const SYSTEM_NAMES: Record<(typeof SYSTEM_ROLE_KEYS)[number], string> = { owner: "Owner", coordinator: "Technical coordination", admin: "Administration", editor: "Editorial" };
@@ -149,6 +149,42 @@ export async function updateRole(actorId: string, roleId: string, input: { name?
   await prisma.role.update({ where: { id: role.id }, data: { name: text.name, description: text.description, rights: JSON.stringify(rights) } });
   await audit(actor.email, "role.update", `${role.key}:${rights.join(",")}`);
   return { ok: true };
+}
+
+/**
+ * (C5b) Duplicates a role into a NEW custom role: a starting point, nothing else. Right `core:roles`, actor re-read from the database. The copy holds the rights of the source
+ * that can be delegated (never a reserved one: the copy of a built-in role loses what is reserved to its level), and the actor must hold EVERY one of them (anti-elevation: nobody
+ * copies a role that gives what they do not have). The owner role is never copied. The copy has no people, no link to the source, a name nobody else uses (`name`, else the source
+ * name followed by a number) and counts in `MAX_CUSTOM_ROLES`.
+ */
+export async function duplicateRole(actorId: string, sourceId: string, input: { name?: unknown } = {}): Promise<RoleResult<{ id: string; key: string; name: string }>> {
+  const catalogue = await currentCatalogue();
+  const actor = await actorWith(actorId, "core:roles", catalogue);
+  if (!actor) return { ok: false, reason: "denied" };
+  const source = await prisma.role.findUnique({ where: { id: String(sourceId ?? "") } });
+  if (!source) return { ok: false, reason: "missing" };
+  if (source.key === "owner") return { ok: false, reason: "system" };
+  const builtIn = source.system || isSystemKey(source.key);
+  const sourceRights = builtIn
+    ? (isSystemKey(source.key) ? [...systemRights(source.key, catalogue)] : []).filter((r) => !isReserved(r))
+    : storedRights(source.rights, catalogue);
+  if (!withinRights(sourceRights, actor)) return { ok: false, reason: "rights" };
+  if ((await prisma.role.count({ where: { system: false } })) >= MAX_CUSTOM_ROLES) return { ok: false, reason: "limit" };
+  const wanted = String(input.name ?? "").replace(/\s+/g, " ").trim() || source.name;
+  if (wanted.length > ROLE_NAME_MAX) return { ok: false, reason: "name" };
+  let name = wanted;
+  for (let i = 2; await prisma.role.findFirst({ where: { name } }); i++) {
+    const suffix = ` ${i}`;
+    name = `${wanted.slice(0, ROLE_NAME_MAX - suffix.length)}${suffix}`;
+  }
+  await ensureSystemRoles();
+  const base = `r-${slugify(name)}`;
+  let key = base;
+  for (let i = 2; await prisma.role.findUnique({ where: { key } }); i++) key = `${base}-${i}`;
+  const rights = [...new Set(sourceRights)].sort();
+  const role = await prisma.role.create({ data: { key, name, description: builtIn ? "" : source.description, system: false, rights: JSON.stringify(rights) } });
+  await audit(actor.email, "role.duplicate", `${key}<-${source.key}:${rights.join(",")}`);
+  return { ok: true, id: role.id, key, name };
 }
 
 /** Recalcule `User.role` et `User.coordinator` d'une personne (le plus haut rôle prédéfini, sinon « none »). */
