@@ -1120,6 +1120,7 @@ Add `video: true` to the `compose` option when your page plays a video backdrop 
 - **Type** : du texte seulement (`.csv`, `.tsv`, `.txt`, `.json`, `.vcf`, `.ics`, `.md`, ou un type MIME `text/*`) ; `accept` restreint encore. Pas d'octet nul, **UTF-8 strict** (un octet invalide est refusé, jamais remplacé), BOM retiré. Pas de fichier binaire en v2.
 - **Ce que reçoit le module** : le contenu en **texte** dans `values[name]` (jusqu'à 5 Mo ; `""` si aucun fichier n'a été choisi), avec les autres champs. Le nom du fichier envoyé n'est pas transmis.
 - **Pas dans l'éditeur d'entrée** (`entryPanels`) : le champ y est écarté.
+- **Display** (core 0.50.x, nothing to declare): the field is drawn as a « Choose a file » button with the chosen name beside it, in the language of the interface (not the browser's « Choose File - No file chosen »). `required` is checked before sending and the message appears under the field.
 - Un cœur plus ancien rend un simple champ fichier mais l'envoie à une action serveur qui ignore les fichiers : `values[name]` reste vide. D'où `minCore` 0.2.0.
 
 La page d'administration d'un module s'ouvre avec `<module>:open`. Une personne qui n'est pas administratrice n'y voit que le panneau du module
@@ -1744,6 +1745,8 @@ async adminPanel(ctx, { query }) {
 Une page du cœur n'exécute **aucun script** venu d'un module : ces briques natives sont le moyen d'avoir une recherche en direct, un interrupteur ou un champ de période dans l'administration d'un module (n'essayez pas de les refaire avec un bloc `html`).
 
 Le `help` d'un champ (réglage ou `adminForm`) suit la même règle partout : une aide longue s'affiche dans une bulle « ? » (survol, clavier ou toucher) ; gardez les aides utiles et courtes. Les messages d'erreur ne passent jamais par cette bulle : ils restent sous le champ.
+
+**Native checks, said under the field** (core 0.50.x, nothing to declare). Every core form that submits through an action (`adminForm`, module settings) is sent with `novalidate`: the browser no longer shows its own bubble (in the browser's language, over the label). The same constraints (`required`, address, URL, number with `min`/`max`, length, `pattern`) are checked by the core and the message is written under the field in the language of the interface, with an example, the first field in error takes the focus and the input is kept (rule R22). A field's `title` is used as the message of a failed `pattern`: write it as what to do (« Use letters and digits, for example etoile_nord »). Fields in a hidden tab are not checked.
 
 ## Échanger des informations entre modules : les sujets
 

@@ -12,4 +12,6 @@ export const PROGRESS_LABEL_KEYS = [
   "step.modules", "step.safety", "step.replace", "step.finish",
   "step.core.backup", "step.core.download", "step.core.verify", "step.core.swap", "step.core.migrate", "step.core.restarting", "step.core.waiting",
   "step.links",
+  "fileChoose", "fileChange", "fileNone",
+  "invalid.required", "invalid.choose", "invalid.check", "invalid.file", "invalid.email", "invalid.url", "invalid.number", "invalid.numberBetween", "invalid.numberMin", "invalid.numberMax", "invalid.tooShort", "invalid.tooLong", "invalid.pattern", "invalid.other",
 ] as const;
