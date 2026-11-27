@@ -251,7 +251,7 @@ export default async function UpdatesPage() {
                 <Checkbox name="auto" label={t("updates.auto")} defaultChecked={auto} />
               </ActionForm>
             </section>
-            {advanced && (
+            {info.canUpdate && advanced && (
               <section className="space-y-3 border-t border-line pt-5" data-testid="update-channel">
                 <h2 className="flex items-center gap-1.5 text-base font-semibold">{t("updates.channelTitle")}<HelpTip help={t("updates.channelHelp")} name={t("updates.channelTitle")} always /></h2>
                 <ActionForm action={saveChannel} submitLabel={t("action.save")} className="space-y-3">
