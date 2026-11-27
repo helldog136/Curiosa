@@ -80,6 +80,10 @@ export const OVERLAY_PAGES_HREF = "/admin/overlay-pages";
 /** (0.26.0) Every address to paste into OBS, on one page. */
 export const OVERLAYS_OBS_HREF = "/admin/overlay-pages/obs";
 export const USERS_HREF = "/admin/users";
+/** (C2b) The roles area: today the "Roles" tab of the team page (the tab opens from the fragment); the dedicated page replaces it later (`/admin/users/roles`), only this constant changes. */
+export const ROLES_HREF = `${USERS_HREF}#roles`;
+/** (C2b) Accounts and connections: the index of the network pages and of the connection modules (it replaces the Networks group and the Connections section of the sidebar). */
+export const NETWORKS_HREF = "/admin/networks";
 export const ACCOUNT_HREF = "/admin/account";
 /** The account page, asking the person to set up two-step sign-in. */
 export const ACCOUNT_ENROLL_HREF = "/admin/account?need2fa=1";

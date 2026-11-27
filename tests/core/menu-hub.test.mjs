@@ -181,7 +181,9 @@ test("collapsed by default: a stored choice and the current page win over the de
 test("collapsed state: the server reads the cookie (no flicker) and the Connections group follows the current page", () => {
   const layout = read(`${PANEL}/layout.tsx`);
   assert.match(layout, /parseNavState\(\(await cookies\(\)\)\.get\(NAV_STATE_COOKIE\)\?\.value\)/);
-  assert.match(layout, /<NavGroup id="connections"[^]*?stored=\{navState\.connections\} openByDefault=\{false\}/, "Connections is collapsed by default");
+  // (C2b) The Connections section is gone from the sidebar: its pages and modules are listed on « Accounts and connections » (one entry of Site).
+  assert.doesNotMatch(layout, /<NavGroup id="connections"/, "no Connections section any more");
+  assert.match(layout, /CONNECTIONS_LINK/, "the Accounts and connections entry replaces it");
   const group = read("src/components/admin/NavGroup.tsx");
   assert.match(group, /<details open=\{open\}/, "rendered on the server already in the right state");
   assert.match(group, /isCurrent\(t, path, search\)/, "the open page opens its group");
@@ -359,14 +361,14 @@ test("entrée de menu « Extensions » : active sur ses trois onglets, le catalo
 
 test("menu: order of the sections and of the Administration entries", () => {
   const layout = read(`${PANEL}/layout.tsx`);
-  const order = ["DASHBOARD_LINK", "nav.${id}", "nav.connections", "nav.site", "nav.admin"].map((k) => layout.indexOf(k.startsWith("nav.${") || k === "DASHBOARD_LINK" ? k : `"${k}"`));
-  assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Dashboard, Content/Community/Tools, Connections, Site, Administration");
+  const order = ["DASHBOARD_LINK", "nav.${id}", "nav.site", "nav.admin"].map((k) => layout.indexOf(k.startsWith("nav.${") || k === "DASHBOARD_LINK" ? k : `"${k}"`));
+  assert.ok(order.every((n, i) => n > -1 && (i === 0 || n > order[i - 1])), "Dashboard, Content/Community/Tools (with Live, Calendar and Overlays inside), Site (with Accounts and connections), Administration");
   assert.ok(layout.indexOf("ACCOUNT_LINKS.map") > -1 && layout.indexOf("ACCOUNT_LINKS.map") < layout.indexOf("DASHBOARD_LINK)"), "the account block is the footer of the sidebar (pinned at the bottom), not a section of the list");
   assert.match(layout, /\[\["content", menu\.content\], \["community", menu\.community\], \["tools", menu\.tools\]\]/, "Content, Community, Tools in this order");
   // Les entrées viennent de administrationEntries (adminMenu.ts) ; le layout les range dans cet ordre.
   const links = read("src/core/adminSidebar.ts");
-  const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.maintenance"].map((k) => links.indexOf(`"${k}"`));
-  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Extensions, Assistants IA (une seule entrée), Équipe, Entretien (une seule entrée)");
+  const entries = ["nav.extensions", "nav.assistants", "nav.users", "nav.roles", "nav.maintenance"].map((k) => links.indexOf(`"${k}"`));
+  assert.ok(entries.every((n, i) => n > -1 && (i === 0 || n > entries[i - 1])), "Modules, Assistants IA (une seule entrée), Équipe, Rôles, Entretien (une seule entrée)");
   assert.ok(!layout.includes("nav.mcp") && !layout.includes("nav.maintenanceAi") && !layout.includes("MCP_LEGACY_HREF") && !layout.includes("MAINTENANCE_IA_LEGACY_HREF"), "les deux anciennes entrées ont disparu");
   const site = read("src/core/adminSidebar.ts");
   // "Home and menu" is one link (home, menu, header link and social buttons are its tabs): see tests/core/home-menu-entry.test.mjs.
@@ -391,10 +393,11 @@ test("menu : « Apparence » et « Réglages du site » sont deux mots différen
 
 test("menu Administration : Assistants IA est UNE entrée, visible du propriétaire en mode simple ET avancé ; le journal d'audit reste avancé", async () => {
   const { administrationEntries } = await import("@/core/modules/adminMenu");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "maintenance"], "mode simple : Assistants IA y est, et une seule entrée Entretien");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: false }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"], "mode simple : Assistants IA y est, puis Équipe et Rôles, et une seule entrée Entretien");
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "coordinator", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"], "(C2b) la coordination technique tient core:roles");
   for (const advanced of [false, true]) {
-    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "overlays", "users", "maintenance"], "un administrateur gère les extensions, les utilisateurs et la santé du site, pas les assistants");
+    assert.deepEqual(administrationEntries({ role: "admin", advanced }), ["extensions", "overlays", "users", "maintenance"], "un administrateur gère les modules, les utilisateurs et la santé du site, pas les assistants ni les rôles");
     assert.deepEqual(administrationEntries({ role: "editor", advanced }), [], "un éditeur n'a pas de rubrique Administration");
     assert.equal(administrationEntries({ role: "owner", advanced }).filter((e) => e === "assistants").length, 1, "jamais deux entrées d'assistants");
   }

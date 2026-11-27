@@ -22,7 +22,7 @@ test("fonctionnalités : « installé » et « ajouter » sont deux onglets d'un
   assert.match(read("src/core/adminSidebar.ts"), /href: EXTENSIONS_HREF, also: \[MODULES_HREF/, "le lien reste surligné dans les trois onglets (préfixe /admin/extensions)");
   assert.ok(!layout.includes('href="/admin/catalogue"'), "plus d'entrée de menu séparée pour le catalogue");
   assert.match(read("src/components/admin/navCurrent.ts"), /\[href, \.\.\.\(opts\.also \?\? \[\]\)\]/, "`also` reste pris en compte");
-  assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also \}\)/);
+  assert.match(read("src/components/admin/NavLink.tsx"), /isCurrent\(href, path, search, \{ exact, also, hash,/);
 });
 
 test("réglages : la case « compter les visites » (et le blocage des robots d'IA) vivent dans l'onglet Confidentialité, pas sous le logo", () => {

@@ -1,4 +1,4 @@
-import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, ASSISTANTS_HREF, HEALTH_HREF, HOME_HREF, MAINTENANCE_TAB_HREFS, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, REDIRECTS_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, EXTENSIONS_HREF, entriesHref, instanceHref } from "./adminLinks";
+import { ACCOUNT_HREF, ADMIN_HREF, APPEARANCE_HREF, ASSISTANTS_HREF, HEALTH_HREF, HOME_HREF, MAINTENANCE_TAB_HREFS, MODULES_HREF, NAVIGATION_HEADER_HREF, NAVIGATION_HREF, NETWORKS_HREF, REDIRECTS_HREF, ROLES_HREF, SETTINGS_HREF, SOCIAL_HREF, USERS_HREF, EXTENSIONS_HREF, entriesHref, instanceHref } from "./adminLinks";
 import type { MaintenanceTab, SidebarAdminEntry } from "./modules/adminMenu";
 import type { MenuSectionId } from "./modules/menuPlacement";
 
@@ -65,7 +65,7 @@ export const entryIconKey = (menuIcon: unknown, section: MenuSectionId): MenuIco
 
 /** Who sees a fixed entry: any member, an editor and above, or an administrator and above. The Administration entries are filtered by `administrationEntries` (adminMenu.ts). */
 export type SidebarNeed = "member" | "editor" | "admin";
-export type SidebarLink = { id: string; /** Locale key of the label. */ label: string; href: string; also: readonly string[]; icon: MenuIconKey; need: SidebarNeed; exact?: true; external?: true };
+export type SidebarLink = { id: string; /** Locale key of the label. */ label: string; href: string; also: readonly string[]; icon: MenuIconKey; need: SidebarNeed; exact?: true; external?: true; /** Fragments of the same page that belong to ANOTHER entry (the page is not "this entry" while one of them is open): the Team entry on the Roles tab. */ exceptHash?: readonly string[] };
 
 // One entry per line, in this shape: scripts/admin-map.mjs reads these lists as text.
 export const DASHBOARD_LINK = { id: "dashboard", label: "nav.dashboard", href: ADMIN_HREF, also: [], icon: "dash", need: "member", exact: true } as const satisfies SidebarLink;
@@ -77,11 +77,18 @@ export const SITE_LINKS = [
   { id: "redirects", label: "nav.redirects", href: REDIRECTS_HREF, also: [], icon: "link", need: "editor" },
 ] as const satisfies readonly SidebarLink[];
 
+/**
+ * (C2b) Accounts and connections, the last entry of "Site": the index of the network pages and of the connection modules (it replaces the Networks group and the Connections section).
+ * It is shown only when the index has something this person may open (the layout decides), so a person without a connection never sees an empty page.
+ */
+export const CONNECTIONS_LINK = { id: "connections", label: "nav.accounts", href: NETWORKS_HREF, also: [], icon: "plug", need: "member" } as const satisfies SidebarLink;
+
 /** The Administration entries, by their id in adminMenu.ts. Maintenance points at its first visible tab and owns every tab address (`tabs`). */
 export const ADMIN_LINKS = {
   extensions: { id: "extensions", label: "nav.extensions", href: EXTENSIONS_HREF, also: [MODULES_HREF], icon: "box", need: "member" },
   assistants: { id: "assistants", label: "nav.assistants", href: ASSISTANTS_HREF, also: [], icon: "chat", need: "member" },
-  users: { id: "users", label: "nav.users", href: USERS_HREF, also: [], icon: "users", need: "member" },
+  users: { id: "users", label: "nav.users", href: USERS_HREF, also: [], icon: "users", need: "member", exceptHash: ["roles"] },
+  roles: { id: "roles", label: "nav.roles", href: ROLES_HREF, also: [], icon: "shield", need: "member" },
   maintenance: { id: "maintenance", label: "nav.maintenance", href: HEALTH_HREF, also: [], tabs: true, icon: "wrench", need: "member" },
 } as const satisfies Record<SidebarAdminEntry, SidebarLink & { tabs?: true }>;
 

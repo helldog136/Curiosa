@@ -3,7 +3,7 @@ import { levelHolds } from "../auth/team";
 import { MAINTENANCE_TAB_HREFS } from "../adminLinks";
 
 /** Les entrées de la rubrique « Administration » du menu, dans l'ordre d'affichage. */
-export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "maintenance";
+export type AdminEntry = "extensions" | "overlays" | "assistants" | "users" | "roles" | "maintenance";
 
 /** (0.49.0) Les entrées de la rubrique « Administration » qui s'affichent dans cette rubrique : « overlays » (les pages d'overlay) est l'entrée « Personnalisés » du groupe Overlays, plus haut dans le menu. */
 export type SidebarAdminEntry = Exclude<AdminEntry, "overlays">;
@@ -51,6 +51,8 @@ export function administrationEntries({ role, advanced, overlays = true }: { rol
   if (manage && overlays) out.push("overlays");
   if (levelHolds(role, "core:mcp.tokens")) out.push("assistants");
   if (manage) out.push("users");
+  // (C2b) Roles: the right that manages them (`core:roles`: owner, technical coordination). The page itself is the team page, so the entry also needs the level the page asks (access table).
+  if (manage && levelHolds(role, "core:roles")) out.push("roles");
   if (maintenanceTabs({ role, advanced }).length > 0) out.push("maintenance");
   return advanced ? out : out.filter((e) => !ADVANCED_ONLY_ENTRIES.includes(e));
 }
@@ -69,7 +71,7 @@ export function navItemVisible(item: { content: boolean; moduleId: string }, can
  */
 export const SIDEBAR_R12_KEYS = {
   sections: { content: "nav.content", community: "nav.community", tools: "nav.tools", connections: "nav.connections" },
-  site: { heading: "nav.site", entries: [["homeMenu", "nav.homeMenu"], ["appearance", "nav.appearance"], ["settings", "nav.settings"], ["redirects", "nav.redirects"]] },
-  admin: { heading: "nav.admin", entries: { extensions: "nav.extensions", assistants: "nav.assistants", users: "nav.users", maintenance: "nav.maintenance" } satisfies Record<SidebarAdminEntry, string> },
+  site: { heading: "nav.site", entries: [["homeMenu", "nav.homeMenu"], ["appearance", "nav.appearance"], ["settings", "nav.settings"], ["redirects", "nav.redirects"]], connections: "nav.accounts" },
+  admin: { heading: "nav.admin", entries: { extensions: "nav.extensions", assistants: "nav.assistants", users: "nav.users", roles: "nav.roles", maintenance: "nav.maintenance" } satisfies Record<SidebarAdminEntry, string> },
   account: { heading: "nav.account", entries: [["myAccount", "nav.myAccount"], ["viewSite", "nav.viewSite"]] },
 } as const;

@@ -459,7 +459,7 @@ test("module_configure : un réglage SECRET n'est jamais posé ni lu (refus avec
     const r = await call(token, tool, { instance: key, changes: { apiKey: SECRET, title: "Autre" } });
     assert.equal(r.value.status, "rejected");
     assert.ok(!r.text.includes(SECRET), "la valeur proposée n'est pas renvoyée");
-    assert.match(r.value.problems[0].problem, /réglage secret.*saisir elle-même dans l'admin \(Extensions › Atelier › Réglages\)/);
+    assert.match(r.value.problems[0].problem, /réglage secret.*saisir elle-même dans l'admin \(Modules › Atelier › Réglages\)/);
   }
   assert.equal((await getSettingByLocale(`instance.${inst.id}.apiKey`))[""], undefined);
   assert.equal((await getSettingByLocale(`instance.${inst.id}.title`))[""], undefined, "rien d'autre n'a été écrit");

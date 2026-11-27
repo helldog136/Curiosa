@@ -37,8 +37,14 @@ function matches(target: string, path: string, search: SearchLike, exact: boolea
  * `href` : l'adresse du lien (avec sa requête éventuelle). `path` / `search` : l'adresse ouverte.
  * `also` : d'autres adresses (chemins, requêtes permises) qui font aussi de ce lien le lien courant.
  * `exact` : le chemin doit être identique (le tableau de bord), sans sous-pages.
+ * `hash` : l'ancre de l'adresse ouverte (sans « # »). Deux entrées peuvent partager une page et se distinguer par l'ancre (Équipe et Rôles) : un lien dont l'adresse porte une ancre n'est
+ * courant que si l'ancre ouverte est la même ; `exceptHash` liste les ancres de la même page qui appartiennent à une AUTRE entrée.
  */
-export function isCurrent(href: string, path: string, search: SearchLike, opts: { exact?: boolean; also?: string[] } = {}): boolean {
+export function isCurrent(href: string, path: string, search: SearchLike, opts: { exact?: boolean; also?: string[]; hash?: string; exceptHash?: readonly string[] } = {}): boolean {
   const exact = !!opts.exact;
+  const hash = (opts.hash ?? "").replace(/^#/, "");
+  if (hash && opts.exceptHash?.includes(hash)) return false;
+  const wanted = href.split("#")[1];
+  if (wanted !== undefined && wanted !== "" && opts.hash !== undefined && wanted !== hash) return false;
   return [href, ...(opts.also ?? [])].some((t) => matches(t, path, search, exact));
 }

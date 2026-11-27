@@ -249,6 +249,8 @@ test("the fixed menu of each level: every entry shown today is openable, and eve
     for (const id of Object.keys(S.ADMIN_LINKS)) {
       const link = S.adminLink(id, { tabs, unpinnedPages: [] });
       if (id === "maintenance") assert.equal(A.canOpen(u, link.href, OWNERS), tabs.length > 0, `${level} maintenance`);
+      // (C2b) Roles is a tab of the team page: the table answers for the page (an admin opens it), the entry is stricter (the tab needs `core:roles`).
+      else if (id === "roles") assert.equal(shown.includes(id), Acc.can(u, "core:roles") && A.canOpen(u, link.href, OWNERS), `${level} roles is shown exactly to those who hold core:roles`);
       else assert.equal(A.canOpen(u, link.href, OWNERS), shown.includes(id), `${level} ${id} is shown exactly when it is openable`);
     }
     for (const l of [S.DASHBOARD_LINK, ...S.ACCOUNT_LINKS]) assert.equal(A.canOpen(u, l.href, OWNERS), true, `${level} ${l.id}`);
