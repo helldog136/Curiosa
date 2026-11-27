@@ -18,7 +18,11 @@ test("réglages : chaque onglet commence par une phrase d'aide (pas un titre qui
   const p = page("settings");
   assert.ok(!/<h2 className="text-lg font-semibold">\{t\("settings\.(identity|languages|privacy|mail)"\)\}<\/h2>/.test(p), "le titre de l'onglet n'est pas répété");
   assert.match(p, /<ActionForm action=\{saveSettings\} floating=\{floatingLabels\(t\)\}/);
-  assert.equal((p.match(/floating=/g) ?? []).length, 1);
+  // C5e: every settings form (identity, search, sound, e-mail) opts in to the sticky bar, but the bar itself is shared: ActionForm renders it once per page
+  // (`slot <= 0`, checked in floating-bar.test.mjs) and its Save sends every modified form. The old count of 1 only counted source occurrences.
+  assert.equal((p.match(/floating=/g) ?? []).length, 4);
+  for (const a of ["saveSettings", "saveSearch", "saveSound", "saveMail"]) assert.match(p, new RegExp(`<ActionForm action=\\{${a}\\} floating=`));
+  assert.ok(!/hideSubmit/.test(p), "no second Save button next to the shared bar");
   // Le formulaire principal est masqué en entier sur l'onglet e-mail : pas de vide au-dessus du formulaire d'e-mail.
   assert.match(p, /<div data-tab="site languages privacy">\s*<ActionForm action=\{saveSettings\}/);
   // Contact et pied de page : dans les deux modes (en mode simple, replié sous « Plus d'options ») ; seul le fuseau horaire reste réservé au mode avancé.

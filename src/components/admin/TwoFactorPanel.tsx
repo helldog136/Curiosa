@@ -41,6 +41,8 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
   const box = useRef<HTMLElement>(null);
   useEffect(() => { if (error) box.current?.querySelector<HTMLElement>("[data-first-field]")?.focus(); }, [error]);
   const problem = error ? <p id="twofa-error" role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p> : null;
+  // aria-invalid goes only on the field the error concerns (the one that takes the focus); the others only point to the message.
+  const described = error ? { "aria-describedby": "twofa-error" } : {};
   const invalid = error ? { "aria-invalid": true as const, "aria-describedby": "twofa-error" } : {};
   const settle = (r: Result, then: () => void) => { if (r.error) setError(r.error); else { setError(""); then(); } };
 
@@ -113,7 +115,7 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
           <div className="max-w-xs"><label className={ui.label} htmlFor="twofa-disable-password">{labels.password}</label>
             <PasswordInput id="twofa-disable-password" value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" data-first-field="" {...invalid} className={ui.input} /></div>
           <div className="max-w-xs"><label className={ui.label} htmlFor="twofa-disable-code">{labels.code}</label>
-            <input id="twofa-disable-code" value={code} onChange={(e) => setCode(e.target.value)} name="code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} {...invalid} className={ui.input} /></div>
+            <input id="twofa-disable-code" value={code} onChange={(e) => setCode(e.target.value)} name="code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} {...described} className={ui.input} /></div>
           {problem}
           <div className="flex gap-3">
             <PendingButton type="submit" variant="danger" pending={pending} disabled={!password || !code}>{labels.disable}</PendingButton>
