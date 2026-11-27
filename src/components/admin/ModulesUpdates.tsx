@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { updateModulesAction, type ModulesBilan } from "@/app/admin/(panel)/updates/actions";
 import { AnimatedActionButton } from "./AnimatedActionButton";
 import { sleep } from "./animatedAction";
-import { ui } from "./ui";
+import { StatusPill } from "./StatusPill";
 
 export type ModuleUpdateRow = { id: string; name: string; icon: string; current: string; target: string; major: boolean; levelLabel: string; /** La version proposée demande un cœur plus récent : pas de bouton, un message. */ needsCore?: string; /** From a personal catalogue: never part of "Update all". */ personal?: true };
 type Labels = {
@@ -57,7 +57,7 @@ export function ModulesUpdates({ rows, labels }: { rows: ModuleUpdateRow[]; labe
                   <p className="font-medium"><span aria-hidden>{r.icon}</span> {r.name}</p>
                   <p className="mt-0.5 flex flex-wrap items-center gap-2 text-sm text-muted">
                     <span>{r.current} → <strong className="font-semibold text-fg">{r.target}</strong></span>
-                    {r.levelLabel && <span className={r.major ? ui.chipWarn : ui.chip}>{r.levelLabel}</span>}
+                    {r.levelLabel && <StatusPill tone={r.major ? "warn" : "neutral"}>{r.levelLabel}</StatusPill>}
                   </p>
                 </div>
                 {r.needsCore

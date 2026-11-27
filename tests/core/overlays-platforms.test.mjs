@@ -140,7 +140,7 @@ test("liste d'Extensions : une pastille de plateforme, sans restructurer", () =>
   const loader = read(`${PANEL}/extensions/loadInstalled.ts`);
   assert.match(loader, /platformOf\(mod\.manifest\)/);
   assert.match(loader, /platform: platform \? platformLabel\(platform\) : null/);
-  assert.match(read("src/components/admin/ExtensionCard.tsx"), /data-testid="platform-chip"/);
+  assert.match(read("src/components/admin/ExtensionCard.tsx"), /testid="platform-chip"/);
   assert.match(read("src/core/modules/extensionFamilies.ts"), /platformOf\(m\)/, "une plateforme déclarée range le module dans « Réseaux et connexions »");
 });
 

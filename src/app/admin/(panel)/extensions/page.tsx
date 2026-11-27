@@ -5,7 +5,7 @@ import { ExtensionCard } from "@/components/admin/ExtensionCard";
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
 import { ExtensionsNotices, type NoticeQuery } from "@/components/admin/ExtensionsNotices";
 import { FamilyFilter } from "@/components/admin/FamilyFilter";
-import { EmptyState } from "@/components/admin/Page";
+import { EmptyState } from "@/components/admin/EmptyState";
 import { ui } from "@/components/admin/ui";
 import { parseFamily } from "@/core/modules/extensionFamilies";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
@@ -21,13 +21,13 @@ export async function generateMetadata(): Promise<Metadata> {
   return adminTitle(({ t }) => t("nav.extensions"));
 }
 
-/** Extensions > Installées : tout ce qui est installé sur le site, par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec son état, ses réglages et « épingler au menu ». */
+/** Modules > Installés : tout ce qui est installé sur le site, par famille (Contenu, Communauté, Réseaux et connexions, Overlays), avec son état, ses réglages et « épingler au menu ». */
 export default async function ExtensionsPage({ searchParams }: { searchParams: Promise<NoticeQuery & { family?: string; placed?: string }> }) {
   const { t, locale, user, config, advanced } = await adminCtx("admin");
   const isOwner = canDo(user, "core:modules.install"); // peut installer / mettre à jour des modules
   const query = await searchParams;
   const family = parseFamily(query.family);
-  const { total, present, groups } = await loadInstalled({ t, locale, defaultLocale: config.defaultLocale, advanced, isOwner, family });
+  const { total, present, groups, counts } = await loadInstalled({ t, locale, defaultLocale: config.defaultLocale, advanced, isOwner, family });
 
   return (
     <div className="space-y-8">
@@ -35,20 +35,20 @@ export default async function ExtensionsPage({ searchParams }: { searchParams: P
       <ExtensionsNotices t={t} locale={locale} defaultLocale={config.defaultLocale} isOwner={isOwner} query={query} />
       {typeof query.placed === "string" && <PlacedNotice t={t} locale={locale} moduleId={query.placed} />}
       {total === 0 && (
-        <EmptyState icon="🧩" title={t("modules.emptyTitle")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("modules.emptyAction")}</a>}>{t("modules.emptyHelp")}</EmptyState>
+        <EmptyState title={t("modules.emptyTitle")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btnPrimary}>{t("modules.emptyAction")}</a>} />
       )}
       {total > 0 && (
         <>
-          <CatalogueSearch placeholder={t("extensions.search")} noneLabel={`${t("catalogue.searchNone")} ${t("modules.searchEmptyHint")}`} clearLabel={t("catalogue.searchClear")} />
-          <FamilyFilter t={t} present={present} current={family} />
+          <CatalogueSearch placeholder={t("extensions.search")} noneLabel={`${t("catalogue.searchNone")} ${t("modules.searchEmptyHint")}`} clearLabel={t("catalogue.searchClear")} countLabel={t("search.count")} />
+          <FamilyFilter t={t} present={present} current={family} counts={counts} />
         </>
       )}
       {total > 0 && groups.length === 0 && (
-        <EmptyState icon="🧩" title={t("extensions.familyEmptyTitle")} action={<a href={EXTENSIONS_HREF} className={ui.btn}>{t("extensions.familyAll")}</a>}>{t("extensions.familyEmptyHelp")}</EmptyState>
+        <EmptyState title={t("extensions.familyEmptyTitle")} action={<a href={EXTENSIONS_HREF} className={ui.btn}>{t("extensions.familyAll")}</a>} />
       )}
       {groups.map((g) => (
         <section key={g.type} data-catalogue-section aria-labelledby={`family-title-${g.type}`} className="space-y-3" data-testid={`family-section-${g.type}`}>
-          <h2 id={`family-title-${g.type}`} className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted">{g.type === "broken" ? t("modules.broken") : t(`family.${g.type}`)}{g.type !== "broken" && <HelpTip always help={t(`family.${g.type}.help`)} name={t(`family.${g.type}`)} />}</h2>
+          <h2 id={`family-title-${g.type}`} className="flex items-center gap-1 text-sm font-semibold uppercase tracking-wide text-muted">{g.type === "broken" ? t("modules.broken") : t(`family.${g.type}`)}<span className="ml-1 font-normal normal-case" data-testid={`family-count-${g.type}`}>{g.items.length}</span>{g.type !== "broken" && <HelpTip always help={t(`family.${g.type}.help`)} name={t(`family.${g.type}`)} />}</h2>
           <ul className="grid grid-cols-[minmax(0,1fr)] gap-3 lg:grid-cols-[repeat(2,minmax(0,1fr))]">
             {g.items.map((m) => <ExtensionCard key={m.id} t={t} m={m} advanced={advanced} />)}
           </ul>
