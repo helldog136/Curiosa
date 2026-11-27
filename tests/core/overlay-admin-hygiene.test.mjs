@@ -74,7 +74,7 @@ test("Addresses for OBS: one table (overlay pages and extension overlays), a wri
   assert.match(src, /adminCtx\(OVERLAY_NEED\)/, "same right as the overlay pages");
   assert.doesNotMatch(src, /btnPrimary|<form/, "a page to read and copy: no action, no primary button");
   const keys = Object.keys(fr).filter((k) => k.startsWith("ovp.obs.") || k === "ovp.tab.pages" || k === "ovp.list.tabs");
-  assert.ok(keys.length >= 14);
+  assert.ok(keys.length >= 13);
   for (const k of keys) {
     assert.ok(en[k], k);
     if (!/Help$|\.intro$/.test(k)) for (const t of [fr[k], en[k]]) { assert.ok(t.length <= 60, k); assert.doesNotMatch(t, /:\s*$/, k); }

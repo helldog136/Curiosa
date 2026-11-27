@@ -51,6 +51,8 @@ type Props = {
   track?: string;
   /** Identifiant du formulaire : des champs ailleurs dans la page peuvent s'y rattacher par `form="…"` (leurs valeurs partent avec lui). */
   id?: string;
+  /** (C5b) The send button is inactive (nothing to save yet: a role dialog whose choice has not changed). The server still checks everything. */
+  submitDisabled?: boolean;
 };
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
@@ -76,7 +78,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, submitDisabled }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -165,7 +167,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
       {state?.secret && <SecretReveal key={state.secret.value} secret={state.secret} />}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <PendingButton pending={pending} pendingLabel={busyLabel} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
+          <PendingButton pending={pending} pendingLabel={busyLabel} disabled={submitDisabled} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
           {track && pending && <OperationProgress kind={track} snap={tracker.snap} lost={tracker.lost} unreachable={tracker.unreachable} className="mt-3 max-w-sm" />}
         </div>
       )}

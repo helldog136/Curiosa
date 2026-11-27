@@ -13,6 +13,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 - **L'entretien montre un état et une action principale par onglet.** Le bouton « Installer » des mises à jour est juste sous les versions, les notes et les options se replient, et la restauration d'une sauvegarde est une carte à part qui dit ce qui sera remplacé. Les états deviennent des pastilles.
 - **(English) Maintenance shows one state and one main action per tab.** The update “Install” button sits right under the versions, the notes and options fold away, and restoring a backup is a separate card that says what will be replaced. States become pills.
+- **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».
+- **(English) The overlay pages list reads like the other lists.** Live search, one switch per row, a “Copy the address” and an “Edit” button; the rest (duplicate, rename, change the secret address, delete) is in “⋯”.
+- **L'onglet « Adresses pour OBS » garde le titre « Pages d'overlay ».** Chaque ligne a un bouton vers la page ou le module qui produit l'adresse, et l'explication d'OBS passe dans une info-bulle.
+- **(English) The “Addresses for OBS” tab keeps the “Overlay pages” title.** Each row has a button to the page or module that produces the address, and the OBS how-to moves into a tooltip.
 - **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
 - **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
@@ -39,6 +43,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) List switches no longer write “Active” on every row.** Their position, colour and a tick or a dash show the state; screen readers announce it together with the row name.
 - **Les tableaux annoncent leurs résultats et gardent des lignes régulières.** Le nombre de résultats d'une recherche est annoncé aux lecteurs d'écran, la colonne des actions a un en-tête lisible, les textes coupés se lisent en entier dans l'info-bulle et chaque ligne fait au moins 44 px.
 - **(English) Tables announce their results and keep regular rows.** The number of search results is announced to screen readers, the actions column has a readable header, cut-off text can be read in full in the tooltip, and every row is at least 44 px tall.
+- **Les rôles ont leur page.** « Rôles », dans « Administration », montre chaque rôle et le nombre de personnes qui l'ont. Créez, renommez, dupliquez ou supprimez un rôle et choisissez ce qu'il permet, sans jamais pouvoir donner ce qui est réservé au propriétaire.
+- **(English) Roles have their own page.** “Roles”, under “Administration”, shows each role and how many people hold it. Create, rename, duplicate or delete a role and pick what it allows, never able to give what is reserved to the owner.
+- **Inviter une personne dit ce qui se passe.** Quand le site ne peut pas envoyer de courriel, le bouton s'appelle « Créer un lien d'invitation » et vous copiez le lien avec « Copier le lien d'invitation ». Le bouton « Enregistrer » du changement de rôle reste grisé tant que rien n'a changé.
+- **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
 
 ### Corrections
 
