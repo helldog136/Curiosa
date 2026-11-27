@@ -76,7 +76,7 @@ test("le bandeau montre le mot de passe UNE fois, dans un texte sélectionnable 
   for (const text of [secret.copy, secret.done, ...secret.notes, secret.title]) assert.ok(html.includes(text.replace("'", "&#x27;")), text);
   assert.match(html, /data-testid="one-time-secret-copy"[^>]*>Copier</);
   assert.match(html, /aria-labelledby="[^"]+-t"/, "titre relié à la zone");
-  assert.equal((html.match(/min-h-11/g) ?? []).length, 2, "Copier et J'ai noté : 44 px");
+  assert.equal((html.match(/(?<!max-sm:)min-h-11/g) ?? []).length, 2, "Copier et J'ai noté : 44 px");
   const alone = renderToStaticMarkup(React.createElement(SecretValue, { value: "abc", copy: "Copier", copied: "Copié", testid: "x" }));
   assert.match(alone, /data-testid="x-value"/);
 });

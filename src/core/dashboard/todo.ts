@@ -24,7 +24,7 @@ export const TODO_LIMITS = { draftRows: 5, readMs: DASHBOARD_LIMITS.timeoutMs } 
 export type TodoRow = { title: string; detail?: string; href: string };
 export type TodoItem = {
   id: string;
-  kind: "drafts" | "ai" | "update-core" | "update-modules" | "update-skins" | "backup" | "setup" | "badge" | "module";
+  kind: "drafts" | "ai" | "update-core" | "update-modules" | "update-skins" | "backup" | "setup" | "badge" | "module" | "health";
   icon: string;
   /** La phrase, prête à afficher. */
   label: string;

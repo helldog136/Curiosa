@@ -11,6 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Menu latéral plus court, cibles tactiles de 44 px.** Le bloc du compte tient sur trois lignes et l'entrée de la page ouverte reste visible dans le menu. Sur téléphone, boutons, champs, onglets et liens isolés atteignent 44 px.
+- **(English) Shorter sidebar, 44 px touch targets.** The account block takes three rows and the entry of the open page stays in view in the menu. On a phone, buttons, fields, tabs and standalone links reach 44 px.
+- **Tableau de bord : la pastille de santé mène aux lignes de « À faire ».** Chaque point de la pastille y est une ligne avec son action, ou une note quand la personne n'a pas la page : le nombre et la liste concordent.
+- **(English) Dashboard: the health pill leads to the “To do” lines.** Each point of the pill is a line there with its action, or a note when the person has no page for it: the count and the list agree.
 - **Pages d'administration : mêmes onglets, mêmes mots, moins de remplissage.** « Entretien » a la même barre d'onglets sur ses cinq pages et la page « Entretien » s'ouvre ; les titres n'ont plus d'émoji, « Équipe » est le nom partout. Les états vides disent quoi faire et les boutons en double disparaissent.
 - **(English) Admin pages: same tabs, same words, less filler.** “Maintenance” has the same tab bar on its five pages and the “Maintenance” address opens; headings lose their emoji and “Team” is the name everywhere. Empty states say what to do and duplicate buttons are gone.
 - **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.

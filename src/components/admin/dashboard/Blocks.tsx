@@ -77,18 +77,9 @@ export async function HealthPill({ c }: { c: BlockCtx }) {
   // R33: when everything is fine, nothing is shown (no chip, no sentence that says it is fine).
   if (h.ok) return null;
   const label = t("dash.health.points", { n: h.points.length });
+  // The pill is a link to "To do", where every one of these points is a line (an action card, or a note when this person has no screen for it): the count and the list explain each other.
   return (
-    <details data-testid="dash-health" className="group">
-      <summary className={`${ui.chipWarn} min-h-11 cursor-pointer list-none px-3 py-2 text-sm`} aria-label={`${t("dash.health.label")} : ${label}`}>⚠️ {label}{ARROW}</summary>
-      <ul className={`${ui.card} mt-2 space-y-1`}>
-        {h.points.map((p) => (
-          <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-            <span>{p.label}{p.help && <> <HelpTip help={p.help} name={p.label} always /></>}</span>
-            {p.href && canOpen(c.user, p.href, c.owners) && <a href={p.href} className={`${ui.btn} min-h-11`}>{t("dash.health.open")}{ARROW}</a>}
-          </li>
-        ))}
-      </ul>
-    </details>
+    <a href="#todo" data-testid="dash-health" className={`${ui.chipWarn} min-h-11 px-3 py-2 text-sm`} aria-label={`${t("dash.health.label")} : ${label}`}>⚠️ {label}{ARROW}</a>
   );
 }
 
@@ -154,22 +145,28 @@ export async function StorageBlock({ c }: { c: BlockCtx }) {
 // ── À faire ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 /** How serious each kind of line is: a missing backup or a module to set up blocks something; an update can wait (the tone is also a shape, never colour alone). */
-const TODO_TONE: Record<TodoItem["kind"], AttentionTone> = { ai: "warn", setup: "warn", backup: "warn", drafts: "info", "update-core": "info", "update-modules": "info", "update-skins": "info", badge: "info", module: "info" };
+const TODO_TONE: Record<TodoItem["kind"], AttentionTone> = { ai: "warn", setup: "warn", backup: "warn", drafts: "info", "update-core": "info", "update-modules": "info", "update-skins": "info", badge: "info", module: "info", health: "warn" };
 /** Lines shown at once; the rest is one fold away (R33: the first screen holds what matters most). */
 export const TODO_VISIBLE = 5;
 
-export async function TodoBlock({ c }: { c: BlockCtx }) {
+export async function TodoBlock({ c, withHealth = false }: { c: BlockCtx; /** The dashboard shows the health pill: its points are lines of this list. */ withHealth?: boolean }) {
   const { t } = c;
   const statuses = hasRole(c.user, "admin") ? await loadInstanceStatuses(c.locale, c.defaultLocale).catch(() => null) : null;
   const toSetUp = c.nav.flatMap((i) => { const s = statuses?.get(i.id); return s?.state === "setup" ? [{ id: i.id, name: i.name, icon: i.icon, summary: s.missing.slice(0, 3).join(", ") }] : []; });
-  const [core, mods] = await Promise.all([
+  const [core, mods, health] = await Promise.all([
     loadCoreTodo({ user: c.user, t, locale: c.locale, defaultLocale: c.defaultLocale, nav: c.nav, toSetUp, skipDrafts: true }).catch(() => []),
     moduleTasks(env(c)).catch(() => []),
+    withHealth ? loadHealth(c.user, t, c.locale).catch(() => null) : Promise.resolve(null),
   ]);
+  // Health points are lines too (the backup one is already a line of the core list). One with no page this person may open stays a note: they know whom to warn.
+  const points = (health?.points ?? []).filter((p) => p.id !== "backup");
+  const healthItems: TodoItem[] = points.flatMap((p) => (p.href ? [{ id: `health-${p.id}`, kind: "health" as const, icon: "", label: p.label, href: p.href }] : []));
   // R35: a line that opens a page this person cannot open is not shown (the page keeps its own check).
-  const items = openable(c.user, mergeTodo(core, mods), c.owners);
+  const items = openable(c.user, [...healthItems, ...mergeTodo(core, mods)], c.owners);
+  const listed = new Set(items.map((i) => i.id));
+  const notes = points.filter((p) => !listed.has(`health-${p.id}`));
   // R33: an empty "to do" card shows nothing.
-  if (items.length === 0) return null;
+  if (items.length === 0 && notes.length === 0) return null;
   // One card per line, each with its own verb (R3); a card without an action draws nothing, so a line always leads somewhere.
   const card = (i: TodoItem) => {
     const go = t(`dash.todo.go.${i.kind}`);
@@ -184,6 +181,15 @@ export async function TodoBlock({ c }: { c: BlockCtx }) {
       <h2 id="dash-todo" className="text-lg font-semibold">{t("dash.todo.title")}</h2>
       <div className="space-y-3">{shown.map(card)}</div>
       {rest.length > 0 && <MoreOptions title={t("dash.todo.more", { n: rest.length })}><div className="space-y-3">{rest.map(card)}</div></MoreOptions>}
+      {notes.length > 0 && (
+        <ul data-testid="todo-notes" className="space-y-2">
+          {notes.map((p) => (
+            <li key={p.id} className={`${ui.card} flex flex-wrap items-center gap-2 text-sm`}>
+              <span className={ui.chipWarn}>⚠️</span><span>{p.label}</span>{p.help && <HelpTip help={p.help} name={p.label} always />}
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
   );
 }

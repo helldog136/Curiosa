@@ -292,12 +292,12 @@ test("the sidebar, the dashboard, the shortcuts, the cards and the search all as
   assert.match(layout, /openableModuleEntries\(user, everyNav, owners\)/);
   assert.match(layout, /openable\(user, siteLinks\(/);
   assert.match(layout, /\.filter\(\(\{ link \}\) => canOpen\(user, link\.href, owners\)\)/);
-  assert.match(layout, /ACCOUNT_LINKS\.map\(\(l\) => \(canOpen\(user, l\.href, owners\) \? coreLink\(l\) : null\)\)/);
+  assert.match(layout, /ACCOUNT_LINKS\.map\(\(l\) => \(canOpen\(user, l\.href, owners\) \? coreLink\(l, undefined, true\) : null\)\)/);
   assert.match(layout, /canOpen\(user, p\.href, owners\)/, "place pages");
   const page = read(`${ROOT}/(panel)/page.tsx`);
   assert.match(page, /openableModuleEntries\(user, allNav, owners\)/);
   const blocks = read("src/components/admin/dashboard/Blocks.tsx");
-  assert.match(blocks, /openable\(c\.user, mergeTodo\(core, mods\), c\.owners\)/);
+  assert.match(blocks, /openable\(c\.user, \[\.\.\.healthItems, \.\.\.mergeTodo\(core, mods\)\], c\.owners\)/);
   assert.match(blocks, /openable\(c\.user, mergeQuick\(/);
   const mods = read("src/core/dashboard/modules.ts");
   assert.equal((mods.match(/canOpen\(env\.viewer, /g) ?? []).length >= 4, true, "tasks, shortcuts, cards and their rows");

@@ -43,7 +43,7 @@ export function PasswordInput({ autoComplete, showLabel, hideLabel, noManager, p
       />
       <button
         type="button" onClick={() => setShown((s) => !s)} aria-controls={id}
-        className="absolute inset-y-1 right-1 min-w-11 rounded-lg px-3 text-sm font-medium text-accent hover:bg-accent/10"
+        className="absolute right-0 inset-y-0 min-h-11 min-w-11 rounded-lg px-3 sm:inset-y-1 sm:right-1 sm:min-h-0 text-sm font-medium text-accent hover:bg-accent/10"
       >
         {label}
       </button>

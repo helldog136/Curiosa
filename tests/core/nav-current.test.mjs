@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
-import { isCurrent } from "../../src/components/admin/navCurrent.ts";
+import { isCurrent, scrollTopToReveal } from "../../src/components/admin/navCurrent.ts";
 
 const MENU = [
   { id: "blog", href: "/admin/entries?c=blog", also: ["/admin/instances/i-blog"] },
@@ -78,4 +78,22 @@ test("autre chemin : jamais courant", () => {
 test("la page d'une entrée ajoute ?c= à son adresse (le menu en dépend)", () => {
   const page = fs.readFileSync("src/app/admin/(panel)/entries/[id]/page.tsx", "utf8");
   assert.match(page, /c !== collection\.key\) redirect\(/);
+});
+
+test("scrollTopToReveal: the current entry is brought into view inside the scrolling menu, and left alone when it already is", () => {
+  const box = { top: 100, bottom: 500 };
+  assert.equal(scrollTopToReveal(box, { top: 200, bottom: 244 }, 0), null, "already visible");
+  assert.equal(scrollTopToReveal(box, { top: 560, bottom: 604 }, 0), 112, "below the fold: scrolled down by the overflow plus a margin");
+  assert.equal(scrollTopToReveal(box, { top: 40, bottom: 84 }, 300), 232, "above: scrolled up");
+  assert.equal(scrollTopToReveal(box, { top: 40, bottom: 84 }, 10), 0, "never below zero");
+  assert.equal(scrollTopToReveal({ top: 0, bottom: 30 }, { top: 50, bottom: 144 }, 0), 42, "taller than the box: aligned on its top");
+});
+
+test("NavLink scrolls the current entry into view inside the menu list (not the page), and the list is marked", () => {
+  const link = fs.readFileSync(new URL("../../src/components/admin/NavLink.tsx", import.meta.url), "utf8");
+  assert.match(link, /closest<HTMLElement>\("\[data-nav-scroll\]"\)/);
+  assert.match(link, /scrollTopToReveal\(b, r, box\.scrollTop\)/);
+  assert.doesNotMatch(link, /scrollIntoView/, "scrollIntoView would also move the page");
+  const menu = fs.readFileSync(new URL("../../src/components/admin/MobileMenu.tsx", import.meta.url), "utf8");
+  assert.match(menu, /data-nav-scroll=""[^>]*overflow-y-auto/);
 });

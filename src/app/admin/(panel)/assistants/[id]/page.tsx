@@ -137,7 +137,7 @@ export default async function AccessPage({ params }: { params: Promise<{ id: str
   return (
     <div className="space-y-6">
       <div>
-        <a href={TEAM_HREF} className="text-sm text-muted hover:text-accent" data-testid="assistant-back">← {t("nav.users")}</a>
+        <a href={TEAM_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent" data-testid="assistant-back">← {t("nav.users")}</a>
         <h1 className={`mt-1 break-words ${ui.pageTitle}`}>{row.name} {advanced && <span className="font-mono text-base text-muted">{row.prefix}…</span>}</h1>
         {advanced && (
           <p className="mt-1 text-sm text-muted">

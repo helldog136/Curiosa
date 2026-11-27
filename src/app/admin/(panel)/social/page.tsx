@@ -182,7 +182,7 @@ export default async function SocialPage({ searchParams }: { searchParams: Promi
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
             <h2 id="social-add-title" className="flex items-center gap-1.5 text-lg font-semibold">{t("social.add")}{available.length > 0 && <HelpTip help={t("social.addHelp")} name={t("social.add")} always />}</h2>
-            <a href={NETWORKS_HREF} className="text-sm font-medium text-accent underline-offset-2 hover:underline" data-testid="social-accounts-link">{t("social.accountsLink")}</a>
+            <a href={NETWORKS_HREF} className={`${ui.touch} text-sm font-medium text-accent underline-offset-2 hover:underline`} data-testid="social-accounts-link">{t("social.accountsLink")}</a>
           </div>
         </div>
         {available.length === 0 ? <p className={ui.help}>{t("social.noneAvailable")}</p> : (

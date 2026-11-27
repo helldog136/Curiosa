@@ -19,7 +19,7 @@ The sidebar is 256 px wide and sticky: it keeps the height of the window, its li
 1. a skip link ("Skip to content", the first focusable element of every page);
 2. the site name and the menu search (`SettingsSearch`: settings and content, filtered by what the person may open);
 3. the sections (below);
-4. the pinned bottom block: name and role, **My account**, **View site** (opens a new tab and says so), **Report a bug** (one link in the whole admin), **Sign out**.
+4. the pinned bottom block: name and role, **My account**, **View site** (opens a new tab and says so), **Report a bug** (one link in the whole admin), **Sign out**. The block is compact (name and role, then two rows of two targets) so the menu keeps its height; the entry of the open page is scrolled into view inside the menu list.
 
 Every row is at least 44 px tall and has a focus outline. On a phone the same markup opens as a full-height sheet (`MobileMenu`) that the Escape key closes. Icons are thin SVG line icons drawn by `MenuIcon` from `MENU_ICONS` in `src/core/adminSidebar.ts`; emoji stay on cards only. Collapsible sections remember their state in the cookie `curiosa_nav_groups` (read by the server, so the menu does not jump); the section holding the current page opens by itself.
 

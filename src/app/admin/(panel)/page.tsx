@@ -115,7 +115,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   );
   const blocks: Record<string, React.ReactNode> = {
     setup: <Slot key="setup" label={t("dash.loading")}><SetupBlock c={c} /></Slot>,
-    todo: <Slot key="todo" label={t("dash.loading")}><TodoBlock c={c} /></Slot>,
+    todo: <Slot key="todo" label={t("dash.loading")}><TodoBlock c={c} withHealth={plan.blocks.includes("health")} /></Slot>,
     drafts: draftsBlock,
     create: <Slot key="create" label={t("dash.loading")} height="h-16"><CreateBlock c={c} /></Slot>,
     activity: <Slot key="activity" label={t("dash.loading")} height="h-40"><ActivityBlock c={c} /></Slot>,
