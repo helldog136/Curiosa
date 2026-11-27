@@ -14,6 +14,12 @@ import { ui } from "@/components/admin/ui";
 import { approveRequestAction, denyRequestAction, saveNotifyAction, setApprovalAction } from "./requestsActions";
 import { describeRequest } from "./requestsShared";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { ApprovalChoice } from "@/components/admin/ApprovalChoice";
+import { Segmented } from "@/components/admin/Segmented";
+import { LiveSearch } from "@/components/admin/LiveSearch";
+import { StatusPill } from "@/components/admin/StatusPill";
+import { searchText } from "@/core/adminkit/search";
+import { approvalLabels } from "./[id]/grantsLabels";
 
 /**
  * Onglet « Demandes à valider » : ce que vos IA veulent faire et qui attend votre accord, puis les réglages de cette validation
@@ -43,19 +49,22 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
         {pending.length === 0 ? (
           <EmptyState icon="✅" title={t("aim.pending.none")} />
         ) : (
+          <div className="space-y-3">
+          <LiveSearch scope="requests" placeholder={t("assistants.requests.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} />
           <ul className="space-y-4">
             {pending.map((r) => (
-              <li key={r.id} className="space-y-3 rounded-xl border border-amber-500/50 bg-amber-500/10 p-4" data-testid="ai-request">
+              <li key={r.id} className="space-y-3 rounded-xl border border-line-strong border-l-4 border-l-warn-text bg-surface p-4" data-testid="ai-request" data-live-item="requests" data-search={searchText([describeRequest(r, t, name), r.tokenName])}>
                 <p className="text-lg font-semibold leading-snug">{describeRequest(r, t, name)}</p>
                 <p className="text-sm leading-6">{t(`aim.risk.${r.action}`)}</p>
                 <p className="text-sm text-muted">{t("aim.from", { token: r.tokenName, date: when(r.createdAt) })} · {t("aim.expires", { date: when(r.expiresAt) })}</p>
                 <div className="flex flex-wrap gap-2">
-                  <form action={approveRequestAction.bind(null, r.id)}><ConfirmButton danger={false} message={t("aim.approveConfirm", { what: describeRequest(r, t, name) })}>✓ {t("aim.approve")}</ConfirmButton></form>
-                  <form action={denyRequestAction.bind(null, r.id)}><ConfirmButton message={t("aim.denyConfirm")}>{t("aim.deny")}</ConfirmButton></form>
+                  <form action={approveRequestAction.bind(null, r.id)}><ConfirmButton danger={false} primary message={t("aim.approveConfirm", { what: describeRequest(r, t, name) })}>✓ {t("aim.approve")}</ConfirmButton></form>
+                  <form action={denyRequestAction.bind(null, r.id)}><ConfirmButton danger={false} message={t("aim.denyConfirm")}>{t("aim.deny")}</ConfirmButton></form>
                 </div>
               </li>
             ))}
           </ul>
+          </div>
         )}
       </Panel>
 
@@ -63,44 +72,30 @@ export async function RequestsTab({ t, locale, defaultLocale, notice }: { t: Tra
         {mine.length === 0 ? (
           <EmptyState icon="🛠️" title={t("assistants.approval.none")} action={<a href={newAccessHref(true)} className={ui.btnPrimary}>{t("assistants.approval.create")}</a>} />
         ) : (
-          <ul className="divide-y divide-line">
-            {mine.map((k) => {
-              const mode = approval[k.row.id] === "direct" ? "direct" : "human";
-              return (
-                <li key={k.row.id} className="space-y-3 py-4 first:pt-0 last:pb-0">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="break-words font-medium">{k.row.name}</p>
-                    <a href={accessHref(k.row.id)} className={ui.btn}>{t("assistants.manage")}<span className="sr-only"> {k.row.name}</span></a>
-                  </div>
-                  <p className="text-sm font-medium">{t("aim.approval.title")}</p>
-                  {!k.risky && <p className="text-sm text-muted">{t("assistants.approval.noRisk")}</p>}
-                  <div className="grid gap-2 sm:grid-cols-2">
-                    <form action={setApprovalAction.bind(null, k.row.id, "human")} className={`rounded-xl border p-3 text-sm ${mode === "human" ? "border-accent bg-accent/5" : "border-line"}`}>
-                      <p className="font-medium">{mode === "human" && "● "}{t("aim.approval.human")}</p>
-                      <p className="mt-1 text-muted">{t("aim.approval.humanHelp")}</p>
-                      {mode !== "human" && <PendingButton className="mt-2" pendingLabel={t("progress.saving")}>{t("aim.approval.save")}</PendingButton>}
-                    </form>
-                    <form action={setApprovalAction.bind(null, k.row.id, "direct")} className={`rounded-xl border p-3 text-sm ${mode === "direct" ? "border-red-500/60 bg-red-500/5" : "border-line"}`}>
-                      <p className="font-medium">{mode === "direct" && "● "}{t("aim.approval.direct")}</p>
-                      <p className="mt-1 text-muted">{t("aim.approval.directHelp")}</p>
-                      {mode !== "direct" && <div className="mt-2"><ConfirmButton message={t("aim.approval.directConfirm", { token: k.row.name })}>{t("aim.approval.save")}</ConfirmButton></div>}
-                    </form>
-                  </div>
-                </li>
-              );
-            })}
-          </ul>
+          <div className="space-y-3">
+            <LiveSearch scope="approval" placeholder={t("assistants.approval.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} />
+            <ul className="divide-y divide-line" aria-label={t("assistants.approval.title")}>
+              {mine.map((k) => {
+                const mode = approval[k.row.id] === "direct" ? "direct" : "human";
+                return (
+                  <li key={k.row.id} className="space-y-3 py-4 first:pt-0 last:pb-0" data-live-item="approval" data-search={searchText([k.row.name])} data-testid="ai-token-row">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="break-words font-medium">{k.row.name}</p>
+                      <a href={accessHref(k.row.id)} className={ui.btn}>{t("assistants.manage")}<span className="sr-only"> {k.row.name}</span></a>
+                    </div>
+                    {!k.risky && <StatusPill tone="info" title={t("assistants.approval.noRisk")}>{t("assistants.approval.noRiskPill")}</StatusPill>}
+                    <ApprovalChoice current={mode} onChange={setApprovalAction.bind(null, k.row.id)} labels={approvalLabels(t, k.row.name)} />
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
         )}
       </Panel>
 
       <Panel title={t("aim.notify.title")} help={t("aim.notify.help")} testid="ai-notify">
         <form action={saveNotifyAction} className="space-y-3">
-          {(["admin", "email"] as const).map((m) => (
-            <label key={m} className="flex items-start gap-3 text-sm">
-              <input type="radio" name="notify" value={m} defaultChecked={notify === m} className="mt-1 h-4 w-4 accent-[var(--v-accent)]" />
-              <span><span className="font-medium">{t(`aim.notify.${m}`)}</span>{m === "email" && <span className="mt-0.5 block text-muted">{t("aim.notify.emailHelp")}</span>}</span>
-            </label>
-          ))}
+          <Segmented label={t("aim.notify.where")} name="notify" defaultValue={notify} help={t("aim.notify.emailHelp")} options={(["admin", "email"] as const).map((m) => ({ value: m, label: t(`aim.notify.${m}`) }))} />
           {notify === "email" && !mailOk && <Callout tone="warn">{t("aim.notify.mailMissing")}</Callout>}
           <PendingButton pendingLabel={t("progress.saving")}>{t("aim.notify.save")}</PendingButton>
         </form>

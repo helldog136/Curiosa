@@ -5,7 +5,9 @@ import { isMcpEnabled } from "@/core/services/mcp/tokens";
 import type { Translator } from "@/core/i18n/dictionary";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { GUIDE_KEYS, McpConnectGuide, type GuideTexts } from "@/components/admin/McpConnectGuide";
-import { Callout, Panel } from "@/components/admin/Page";
+import { Panel } from "@/components/admin/Page";
+import { AttentionCard } from "@/components/admin/AttentionCard";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { ui } from "@/components/admin/ui";
 import { setMcpEnabled } from "./actions";
 import { PendingButton } from "@/components/admin/PendingButton";
@@ -23,27 +25,22 @@ export async function AccessTab({ t, locale, advanced, owner }: { t: Translator;
   return (
     <div className="space-y-8" data-testid="assistants-access">
       {owner && <UploadLiftBanner t={t} />}
-      {!enabled && (
-        <Callout tone="warn" testid="assistants-off">
-          <span className="flex flex-wrap items-center justify-between gap-3">
-            <span><strong>{t("assistants.off.title")}</strong> {t("assistants.off.help")}</span>
-            <form action={setMcpEnabled.bind(null, true)}><PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton></form>
-          </span>
-        </Callout>
-      )}
-
       <Panel title={t("team.ai.where.title")} testid="assistants-where">
         <a href={TEAM_HREF} className={`${ui.btnPrimary} self-start`} data-testid="assistants-open-team">{t("team.ai.where.open")}</a>
       </Panel>
 
-      <Panel title={t("assistants.master.title")} testid="assistants-master">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="flex items-center gap-2 font-medium"><span className={enabled ? ui.chipOk : ui.chipWarn}>{t(enabled ? "assistants.master.onChip" : "assistants.master.offChip")}</span>{!enabled && t("assistants.master.off")}</p>
-          <form action={setMcpEnabled.bind(null, !enabled)}>
-            {enabled ? <ConfirmButton message={t("assistants.master.confirm")}>{t("assistants.master.suspend")}</ConfirmButton> : <PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton>}
-          </form>
-        </div>
-      </Panel>
+      {/* One block for the master switch (R33.7): when everything is paused the card carries the one action that resumes it; when it runs, the pill and the pause button. */}
+      {enabled ? (
+        <Panel title={t("assistants.master.title")} testid="assistants-master">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <StatusPill tone="ok">{t("assistants.master.onChip")}</StatusPill>
+            <form action={setMcpEnabled.bind(null, false)}><ConfirmButton message={t("assistants.master.confirm")}>{t("assistants.master.suspend")}</ConfirmButton></form>
+          </div>
+        </Panel>
+      ) : (
+        <AttentionCard tone="warn" title={t("assistants.off.title")} reason={t("assistants.off.help")} testid="assistants-off"
+          action={<form action={setMcpEnabled.bind(null, true)}><PendingButton variant="primary">{t("assistants.off.resume")}</PendingButton></form>} />
+      )}
 
       {owner && <UploadLimits t={t} locale={locale} />}
 

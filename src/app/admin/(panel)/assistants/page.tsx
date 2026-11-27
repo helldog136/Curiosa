@@ -15,7 +15,7 @@ import { PageHeader } from "@/components/admin/Page";
 import { AccessTab } from "./AccessTab";
 import { OwnersTab } from "./OwnersTab";
 import { accessesWithoutOwner } from "@/core/personalAi/owners";
-import { Callout } from "@/components/admin/Page";
+import { AttentionCard } from "@/components/admin/AttentionCard";
 import { AssistantTabs } from "./AssistantTabs";
 import { HistoryTab } from "./HistoryTab";
 import { RequestsTab } from "./RequestsTab";
@@ -54,23 +54,22 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
         intro={t("assistants.intro")}
       />
       {fullPowers.length > 0 && (
-        <div role="alert" className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-xl border border-danger/50 bg-danger/10 p-3.5 text-sm" data-testid="fullpowers-banner">
-          <span className={ui.chipDanger}>{t("fullpowers.chip")}</span>
-          <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-            {fullPowers.map((a) => (
-              <li key={a.id} className="flex flex-wrap items-center gap-2" data-testid="fullpowers-banner-item">
-                <a href={accessHref(a.id)} className="font-medium underline underline-offset-2">{a.name}</a>
-                {owner && <form action={turnOffFullPowersAction.bind(null, a.id)}><PendingButton testid="fullpowers-banner-off">{t("fullpowers.turnOff")}<span className="sr-only"> {a.name}</span></PendingButton></form>}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <AttentionCard tone="danger" alert title={t("fullpowers.chip")} testid="fullpowers-banner"
+          action={(
+            <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
+              {fullPowers.map((a) => (
+                <li key={a.id} className="flex flex-wrap items-center gap-2" data-testid="fullpowers-banner-item">
+                  <a href={accessHref(a.id)} className="font-medium underline underline-offset-2">{a.name}</a>
+                  {owner && <form action={turnOffFullPowersAction.bind(null, a.id)}><PendingButton testid="fullpowers-banner-off">{t("fullpowers.turnOff")}<span className="sr-only"> {a.name}</span></PendingButton></form>}
+                </li>
+              ))}
+            </ul>
+          )} />
       )}
       {/* Only when something waits for input (R33): at least one access never had an owner. It keeps working as before. */}
       {unowned.length > 0 && tab !== "owners" && (
-        <Callout tone="warn" testid="owners-pending">
-          <span className="flex flex-wrap items-center justify-between gap-3"><span>{t("owners.pending", { n: unowned.length })}</span><a href={assistantsTabHref("owners")} className={ui.btn} data-testid="owners-pending-open">{t("owners.pendingOpen")}</a></span>
-        </Callout>
+        <AttentionCard tone="warn" title={t("owners.pending", { n: unowned.length })} testid="owners-pending"
+          action={<a href={assistantsTabHref("owners")} className={ui.btn} data-testid="owners-pending-open">{t("owners.pendingOpen")}</a>} />
       )}
       <AssistantTabs t={t} current={tab} pending={pending} />
       {tab === "access" && <AccessTab t={t} locale={locale} advanced={advanced} owner={isOwner(user)} />}

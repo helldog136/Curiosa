@@ -28,7 +28,7 @@ test("AI assistants: no reassurance sentence (a loss warning stays)", () => {
   assert.match(fr["aim.pending.help"], /expire/, "the expiry is a fact that matters, it stays");
   const tab = read("src/app/admin/(panel)/assistants/AccessTab.tsx");
   assert.ok(!tab.includes("team.ai.where.help"), "the title and the button already say where");
-  assert.match(tab, /\{!enabled && t\("assistants\.master\.off"\)\}/, "the chip says « Allowed »; the sentence only when suspended");
+  assert.match(tab, /<StatusPill tone="ok">\{t\("assistants\.master\.onChip"\)\}/, "the chip says « Allowed »; no sentence at all (the suspended card carries its own reason)");
 });
 
 test("appearance: the current skin is listed once (first, marked) with no summary card, no « reviewed, install with confidence »", () => {
