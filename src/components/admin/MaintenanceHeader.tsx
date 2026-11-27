@@ -6,6 +6,7 @@ import { legacyUpkeepSummary } from "@/core/modules/legacyUpkeep";
 import { getUpdateCheck } from "@/core/updates/service";
 import { LinkTabs, type LinkTab } from "./LinkTabs";
 import { PageHeader } from "./Page";
+import { ui } from "./ui";
 
 /**
  * Haut de chaque page de l'entrée « Entretien » : le titre, une phrase, et les onglets (Contrôle du site, Sauvegarde, Mises à jour, Restes, Journal d'activité).
@@ -28,6 +29,19 @@ export async function MaintenanceHeader({ t, level, advanced, current }: { t: Tr
     <div className="space-y-4" data-testid="maintenance-header">
       <PageHeader title={t("nav.maintenance")} icon="🛠️" intro={t("maint.intro")} />
       <LinkTabs tabs={tabs} current={current} label={t("maint.tabs.label")} testid="maintenance-tabs" />
+    </div>
+  );
+}
+
+/**
+ * The title and the one-line purpose of a tab of the Maintenance page. The tab bar above already names the page, so the heading is kept for screen readers only
+ * (R33.7: a name is shown once); the sentence stays visible (R1).
+ */
+export function TabIntro({ title, intro }: { title: string; intro?: string }) {
+  return (
+    <div data-testid="maintenance-intro">
+      <h2 className="sr-only">{title}</h2>
+      {intro ? <p className={ui.pageIntro}>{intro}</p> : null}
     </div>
   );
 }

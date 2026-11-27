@@ -146,8 +146,9 @@ test("une seule logique de création : le formulaire de l'Équipe et l'étape pa
 
 test("assistant d'installation : l'étape suit la création du compte, se saute sans rien créer, deux champs visibles, profil par défaut = lecture seule", () => {
   const setup = read("src/app/admin/(auth)/setup/actions.ts");
-  assert.match(setup, /SETUP_NEXT = SETUP_ASSISTANT_HREF/);
-  assert.doesNotMatch(setup, /redirectTo: [^;]*"\/admin\?welcome=1/, "plus de saut direct vers le tableau de bord");
+  // C5i: the step is no longer forced after the account; it is the "Connect an AI assistant" step of the dashboard checklist (same route, same page).
+  assert.match(setup, /SETUP_NEXT = `\$\{ADMIN_HREF\}\?welcome=1`/);
+  assert.match(read("src/core/dashboard/setup.ts"), /assistant: SETUP_ASSISTANT_HREF/);
   const page = read("src/app/admin/(auth)/setup/assistant/page.tsx");
   assert.match(page, /ADMIN_HREF\}\?welcome=1/, "« Passer » mène au tableau de bord");
   assert.match(page, /right: "core:mcp\.tokens"/);

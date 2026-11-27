@@ -25,7 +25,7 @@ import { AttentionCard, type AttentionTone } from "@/components/admin/AttentionC
 import { ChecklistCard, type ChecklistStep } from "@/components/admin/ChecklistCard";
 import { checklistLabels } from "@/components/admin/brickLabels";
 import { MoreOptions } from "@/components/admin/MoreOptions";
-import { APPEARANCE_HREF, AUDIT_HREF, SETTINGS_HREF, SOCIAL_HREF } from "@/core/adminLinks";
+import { APPEARANCE_HREF, AUDIT_HREF, SETTINGS_HREF, SETUP_ASSISTANT_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 
 /**
  * Les blocs du tableau de bord : des composants serveur, chacun dans son `Suspense`. Un bloc lent (une extension qui tarde, une lecture de base) ne retient ni la page ni les autres blocs ;
@@ -50,7 +50,7 @@ const env = (c: BlockCtx): DashboardEnv => ({ viewer: c.user, locale: c.locale, 
 // ── Mise en route ───────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 
 export async function SetupBlock({ c }: { c: BlockCtx }) {
-  const state = await loadSetup({ contentInstanceIds: c.contentIds, locale: c.locale, links: { settings: SETTINGS_HREF, appearance: APPEARANCE_HREF, social: SOCIAL_HREF, newPage: c.newPageHref } }).catch(() => null);
+  const state = await loadSetup({ contentInstanceIds: c.contentIds, locale: c.locale, links: { settings: SETTINGS_HREF, appearance: APPEARANCE_HREF, social: SOCIAL_HREF, newPage: c.newPageHref, modules: EXTENSIONS_ADD_HREF, assistant: SETUP_ASSISTANT_HREF } }).catch(() => null);
   if (!state?.visible) return null;
   const { t } = c;
   // R8, R26: the checklist card draws the steps and the action of the NEXT one only; the list goes away on its own when every step is done.
