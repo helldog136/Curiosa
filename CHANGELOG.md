@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Réglages et Apparence : moins de champs, un seul « Enregistrer ».** Les choix à deux ou trois options sont des boutons côte à côte, la présentation du site est repliée, et la recherche, le son et l'e-mail enregistrent depuis la barre du bas. Le skin actuel apparaît une fois, en tête de liste.
+- **(English) Settings and Appearance: fewer fields, one Save.** Choices of two to four options are side-by-side buttons, the site presentation is folded, and search, sound and e-mail save from the bottom bar. The current skin shows once, first in the list, with “Customise”.
 - **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne, avec son type, son état et la raison. Recherche en direct, filtres et un seul bouton par ligne.
 - **(English) “Accounts and connections” is one table.** Each account and connection is one row, with its type, its state and the reason. Live search, filters and one button per row.
 - **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».

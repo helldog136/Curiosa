@@ -234,7 +234,8 @@ test("page, site existant sans skin : titre « Apparence », skin de base seul, 
   const html = await page("fr");
   assert.match(html, /<h1[^>]*>Apparence<\/h1>/);
   assert.match(html, /data-testid="current-skin"[\s\S]*Skin de base/);
-  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 0, "le skin actuel n'est pas répété dans la liste (R33.7)");
+  assert.equal(count(html, /<li [^>]*data-skin-card=/g), 1, "le skin actuel est la seule carte, marquée « Actuel » : pas de carte de résumé en double (R33.7)");
+  assert.equal(count(html, /data-testid="current-skin"/g), 1);
   assert.doesNotMatch(html, /data-testid="undo-banner"|data-testid="adjusted-notice"|data-testid="active-problem"|data-testid="reset-card"/);
   for (const f of ["background", "accent", "accent2", "surface", "text", "glow", "bgPreset", "headerLayout"]) assert.match(html, new RegExp(`name="${f}"`), f);
   assert.match(html, /data-testid="bg-layers"/);
@@ -276,7 +277,9 @@ test("page, avec un skin à deux modes choisi : skin actuel, « Annuler », Reve
   assert.equal(count(manage, /<details/g), 1, "une seule zone repliée par ligne : le menu « ⋯ » (plus de zone repliée par skin)");
   assert.doesNotMatch(html, /data-manage=|Mises à jour et retrait/);
 
-  assert.match(html, /<option value="skin"[^>]*>Celui du skin<\/option>/, "halo et fond : « celui du skin »");
+  assert.match(html, /<input type="radio"[^>]*name="glow"[^>]*value="skin"[^>]*\/><span[^>]*>Celui du skin<\/span>/, "halo : « celui du skin », en boutons côte à côte (R19)");
+  assert.match(html, /<input type="radio"[^>]*name="bgPreset"[^>]*value="skin"[^>]*\/><span[^>]*>Celui du skin<\/span>/, "fond : « celui du skin », en boutons côte à côte (R19)");
+  assert.doesNotMatch(html, /<select[^>]*name="(glow|bgPreset)"/, "plus de liste déroulante pour 2 à 4 choix");
   assert.match(html, /name="light_background"[\s\S]*name="dark_accent"/);
   // anglais : même structure
   const en = await page("en");

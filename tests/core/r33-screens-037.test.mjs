@@ -31,12 +31,13 @@ test("AI assistants: no reassurance sentence (a loss warning stays)", () => {
   assert.match(tab, /\{!enabled && t\("assistants\.master\.off"\)\}/, "the chip says « Allowed »; the sentence only when suspended");
 });
 
-test("appearance: the current skin is not listed twice, no « reviewed, install with confidence »", () => {
+test("appearance: the current skin is listed once (first, marked) with no summary card, no « reviewed, install with confidence »", () => {
   const page = read("src/app/admin/(panel)/appearance/page.tsx");
-  assert.match(page, /view\.cards\.filter\(\(c\) => !c\.active\)/);
+  assert.doesNotMatch(page, /data-testid="current-skin"|appearance\.current\.title/, "no summary card above the list");
+  assert.match(page, /\.\.\.view\.cards\.filter\(\(c\) => c\.active\), \.\.\.view\.cards\.filter\(\(c\) => !c\.active\)/, "the active skin leads the one list");
   assert.doesNotMatch(read("src/app/admin/(panel)/appearance/SkinCards.tsx"), /appearance\.base/);
   for (const v of both("appearance.add.help")) assert.doesNotMatch(v, /relus|confiance|reviewed|confidence/i);
-  assert.match(page, /view\.switchAvailable && <p className=\{ui\.help\}>/, "the light/dark explanation is not repeated when the switch is absent");
+  assert.match(page, /view\.switchAvailable && <HelpTip always help=\{t\("appearance\.visitors\.help"\)\}/, "the light/dark explanation is a tip, and only when the switch exists");
 });
 
 test("settings: the low-disk line is shown once per page, not under every upload field", () => {
