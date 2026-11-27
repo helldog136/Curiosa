@@ -47,6 +47,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Pour les développeurs
 
+- Nouvelles briques de l'administration, pas encore utilisées : `StatusPill`, `EmptyState`, `AttentionCard` (sans action, rien n'est dessiné), `ChecklistCard` et `RightsMatrix` (un droit réservé n'y est jamais délégable). Textes dans `bricks.*` ; tests dans `bricks-c3c`.
+- **(English)** New admin bricks, not used yet: `StatusPill`, `EmptyState`, `AttentionCard` (nothing is drawn without an action), `ChecklistCard` and `RightsMatrix` (a reserved right is never delegable there). Texts in `bricks.*`; tests in `bricks-c3c`.
 - Les interrupteurs de ligne (`switch` d'une cellule de tableau) n'écrivent plus de mot d'état ; `onText` / `offText` ne servent qu'au nom accessible, et `switch.note` (facultatif, ajout sans risque) écrit l'exception à côté (voir `docs/MODULES.md`). Nouvelle brique `ResultCount` (région d'annonce) dans `LiveSearch.tsx`, `Switch` accepte `quiet`.
 - **(English)** Row switches (a table cell `switch`) no longer write a state word; `onText` / `offText` only feed the accessible name, and the optional `switch.note` (additive) writes the exception beside the switch (see `docs/MODULES.md`). New `ResultCount` brick (live region) in `LiveSearch.tsx`; `Switch` accepts `quiet`.
 - Une seule table d'accès, `src/core/adminAccess.ts` (`canOpen`), reprend ce que demande chaque page ; `tests/core/admin-access.test.mjs` lit les pages et échoue si elles divergent. Elle ne remplace jamais le contrôle d'une page.
