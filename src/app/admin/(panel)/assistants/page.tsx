@@ -78,7 +78,7 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
       {tab === "history" && <HistoryTab t={t} locale={locale} defaultLocale={config.defaultLocale} advanced={advanced} />}
 
       <p className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-muted">
-        <a href={`${CREDIT_URL}/blob/HEAD/docs/MAINTENANCE-IA.md`} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2 hover:text-accent" data-testid="ai-guide-link">📄 {t("aim.guide")} ↗</a>
+        <a href={`${CREDIT_URL}/blob/HEAD/docs/MAINTENANCE-IA.md`} target="_blank" rel="noopener noreferrer" className={`${ui.touch} underline underline-offset-2 hover:text-accent`} data-testid="ai-guide-link">📄 {t("aim.guide")} ↗</a>
         <HelpTip always help={t("aim.guideHelp")} name={t("aim.guide")} />
       </p>
     </div>

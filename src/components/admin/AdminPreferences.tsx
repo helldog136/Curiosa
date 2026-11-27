@@ -26,7 +26,7 @@ export function AdminPreferences({ t, advanced, theme }: { t: Translator; advanc
               </form>
             ))}
           </div>
-          <p className={ui.help}><a href={MODE_HREF} className="underline hover:text-accent">{t("mode.page.title")}</a></p>
+          <p className={ui.help}><a href={MODE_HREF} className={`${ui.touch} underline hover:text-accent`}>{t("mode.page.title")}</a></p>
         </div>
         <div role="group" aria-labelledby="pref-theme" className="space-y-2" data-testid="pref-theme">
           <p id="pref-theme" className="flex items-center gap-1 font-medium">{t("theme.admin")}<HelpTip help={t("account.prefs.themeHelp")} name={t("theme.admin")} always /></p>

@@ -13,7 +13,7 @@ export const FEATURE_TAB_HREFS: Record<FeatureTab, string> = { installed: EXTENS
 export function FeatureTabs({ current, labels, behind = 0, behindLabel }: { current: FeatureTab; labels: { installed: string; add: string; updates?: string; personal?: string }; /** Modules en retard : compteur dans l'onglet « Mises à jour ». */ behind?: number; behindLabel?: string }) {
   const tab = (id: FeatureTab, label: string, count = 0) => (
     <a key={id} href={FEATURE_TAB_HREFS[id]} aria-current={current === id ? "page" : undefined}
-      className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${current === id ? "border-accent text-accent" : "border-transparent text-muted hover:text-fg"}`}>
+      className={`-mb-px flex min-h-11 items-center gap-2 whitespace-nowrap border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${current === id ? "border-accent text-accent" : "border-transparent text-muted hover:text-fg"}`}>
       {label}
       {count > 0 && <span data-testid="tab-badge" title={behindLabel} className="min-w-5 rounded-full bg-accent px-1.5 text-center text-xs font-semibold leading-5 text-accent-fg">{count}<span className="sr-only"> {behindLabel}</span></span>}
     </a>

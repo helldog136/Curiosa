@@ -12,7 +12,7 @@ import { UPDATES_HREF } from "@/core/adminLinks";
 export function FicheFrame({ embedded, back, children }: { embedded: boolean; back: string; children: React.ReactNode }) {
   return embedded ? <div className="space-y-7">{children}</div> : (
     <div className="space-y-7">
-      <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>
+      <a href={EXTENSIONS_ADD_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {back}</a>
       {children}
     </div>
   );

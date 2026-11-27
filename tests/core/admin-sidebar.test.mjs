@@ -126,3 +126,24 @@ test("the cookie of remembered state keeps its format, and the new section ids f
   const state = { content: false, site: true, "more-content": true, "g-live": false, connections: true };
   assert.deepEqual(parseNavState(serializeNavState(state)), state);
 });
+
+test("the pinned account block is compact: name and role, then two rows of two 44 px targets; every entry is kept", () => {
+  const layout = read("src/app/admin/(panel)/layout.tsx");
+  const foot = layout.slice(layout.indexOf('<div role="group" aria-label={t("nav.account")}>'), layout.indexOf("</MobileMenu>"));
+  assert.match(foot, /grid grid-cols-2/, "My account, View site / Report a bug, Sign out: two rows of two");
+  for (const need of ["ACCOUNT_LINKS.map", "<BugReportLink", 't("nav.logout")', "{initialOf(user.name)}", "{roleLabel}"]) assert.ok(foot.includes(need), need);
+  assert.match(foot, /coreLink\(l, undefined, true\)/, "the account links use the narrow row");
+  assert.match(read("src/components/admin/NavLink.tsx"), /compact \? "px-2" : "px-3"/);
+  assert.match(layout, /const rowCls = "flex min-h-11 /, "the bug link stays a 44 px target");
+});
+
+test("tap targets: primary buttons, fields, tabs and the password button reach 44 px on a phone; standalone links get a 44 px hit area", () => {
+  const ui = read("src/components/admin/ui.ts");
+  for (const k of ["btn", "btnPrimary", "btnDanger"]) assert.match(ui.slice(ui.indexOf(`  ${k}:`), ui.indexOf(`  ${k}:`) + 260), /max-sm:min-h-11/, k);
+  assert.match(ui.slice(ui.indexOf("  input:"), ui.indexOf("  label:")), /max-sm:min-h-11/, "text fields and selects");
+  assert.match(ui, /touch: "max-sm:inline-flex max-sm:min-h-11 max-sm:items-center"/);
+  assert.match(read("src/components/admin/FeatureTabs.tsx"), /-mb-px flex min-h-11 items-center/);
+  assert.match(read("src/components/admin/LinkTabs.tsx"), /min-h-11/);
+  assert.match(read("src/components/admin/PasswordInput.tsx"), /absolute right-0 inset-y-0 min-h-11 min-w-11[^"]*sm:inset-y-1/);
+  for (const f of ["src/app/admin/(panel)/social/page.tsx", "src/app/admin/(panel)/settings/page.tsx", "src/app/admin/(panel)/assistants/page.tsx", "src/components/admin/AdminPreferences.tsx"]) assert.match(read(f), /\$\{ui\.touch\}/, f);
+});

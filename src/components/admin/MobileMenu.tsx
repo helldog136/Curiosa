@@ -49,8 +49,8 @@ export function MobileMenu({ brand, menuLabel, search, footer, children }: { bra
       </div>
       <div id="admin-nav" className={`${open ? "flex" : "hidden"} min-h-0 flex-col bg-surface max-md:absolute max-md:inset-x-0 max-md:top-full max-md:z-40 max-md:h-[calc(100dvh-4.5rem)] max-md:border-t max-md:border-line md:flex md:flex-1`}>
         {search && <div className="shrink-0 px-4 pb-1">{search}</div>}
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
-        {footer && <div className="shrink-0 border-t border-line bg-surface px-4 py-3" data-testid="admin-sidebar-account">{footer}</div>}
+        <div data-nav-scroll="" className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-4">{children}</div>
+        {footer && <div className="shrink-0 border-t border-line bg-surface px-4 py-2" data-testid="admin-sidebar-account">{footer}</div>}
       </div>
     </aside>
   );

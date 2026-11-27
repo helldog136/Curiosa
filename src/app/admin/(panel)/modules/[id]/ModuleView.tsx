@@ -77,7 +77,7 @@ export async function ModuleView({ id, query, embedded = false }: { id: string; 
 
   return (
     <div className="space-y-6">
-      {!embedded && <a href={EXTENSIONS_HREF} className="inline-block text-sm text-muted hover:text-accent">← {listTitle}</a>}
+      {!embedded && <a href={EXTENSIONS_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {listTitle}</a>}
       <header className="flex items-start gap-4">
         <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-accent/10 text-3xl" aria-hidden>{mod?.manifest.icon ?? "🧩"}</span>
         <div className="min-w-0">

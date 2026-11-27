@@ -1314,7 +1314,7 @@
   "dash.health.points": "{n} points to check",
   "dash.health.points.one": "{n} point to check",
   "dash.health.label": "Your site's health",
-  "dash.health.open": "Open",
+  "dash.todo.go.health": "Open",
   "dash.create.title": "Create",
   "dash.create.add": "Add a module",
   "dash.activity.title": "What happened",

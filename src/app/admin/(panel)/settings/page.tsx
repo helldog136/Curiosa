@@ -224,7 +224,7 @@ export default async function SettingsPage({ searchParams }: { searchParams?: Pr
         <ActionForm action={saveSearch} floating={floatingLabels(t)} submitLabel={t("settings.searchSave")} pendingLabel={t("progress.saving")} className="space-y-5">
           <div className={`${ui.card} space-y-3`}>
             <SwitchField name="searchEnabled" label={t("settings.searchSwitch")} defaultChecked={search.enabled} onText={t("settings.searchOn")} offText={t("settings.searchOff")} />
-            {search.enabled && <a href="/search" target="_blank" rel="noopener" className="inline-block text-sm font-medium text-accent hover:underline">{t("settings.searchTry")} ↗</a>}
+            {search.enabled && <a href="/search" target="_blank" rel="noopener" className={`${ui.touch} inline-block text-sm font-medium text-accent hover:underline`}>{t("settings.searchTry")} ↗</a>}
             {searchTypes.length === 0 && <p className={ui.help} data-testid="search-empty">{t("settings.searchEmpty")}</p>}
           </div>
           {(() => {

@@ -39,7 +39,6 @@ import { HelpTipProvider } from "@/components/admin/HelpTip";
 import { CROP_LABEL_KEYS } from "@/components/admin/cropLabelKeys";
 import { cookies } from "next/headers";
 import { PendingButton } from "@/components/admin/PendingButton";
-import { MenuIcon } from "@/components/admin/MenuIcon";
 import { ACCOUNT_LINKS, CONNECTIONS_LINK, DASHBOARD_LINK, SECTION_STATE_ID, SECTIONS_CLOSED_BY_DEFAULT, adminLink, capEntries, entryAlso, entryHref, entryIconKey, entryTargets, groupIconKey, initialOf, moreStateId, siteLinks, unpinnedPageTargets, type MenuIconKey, type SidebarLink } from "@/core/adminSidebar";
 import { ADMIN_HREF, LOGIN_HREF, OVERLAY_PAGES_HREF } from "@/core/adminLinks";
 
@@ -144,8 +143,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
     roles: { count: 0, label: "" },
     maintenance: { count: maintenanceBadge, label: t("nav.badge.maintenance") },
   };
-  const coreLink = (l: SidebarLink, badge?: { count: number; label: string }) => (
-    <NavLink key={l.id} href={l.href} also={[...l.also]} icon={l.icon} {...(l.exceptHash ? { exceptHash: l.exceptHash } : {})} badge={badge?.count ?? 0} badgeLabel={badge?.label} {...(l.exact ? { exact: true } : {})} {...(l.external ? { external: true, newTabLabel: t("nav.newTab") } : {})}>{t(l.label)}</NavLink>
+  const coreLink = (l: SidebarLink, badge?: { count: number; label: string }, compact?: boolean) => (
+    <NavLink key={l.id} href={l.href} also={[...l.also]} icon={l.icon} {...(compact ? { compact: true } : {})} {...(l.exceptHash ? { exceptHash: l.exceptHash } : {})} badge={badge?.count ?? 0} badgeLabel={badge?.label} {...(l.exact ? { exact: true } : {})} {...(l.external ? { external: true, newTabLabel: t("nav.newTab") } : {})}>{t(l.label)}</NavLink>
   );
   const stateOf = (id: keyof typeof SECTION_STATE_ID) => navState[SECTION_STATE_ID[id]];
   const openDefault = (id: keyof typeof SECTION_STATE_ID) => !SECTIONS_CLOSED_BY_DEFAULT.includes(SECTION_STATE_ID[id]);
@@ -156,7 +155,7 @@ export default async function PanelLayout({ children }: { children: React.ReactN
   const sectionBadge = (items: Entry[], extra?: { badge: number }) => items.reduce((n, m) => n + m.badge, 0) + (extra?.badge ?? 0);
 
   const roleLabel = user.level === "none" ? t("role.custom") : t(`role.${user.level}`);
-  const rowCls = "flex min-h-11 items-center gap-2.5 rounded-xl px-3 py-2 text-[15px] transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
+  const rowCls = "flex min-h-11 items-center rounded-xl px-2 py-2 text-sm transition-colors hover:bg-accent/10 hover:text-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent";
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -168,21 +167,23 @@ export default async function PanelLayout({ children }: { children: React.ReactN
         search={<SettingsSearch variant="menu" labels={settingsSearchLabels(t)} endpoint="/api/admin/settings-search" contentEndpoint={hasRole(user, "editor") ? "/api/admin/content-search" : undefined} advancedMode={advanced} />}
         footer={(
           <div role="group" aria-label={t("nav.account")}>
-            <div className="mb-1 flex items-center gap-3 px-3 py-1">
+            <div className="flex items-center gap-3 px-2 py-1">
               <span aria-hidden="true" className="grid size-8 shrink-0 place-items-center rounded-full bg-accent-tint text-sm font-bold text-accent-text">{initialOf(user.name)}</span>
               <p className="min-w-0 leading-tight"><span className="block truncate text-sm font-semibold">{user.name}</span><span className="block truncate text-xs text-muted">{roleLabel}</span></p>
             </div>
-            {ACCOUNT_LINKS.map((l) => (canOpen(user, l.href, owners) ? coreLink(l) : null))}
-            <BugReportLink href={bugUrl} className={rowCls} title={t("bugReport.help")}><MenuIcon name="bug" />{t("bugReport.link")}<span className="sr-only"> ({t("nav.newTab")})</span></BugReportLink>
-            <form
-              action={async () => {
-                "use server";
-                await signOut({ redirectTo: LOGIN_HREF });
-              }}
-              className="mt-1"
-            >
-              <PendingButton pendingLabel={t("progress.signingOut")} className="w-full">{t("nav.logout")}</PendingButton>
-            </form>
+            {/* Two short rows of two (each still 44 px tall): the pinned block stays small so the menu keeps its height. */}
+            <div className="grid grid-cols-2 gap-x-1">
+              {ACCOUNT_LINKS.map((l) => (canOpen(user, l.href, owners) ? coreLink(l, undefined, true) : null))}
+              <BugReportLink href={bugUrl} className={rowCls} title={t("bugReport.help")}>{t("bugReport.link")}<span className="sr-only"> ({t("nav.newTab")})</span></BugReportLink>
+              <form
+                action={async () => {
+                  "use server";
+                  await signOut({ redirectTo: LOGIN_HREF });
+                }}
+              >
+                <PendingButton pendingLabel={t("progress.signingOut")} className="h-full w-full !px-2">{t("nav.logout")}</PendingButton>
+              </form>
+            </div>
           </div>
         )}
       >

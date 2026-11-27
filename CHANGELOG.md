@@ -11,6 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Menu latéral plus court, cibles tactiles de 44 px.** Le bloc du compte tient sur trois lignes et l'entrée de la page ouverte reste visible dans le menu. Sur téléphone, boutons, champs, onglets et liens isolés atteignent 44 px.
+- **(English) Shorter sidebar, 44 px touch targets.** The account block takes three rows and the entry of the open page stays in view in the menu. On a phone, buttons, fields, tabs and standalone links reach 44 px.
+- **Tableau de bord : la pastille de santé mène aux lignes de « À faire ».** Chaque point de la pastille y est une ligne avec son action, ou une note quand la personne n'a pas la page : le nombre et la liste concordent.
+- **(English) Dashboard: the health pill leads to the “To do” lines.** Each point of the pill is a line there with its action, or a note when the person has no page for it: the count and the list agree.
 - **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.
 - **(English) A page section that cannot show says why, with one link.** It carries the “Not configured” or “Degraded” pill, the reason, then a single link to the module, instead of “Section unavailable” and a duplicated link.
 - **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».

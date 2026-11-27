@@ -17,9 +17,9 @@ test("the to-do lines are attention cards, each with its own verb, five at a tim
   assert.match(blocks, /TODO_VISIBLE = 5/);
   assert.match(blocks, /rest\.length > 0 && <MoreOptions title=\{t\("dash\.todo\.more"/);
   assert.match(blocks, /data-testid="todo"/);
-  assert.match(blocks, /openable\(c\.user, mergeTodo\(core, mods\), c\.owners\)/, "the access filter is kept");
+  assert.match(blocks, /openable\(c\.user, \[\.\.\.healthItems, \.\.\.mergeTodo\(core, mods\)\], c\.owners\)/, "the access filter is kept");
   const kinds = [...read("src/core/dashboard/todo.ts").matchAll(/kind: "([\w-]+)"/g)].map((m) => m[1]);
-  for (const k of ["ai", "setup", "backup", "update-core", "update-modules", "update-skins", "badge", "module", "drafts"]) assert.ok(`dash.todo.go.${k}` in en && `dash.todo.go.${k}` in fr, k);
+  for (const k of ["ai", "setup", "backup", "update-core", "update-modules", "update-skins", "badge", "module", "drafts", "health"]) assert.ok(`dash.todo.go.${k}` in en && `dash.todo.go.${k}` in fr, k);
   assert.ok(kinds.length > 0);
 });
 
@@ -93,4 +93,18 @@ test("the new keys exist in both languages, with the same variables, and the las
   }
   assert.equal(Object.keys(en).at(-1), "settings.contrast.accent2");
   assert.equal(Object.keys(fr).at(-1), "settings.contrast.accent2");
+});
+
+test("the health pill leads to the lines that explain it: every health point is a line of the to-do list or a note (no count without its lines)", () => {
+  const pill = blocks.slice(blocks.indexOf("export async function HealthPill"), blocks.indexOf("// ── Stockage"));
+  assert.match(pill, /<a href="#todo" data-testid="dash-health"/, "the pill links to the to-do list");
+  assert.doesNotMatch(pill, /<details/, "no second, hidden copy of the points");
+  assert.match(page, /<TodoBlock c=\{c\} withHealth=\{plan\.blocks\.includes\("health"\)\} \/>/, "the list knows the pill is there");
+  // Every point but the backup one (already a line of the core list) becomes a card with an action, or a note when this person has no page for it.
+  assert.match(blocks, /p\.id !== "backup"/);
+  assert.match(blocks, /kind: "health" as const/);
+  assert.match(blocks, /data-testid="todo-notes"/);
+  assert.match(blocks, /items\.length === 0 && notes\.length === 0\) return null/, "an empty list still shows nothing");
+  assert.ok(en["dash.todo.go.health"] && fr["dash.todo.go.health"]);
+  assert.match(blocks, /health: "warn"/);
 });

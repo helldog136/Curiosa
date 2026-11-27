@@ -12,7 +12,7 @@ const BLOCK = "animate-pulse rounded-xl bg-line/60 motion-reduce:animate-none";
 export function FicheSkeleton({ text, embedded, back, name, icon, description, slowText }: { text: string; embedded: boolean; back: string; name?: string; icon?: string; description?: string; /** Phrase de progression, montrée si la lecture dépasse 5 secondes. */ slowText?: string }) {
   return (
     <div className="space-y-7">
-      {!embedded && <a href={EXTENSIONS_ADD_HREF} className="inline-block text-sm text-muted hover:text-accent">← {back}</a>}
+      {!embedded && <a href={EXTENSIONS_ADD_HREF} className="inline-flex min-h-11 items-center text-sm text-muted hover:text-accent">← {back}</a>}
       <div data-testid="fiche-loading" role="status" aria-busy="true" className="space-y-7">
         <header className="flex items-start gap-5">
           <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-3xl bg-accent/10 text-4xl" aria-hidden>{icon ?? "🧩"}</span>
