@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Une section de page qui ne s'affiche pas dit pourquoi, avec un seul lien.** Elle porte la pastille « Non configuré » ou « Dégradé », la raison, puis un lien unique vers le module, au lieu de « Section indisponible » et d'un lien en double.
+- **(English) A page section that cannot show says why, with one link.** It carries the “Not configured” or “Degraded” pill, the reason, then a single link to the module, instead of “Section unavailable” and a duplicated link.
 - **« Accueil et menu » : une phrase par onglet, un lien et un bouton plus simples.** Chaque onglet dit à quoi il sert en une ligne ; « Lien et bouton » ne demande que le texte et l'adresse, les autres langues sont repliées ; « Boutons de réseaux » renvoie vers « Comptes et connexions ».
 - **(English) “Home and menu”: one line per tab, a simpler link and button.** Each tab says what it is for in one line; “Link and button” only asks for the text and the address, other languages are folded; “Social buttons” links to “Accounts and connections”.
 - **Assistants IA : une file de validation claire.** Chaque demande en attente a un bouton principal (Approuver) et un refus discret ; recherche en direct sur les demandes, les validations par assistant et l'historique. Les accès, les droits et le journal sont inchangés.
