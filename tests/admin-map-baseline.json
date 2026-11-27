@@ -336,6 +336,11 @@
    "shell": "panel",
    "guard": "admin"
   },
+  "/admin/users/roles": {
+   "kind": "page",
+   "shell": "panel",
+   "guard": "right:core:roles"
+  },
   "/api/admin/backup (handler)": {
    "kind": "handler",
    "shell": "api",
@@ -498,7 +503,7 @@
     "guard": "see access.administration"
    },
    "nav.admin | nav.roles": {
-    "href": "/admin/users#roles",
+    "href": "/admin/users/roles",
     "also": [],
     "guard": "see access.administration"
    },

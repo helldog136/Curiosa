@@ -8,7 +8,7 @@ import { audit } from "@/core/permissions";
 import { OVERLAY_NEED } from "@/core/overlays/access";
 import { buildCatalog } from "@/core/overlays/catalog";
 import { issueMessages } from "@/core/overlays/messages";
-import { DEFAULT_STYLE, RESOLUTIONS } from "@/core/overlays/model";
+import { DEFAULT_STYLE, MAX_ACTIVE_PAGES, MAX_PAGES, RESOLUTIONS } from "@/core/overlays/model";
 import { NEW_PAGE_READABILITY } from "@/core/overlays/appearance";
 import { validatePageInput } from "@/core/overlays/pageInput";
 import { usableOverlaySkinIds } from "@/core/overlays/skinLoad";
@@ -62,6 +62,17 @@ export async function toggleActiveAction(id: string, active: boolean): Promise<v
   await audit(user.email, active ? "overlay.activate" : "overlay.deactivate", text(id, 40));
   revalidatePath(LIST);
   done(active ? "activated" : "deactivated");
+}
+
+/** The row switch of the list: turns a page on or off WITHOUT leaving the list. Same right, same limit and same audit entry as `toggleActiveAction`; an error brings the switch back. */
+export async function setPageActiveAction(id: string, active: boolean): Promise<{ ok?: string; error?: string }> {
+  const { user, t } = await adminCtx(OVERLAY_NEED);
+  const pageId = text(id, 40);
+  const r = await setActive(pageId, active === true);
+  if (!r.ok) return { error: t(`ovp.flash.${r.error === "limitActive" || r.error === "notFound" ? r.error : "notFound"}`, { pages: MAX_PAGES, active: MAX_ACTIVE_PAGES }) };
+  await audit(user.email, active ? "overlay.activate" : "overlay.deactivate", pageId);
+  revalidatePath(LIST);
+  return { ok: t(active ? "ovp.switch.on" : "ovp.switch.off") };
 }
 
 export async function deletePageAction(id: string): Promise<void> {

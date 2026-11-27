@@ -53,6 +53,8 @@ type Props = {
   id?: string;
   /** (C5c) Called once after each successful save (the edit window of an account closes itself with it). */
   onSaved?: () => void;
+  /** (C5b) The send button is inactive (nothing to save yet: a role dialog whose choice has not changed). The server still checks everything. */
+  submitDisabled?: boolean;
 };
 
 /** Formulaires dont la barre est affichée en ce moment, dans l'ordre d'apparition : plusieurs barres se superposent sans se recouvrir. */
@@ -78,7 +80,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, onSaved }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, submitDisabled, onSaved }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -171,7 +173,7 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
       {state?.secret && <SecretReveal key={state.secret.value} secret={state.secret} />}
       {!hideSubmit && !floating && (
         <div data-tab={submitTabs}>
-          <PendingButton pending={pending} pendingLabel={busyLabel} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
+          <PendingButton pending={pending} pendingLabel={busyLabel} disabled={submitDisabled} variant={danger ? "danger" : secondary ? "btn" : "primary"}>{submitLabel}</PendingButton>
           {track && pending && <OperationProgress kind={track} snap={tracker.snap} lost={tracker.lost} unreachable={tracker.unreachable} className="mt-3 max-w-sm" />}
         </div>
       )}

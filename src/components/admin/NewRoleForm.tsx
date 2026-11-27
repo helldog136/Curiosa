@@ -6,17 +6,18 @@ import { PLAIN_INPUT } from "./managerHints";
 import { FieldLabel } from "./Field";
 import { HelpBelow } from "./HelpTip";
 import { MoreOptions } from "./MoreOptions";
-import { RightsEditor, type RightGroup, type RightsLabels } from "./RightsEditor";
+import { RightsMatrix, type RightsMatrixLabels } from "./RightsMatrix";
+import type { MatrixGroup } from "@/core/adminkit/rightsMatrix";
 import { ui } from "./ui";
 
 export type PresetOption = { id: string; name: string; description: string; rights: string[] };
-export type NewRoleLabels = { start: string; blank: string; startHelp: string; name: string; nameExample: string; description: string; descriptionExample: string; rights: string; more: string; submit: string; pending: string; rightsCount: string };
+export type NewRoleLabels = { start: string; blank: string; startHelp: string; name: string; nameExample: string; description: string; descriptionExample: string; rights: string; /** Header of the one column of the matrix (« New role »). */ column: string; more: string; submit: string; pending: string; rightsCount: string };
 
 /**
- * "New role": the short path is a name and, if wanted, a preset to start from. A preset only fills the name, the description and the ticked rights; all of it stays editable and
+ * "Create a role": the short path is a name and, if wanted, a preset to start from. A preset only fills the name, the description and the ticked rights; all of it stays editable and
  * what is sent is the same form as for a role built from scratch (the server checks every right again and keeps no link to the preset).
  */
-export function NewRoleForm({ action, presets, groups, rightsLabels, labels }: { action: (prev: ActionState, formData: FormData) => Promise<ActionState>; presets: PresetOption[]; groups: RightGroup[]; rightsLabels: RightsLabels; labels: NewRoleLabels }) {
+export function NewRoleForm({ action, presets, groups, matrixLabels, labels }: { action: (prev: ActionState, formData: FormData) => Promise<ActionState>; presets: PresetOption[]; groups: MatrixGroup[]; matrixLabels: RightsMatrixLabels; labels: NewRoleLabels }) {
   const [preset, setPreset] = useState("");
   const chosen = presets.find((p) => p.id === preset);
   return (
@@ -44,7 +45,7 @@ export function NewRoleForm({ action, presets, groups, rightsLabels, labels }: {
           </div>
         </MoreOptions>
         <MoreOptions title={labels.rights} summary={chosen ? labels.rightsCount.replace("{n}", String(chosen.rights.length)) : undefined} defaultOpen={!chosen}>
-          <RightsEditor groups={groups} selected={chosen?.rights ?? []} labels={rightsLabels} />
+          <RightsMatrix roles={[{ id: "new", name: labels.column }]} groups={groups} grants={{ new: chosen?.rights ?? [] }} editRoleId="new" labels={matrixLabels} defaultOpen={["core"]} testid="rights-matrix-new" />
         </MoreOptions>
       </div>
     </ActionForm>

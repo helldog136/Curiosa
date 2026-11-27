@@ -51,6 +51,7 @@ test("chaque action exportée est refusée à l'édition et à l'anonyme, et ne 
     duplicatePageAction: () => Act.duplicatePageAction(page.id, "(copie)"),
     renamePageAction: () => Act.renamePageAction(page.id, form([["name", "Piraté"]])),
     toggleActiveAction: () => Act.toggleActiveAction(page.id, false),
+    setPageActiveAction: async () => { const r = await Act.setPageActiveAction(page.id, false); if (r.error || r.ok) throw new Error("switch result: " + JSON.stringify(r)); },
     deletePageAction: () => Act.deletePageAction(page.id),
     resetSecretAction: () => Act.resetSecretAction(page.id),
     testAction: () => Act.testAction(page.id, "start"),
@@ -75,7 +76,7 @@ test("source : chaque action commence par adminCtx(OVERLAY_NEED), l'acteur ne vi
   assert.ok(fns.length >= 8);
   for (const [, name, , first] of fns) assert.match(first, /await adminCtx\(OVERLAY_NEED\)/, name);
   assert.doesNotMatch(src, /formData\.get\("(actor|user|userId|email|role)"\)/);
-  assert.equal((src.match(/await audit\(user\.email,/g) ?? []).length, 9, "each of the nine actions that change something writes to the journal");
+  assert.equal((src.match(/await audit\(user\.email,/g) ?? []).length, 10, "each of the ten actions that change something writes to the journal");
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/page.tsx", "utf8"), /adminCtx\(OVERLAY_NEED\)/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/page.tsx", "utf8"), /adminCtx\(OVERLAY_NEED\)/);
   assert.match(fs.readFileSync("src/app/admin/(panel)/overlay-pages/[id]/preview/route.ts", "utf8"), /hasRole\(user, OVERLAY_NEED\)/);
@@ -119,6 +120,22 @@ test("limites par les actions : 20 pages, 10 actives ; message, aucune écriture
   const inactive = (await S.listPages()).find((p) => !p.active);
   assert.equal(await outcome(() => Act.toggleActiveAction(inactive.id, true)), "/admin/overlay-pages?e=limitActive");
   assert.equal((await S.listPages()).length, 20);
+});
+
+test("the list switch: same right, same limit, same audit entry as the old button; an error gives a message and changes nothing", async () => {
+  as(T.owner);
+  for (let i = 0; i < 20; i++) await outcome(() => Act.createPageAction(form([["name", `P${i}`], ["resolution", "1920x1080"]])));
+  const pages = await S.listPages();
+  const on = pages.find((p) => p.active), off = pages.find((p) => !p.active);
+  const turnedOff = await Act.setPageActiveAction(on.id, false);
+  assert.ok(turnedOff.ok && !turnedOff.error); assert.equal((await S.getPage(on.id)).active, false);
+  assert.ok((await prisma.auditLog.findFirst({ where: { action: "overlay.deactivate", target: on.id } })), "journal entry");
+  assert.ok((await Act.setPageActiveAction(on.id, true)).ok); assert.equal((await S.getPage(on.id)).active, true);
+  const refused = await Act.setPageActiveAction(off.id, true);
+  assert.ok(refused.error && !refused.ok, "the limit of active pages is told, the switch goes back"); assert.equal((await S.getPage(off.id)).active, false);
+  const missing = await Act.setPageActiveAction("nope", true);
+  assert.ok(missing.error);
+  assert.equal(await prisma.auditLog.count({ where: { action: "overlay.activate", target: off.id } }), 0, "a refusal is not journaled as a change");
 });
 
 test("journal d'audit : libellés connus, jamais d'adresse secrète ni de contenu de page", async () => {
