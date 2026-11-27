@@ -91,9 +91,10 @@ test("jamais de secret dans la page : ni empreinte, ni préfixe, ni adresse de c
   assert.ok(!html.includes("/api/mcp/"), "aucune adresse de connexion");
 });
 
-test("sans assistant : l'état vide dit quoi faire ; le tableau reste celui des personnes", async () => {
+test("sans assistant : un seul chemin d'ajout (le bouton du haut), pas de second « Ajouter un assistant IA » ; le tableau reste celui des personnes", async () => {
   const html = await page(T.owner);
-  assert.match(html, /Aucun assistant IA\. Ajoutez-en un/);
+  assert.doesNotMatch(html, /Aucun assistant IA\. Ajoutez-en un/);
+  assert.equal((html.match(/Ajouter un assistant IA/g) ?? []).length, 1, "le bouton du haut seulement");
   assert.doesNotMatch(html, /data-testid="member-type"/, "pas de colonne Type tant qu'il n'y a que des personnes");
   assert.match(html, /data-live-role="owner"/, "les filtres par rôle d'avant");
 });

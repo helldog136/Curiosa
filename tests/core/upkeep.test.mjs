@@ -143,7 +143,8 @@ test("site propre (marqueur posé) : la page dit « Il ne reste rien d'une ancie
   assert.match(html, /data-testid="upkeep-status-clean"/);
   assert.match(html, /Il ne reste rien d(?:'|&#x27;)une ancienne version/);
   assert.doesNotMatch(html, /upkeep-group-todo|upkeep-group-kept/);
-  assert.match(html, /upkeep-group-done/, "le « terminé » est replié mais présent");
+  assert.doesNotMatch(html, /upkeep-group-done/, "ce qui est terminé n'appelle aucune action : absent en mode simple");
+  assert.match(await pageHtml(owner, true), /upkeep-group-done/, "…et gardé comme historique en mode avancé");
   const menu = link(await menuHtml());
   assert.match(menu, /Entretien/);
   assert.doesNotMatch(menu, /data-testid="admin-badge"/);

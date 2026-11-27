@@ -50,7 +50,7 @@ test("entries: state pills with a shape (StatusPill), the empty state has one bu
 
 test("drafts: live search from the first draft (server side), an empty state with one button, the gate is kept", () => {
   assert.match(drafts, /<LiveSearch mode="server" scope="drafts"/);
-  assert.match(drafts, /<EmptyState title=\{t\("drafts\.empty"\)\}/);
+  assert.match(drafts, /<EmptyState title=\{writeIn \? t\("drafts\.empty"\) : t\("drafts\.emptyNoModule"\)\}/, "one empty state, one button (write, or add a module, or the dashboard)");
   assert.doesNotMatch(drafts, /drafts\.emptyHelp|drafts\.count/, "no description sentence on the screen");
   assert.match(drafts, /<NoResults /);
   assert.match(drafts, /adminCtx\("editor"\)/);

@@ -49,7 +49,6 @@ export default async function AssistantsPage({ searchParams }: { searchParams: P
   return (
     <div className="space-y-8">
       <PageHeader
-        icon="🤖"
         title={<>{t("assistants.title")}{advanced && <span className="ml-3 text-lg font-normal text-muted" data-testid="assistants-subtitle">{t("assistants.subtitle")}</span>}</>}
         intro={t("assistants.intro")}
       />

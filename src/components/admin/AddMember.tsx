@@ -18,10 +18,10 @@ export function AddMember({ person, assistant, initial, anchor, label, personLab
   return (
     <div className="space-y-4">
       <span id={anchor} className="sr-only" />
-      <div role="group" aria-label={label} className="flex flex-wrap gap-2">
+      <div role="group" aria-label={label} className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap">
         {([["person", personLabel], ["assistant", assistantLabel]] as const).map(([id, text]) => (
           <button key={id} type="button" aria-pressed={active === id} onClick={() => choose(id)} data-testid={`add-${id}`}
-            className={`inline-flex min-h-11 items-center rounded-xl border px-4 text-sm font-medium transition-colors ${active === id ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface hover:border-accent hover:text-accent"}`}>
+            className={`inline-flex min-h-11 items-center justify-center rounded-xl text-center border px-4 text-sm font-medium transition-colors ${active === id ? "border-accent bg-accent text-accent-fg" : "border-line bg-surface hover:border-accent hover:text-accent"}`}>
             {text}
           </button>
         ))}

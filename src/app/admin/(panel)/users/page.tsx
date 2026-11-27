@@ -5,8 +5,9 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { TextField } from "@/components/admin/Field";
 import { MoreOptions } from "@/components/admin/MoreOptions";
-import { Callout, PageHeader, Panel } from "@/components/admin/Page";
+import { PageHeader, Panel } from "@/components/admin/Page";
 import { Badge } from "@/components/admin/Badge";
+import { HelpTip } from "@/components/admin/HelpTip";
 import { LiveSearch } from "@/components/admin/LiveSearch";
 import { RowMenu } from "@/components/admin/RowMenu";
 import { RowTable, type TableRow } from "@/components/admin/RowTable";
@@ -315,11 +316,6 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
           rows={mixed ? [...rows, ...ai.rows] : rows} />
         {ai && (
           <div className="space-y-3" data-testid="assistants-team">
-            {!mixed && (
-              <Callout tone="info" testid="assistants-none">
-                <span className="flex flex-wrap items-center justify-between gap-3"><span>{t("team.ai.none")}</span><a href={`#${ADD_ASSISTANT_ANCHOR}`} className={ui.btn}>{t("team.ai.add")}</a></span>
-              </Callout>
-            )}
             <p className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
               <a href={ASSISTANTS_HREF} className="text-accent underline underline-offset-2" data-testid="assistants-settings-link">{t("team.ai.allSettings")}</a>
               {ai.waiting > 0 && <a href={assistantsTabHref("requests")} className="font-medium text-accent underline underline-offset-2" data-testid="assistants-requests-link">{t("team.ai.requests", { n: ai.waiting })}</a>}
@@ -386,7 +382,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       {can(user, "core:security") && (
         <Panel title={t("users.securityTitle")} testid="require-2fa">
           <ActionForm action={setRequireTwoFactor} submitLabel={t("action.save")}>
-            <label className="flex items-start gap-3 text-sm"><input type="checkbox" name="require" defaultChecked={required} className="mt-1 h-4 w-4" /><span><span className="font-medium">{t("users.require2fa")}</span><span className="block text-muted">{t("users.require2faHelp")}</span></span></label>
+            <div className="flex items-center gap-1.5 text-sm"><label className="flex items-center gap-3"><input type="checkbox" name="require" defaultChecked={required} className="h-4 w-4" /><span className="font-medium">{t("users.require2fa")}</span></label><HelpTip help={t("users.require2faHelp")} name={t("users.require2fa")} always /></div>
           </ActionForm>
         </Panel>
       )}

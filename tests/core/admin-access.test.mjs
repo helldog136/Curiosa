@@ -166,6 +166,7 @@ const OPENS = {
   "/admin/modules/demo": ["OWNER", "COORD", "ADMIN"],
   "/admin/overlay-pages": ["OWNER", "COORD", "ADMIN"],
   "/admin/users": ["OWNER", "COORD", "ADMIN"],
+  "/admin/maintenance": ["OWNER", "COORD", "ADMIN", "EDITOR", "ENTRIES_ONLY", "DEMO_ONLY"],
   "/admin/maintenance/content": ["OWNER", "COORD", "ADMIN"],
   "/admin/assistants": ["OWNER", "COORD"],
   "/admin/backup": ["OWNER", "COORD"],
