@@ -1,6 +1,6 @@
 import { ExtensionsHeader } from "@/components/admin/ExtensionsHeader";
 import { LiveSearch } from "@/components/admin/LiveSearch";
-import { Badge } from "@/components/admin/Badge";
+import { StatusPill } from "@/components/admin/StatusPill";
 import { Panel } from "@/components/admin/Page";
 import { RowTable, type TableRow } from "@/components/admin/RowTable";
 import type { AccessState } from "@/core/gitAccess";
@@ -15,7 +15,7 @@ const REASON: Record<ReadFailure, string> = { access: "personal.reason.access", 
 export type PersonalRowData = { catalogue: PersonalCatalogue; status: CatalogueStatus; access: AccessState; installed: number };
 
 /**
- * Extensions > Personal catalogues (owner only): repositories, maybe private, that offer their own extensions. They appear in the catalogue of this site with a "Personal"
+ * Modules > My catalogues (owner only): repositories, maybe private, that offer their own modules. They appear in the catalogue of this site with a "Personal"
  * tag. One table (search, state in words, one main button and a menu per row), one short form to add (R2: one address, one click to check, one click to add).
  */
 export function PersonalView({ t, advanced, data, addInitial }: { t: Translator; advanced: boolean; data: PersonalRowData[]; addInitial?: React.ComponentProps<typeof AddCatalogue>["initial"] }) {
@@ -31,7 +31,7 @@ export function PersonalView({ t, advanced, data, addInitial }: { t: Translator;
       search: [c.name, catalogueLabel(c.url), state.text],
       cells: {
         name: <div className="min-w-0"><p className="truncate font-medium" title={c.name}>{c.name}</p><p className="truncate text-xs text-muted" title={c.url}>{catalogueLabel(c.url)}</p></div>,
-        state: <div className="space-y-1"><Badge tone={state.tone}>{state.text}</Badge>{state.reason && <p className="text-xs text-muted">{state.reason}</p>}</div>,
+        state: <div className="space-y-1"><StatusPill tone={state.tone}>{state.text}</StatusPill>{state.reason && <p className="text-xs text-muted">{state.reason}</p>}</div>,
         count: status.state === "configured" ? String(status.offered) : null,
       },
       titles: { name: `${c.name} ${c.url}` },

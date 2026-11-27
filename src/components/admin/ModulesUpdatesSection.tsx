@@ -6,6 +6,9 @@ import { ActionForm } from "./ActionForm";
 import { Callout } from "./Page";
 import { ModulesUpdates, type ModuleUpdateRow } from "./ModulesUpdates";
 import { ui } from "./ui";
+import { StatusPill } from "./StatusPill";
+import { EmptyState } from "./EmptyState";
+import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { relativeAge } from "@/core/relativeTime";
 import { recheckModules } from "@/app/admin/(panel)/updates/actions";
 
@@ -33,8 +36,8 @@ export function ModulesUpdatesSection({ t, data, checkedAt, locale, highlight = 
         {rows.length > 0 && <p className="mt-1 text-sm leading-6 text-muted">{t("updates.modules.behind", { n: rows.length })}</p>}
       </div>
       {rows.some((r) => r.major) && <Callout tone="warn">{t("updates.modules.majorWarning")}</Callout>}
-      {rows.length === 0 && report.checked > 0 && report.unchecked.length < report.checked && <p className="text-sm font-medium" data-testid="modules-uptodate">✅ {t("updates.modules.upToDate")}</p>}
-      {report.checked === 0 && <p className="text-sm text-muted" data-testid="modules-none">{t("updates.modules.none")}</p>}
+      {rows.length === 0 && report.checked > 0 && report.unchecked.length < report.checked && <p><StatusPill tone="ok" title={t("updates.modules.upToDate")} testid="modules-uptodate">{t("modules.chip.upToDate")}</StatusPill></p>}
+      {report.checked === 0 && <EmptyState testid="modules-none" title={t("updates.modules.none")} action={<a href={EXTENSIONS_ADD_HREF} className={ui.btn}>{t("modules.emptyAction")}</a>} />}
       <ModulesUpdates rows={rows} labels={{
         all: { idle: t("updates.modules.all"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },
         one: { idle: t("modules.update"), working: t("modules.updating"), done: t("modules.updated"), failed: t("modules.updateFailed") },

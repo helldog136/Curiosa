@@ -88,7 +88,10 @@ export async function loadInstalled(opts: { t: Translator; locale: string; defau
   const shown = family ? all.filter((m) => m.family === family) : all;
   // Dans une famille : ce qui demande de l'attention d'abord, puis par ordre alphabétique.
   const groups = buildModuleGroups(shown, EXTENSION_FAMILIES, "", (m) => m.family).map((g) => ({ ...g, items: [...g.items].sort((a, b) => ATTENTION_ORDER[a.attention] - ATTENTION_ORDER[b.attention] || a.name.localeCompare(b.name)) }));
-  return { total: all.length, present, groups };
+  // How many modules each family holds, so each filter pill and each group heading says it (R15).
+  const counts = Object.fromEntries(present.map((f) => [f, all.filter((m) => m.family === f).length])) as Partial<Record<ExtensionFamily | "all", number>>;
+  counts.all = all.length;
+  return { total: all.length, present, groups, counts };
 }
 
 /** Données des encadrés de la page (doublons de services, nettoyage des modules posés automatiquement), réservés au propriétaire. */

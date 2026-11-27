@@ -86,8 +86,8 @@ export async function PlaceSectionCard({ loaded, t, locale, config, advanced, sh
   );
 }
 
-/** The declared settings of the section: the basic ones, then one "Advanced settings" fold. Rendered by the core settings form (ModuleSettings). */
-async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
+/** The fields of the declared settings of the section (hidden ids, the basic ones, then one "Advanced settings" fold), without the form around them: the card and the edit window of an account each wrap them. */
+export async function SectionFields({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
   const { active, section } = loaded;
   const { mod, instance } = active;
   const manifest = mod.manifest;
@@ -110,7 +110,7 @@ async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded
   const common = { t, locale, defaultLocale: config.defaultLocale, locales: config.locales, allFields: manifest.settings, groups: manifest.optionalGroups ?? [], stored, siteByLocale, theme, missing, instanceId: instance.id, choices, advanced, tabbed: true, ns: fieldNamespace(instance.key, section.section.id) } as const;
   const anyMoreSet = more.some((f) => Object.values(stored[f.key] ?? {}).some((v) => v !== undefined && v !== ""));
   return (
-    <ActionForm action={savePlaceSection} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6 [&>div[aria-hidden]]:hidden">
+    <>
       <input type="hidden" name="id" value={instance.id} />
       <input type="hidden" name="__section" value={section.section.id} />
       {advanced && <input type="hidden" name="__adv" value="1" />}
@@ -123,6 +123,15 @@ async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded
           <div className="mt-4"><ModuleSettings {...common} fields={more} /></div>
         </details>
       )}
+    </>
+  );
+}
+
+/** The declared settings of the section as the card shows them: one form with its own save, and the floating bar of the page. */
+async function SectionSettings({ loaded, t, locale, config, advanced }: { loaded: LoadedSection; t: Translator; locale: string; config: SiteConfigLite; advanced: boolean }) {
+  return (
+    <ActionForm action={savePlaceSection} floating={floatingLabels(t)} submitLabel={t("action.save")} className="space-y-6 [&>div[aria-hidden]]:hidden">
+      <SectionFields loaded={loaded} t={t} locale={locale} config={config} advanced={advanced} />
     </ActionForm>
   );
 }

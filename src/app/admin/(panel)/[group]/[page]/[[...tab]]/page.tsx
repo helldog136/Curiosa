@@ -9,6 +9,10 @@ import { getActiveInstances } from "@/core/modules/registry";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import { EmptyState, PageHeader } from "@/components/admin/Page";
 import { PlaceSectionCard, loadPlaceSection } from "@/components/admin/PlaceSection";
+import { classifySections, EDIT_PARAM } from "@/components/admin/connectionsLoad";
+import { ConnectionsTable } from "@/components/admin/ConnectionsTable";
+import { AccountEditor } from "@/components/admin/AccountEditor";
+import { connectionsLabels } from "@/components/admin/connectionRows";
 import type { Metadata } from "next";
 import { adminTitle } from "@/core/adminTitle";
 
@@ -62,9 +66,17 @@ export default async function PlacePage({ params, searchParams }: { params: Prom
   const showOrigin = (p: IndexedPage, siblings: boolean) => p.modules.length > 1 || siblings || p.inline;
   const tabHref = (id: string, i: number) => (i === 0 ? placeHref(place.group, place.page) : placeHref(place.group, place.page, id));
 
+  // (C5c) A page whose vocabulary says `layout: "table"`: its single-address sections are the rows of ONE table; the other sections stay cards.
+  const here = tabHref(current.id, found.tabs.indexOf(current));
+  const grouped = found.layout === "table" ? await classifySections(loaded, { t, locale, defaultLocale: config.defaultLocale, locales: config.locales, advanced, pageHref: () => here, editBase: () => here }) : null;
+  const cards = grouped ? grouped.rest : loaded;
+  const editAsked = query[EDIT_PARAM];
+  const editing = grouped && editAsked ? grouped.addresses.get(editAsked) : undefined;
   const body = loaded.length > 0 ? (
     <div className="space-y-6">
-      {loaded.map((l) => <PlaceSectionCard key={l.section.anchor} loaded={l} t={t} locale={locale} config={config} advanced={advanced} showOrigin={showOrigin(found, l.section.siblings)} base={tabHref(current.id, found.tabs.indexOf(current))} />)}
+      {grouped && grouped.rows.length > 0 && <ConnectionsTable rows={grouped.rows} labels={connectionsLabels(t)} />}
+      {editing && <AccountEditor loaded={editing} closeHref={here} t={t} locale={locale} config={config} advanced={advanced} />}
+      {cards.map((l) => <PlaceSectionCard key={l.section.anchor} loaded={l} t={t} locale={locale} config={config} advanced={advanced} showOrigin={showOrigin(found, l.section.siblings)} base={tabHref(current.id, found.tabs.indexOf(current))} />)}
       {seeAlso(found, current.sections.flatMap((s) => s.section.seeAlso), index, t)}
     </div>
   ) : (
