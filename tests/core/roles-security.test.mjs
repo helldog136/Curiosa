@@ -129,7 +129,7 @@ test("non-régression : la page d'un module (réglages et panneau) et ses action
 
 test("non-régression : menu d'administration identique par palier ; un éditeur ne voit plus les liens qui le refusaient (pages de modules)", async () => {
   const { administrationEntries, navItemVisible } = await import("@/core/modules/adminMenu");
-  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "maintenance"]);
+  assert.deepEqual(administrationEntries({ role: "owner", advanced: true }), ["extensions", "overlays", "assistants", "users", "roles", "maintenance"], "(C2b) Rôles s'ajoute pour qui tient core:roles (propriétaire) ; les autres paliers sont inchangés");
   assert.deepEqual(administrationEntries({ role: "admin", advanced: true }), ["extensions", "overlays", "users", "maintenance"]);
   assert.deepEqual(administrationEntries({ role: "editor", advanced: true }), []);
   assert.deepEqual(administrationEntries({ role: "none", advanced: true }), []);
@@ -560,6 +560,8 @@ test("les sites qui s'ouvrent à « tout accès » (member) sont connus : aucune
     "src/app/admin/(auth)/choose-password/actions.ts", "src/app/admin/(auth)/choose-password/page.tsx",
     // (0.31.0) A place page opens to any access: each section checks its own right (settings: Administration; blocks: `<module>:open`), and a page with nothing visible is a 404.
     `${PANEL}/[group]/[page]/[[...tab]]/page.tsx`,
+    // (C2b) The index of a group (« Accounts and connections ») opens to any access: it lists only what canOpen allows for that person (same rules as the sidebar), and 404s when there is nothing (only an administration sees the empty state).
+    `${PANEL}/[group]/page.tsx`,
     `${PANEL}/account/actions.ts`, `${PANEL}/account/page.tsx`, `${PANEL}/instances/[id]/InstanceView.tsx`, `${PANEL}/instances/module-actions.ts`,
     `${PANEL}/layout.tsx`, `${PANEL}/mode/actions.ts`, `${PANEL}/mode/page.tsx`, `${PANEL}/page.tsx`,
     // (0.34.0) The settings search opens to any access: the index only lists what that person may reach (core sections by role, module sections by the same rules as the place pages).
