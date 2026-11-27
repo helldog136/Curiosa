@@ -20,7 +20,7 @@ export async function MyAccessesCard({ t, userId, initial }: { t: Translator; us
   const rows = owned.map((o) => ({ id: o.id, name: o.name, level: o.level, levelLabel: t(`myai.level.${o.level}`), state: o.state, stateLabel: t(`myai.state.${o.state}`), stateWhy: o.state === "inert" ? t("myai.state.inertWhy") : undefined }));
   const labels = Object.fromEntries(LABEL_KEYS.map((k) => [k, t(`myai.${k}`)])) as MyAccessesLabels;
   return (
-    <Panel title={t("myai.title")} help={t("myai.help")} testid="my-accesses-card">
+    <Panel title={t("myai.title")} help={t("myai.help")} id="my-accesses" testid="my-accesses-card">
       <MyAccesses rows={rows} levels={levels} canCreate={mayOwn} create={createMyAccessAction} pause={pauseMyAccessAction} resume={resumeMyAccessAction} remove={removeMyAccessAction} setLevel={setMyAccessLevelAction} labels={labels} initial={initial} />
     </Panel>
   );
