@@ -1,7 +1,7 @@
 "use client";
 
 import { HelpTip } from "./HelpTip";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { ui } from "./ui";
 import { PendingButton } from "./PendingButton";
 import { UsernameHint } from "./UsernameHint";
@@ -37,13 +37,18 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
   const [password, setPassword] = useState("");
   const doRegen = () => run(async () => { const r = await regenerate(password); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setMode("codes"); }); });
   const doDisable = () => run(async () => { const r = await disable(password, code); settle(r, () => { setIsOn(false); setMode("idle"); }); });
+  // After a refusal the first field to correct takes the focus (R22): the code or the password of the open step.
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => { if (error) box.current?.querySelector<HTMLElement>("[data-first-field]")?.focus(); }, [error]);
+  const problem = error ? <p id="twofa-error" role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p> : null;
+  const invalid = error ? { "aria-invalid": true as const, "aria-describedby": "twofa-error" } : {};
   const settle = (r: Result, then: () => void) => { if (r.error) setError(r.error); else { setError(""); then(); } };
 
   return (
-    <section className={`${ui.card} space-y-4`} data-testid="twofa-card">
+    <section ref={box} className={`${ui.card} space-y-4`} data-testid="twofa-card">
       <h3 className="text-lg font-semibold">{labels.title} {isOn && <span className={ui.chipOk}>✔ {labels.enabled}</span>} <HelpTip help={labels.help} name={labels.title} always /></h3>
       {needed && !isOn && <p role="alert" className="rounded-lg border border-amber-500/50 bg-amber-500/10 p-3 text-sm">{labels.need}</p>}
-      {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
+      {(mode === "idle" || mode === "codes") && problem}
 
       {mode === "idle" && !isOn && (
         <PendingButton type="button" variant="primary" pending={pending} onClick={() => run(async () => { const r = await start(); settle(r, () => { setSetup(r); setCode(""); setMode("enroll"); }); })}>{labels.enable}</PendingButton>
@@ -55,8 +60,9 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
           {setup.qr && <div className="w-48 rounded-xl bg-white p-2" aria-label={labels.scan} dangerouslySetInnerHTML={{ __html: setup.qr }} />}
           <p className="text-sm">{labels.key} <code className="select-all break-all rounded bg-line px-1.5 py-0.5 font-mono text-xs" data-testid="twofa-secret">{setup.secret}</code></p>
           <label className="block text-sm"><span className={ui.label}>{labels.confirm}</span>
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8} className={`${ui.input} max-w-40 tracking-widest`} data-testid="twofa-code" />
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" autoComplete="one-time-code" maxLength={8} data-first-field="" {...invalid} className={`${ui.input} max-w-40 tracking-widest`} data-testid="twofa-code" />
           </label>
+          {problem}
           <div className="flex gap-3">
             <PendingButton type="button" variant="primary" pending={pending} disabled={code.trim().length < 6} onClick={() => run(async () => { const r = await confirm(code); settle(r, () => { setCodes(r.codes ?? []); setLeft(r.remaining ?? 0); setIsOn(true); setMode("codes"); }); })}>{labels.confirmButton}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
@@ -90,7 +96,9 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) doRegen(); }}>
           <p className="text-sm text-muted">{labels.regenHelp}</p>
           {username && <UsernameHint value={username} />}
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          <div className="max-w-xs"><label className={ui.label} htmlFor="twofa-regen-password">{labels.password}</label>
+            <PasswordInput id="twofa-regen-password" value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" data-first-field="" {...invalid} className={ui.input} /></div>
+          {problem}
           <div className="flex gap-3">
             <PendingButton type="submit" variant="primary" pending={pending} disabled={!password}>{labels.regen}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>
@@ -102,8 +110,11 @@ export function TwoFactorPanel({ enabled, remaining, enforced, needed, labels, s
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && code && !pending) doDisable(); }}>
           <p className="text-sm text-muted">{labels.disableHelp}</p>
           {username && <UsernameHint value={username} />}
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
-          <input value={code} onChange={(e) => setCode(e.target.value)} name="code" placeholder={labels.code} aria-label={labels.code} autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} className={`${ui.input} max-w-xs`} />
+          <div className="max-w-xs"><label className={ui.label} htmlFor="twofa-disable-password">{labels.password}</label>
+            <PasswordInput id="twofa-disable-password" value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" data-first-field="" {...invalid} className={ui.input} /></div>
+          <div className="max-w-xs"><label className={ui.label} htmlFor="twofa-disable-code">{labels.code}</label>
+            <input id="twofa-disable-code" value={code} onChange={(e) => setCode(e.target.value)} name="code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} {...invalid} className={ui.input} /></div>
+          {problem}
           <div className="flex gap-3">
             <PendingButton type="submit" variant="danger" pending={pending} disabled={!password || !code}>{labels.disable}</PendingButton>
             <button type="button" className={ui.btn} onClick={() => { setMode("idle"); setError(""); }}>{labels.cancel}</button>

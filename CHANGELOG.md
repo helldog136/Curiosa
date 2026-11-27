@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Les pages de connexion et « Mon compte » ont la même présentation.** Un seul cadre pour la connexion, l'invitation et les mots de passe, avec le retour à la connexion sous un lien invalide. Sur « Mon compte », une liste de liens vers chaque section.
+- **(English) The sign-in pages and “My account” share one layout.** One frame for sign-in, invitation and passwords, with a way back to sign-in under a broken link. “My account” gets a list of links to each section.
 - **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne, avec son type, son état et la raison. Recherche en direct, filtres et un seul bouton par ligne.
 - **(English) “Accounts and connections” is one table.** Each account and connection is one row, with its type, its state and the reason. Live search, filters and one button per row.
 - **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».

@@ -2,7 +2,7 @@
 
 import { PLAIN_INPUT } from "./managerHints";
 import { HelpTip } from "./HelpTip";
-import { useState, useSyncExternalStore, useTransition } from "react";
+import { useEffect, useRef, useState, useSyncExternalStore, useTransition } from "react";
 import { ui } from "./ui";
 import { createPasskey, passkeysSupported } from "./webauthn";
 import { PendingButton } from "./PendingButton";
@@ -31,6 +31,12 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const supported = useSyncExternalStore(() => () => {}, passkeysSupported, () => true);
+  // After a refusal the field to correct takes the focus (R22), and the message sits under the fields of the open form.
+  const box = useRef<HTMLElement>(null);
+  useEffect(() => { if (error) box.current?.querySelector<HTMLElement>("[data-first-field]")?.focus(); }, [error]);
+  const formOpen = mode !== "idle";
+  const problem = error ? <p id="passkey-error" role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p> : null;
+  const invalid = error ? { "aria-invalid": true as const, "aria-describedby": "passkey-error" } : {};
   const reset = () => { setMode("idle"); setPassword(""); setName(""); setError(""); };
   const when = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString() : labels.never);
 
@@ -51,9 +57,9 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
   });
 
   return (
-    <section className={`${ui.card} space-y-4`} data-testid="passkeys-card">
+    <section ref={box} className={`${ui.card} space-y-4`} data-testid="passkeys-card">
       <h3 className="flex items-center gap-1.5 text-lg font-semibold">{labels.title}<HelpTip help={labels.help} name={labels.title} always /></h3>
-      {error && <p role="alert" className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-sm">{error}</p>}
+      {!formOpen && problem}
       {list.length === 0 && <p className="text-sm text-muted">{labels.none}</p>}
       <ul className="space-y-2">
         {list.map((k) => (
@@ -73,8 +79,11 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
       {mode === "add" && (
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) add(); }}>
           {username && <UsernameHint value={username} />}
-          <input value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" {...PLAIN_INPUT} placeholder={labels.name} aria-label={labels.name} maxLength={60} className={`${ui.input} max-w-xs`} data-testid="passkey-name" />
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} data-testid="passkey-password" />
+          <div className="max-w-xs"><label className={ui.label} htmlFor="passkey-name">{labels.name}</label>
+            <input id="passkey-name" value={name} onChange={(e) => setName(e.target.value)} name="passkey-name" {...PLAIN_INPUT} maxLength={60} className={ui.input} data-testid="passkey-name" /></div>
+          <div className="max-w-xs"><label className={ui.label} htmlFor="passkey-add-password">{labels.password}</label>
+            <PasswordInput id="passkey-add-password" value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" data-first-field="" {...invalid} className={ui.input} data-testid="passkey-password" /></div>
+          {problem}
           <div className="flex gap-3">
             <PendingButton type="submit" variant="primary" pending={pending} disabled={!password} data-testid="passkey-add-confirm">{labels.add}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
@@ -85,7 +94,9 @@ export function PasskeysPanel({ items, labels, start, finish, remove, rename, us
         <form className="space-y-3" onSubmit={(e) => { e.preventDefault(); if (password && !pending) drop(mode.remove); }}>
           <p className="text-sm text-muted">{labels.removeHelp}</p>
           {username && <UsernameHint value={username} />}
-          <PasswordInput value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" placeholder={labels.password} aria-label={labels.password} className={`${ui.input} max-w-xs`} />
+          <div className="max-w-xs"><label className={ui.label} htmlFor="passkey-remove-password">{labels.password}</label>
+            <PasswordInput id="passkey-remove-password" value={password} onChange={(e) => setPassword(e.target.value)} name="current-password" autoComplete="current-password" data-first-field="" {...invalid} className={ui.input} /></div>
+          {problem}
           <div className="flex gap-3">
             <PendingButton type="submit" variant="danger" pending={pending} disabled={!password}>{labels.remove}</PendingButton>
             <button type="button" className={ui.btn} onClick={reset}>{labels.cancel}</button>
