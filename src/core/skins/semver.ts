@@ -1,9 +1,9 @@
 /**
  * Versions d'un skin : `x.y.z` (sans « v »). Pure. Les comparaisons s'appuient sur `updates/versions.ts` (déjà utilisé par les modules).
  */
-import { classify, compareVersions, isReleaseTag, tagPrefix, TAG_RE, type UpdateLevel } from "../updates/versions";
+import { classify, compareVersions, isReleaseTag, tagPrefix, TAG_RE, versionSignal, type UpdateLevel } from "../updates/versions";
 
-export { classify, compareVersions, isReleaseTag, tagPrefix, TAG_RE };
+export { classify, compareVersions, isReleaseTag, tagPrefix, TAG_RE, versionSignal };
 export type { UpdateLevel };
 
 export const SEMVER_RE = /^\d+\.\d+\.\d+$/;

@@ -46,6 +46,18 @@ export function classify(current: string, target: string): UpdateLevel | null {
   return t[0] !== c[0] ? "major" : t[1] !== c[1] ? "minor" : "patch";
 }
 
+/**
+ * (0.52.1) THE update signal of a module or skin that is not pinned by a tag: the version number of its manifest, and nothing else.
+ *   - "newer"   : both versions are valid and the remote one is higher, and it is not a pre-release (`-rc.N` is never offered as a stable update);
+ *   - "none"    : both are valid and the remote one is equal, lower or a pre-release: the content may differ, there is NO update;
+ *   - "unknown" : one side has no version that can be compared (absent manifest, or a version like `1.2.0+build`): the caller keeps its content check.
+ */
+export type VersionSignal = "newer" | "none" | "unknown";
+export function versionSignal(installed: string | null | undefined, remote: string | null | undefined): VersionSignal {
+  if (!installed || !remote || !parseVersion(installed, true) || !parseVersion(remote, true)) return "unknown";
+  return !isPrerelease(remote) && compareVersions(remote, installed) > 0 ? "newer" : "none";
+}
+
 export type ReleaseInfo = { tag_name?: unknown; draft?: unknown; prerelease?: unknown; assets?: unknown };
 
 /**

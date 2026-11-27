@@ -44,7 +44,7 @@ import type { SkinManifest } from "./manifest";
 import { makeIssue, type SkinIssue, type Text } from "./messages";
 import type { ReadabilityIssue } from "./readability";
 import { fallBackToBasic, filesPresent, pruneUnclaimed, readActiveSetting, readRows, serial, skinDir, writeRows, type SkinRow, type SkinSource, type UploadProvenance } from "./registry";
-import { classify, compareVersions, isReleaseTag, tagPrefix, type UpdateLevel } from "./semver";
+import { classify, compareVersions, isReleaseTag, tagPrefix, versionSignal, type UpdateLevel } from "./semver";
 import { fetchSkinSource, isCommitRef, latestStableTag, parseSkinRepoUrl, remoteHead, repoAddress, sameRepoUrl, type Fetched, type SkinRepo } from "./source";
 import { fingerprintOf, hasErrors, hasSignature, validateSkinFolder, type SkinTokens, type SkinValidation } from "./validate";
 
@@ -82,7 +82,7 @@ export async function listCatalogue(opts: { fresh?: boolean; fetchImpl?: typeof 
   const rows = await readRows();
   const items = cat.entries.filter((e) => e.kind === (opts.kind ?? "site")).map((e): CatalogueItem => {
     const row = rows.find((r) => r.id === e.id);
-    const newer = !!row && ((!!e.version && compareVersions(e.version, row.version) > 0) || (!e.version && !!e.ref && e.ref !== row.ref));
+    const newer = !!row && ((!!e.version && versionSignal(row.version, e.version) === "newer") || (!e.version && !!e.ref && e.ref !== row.ref));
     return { ...e, installed: !!row, installedVersion: row?.version, updateAvailable: newer };
   });
   return { ok: true, items, source: cat.source, fetchedAt: cat.fetchedAt, unreachable: cat.unreachable, ...(cat.unreachable ? { message: CATALOGUE_UNREACHABLE } : {}) };
@@ -286,12 +286,20 @@ export async function checkUpdate(id: string, opts: { fresh?: boolean } = {}): P
     if ("none" in t) return { available: false };
     if (t.entry) {
       const e = t.entry;
-      const available = (!!e.version && compareVersions(e.version, row.version) > 0) || (!e.version && !!e.ref && e.ref !== row.ref);
+      const available = (!!e.version && versionSignal(row.version, e.version) === "newer") || (!e.version && !!e.ref && e.ref !== row.ref);
       return available ? { available, target: e.version ?? e.ref, level: e.version ? classify(row.version, e.version) ?? undefined : undefined, needsCore: e.needsNewerCore } : { available: false };
     }
     if (isStableTag(t.spec.ref, row.id) && t.spec.ref !== row.ref) return { available: true, target: t.spec.ref, level: classify(row.ref ?? "0.0.0", t.spec.ref) ?? undefined };
     const head = await remoteHead(t.spec.url, t.spec.ref);
-    return head && head !== row.commit ? { available: true, target: head.slice(0, 7) } : { available: false };
+    if (!head || head === row.commit) return { available: false };
+    // The head moved: only a higher stable version in the skin's own manifest makes it an update (the same rule as `update`, which refuses an equal or lower one).
+    const got = await download(t.spec);
+    if (!got.ok) return { available: false, failed: true };
+    try {
+      const v = validateSkinFolder(got.fetched.root, contextOf(t.spec, id));
+      const version = v.ok ? v.manifest?.version : undefined;
+      return version && versionSignal(row.version, version) === "newer" ? { available: true, target: version, level: classify(row.version, version) ?? undefined } : { available: false };
+    } finally { got.fetched.cleanup(); }
   } catch (error) { return { available: false, failed: true, ...(isGitAccessError(error) ? { access: true } : {}) }; }
 }
 

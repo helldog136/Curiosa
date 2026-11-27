@@ -133,14 +133,14 @@ test("épinglé sur un commit : jamais de mise à jour, c'est le but", async () 
   assert.deepEqual(await updateModule("demo"), { ok: false, error: "modules.error.pinned" });
 });
 
-test("sur une branche (ou sans épinglage) : suit toujours les nouveaux commits, comme avant", async () => {
+test("sur une branche (ou sans épinglage) : suit les nouvelles VERSIONS (un commit sans nouveau numéro n'est pas une mise à jour)", async () => {
   const repo = moduleRepo();
   assert.equal((await installModule(`${repo.url}#main`)).ok, true);
   assert.equal((await checkForUpdate("demo")).available, false);
   repo.release("1.0.1");
   const check = await checkForUpdate("demo");
   assert.equal(check.available, true);
-  assert.equal(check.level, undefined, "pas de nature pour un simple commit");
+  assert.deepEqual([check.target, check.level], ["1.0.1", "patch"], "the version number is the signal, never a commit");
   assert.equal((await updateModule("demo")).ok, true);
   assert.deepEqual([(await mod()).ref, (await mod()).version], ["main", "1.0.1"], "la branche suivie ne change pas");
   const noRef = moduleRepo();

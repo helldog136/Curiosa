@@ -2408,7 +2408,7 @@ tels quels. Le sens de « mise à jour » dépend de l'installation :
 |---|---|
 | une **étiquette** (`#v1.2.0`, recommandé) | la plus haute version stable du dépôt (`v1.3.0`) ; le module passe d'étiquette en étiquette. Un changement **majeur** (`v2.0.0`) est signalé : lisez ses notes avant |
 | un **commit** (`#a1b2c3d`) | jamais : c'est le but de l'épinglage |
-| une **branche**, ou rien | le dernier commit de la branche |
+| une **branche**, ou rien | une version **plus haute** dans le `module.json` de la branche : un nouveau commit sous le même numéro (ou un numéro plus bas, ou une version candidate `-rc.N`) n'est **pas** une mise à jour ; la cible affichée est toujours un numéro de version, jamais un commit |
 | rien (ligne `bundled` restée d'une des premières versions) | pas de source : aucune mise à jour proposée (voir ci-dessous) |
 
 Si la nouvelle version est **invalide** (manifeste illisible, autre identifiant, API incompatible, fichier principal absent, trop volumineuse) **ou ne se charge pas**

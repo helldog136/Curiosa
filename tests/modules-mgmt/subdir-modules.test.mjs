@@ -83,7 +83,9 @@ test("mise à jour : proposée seulement quand CE module change (pas quand un au
   assert.equal((await I.checkForUpdate("alpha")).available, false);
   repo.change("beta/index.mjs", code("b2"), "beta évolue");
   assert.equal((await I.checkForUpdate("alpha")).available, false, "alpha n'a pas changé");
-  assert.equal((await I.checkForUpdate("beta")).available, true, "beta a changé");
+  assert.equal((await I.checkForUpdate("beta")).available, false, "beta a changé mais son numéro de version est le même : pas de mise à jour");
+  repo.change("beta/module.json", JSON.stringify(manifest("beta", "1.0.1")), "beta 1.0.1");
+  assert.equal((await I.checkForUpdate("beta")).available, true, "beta a un nouveau numéro");
   repo.change("alpha/module.json", JSON.stringify(manifest("alpha", "1.1.0")), "alpha 1.1.0");
   const check = await I.checkForUpdate("alpha");
   assert.equal(check.available, true);
