@@ -25,6 +25,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Everyone sees only what they can open.** The menu, the dashboard (numbers, tasks, shortcuts, module cards) and the search no longer offer a link to a page your role cannot open.
 - **Un refus dit ce qui manque.** Au lieu de « Vous n'avez pas le droit de faire cela », le bandeau nomme l'accès demandé et à qui le demander.
 - **(English) A refusal says what is missing.** Instead of “You do not have permission to do that”, the notice names the access needed and who to ask.
+- **Un champ mal rempli est signalé sous le champ, dans votre langue.** Fini la bulle du navigateur, en anglais et posée sur le titre : un champ obligatoire vide, une adresse ou un nombre invalide affichent le même message clair, avec un exemple, et le curseur se place sur le premier champ à corriger. Ce que vous avez écrit reste.
+- **(English) A badly filled field is flagged under the field, in your language.** No more browser bubble, in English and over the label: an empty required field, an invalid address or a bad number show the same clear message, with an example, and the cursor goes to the first field to fix. What you typed stays.
+- **Le choix d'un fichier se lit dans la langue du site.** « Choisir un fichier » et le nom du fichier choisi remplacent le texte anglais du navigateur (restauration d'une sauvegarde, envoi d'une police).
+- **(English) Choosing a file reads in the site's language.** “Choose a file” and the chosen name replace the browser's English text (backup restore, font upload).
 
 ### Corrections
 
@@ -32,6 +36,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) The “Report a bug” link now appears only once.** It lives at the bottom of the menu; the copies on the Updates and AI assistants pages are gone.
 - **Bandeaux, sondages et comptes à rebours gardent leur timing quand OBS coupe les animations.** Avant, un skin d'overlay figeait tout : un bandeau de sponsors apparaissait ou disparaissait d'un coup. Seul le décor du skin est coupé.
 - **(English) Tickers, polls and countdowns keep their timing when OBS turns animations off.** Before, an overlay skin froze everything, so a sponsor ticker popped in or vanished. Only the skin's decoration is cut.
+- **Les boutons à choix ne coupent plus un mot en deux.** Un libellé long comme « Remerciements » reste entier ; c'est le bouton qui passe à la ligne.
+- **(English) Choice buttons no longer split a word in two.** A long label such as “Thanks” stays whole; the whole button wraps to the next line.
+- **La barre « Enregistrer » collée en bas ne cache plus le dernier champ ni les boutons du bas.** La page lui laisse de la place, et un champ qui prend le focus ne passe pas dessous.
+- **(English) The “Save” bar stuck to the bottom no longer hides the last field or the buttons below.** The page leaves room for it, and a field that takes focus does not slide under it.
 
 ### Pour les développeurs
 
@@ -40,6 +48,7 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - Le modèle du menu est extrait de `layout.tsx` dans `src/core/adminSidebar.ts` (pur, testé) ; le manifeste accepte `menuIcon` (jeu d'icônes du cœur, voir `docs/MODULES.md`) ; `scripts/admin-map.mjs` lit ce modèle.
 - **(English)** The sidebar model moves out of `layout.tsx` into `src/core/adminSidebar.ts` (pure, tested); the manifest accepts `menuIcon` (core icon set, see `docs/MODULES.md`); `scripts/admin-map.mjs` reads that model.
 - `compileSkin` n'écrit plus de règle `reduce` universelle : le préréglage d'entrée est écrit sous `no-preference`, la seule règle `reduce` vise `[data-ov-calm]` (voir `docs/OVERLAY-SKINS.md`). Tests : `overlay-reduced-motion` (Chromium réel). Golden `golden-contracts-2-5.json` réenregistré (feuille et page seulement).
+- Formulaires (C3b) : `ActionForm` envoie avec `noValidate` et valide lui-même (`nativeValidation.ts`, textes `progress.invalid.*`) ; `FileButton` (champ fichier traduit) sert `kind: "file"`, la restauration et l'envoi de police ; `StickyActionBar` est la barre collée partagée. Les formulaires qui ne passent pas par `ActionForm` (restauration, sauvegarde, assistant d'installation IA) gardent leur validation actuelle.
 
 ## 0.51.0 — 2026-11-26
 
