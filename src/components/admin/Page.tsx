@@ -21,10 +21,10 @@ export function PageHeader({ title, intro, icon, level = 1, children }: { title:
 }
 
 /** Une section de page : un titre, une aide courte, puis le contenu. `card` l'entoure d'une carte (par défaut), sinon le contenu s'étale. */
-export function Panel({ title, help, helpVisible = false, children, card = true, tone, testid, className = "" }: { title?: string; help?: React.ReactNode; /** The help warns about a loss (R24): it stays on screen. Otherwise a text `help` goes in the "?" bubble next to the title (R32). */ helpVisible?: boolean; children: React.ReactNode; card?: boolean; tone?: "danger"; testid?: string; className?: string }) {
+export function Panel({ title, help, helpVisible = false, children, card = true, tone, testid, id, className = "" }: { title?: string; help?: React.ReactNode; /** The help warns about a loss (R24): it stays on screen. Otherwise a text `help` goes in the "?" bubble next to the title (R32). */ helpVisible?: boolean; children: React.ReactNode; card?: boolean; tone?: "danger"; testid?: string; /** Anchor of the section (a link such as `#password` lands on it, below the sticky bar). */ id?: string; className?: string }) {
   const frame = card ? (tone === "danger" ? "rounded-2xl border border-red-500/30 bg-red-500/[0.04] p-5 sm:p-6" : ui.card) : "";
   return (
-    <section className={`${frame} space-y-4 ${className}`} data-testid={testid}>
+    <section id={id} className={`${frame} space-y-4 ${id ? "scroll-mt-6 " : ""}${className}`} data-testid={testid}>
       {(title || help) && (
         <div>
           {title && <h2 className="flex items-center gap-1.5 text-lg font-semibold">{title}{typeof help === "string" && !helpVisible && <HelpTip help={help} name={title} always />}</h2>}

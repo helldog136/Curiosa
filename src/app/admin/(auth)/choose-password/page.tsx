@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { adminCtx } from "@/core/admin";
+import { AuthShell } from "@/components/admin/AuthShell";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { TextField } from "@/components/admin/Field";
 import { UsernameHint } from "@/components/admin/UsernameHint";
@@ -21,11 +22,7 @@ export default async function ChoosePasswordPage() {
   const { t, user } = await adminCtx("member", { allowForced: true, allowUnenrolled: true });
   if (!user.mustChangePassword) redirect(ADMIN_HREF);
   return (
-    <main className="mx-auto mt-12 max-w-sm space-y-6 px-4 pb-12 sm:mt-24" data-testid="choose-password">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold">{t("choosePassword.title")}</h1>
-        <p className="text-sm leading-6 text-muted">{t("choosePassword.intro", { name: user.name })}</p>
-      </div>
+    <AuthShell title={t("choosePassword.title")} intro={t("choosePassword.intro", { name: user.name })} testid="choose-password">
       <ActionForm action={choosePassword} submitLabel={t("choosePassword.submit")}>
         <UsernameHint value={user.email} />
         <TextField name="next" type="password" label={t("account.newPassword")} required passwordMin={MIN_PASSWORD_LENGTH} autoComplete="new-password" help={t("choosePassword.help", { n: MIN_PASSWORD_LENGTH })} />
@@ -35,6 +32,6 @@ export default async function ChoosePasswordPage() {
         <p className="mb-2 text-xs text-muted">{t("choosePassword.signedInAs", { email: user.email })}</p>
         <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
       </form>
-    </main>
+    </AuthShell>
   );
 }

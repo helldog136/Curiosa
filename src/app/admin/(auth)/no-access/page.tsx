@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { signOut } from "@/auth";
 import { currentUser, isMember } from "@/core/permissions";
 import { getAdminTranslator } from "@/core/i18n/request";
+import { AuthShell } from "@/components/admin/AuthShell";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { ADMIN_HREF, LOGIN_HREF } from "@/core/adminLinks";
 import type { Metadata } from "next";
@@ -23,11 +24,7 @@ export default async function NoAccessPage() {
   if (isMember(user)) redirect(ADMIN_HREF);
   const { t } = await getAdminTranslator(user.locale);
   return (
-    <main className="mx-auto mt-12 max-w-sm space-y-6 px-4 pb-12 sm:mt-24" data-testid="no-access">
-      <div className="space-y-2">
-        <h1 className="text-2xl font-bold">{t("noAccess.title")}</h1>
-        <p className="text-sm leading-6 text-muted">{t("noAccess.intro", { name: user.name })}</p>
-      </div>
+    <AuthShell title={t("noAccess.title")} intro={t("noAccess.intro", { name: user.name })} testid="no-access">
       <form
         action={async () => {
           "use server";
@@ -38,6 +35,6 @@ export default async function NoAccessPage() {
         <p className="mb-2 text-xs text-muted">{t("choosePassword.signedInAs", { email: user.email })}</p>
         <PendingButton pendingLabel={t("progress.signingOut")}>{t("nav.logout")}</PendingButton>
       </form>
-    </main>
+    </AuthShell>
   );
 }

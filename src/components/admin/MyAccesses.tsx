@@ -92,7 +92,7 @@ function AccessRow({ row, pause, resume, remove, setLevel, levels, labels }: { r
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <div className="min-w-0 flex-1">
           <p className="truncate font-medium" title={row.name}>{row.name}</p>
-          <p className="mt-1 flex flex-wrap items-center gap-1.5"><Badge tone="info" testid="my-access-level">{row.levelLabel}</Badge><Badge tone={tone} title={row.stateWhy} testid="my-access-state">{row.stateLabel}</Badge><HelpTip help={labels.ceiling} name={row.name} always /></p>
+          <p className="mt-1 flex flex-wrap items-center gap-1.5"><Badge tone="info" testid="my-access-level">{row.levelLabel}</Badge>{row.state !== "active" && <Badge tone={tone} title={row.stateWhy} testid="my-access-state">{row.stateLabel}</Badge>}<HelpTip help={labels.ceiling} name={row.name} always /></p>
         </div>
         <div className="flex items-center gap-2">
           {row.state === "inert" ? null : (
