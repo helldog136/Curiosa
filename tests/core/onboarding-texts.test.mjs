@@ -16,7 +16,7 @@ test("onboarding texts: both languages, same keys, same variables", () => {
 });
 
 test("every key used by the onboarding code exists in both languages", () => {
-  const files = ["src/core/auth/invitations.ts", "src/core/auth/passwordReset.ts", "src/app/admin/(panel)/users/page.tsx", "src/app/admin/(panel)/users/actions.ts", "src/app/admin/(panel)/users/RolesPanel.tsx",
+  const files = ["src/core/auth/invitations.ts", "src/core/auth/passwordReset.ts", "src/app/admin/(panel)/users/page.tsx", "src/app/admin/(panel)/users/actions.ts", "src/app/admin/(panel)/users/roles/RolesPanel.tsx",
     "src/app/admin/(auth)/invitation/page.tsx", "src/app/admin/(auth)/invitation/actions.ts", "src/app/admin/(auth)/forgot-password/page.tsx", "src/app/admin/(auth)/forgot-password/actions.ts",
     "src/app/admin/(auth)/reset-password/page.tsx", "src/app/admin/(auth)/reset-password/actions.ts", "src/app/admin/(auth)/login/page.tsx"];
   for (const f of files) for (const m of read(f).matchAll(/\bt\("((?:invite|forgot|reset|roles\.preset|users\.(?:suspend|suspended|reactivate|suspendConfirm|needs2fa))[\w.]*)"/g)) {

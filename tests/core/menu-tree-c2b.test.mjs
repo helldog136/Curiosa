@@ -35,18 +35,17 @@ test("the entries of Site and Administration, in the order of the plan", () => {
   assert.deepEqual(Object.keys(S.ADMIN_LINKS), ["extensions", "assistants", "users", "roles", "maintenance"]);
   assert.equal(S.ADMIN_LINKS.extensions.href, "/admin/extensions", "the route of the modules page is kept");
   assert.equal(S.ADMIN_LINKS.roles.href, L.ROLES_HREF);
-  assert.equal(L.ROLES_HREF, "/admin/users#roles", "today the Roles tab of the team page");
-  assert.deepEqual(S.ADMIN_LINKS.users.exceptHash, ["roles"]);
+  assert.equal(L.ROLES_HREF, "/admin/users/roles", "(C5b) the roles area has its own page");
+  assert.equal(S.ADMIN_LINKS.users.exact, true, "the Team entry does not stay lit on the Roles page below it");
 });
 
-test("Team and Roles share a page and are told apart by the fragment", () => {
+test("Team and Roles are two pages: each entry is lit on its own page only", () => {
   const users = S.ADMIN_LINKS.users, roles = S.ADMIN_LINKS.roles;
-  const cur = (l, hash) => isCurrent(l.href, "/admin/users", "", { also: [...l.also], hash, ...(l.exceptHash ? { exceptHash: l.exceptHash } : {}) });
-  assert.equal(cur(users, ""), true);
-  assert.equal(cur(roles, ""), false);
-  assert.equal(cur(users, "roles"), false, "the Team entry lets go while the Roles tab is open");
-  assert.equal(cur(roles, "roles"), true);
-  assert.equal(cur(users, "team"), true);
+  const cur = (l, path) => isCurrent(l.href, path, "", { also: [...l.also], ...(l.exact ? { exact: true } : {}) });
+  assert.equal(cur(users, "/admin/users"), true);
+  assert.equal(cur(roles, "/admin/users"), false);
+  assert.equal(cur(users, "/admin/users/roles"), false, "the Team entry lets go on the Roles page");
+  assert.equal(cur(roles, "/admin/users/roles"), true);
   // An entry without a fragment keeps its old behaviour, with or without a hash given.
   assert.equal(isCurrent("/admin/appearance", "/admin/appearance", "", { hash: "fonts" }), true);
   assert.equal(isCurrent("/admin/appearance", "/admin/appearance", ""), true);
