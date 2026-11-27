@@ -27,7 +27,7 @@ test("the set-up list is the checklist card, with the action of the next step on
   assert.match(blocks, /<ChecklistCard title=\{t\("dash\.setup\.title"\)\}/);
   assert.match(blocks, /canOpen\(c\.user, s\.href, c\.owners\)/);
   assert.match(blocks, /action=\{hideSetup\}/);
-  for (const id of ["name", "tagline", "logo", "page", "social", "look"]) for (const d of [en, fr]) assert.ok(d[`dash.setup.act.${id}`], id);
+  for (const id of ["name", "tagline", "logo", "modules", "page", "social", "look", "assistant"]) for (const d of [en, fr]) assert.ok(d[`dash.setup.act.${id}`], id);
 });
 
 test("the heavy blocks are folded to one line: visits, storage, activity", () => {

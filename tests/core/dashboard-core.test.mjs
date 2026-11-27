@@ -213,12 +213,16 @@ test("à faire : les extensions à régler et les tâches d'extensions se placen
 // ── Mise en route ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 test("mise en route : calculée, progression, disparaît quand tout est fait ou quand on la masque", () => {
-  const none = { nameChosen: false, taglineWritten: false, logoSent: false, pagePublished: false, socialAdded: false, lookChosen: false };
+  const none = { nameChosen: false, taglineWritten: false, logoSent: false, pagePublished: false, socialAdded: false, lookChosen: false, modulesAdded: false, assistantConnected: false };
   const fresh = Su.evaluateSetup(none, false);
-  assert.deepEqual([fresh.done, fresh.total, fresh.percent, fresh.visible], [0, 6, 0, true]);
-  assert.deepEqual(fresh.steps.map((s) => s.id), ["name", "tagline", "logo", "page", "social", "look"]);
-  const half = Su.evaluateSetup({ ...none, nameChosen: true, logoSent: true, pagePublished: true }, false);
-  assert.deepEqual([half.done, half.percent, half.visible], [3, 50, true]);
+  assert.deepEqual([fresh.done, fresh.total, fresh.percent, fresh.visible], [0, 8, 0, true]);
+  assert.deepEqual(fresh.steps.map((s) => s.id), ["name", "tagline", "logo", "modules", "page", "social", "look", "assistant"]);
+  const half = Su.evaluateSetup({ ...none, nameChosen: true, logoSent: true, pagePublished: true, lookChosen: true }, false);
+  assert.deepEqual([half.done, half.percent, half.visible], [4, 50, true]);
+  // C5i: the optional steps of the old wizard (modules, AI assistant) are listed but never keep the list open on their own.
+  assert.deepEqual(fresh.steps.filter((s) => s.optional).map((s) => s.id), ["modules", "assistant"]);
+  const required = Su.evaluateSetup({ ...none, nameChosen: true, taglineWritten: true, logoSent: true, pagePublished: true, socialAdded: true, lookChosen: true }, false);
+  assert.deepEqual([required.complete, required.visible, required.done, required.total], [true, false, 6, 8]);
   assert.equal(Su.evaluateSetup({ ...none, nameChosen: true }, true).visible, false, "masquée par la personne");
   const all = Su.evaluateSetup(Object.fromEntries(Object.keys(none).map((k) => [k, true])), false);
   assert.deepEqual([all.complete, all.visible, all.percent], [true, false, 100]);
@@ -227,7 +231,7 @@ test("mise en route : calculée, progression, disparaît quand tout est fait ou 
 
 test("mise en route : les faits viennent du site, et seule l'administration la voit et la masque", async () => {
   const facts = () => Su.loadSetupFacts({ contentInstanceIds: [], locale: "fr" });
-  assert.deepEqual(await facts(), { nameChosen: false, taglineWritten: false, logoSent: false, pagePublished: false, socialAdded: false, lookChosen: false });
+  assert.deepEqual(await facts(), { nameChosen: false, taglineWritten: false, logoSent: false, pagePublished: false, socialAdded: false, lookChosen: false, modulesAdded: false, assistantConnected: false });
   await setSetting("site.name", "Mon site", "fr");
   await setSetting("site.tagline", "Une accroche", "fr");
   await setSetting("site.logo", "/uploads/logo.png");
@@ -237,6 +241,12 @@ test("mise en route : les faits viennent du site, et seule l'administration la v
   const f = await Su.loadSetupFacts({ contentInstanceIds: [blog.id], locale: "fr" });
   assert.deepEqual([f.nameChosen, f.taglineWritten, f.logoSent, f.pagePublished, f.lookChosen], [true, true, true, true, true]);
   assert.equal((await Su.loadSetupFacts({ contentInstanceIds: [blog.id], locale: "fr" })).pagePublished, true);
+  assert.equal(f.modulesAdded, true, "an installed module is a fact");
+  assert.equal(f.assistantConnected, false);
+  await prisma.apiToken.create({ data: { name: "Writing helper", hash: "h1", prefix: "p1", createdBy: "etoile_nord@example.test" } });
+  assert.equal((await Su.loadSetupFacts({ contentInstanceIds: [], locale: "fr" })).assistantConnected, true);
+  await prisma.apiToken.updateMany({ data: { revokedAt: new Date() } });
+  assert.equal((await Su.loadSetupFacts({ contentInstanceIds: [], locale: "fr" })).assistantConnected, false, "a revoked access does not count");
   assert.equal(Su.canSeeSetup(admin), true);
   assert.equal(Su.canSeeSetup(editor), false);
   assert.equal(await Su.setSetupHidden(editor, true), false);

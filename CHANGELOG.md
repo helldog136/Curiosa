@@ -57,6 +57,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
 - **Liens courts : un seul bouton pour créer, interrupteur discret.** La création s'ouvre dans une fenêtre, un lien en pause ou terminé porte une pastille. Les brouillons ont une recherche, les listes d'entrées et de modèles des lignes régulières.
 - **(English) Short links: one create button, a quiet switch.** Creating opens a window, a paused or ended link carries a pill. Drafts get a search, and the entries and templates lists use regular rows.
+- **L'assistant d'installation tient en trois écrans.** Langue et prénom, nom du site, e-mail et mot de passe ; le choix des modules et la connexion d'un assistant IA passent dans la liste « Mise en route » du tableau de bord.
+- **(English) The setup wizard fits on three screens.** Language and first name, site name, e-mail and password; choosing modules and connecting an AI assistant move to the “Getting started” list on the dashboard.
 
 ### Corrections
 
