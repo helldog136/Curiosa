@@ -234,8 +234,8 @@ test("page des droits : composant — aria-live sur les compteurs, confirmation 
   assert.match(c, /role="switch"/);
   assert.match(c, /grants-problem/, "un refus est dit, jamais en silence");
   assert.match(en["grants.saved.reconnect"], /^Reconnect the assistant to see new tools\./);
-  assert.match(en["grants.risky.approval.human"], /Installing a feature always stays a request that you approve/);
-  assert.match(en["grants.risky.approval.direct"], /Installing a feature always stays a request/);
+  assert.match(en["grants.risky.approval.human"], /Installing a module always stays a request that you approve/);
+  assert.match(en["grants.risky.approval.direct"], /Installing a module always stays a request/);
 });
 
 test("page des droits : le plafond « lecture » est expliqué, la page n'applique rien sans enregistrer, la logique de plafond du serveur est celle d'avant", () => {
@@ -260,7 +260,7 @@ test("approbation des actions à risque : deux choix côte à côte, l'état cou
   assert.match(page, /<ApprovalChoice current=\{approval\}/);
   assert.doesNotMatch(page, /aim\.approval\.direct"\)\}<\/ConfirmButton>|aim\.approval\.human"\)\}<\/PendingButton>/, "plus de bouton-verbe");
   assert.match(read("src/app/admin/(panel)/assistants/requestsActions.ts"), /setApprovalMode\(row\.id, next\)/, "même réglage, même valeur stockée");
-  assert.match(en["aim.approval.installNote"], /Installing a feature or adding another copy always asks for your approval, whatever you choose\./);
+  assert.match(en["aim.approval.installNote"], /Installing a module or adding another copy always asks for your approval, whatever you choose\./);
   assert.match(en["aim.approval.ask"], /recommended/);
 });
 

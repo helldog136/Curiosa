@@ -267,7 +267,7 @@ test("phrases en clair : événement déclaré rempli, action d'administration, 
   assert.ok(sentences.includes("Chose faite : Alice (3 fois, urgent : oui)"), sentences.join(" | "));
   assert.ok(sentences.includes("Passage de Bob"));
   assert.ok(sentences.includes("Événement du module"), "action non déclarée : phrase générique, jamais le code");
-  assert.ok(sentences.includes("Action dans une fonctionnalité"), "action d'administration");
+  assert.ok(sentences.includes("Action dans un module"), "action d'administration");
   assert.ok(sentences.includes("Action d'un assistant IA"));
   assert.ok(sentences.includes("Connexion"), "ligne du cœur connue : sa phrase");
   assert.ok(sentences.includes("zzz.custom"), "ligne du cœur sans traduction : le code (affiché seulement en avancé par la page)");

@@ -925,7 +925,7 @@
    "request": false,
    "source": "maintenance",
    "audited": true,
-   "sha": "ddcf4d35a845369c"
+   "sha": "101f1355223fffde"
   },
   {
    "name": "maintenance_available_operations",
@@ -947,7 +947,7 @@
    "request": false,
    "source": "maintenance",
    "audited": true,
-   "sha": "209b86da6c966228"
+   "sha": "d8f5f1daa2c354c3"
   },
   {
    "name": "maintenance_health",

@@ -365,7 +365,8 @@ test("interface : deux boutons de retrait, chacun avec SA confirmation ; aucun i
   for (const k of ["modules.on", "modules.off", "extensions.turnOn", "extensions.turnOff", "instances.enabled", "instances.disabled", "modules.disabledNotice"]) assert.ok(!(k in fr) && !(k in en), `${k} : ne doit plus exister`);
   // mode simple : pas de jargon dans les textes de retrait
   for (const k of ["remove.title", "remove.introModule", "remove.introInstanceSimple", "remove.keep", "remove.keepHelp", "remove.keepConfirm", "remove.erase", "remove.eraseHelp", "remove.eraseConfirm", "remove.noticeKept", "kept.help", "kept.cardNote", "kept.detailsNote"]) {
-    assert.ok(!/instance|manifest|module/i.test(fr[k]) || k === "remove.introModuleAdvanced", `fr ${k} : pas de jargon`);
+    // R34 / ADR 0011: "module" is THE word for an installed piece, not developer jargon.
+    assert.ok(!/instance|manifest/i.test(fr[k]) || k === "remove.introModuleAdvanced", `fr ${k} : pas de jargon`);
   }
   // le code ne lit plus d'état « éteint »
   for (const f of ["src/core/modules/registry.ts", "src/core/modules/adminNav.ts", "src/core/modules/dependencies.ts", "src/core/modules/integrations.ts", "src/core/modules/api.ts", "src/core/instances.ts", "src/core/maintenance/inspect.ts"]) {

@@ -218,7 +218,7 @@ test("un lien géré ne se modifie, ne se désactive et ne se supprime pas à la
   assert.equal(upd.fail.key, "redirects.error.managed");
   assert.equal(await Redirects.deleteRedirectRecord(row.id), null);
   const actions = await import("@/app/admin/(panel)/redirects/actions");
-  assert.match((await actions.setRedirectActive(row.id, false)).error ?? "", /extension/);
+  assert.match((await actions.setRedirectActive(row.id, false)).error ?? "", /module/);
   await actions.toggleRedirect(row.id);
   await actions.reactivateRedirect(row.id);
   const same = await prisma.redirect.findUnique({ where: { id: row.id } });
@@ -236,8 +236,8 @@ test("un assistant (outils MCP) ne peut pas non plus changer ou supprimer un lie
   const { redirectsToolProvider } = await import("@/core/redirectMcp");
   const tools = await redirectsToolProvider.list();
   const tool = (n) => tools.find((t) => t.name === n);
-  await assert.rejects(() => tool("redirects_update").call({ redirect: "alpha", targetUrl: "https://autre.example/" }, { name: "t" }), /extension/);
-  await assert.rejects(() => tool("redirects_delete").call({ redirect: "alpha" }, { name: "t" }), /extension/);
+  await assert.rejects(() => tool("redirects_update").call({ redirect: "alpha", targetUrl: "https://autre.example/" }, { name: "t" }), /module/);
+  await assert.rejects(() => tool("redirects_delete").call({ redirect: "alpha" }, { name: "t" }), /module/);
   const listed = await tool("redirects_list").call({}, { name: "t" });
   assert.equal(listed.items.find((i) => i.path === "alpha").managedByModule, true);
   assert.equal((await managedRows()).length, 1);
@@ -309,7 +309,7 @@ test("la page des liens courts : pastille d'origine écrite, renvoi vers les ré
   const html = renderToStaticMarkup(await Page({ searchParams: Promise.resolve({}) }));
   const row = (path) => html.split('data-testid="redirect-row"').find((x) => x.includes(`>/${path}<`)) ?? "";
   assert.match(row("alpha"), /managed-badge/);
-  assert.match(row("alpha"), /alpha extension|Extension alpha/i);
+  assert.match(row("alpha"), /alpha module|Module alpha/i);
   assert.ok(row("alpha").includes(`/admin/instances/${inst.id}`), "le bouton mène aux réglages de l'extension");
   assert.ok(!row("alpha").includes("redirect-switch") && !/ConfirmButton|Supprimer|Delete/.test(row("alpha")), "ni interrupteur ni suppression");
   assert.ok(!row("mien").includes("managed-badge"), "aucune étiquette sur les liens de la personne (R14)");
