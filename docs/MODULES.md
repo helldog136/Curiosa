@@ -73,11 +73,12 @@ et comment ses instances sont exposées :
 | `integration` | services externes (Twitch, Discord…) | — |
 | `utility` | outils divers (RSS…) | — |
 
-L'admin est **une seule interface**. Le menu ne liste que les instances **épinglées** (voir « Rangement dans le menu » ci-dessous), rangées par rubrique : **Contenu**, **Communauté**, **Outils** et **Connexions** (voir « Rubrique d'une instance épinglée »).
-Tout le reste vit dans **Extensions** (rubrique *Administration* du menu), une page à trois onglets : *Installées* (les modules et leurs instances, par famille, avec recherche), *Ajouter* (le catalogue, fiches en fenêtre comprises) et
-*Mises à jour* (modules en retard ; propriétaire seulement). Les adresses sont `/admin/extensions`, `/admin/extensions/add` et `/admin/extensions/updates` ; les anciennes (`/admin/modules`, `/admin/catalogue`,
-`/admin/integrations`, `/admin/overlays`) redirigent, paramètres conservés. La page d'un module (`/admin/modules/<id>`) et celle d'une instance (`/admin/instances/<id>`) ne changent pas : elles sont des sous-pages de cet admin,
-avec leurs réglages (générés depuis `settings`), leurs abonnements (voir « sujets ») et le panneau `adminPanel` du module.
+The admin is **one interface**. The sidebar lists only the **pinned** modules (see "Menu placement" below), one link per module, filed under **Content**, **Community** and **Tools** (see "Section of a pinned instance"). The fixed entries of **Site** and **Administration** belong to the core; **Live**, **Calendar** and **Overlays** are groups inside **Tools**, and **Accounts and connections** (in **Site**) replaces the former Networks group and Connections section.
+Everything else lives in **Modules** (the *Administration* section, address `/admin/extensions`): a page with four tabs, *Installed* (modules and their instances, by family, with search), *Add* (the catalogue, with detail windows), *Updates* (modules behind; owner only) and *My catalogues* (advanced). The addresses are `/admin/extensions`, `/admin/extensions/add`, `/admin/extensions/updates` and `/admin/extensions/personal`; the old ones (`/admin/modules`, `/admin/catalogue`, `/admin/integrations`, `/admin/overlays`) redirect, parameters kept. The page of a module (`/admin/modules/<id>`) and of an instance (`/admin/instances/<id>`) do not change: they are sub-pages of this admin, with their settings (generated from `settings`), their subscriptions (see "topics") and the module's `adminPanel`.
+
+**The word is "module".** What the manifest calls a module is called "module" in every text a person reads, in both languages (rule R34, [ADR 0011](adr/0011-admin-redesign-vocabulary-menu-and-access.md)); the address `/admin/extensions`, translation keys and manifest keys keep their names.
+
+**What a module may declare for the menu.** Only `place` / `places[]`, `family`, `menuGroup`, `adminMenuOrder`, `menuIcon`, `rights` and `dashboard.{tasks, quickActions, cards}` (with an optional `right` on each contribution). The sidebar never reads the module's emoji or a free-form `adminMenu` for a new module (a legacy `adminMenu` is mapped to a placement by `defaultPlacement`); the emoji stays on cards. Everyone sees only what they can open: the menu, the dashboard and the search ask `canOpen(user, href)` (`src/core/adminAccess.ts`, see [ADMIN-NAVIGATION.md](ADMIN-NAVIGATION.md)). A task, a shortcut or a card of a module that leads to a **core page** must declare the `right` that page needs (the kit advises `dashboard.coreLinkRight` otherwise), and the module must also grant the `<module>:open` access to the roles that should see its pages: a link to a page the person cannot open is hidden. The keys are additive; an older core ignores them.
 
 **Les rubriques du menu (cœur 0.7.0).** *Contenu*, *Communauté*, *Outils* et *Connexions* reçoivent les instances épinglées (un seul lien par module) ; *Site* est réservée au cœur et dit, dans l'ordre : **Accueil et menu** (page d'accueil, menu du site, lien et bouton d'en-tête, boutons de réseaux : des onglets), **Apparence** (tout ce qui change l'allure : skin, couleurs, polices, fond, halo, disposition de l'en-tête), **Réglages** (nom, logo, langues, confidentialité, recherche, visibilité dans les IA, e-mail, adresse web), **Liens courts** ; *Administration* ; *Compte*. Un module n'ajoute rien à *Site* : ni `menu`, ni `adminPages`, ni `suggestInMenu` ne changent. Deux entrées du menu ne portent jamais le même nom ni le même premier mot (tests `menu-hub` et `sidebar-groups`) ; un module qui veut régler l'allure ou l'identité du site le dit dans son texte d'aide avec un lien vers ces pages, sans en créer une autre.
 
@@ -792,13 +793,11 @@ entrée), le sitemap, le flux RSS, les liens `/go/…`, la section d'accueil `la
 - **Flux RSS** : les 50 dernières entrées de chaque instance (triées par date par la base, quel que soit le tri de l'instance), fusionnées, puis les 50 plus récentes.
 - **Plan du site** : une seule page `sitemap.xml`, tant qu'il y a au plus 50 000 adresses. Au-delà, il garde les pages fixes puis les entrées les plus récentes, une erreur est écrite une seule fois dans le journal et la page *Visibilité dans les réponses des IA* affiche un bandeau. Pas de plan en plusieurs fichiers dans cette version.
 
-### Première installation (`onboarding`)
+### First installation (`onboarding`)
 
-Le cœur ne connaît aucun module par son nom. L'assistant de première installation a une étape facultative « Voulez-vous ajouter des modules ? » (qu'on peut
-passer sans aucun risque) : elle propose les modules que le **Catalogue suggère**. Cette suggestion n'est **pas** un champ du manifeste (n'importe quel
-auteur pourrait se l'attribuer) : c'est une liste, `catalogue/suggested.json`, tenue par le dépôt de modules `curiosa-extras` ; seul un module du catalogue avec la
-version et inscrit dans cette liste est proposé (et marqué « suggéré » dans le Catalogue). Les modules qui exigent un autre module ne sont pas proposés
-là : ils s'ajoutent depuis le Catalogue. `onboarding` règle ce qui se passe quand la personne coche le module :
+The core does not know any module by name. Since the setup wizard was cut to three screens (language and first name, site name, e-mail and password), **the wizard no longer offers starting profiles, suggested modules, sample pages or first links**. Choosing modules and connecting an AI assistant are optional steps of the **Getting started** list on the dashboard; the "choose modules" step opens the catalogue (**Modules > Add**).
+
+The **catalogue suggestion** is still not a field of the manifest (any author could claim it): it is a list, `catalogue/suggested.json`, kept by the `curiosa-extras` modules repository; only a catalogue module that is in that list is marked "suggested" in the catalogue. The code that used to feed the wizard (`core/modules/starter.ts`, `profiles.ts`, `catalogue/profiles.json`) is kept, and the setup action still accepts a module choice, but none of the three screens sends one. The keys of `onboarding` below set what happens when a module is ticked through that code path; a module may still declare them, and they have no visible effect on the three-screen wizard:
 
 | Clé | Rôle |
 |---|---|
@@ -2446,7 +2445,7 @@ diffère de celle du framework est listé mais **non installable**. Rien n'est i
 
 D'où vient la liste, dans l'ordre : (1) le dépôt de modules `curiosa-extras` (constante nommée `DEFAULT_CATALOGUE_REPO`, son adresse par défaut : la seule adresse que le cœur connaît ; `CURIOSA_CATALOGUE_REPO` pour en choisir un autre, `CURIOSA_CATALOGUE_REF` pour une autre
 branche ou étiquette que `HEAD`) ; (2) à défaut, la **dernière copie reçue** (`data/cache/`) : une panne réseau passagère ne vide pas le Catalogue ; sans elle, la liste est **vide** (jamais une copie locale) ; (3) **en plus**, un index JSON `https://` (`MODULES_INDEX_URL`, modèle : [`modules-index.example.json`](modules-index.example.json))
-dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. Le dépôt publie aussi `catalogue/suggested.json` (les identifiants que l'assistant de première installation propose, lu comme l'index). La page Catalogue indique d'où vient la liste affichée.
+dont les entrées ne peuvent qu'**ajouter** des modules, jamais remplacer ceux du dépôt. Le dépôt publie aussi `catalogue/suggested.json` (les identifiants que le catalogue marque « suggérés », lu comme l'index). La page Catalogue indique d'où vient la liste affichée.
 
 Pour qu'un module rejoigne le catalogue : une demande de fusion sur `curiosa-extras` avec un dossier dans `modules/` (modules complets) ou `examples/` (exemples), son `module.json` à sa racine.
 
