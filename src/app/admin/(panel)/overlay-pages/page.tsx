@@ -10,10 +10,15 @@ import { listPages, readSecret } from "@/core/overlays/store";
 import { ConfirmButton } from "@/components/admin/ConfirmButton";
 import { CopyAddress } from "@/components/admin/CopyAddress";
 import { PendingButton } from "@/components/admin/PendingButton";
+import { FormDialog } from "@/components/admin/FormDialog";
+import { LiveSearch } from "@/components/admin/LiveSearch";
+import { RowMenu } from "@/components/admin/RowMenu";
+import { Switch } from "@/components/admin/Switch";
+import { searchText } from "@/core/adminkit/search";
 import { Callout, EmptyState, PageHeader, Panel } from "@/components/admin/Page";
 import { TextField, Select } from "@/components/admin/Field";
 import { ui } from "@/components/admin/ui";
-import { createPageAction, deletePageAction, duplicatePageAction, renamePageAction, resetSecretAction, toggleActiveAction } from "./actions";
+import { createPageAction, deletePageAction, duplicatePageAction, renamePageAction, resetSecretAction, setPageActiveAction } from "./actions";
 import { OVERLAY_PAGES_HREF, OVERLAYS_OBS_HREF, overlayPageHref } from "@/core/adminLinks";
 import { LinkTabs } from "@/components/admin/LinkTabs";
 import type { Metadata } from "next";
@@ -46,62 +51,64 @@ export default async function OverlayPagesPage({ searchParams }: { searchParams:
       {ERRORS.has(e) && <Callout tone="danger">{t(`ovp.flash.${e}`, { pages: MAX_PAGES, active: MAX_ACTIVE_PAGES })}</Callout>}
       {OKS.has(ok) && <Callout tone="ok" role="status">{t(`ovp.flash.${ok}`)}</Callout>}
 
-      <Panel title={t("ovp.new")} help={t("ovp.newHelp")}>
+      <Panel title={t("ovp.new")} help={`${t("ovp.newHelp")} ${t("ovp.counts", { pages: pages.length, maxPages: MAX_PAGES, active: activeCount, maxActive: MAX_ACTIVE_PAGES })}`}>
         <form action={createPageAction} className="grid gap-4 sm:grid-cols-[2fr_1fr_auto] sm:items-end">
           <TextField name="name" label={t("ovp.name")} required />
           <Select name="resolution" label={t("ovp.resolution")} defaultValue="1920x1080" options={RESOLUTIONS.map(([w, h]) => { const f = formatOf(w, h); return { value: `${w}x${h}`, label: f ? `${w}×${h} · ${t(`ovp.format.${f}`)}` : `${w}×${h}` }; })} />
           <PendingButton variant="primary" pendingLabel={t("progress.creating")} disabled={pages.length >= MAX_PAGES}>{t("ovp.newButton")}</PendingButton>
         </form>
-        <p className={ui.help}>{t("ovp.counts", { pages: pages.length, maxPages: MAX_PAGES, active: activeCount, maxActive: MAX_ACTIVE_PAGES })}</p>
       </Panel>
 
       {pages.length === 0 ? (
         <EmptyState icon="🎬" title={t("ovp.empty")}>{t("ovp.emptyHelp")}</EmptyState>
       ) : (
-        <ul className="space-y-4">
-          {pages.map((p) => {
-            const address = addresses.get(p.id) ?? null;
-            const testing = testActive(p.testUntil, now);
-            return (
-              <li key={p.id} className={`${ui.card} space-y-4`} data-testid="overlay-page">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <h2 className="text-lg font-semibold [overflow-wrap:anywhere]"><Link href={overlayPageHref(p.id)} className="hover:text-accent hover:underline">{p.name}</Link></h2>
-                    <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted">
-                      <span>{p.width}×{p.height}</span><span aria-hidden>·</span>
-                      <span>{t("ovp.elementCount", { n: p.elements.length })}</span>
-                      <span className={p.active ? ui.chipOk : ui.chip}>{p.active ? t("ovp.on") : t("ovp.off")}</span>
-                      {testing && <span className={ui.chipWarn}>{t("ovp.testChip")}</span>}
-                    </p>
-                  </div>
-                  <Link href={overlayPageHref(p.id)} className={ui.btnPrimary}>{t("ovp.edit")}</Link>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  {address ? <CopyAddress text={address} label={t("ovp.copy")} copied={t("ovp.copied")} manual={t("ovp.copyManual")} /> : <span className="text-sm text-amber-700">{t("ovp.addressLost")}</span>}
-                  <form action={toggleActiveAction.bind(null, p.id, !p.active)}><PendingButton variant="btn">{p.active ? t("ovp.turnOff") : t("ovp.turnOn")}</PendingButton></form>
-                  <form action={duplicatePageAction.bind(null, p.id, t("ovp.copySuffix"))}><PendingButton variant="btn">{t("ovp.duplicate")}</PendingButton></form>
-                </div>
-                <details className="rounded-xl border border-line">
-                  <summary className="cursor-pointer select-none px-4 py-2.5 text-sm font-medium">{t("ovp.more")}</summary>
-                  <div className="space-y-4 border-t border-line px-4 py-3">
-                    <form action={renamePageAction.bind(null, p.id)} className="flex flex-wrap items-end gap-3">
-                      <div className="min-w-56 flex-1">
-                        <label htmlFor={`rename-${p.id}`} className={ui.label}>{t("ovp.renameLabel")}</label>
-                        <input {...PLAIN_INPUT} id={`rename-${p.id}`} name="name" defaultValue={p.name} maxLength={60} required className={ui.input} />
-                      </div>
-                      <PendingButton variant="btn">{t("ovp.rename")}</PendingButton>
-                    </form>
-                    <div className="flex flex-wrap items-start gap-3">
-                      <form action={resetSecretAction.bind(null, p.id)}><ConfirmButton danger={false} message={t("ovp.resetConfirm")} confirmLabel={t("ovp.resetYes")} pendingLabel={t("ovp.resetting")}>{t("ovp.reset")}</ConfirmButton></form>
-                      <form action={deletePageAction.bind(null, p.id)}><ConfirmButton message={t("ovp.deleteConfirm", { name: p.name })} pendingLabel={t("ovp.deleting")}>{t("ovp.delete")}</ConfirmButton></form>
+        <section className="space-y-3" data-testid="overlay-pages-list">
+          {/* Live search from the first page on (R15); the state pills only appear when a page is turned off (the state then matters). */}
+          <LiveSearch scope="overlay-pages" placeholder={t("ovp.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
+            filters={activeCount < pages.length ? [{ key: "state", allLabel: t("table.all"), options: [{ value: "on", label: t("ovp.on"), count: activeCount }, { value: "off", label: t("ovp.off"), count: pages.length - activeCount }] }] : []} />
+          <ul className="space-y-3">
+            {pages.map((p) => {
+              const address = addresses.get(p.id) ?? null;
+              const testing = testActive(p.testUntil, now);
+              const size = `${p.width}×${p.height}`;
+              return (
+                <li key={p.id} className={`${ui.card} !p-4`} data-testid="overlay-page" data-live-item="overlay-pages" data-live-state={p.active ? "on" : "off"} data-search={searchText([p.name, size, p.active ? "" : t("ovp.off"), testing ? t("ovp.testChip") : ""])}>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-3">
+                    <div className="min-w-0 basis-full space-y-1 sm:flex-1 sm:basis-0">
+                      <p className="flex flex-wrap items-center gap-2">
+                        <Link href={overlayPageHref(p.id)} className="text-[15px] font-semibold [overflow-wrap:anywhere] hover:text-accent hover:underline">{p.name}</Link>
+                        {/* Only what sets a row apart (R14, R37): a page that is turned off, a page in test mode. */}
+                        {!p.active && <span className={ui.chip}>{t("ovp.off")}</span>}
+                        {testing && <span className={ui.chipWarn}>{t("ovp.testChip")}</span>}
+                      </p>
+                      <p className="text-sm text-muted">{size} · {t("ovp.elementCount", { n: p.elements.length })}</p>
+                      {!address && <p className="text-sm text-amber-700">{t("ovp.addressLost")}</p>}
                     </div>
-                    <p className={ui.help}>{t("ovp.resetHelp")}</p>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Switch quiet label={t("ovp.switch.label", { name: p.name })} checked={p.active} onText={t("ovp.on")} offText={t("ovp.off")} failedText={t("switch.failed")} onToggle={setPageActiveAction.bind(null, p.id)} testid="overlay-page-switch" />
+                      {address && <CopyAddress text={address} label={t("ovp.copy")} copied={t("ovp.copied")} manual={t("ovp.copyManual")} />}
+                      <Link href={overlayPageHref(p.id)} className={`${ui.btn} min-h-11`}>{t("ovp.edit")}</Link>
+                      <RowMenu label={t("ovp.rowMenu", { name: p.name })}>
+                        <form action={duplicatePageAction.bind(null, p.id, t("ovp.copySuffix"))}><PendingButton variant="menu">{t("ovp.duplicate")}</PendingButton></form>
+                        <FormDialog menu trigger={t("ovp.rename")} triggerLabel={t("ovp.renameFor", { name: p.name })} title={t("ovp.rename")} closeLabel={t("roles.close")} testid="overlay-page-rename">
+                          <form action={renamePageAction.bind(null, p.id)} className="flex flex-wrap items-end gap-3">
+                            <div className="min-w-56 flex-1">
+                              <label htmlFor={`rename-${p.id}`} className={ui.label}>{t("ovp.renameLabel")}</label>
+                              <input {...PLAIN_INPUT} id={`rename-${p.id}`} name="name" defaultValue={p.name} maxLength={60} required className={ui.input} />
+                            </div>
+                            <PendingButton variant="primary" pendingLabel={t("progress.saving")}>{t("ovp.renameButton")}</PendingButton>
+                          </form>
+                        </FormDialog>
+                        <form action={resetSecretAction.bind(null, p.id)}><ConfirmButton menu danger={false} message={t("ovp.resetConfirm")} confirmLabel={t("ovp.resetYes")} pendingLabel={t("ovp.resetting")}>{t("ovp.reset")}</ConfirmButton></form>
+                        <div className="mt-1 border-t border-line pt-1"><form action={deletePageAction.bind(null, p.id)}><ConfirmButton menu message={t("ovp.deleteConfirm", { name: p.name, n: p.elements.length })} confirmLabel={t("ovp.delete")} dangerConfirm pendingLabel={t("ovp.deleting")}>{t("ovp.delete")}</ConfirmButton></form></div>
+                      </RowMenu>
+                    </div>
                   </div>
-                </details>
-              </li>
-            );
-          })}
-        </ul>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
       )}
       {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
       <HostedSections page="obs.pages" base={OVERLAY_PAGES_HREF} tabs={["main", "skins"]} query={plainQuery(sp as Record<string, string | string[] | undefined>)} />

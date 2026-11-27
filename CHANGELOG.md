@@ -11,6 +11,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».
+- **(English) The overlay pages list reads like the other lists.** Live search, one switch per row, a “Copy the address” and an “Edit” button; the rest (duplicate, rename, change the secret address, delete) is in “⋯”.
+- **L'onglet « Adresses pour OBS » garde le titre « Pages d'overlay ».** Chaque ligne a un bouton vers la page ou le module qui produit l'adresse, et l'explication d'OBS passe dans une info-bulle.
+- **(English) The “Addresses for OBS” tab keeps the “Overlay pages” title.** Each row has a button to the page or module that produces the address, and the OBS how-to moves into a tooltip.
 - **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
 - **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.

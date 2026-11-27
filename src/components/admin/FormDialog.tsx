@@ -8,7 +8,7 @@ import { ui } from "./ui";
  * formulaire préparé côté serveur. Sert à sortir d'une ligne de liste ce qui demande plusieurs champs (« Modifier ce rôle »), pour que toutes les lignes gardent
  * la même hauteur (règle R16). `closeWhen` : la boîte se referme d'elle-même 1,2 s après (le temps de lire « Enregistré »).
  */
-export function FormDialog({ trigger, title, intro, closeLabel, children, closeWhen = false, onClose, wide = false, triggerLabel, testid, primary = false }: {
+export function FormDialog({ trigger, title, intro, closeLabel, children, closeWhen = false, onClose, wide = false, triggerLabel, testid, primary = false, menu = false }: {
   /** Texte du bouton qui ouvre la boîte. */
   trigger: string;
   title: string;
@@ -25,6 +25,8 @@ export function FormDialog({ trigger, title, intro, closeLabel, children, closeW
   testid?: string;
   /** The page's one main button (R3): full colour. All the others stay discreet. */
   primary?: boolean;
+  /** The trigger is an entry of a row's "⋯" menu (full width, 44 px) instead of a button. */
+  menu?: boolean;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const titleId = useId();
@@ -41,7 +43,7 @@ export function FormDialog({ trigger, title, intro, closeLabel, children, closeW
   }, [onClose]);
   return (
     <>
-      <button type="button" aria-label={triggerLabel} aria-haspopup="dialog" onClick={() => dialog.current?.showModal()} className={`${primary ? ui.btnPrimary : ui.btn} min-h-11 whitespace-nowrap sm:min-h-9 sm:py-1.5`} data-testid={testid}>{trigger}</button>
+      <button type="button" aria-label={triggerLabel} aria-haspopup="dialog" onClick={() => dialog.current?.showModal()} className={menu ? "flex min-h-11 w-full items-center justify-start gap-2 px-4 text-left text-sm transition hover:bg-bg" : `${primary ? ui.btnPrimary : ui.btn} min-h-11 whitespace-nowrap sm:min-h-9 sm:py-1.5`} data-testid={testid}>{trigger}</button>
       <dialog ref={dialog} aria-labelledby={titleId}
         onClick={(e) => { if (e.target === dialog.current) dialog.current?.close(); }}
         className={`m-auto max-h-[90vh] ${wide ? "w-[min(94vw,44rem)]" : "w-[min(94vw,34rem)]"} overflow-y-auto rounded-2xl border border-line bg-surface p-0 text-fg shadow-2xl backdrop:bg-black/60`}>
