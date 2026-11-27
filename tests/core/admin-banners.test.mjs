@@ -31,7 +31,6 @@ const ALLOWED_INFO = new Map([
   ["upkeep.status.todo", "upkeep verdict heading the list below"], ["upkeep.status.kept", "upkeep verdict heading the list below"], ["upkeep.status.clean", "upkeep verdict heading the list below"],
   ["domain.current.local", "the site is visited by a local address: says why the check is off"],
   ["updates.dontClose", "tells the person they can leave while the update runs"], ["updates.docker.unplanned", "how the update is done on this installation"], ["updates.docker.lastOk", "result of the last update"],
-  ["dashboard.welcome", "first-visit pointer (R26)"],
 ]);
 
 test("an information box with no action is a chip with a tooltip, not a banner (R32)", () => {

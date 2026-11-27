@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Le tableau de bord met en avant ce qui attend une action.** « À régler » passe en premier, une carte par ligne avec son bouton. Les chiffres n'apparaissent que s'ils mènent à une page que vous pouvez ouvrir.
+- **(English) The dashboard puts what needs an action first.** “To do” comes first, one card per line with its button. Numbers only show when they lead to a page you can open.
 - **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
 - **(English) An installed piece is called “module”, everywhere.** “Extension” and “feature” are gone from the texts of the site, the AI assistant, the journal and the maintenance messages; page addresses do not change. An automatic check keeps these words from coming back.
 - **Le catalogue de modules montre d'abord ce qu'on peut ajouter.** Les modules déjà installés passent derrière un interrupteur qui donne leur nombre, et ceux que votre version de Curiosa ne peut pas encore prendre sont repliés avec un lien pour la mettre à jour. La recherche annonce « n sur N ».
@@ -39,6 +41,10 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 - **(English) List switches no longer write “Active” on every row.** Their position, colour and a tick or a dash show the state; screen readers announce it together with the row name.
 - **Les tableaux annoncent leurs résultats et gardent des lignes régulières.** Le nombre de résultats d'une recherche est annoncé aux lecteurs d'écran, la colonne des actions a un en-tête lisible, les textes coupés se lisent en entier dans l'info-bulle et chaque ligne fait au moins 44 px.
 - **(English) Tables announce their results and keep regular rows.** The number of search results is announced to screen readers, the actions column has a readable header, cut-off text can be read in full in the tooltip, and every row is at least 44 px tall.
+- **Les rôles ont leur page.** « Rôles », dans « Administration », montre chaque rôle et le nombre de personnes qui l'ont. Créez, renommez, dupliquez ou supprimez un rôle et choisissez ce qu'il permet, sans jamais pouvoir donner ce qui est réservé au propriétaire.
+- **(English) Roles have their own page.** “Roles”, under “Administration”, shows each role and how many people hold it. Create, rename, duplicate or delete a role and pick what it allows, never able to give what is reserved to the owner.
+- **Inviter une personne dit ce qui se passe.** Quand le site ne peut pas envoyer de courriel, le bouton s'appelle « Créer un lien d'invitation » et vous copiez le lien avec « Copier le lien d'invitation ». Le bouton « Enregistrer » du changement de rôle reste grisé tant que rien n'a changé.
+- **(English) Inviting a person says what happens.** When the site cannot send e-mail, the button reads “Create an invitation link” and you copy the link with “Copy the invitation link”. The save button of a role change stays greyed out until something changes.
 
 ### Corrections
 

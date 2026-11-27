@@ -17,7 +17,9 @@ import { isEmailLocked, formatUntil } from "@/core/auth/lockout";
 import { getSetting } from "@/core/settings";
 import { MIN_PASSWORD_LENGTH } from "@/core/auth/passwordPolicy";
 import { TemporaryPasswordButton } from "@/components/admin/TemporaryPasswordButton";
-import { Tabs } from "@/components/admin/Tabs";
+import { LinkTabs } from "@/components/admin/LinkTabs";
+import { LegacyHash } from "@/components/admin/LegacyHash";
+import { ROLES_HREF, USERS_HREF } from "@/core/adminLinks";
 import { currentCatalogue, levelOf } from "@/core/auth/access";
 import { rightLabel } from "@/core/auth/describe";
 import type { Level } from "@/core/auth/rights";
@@ -27,7 +29,6 @@ import { createUser, deleteUser, inviteAction, reactivateUser, resendInvitationA
 import { FormDialog } from "@/components/admin/FormDialog";
 import { DEFAULT_TTL_HOURS, listInvitations, TTL_CHOICES_HOURS, type InviteStatus } from "@/core/auth/invitations";
 import { isMailConfigured } from "@/core/services/mail";
-import { RolesPanel } from "./RolesPanel";
 import { PersonAiOverride } from "@/components/admin/PersonAiOverride";
 import { countOwned, eligibleOwners, mayOwnAccess, ownerOptions } from "@/core/personalAi/owners";
 import { setPersonAiOverrideAction } from "../assistants/actions";
@@ -71,7 +72,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * droits résumés, dernière activité du Journal central), les ajoute depuis le même panneau et ouvre leur fiche de droits fins (page « Assistants IA », inchangée).
  * Les autres ne voient rien de plus qu'avant. Un assistant n'est pas une personne : ni rôle, ni mot de passe, ni double vérification (voir mcp/teamView.ts).
  */
-export default async function UsersPage({ searchParams }: { searchParams: Promise<{ assistant?: string }> }) {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ assistant?: string; q?: string }> }) {
   const { t, user, locale, config, advanced } = await adminCtx("admin");
   const query = await searchParams;
   const users = await prisma.user.findMany({ orderBy: { createdAt: "asc" }, include: { _count: { select: { passkeys: true } }, roles: { include: { role: { select: { id: true, key: true, name: true, system: true, rights: true } } } } } });
@@ -255,12 +256,13 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
     <div className="space-y-4">
       {canTeam && (
         <div className="flex flex-wrap items-center gap-3">
-          <FormDialog primary={!ai} trigger={t("invite.button")} title={t("invite.title")} closeLabel={t("roles.close")} testid="invite-open">
-            <ActionForm action={inviteAction} submitLabel={t("invite.submit")} pendingLabel={t("progress.sending")} reset>
+          <FormDialog primary={!ai} trigger={t(mailOn ? "invite.button" : "invite.button.link")} title={t(mailOn ? "invite.title" : "invite.title.link")} closeLabel={t("roles.close")} testid="invite-open">
+            <ActionForm action={inviteAction} submitLabel={t(mailOn ? "invite.submit" : "invite.submit.link")} pendingLabel={t(mailOn ? "progress.sending" : "progress.creating")} reset>
               {!mailOn && <p className="text-sm font-medium" data-testid="invite-no-mail">{t("invite.noMail")}</p>}
               <TextField name="email" type="email" label={t("field.email")} required example={t("users.emailExample")} autoComplete="off" />
               {roleField}
               <MoreOptions title={t("invite.more")} summary={t("invite.moreSummary")}>{ttlField("invite-ttl")}</MoreOptions>
+              {canRoles && <p className="text-sm"><a href={ROLES_HREF} className="text-accent underline underline-offset-2" data-testid="invite-manage-roles">{t("invite.manageRoles")}</a></p>}
             </ActionForm>
           </FormDialog>
         </div>
@@ -287,7 +289,7 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
       )}
 
       <Panel title={t("users.team", { n: users.length + (ai?.count ?? 0) })} help={t(mixed ? "team.listHelp" : "users.listHelp")} testid="team">
-        <LiveSearch scope="team" placeholder={t(mixed ? "team.search" : "users.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
+        <LiveSearch scope="team" initialQuery={(query.q ?? "").slice(0, 80)} placeholder={t(mixed ? "team.search" : "users.search")} noneLabel={t("search.none")} clearLabel={t("search.clear")} countLabel={t("search.count")}
           filters={mixed
             ? [{ key: "who", allLabel: t("team.filter.all"), options: [
                 { value: "person", label: t("team.filter.people"), count: users.length },
@@ -366,8 +368,8 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 },
                 actions: open ? (
                   <>
-                    <FormDialog trigger={t("invite.resend")} triggerLabel={t("invite.resendFor", { email: i.email })} title={t("invite.resendTitle", { email: i.email })} closeLabel={t("roles.close")} testid="invite-resend-open">
-                      <ActionForm action={resendInvitationAction.bind(null, i.id)} submitLabel={t("invite.resendSubmit")} pendingLabel={t("progress.sending")}>
+                    <FormDialog trigger={t(mailOn ? "invite.resend" : "invite.resend.link")} triggerLabel={t(mailOn ? "invite.resendFor" : "invite.resendFor.link", { email: i.email })} title={t("invite.resendTitle", { email: i.email })} closeLabel={t("roles.close")} testid="invite-resend-open">
+                      <ActionForm action={resendInvitationAction.bind(null, i.id)} submitLabel={t("invite.resendSubmit")} pendingLabel={t(mailOn ? "progress.sending" : "progress.creating")}>
                         {ttlField(`resend-ttl-${i.id}`)}
                       </ActionForm>
                     </FormDialog>
@@ -394,13 +396,14 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
   return (
     <div className="space-y-8">
       <PageHeader title={t("nav.users")} intro={t(ai ? "team.intro" : "users.intro")} />
-      {/* Rôles : droit `core:roles` (propriétaire, coordinateur technique). Pour les autres, la page reste celle d'avant. */}
-      {canRoles ? (
-        <Tabs tabs={[{ id: "team", label: t("users.tab.team") }, { id: "roles", label: t("users.tab.roles") }]}>
-          {team}
-          <div data-tab="roles"><RolesPanel roles={allRoles} catalogue={catalogue} held={user.rights} isOwner={user.level === "owner"} t={t} locale={locale} defaultLocale={config.defaultLocale} /></div>
-        </Tabs>
-      ) : team}
+      {/* Roles have their own page (core:roles). The old address of the tab (#roles) leads there. */}
+      {canRoles && (
+        <>
+          <LegacyHash map={{ roles: ROLES_HREF }} />
+          <LinkTabs label={t("users.tabs.label")} current="team" tabs={[{ id: "team", href: USERS_HREF, label: t("users.tab.team") }, { id: "roles", href: ROLES_HREF, label: t("users.tab.roles") }]} />
+        </>
+      )}
+      {team}
     </div>
   );
 }

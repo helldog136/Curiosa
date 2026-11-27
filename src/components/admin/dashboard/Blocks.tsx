@@ -7,7 +7,7 @@ import { statsEnabled, statsSummary } from "@/core/stats";
 import { ui } from "@/components/admin/ui";
 import { loadInstanceStatuses } from "@/core/modules/integrations";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
-import { loadCoreTodo, mergeTodo, type TodoNavItem } from "@/core/dashboard/todo";
+import { loadCoreTodo, mergeTodo, type TodoItem, type TodoNavItem } from "@/core/dashboard/todo";
 import { moduleActions, moduleCards, moduleTasks, type DashboardEnv } from "@/core/dashboard/modules";
 import { coreQuickActions, mergeQuick } from "@/core/dashboard/quick";
 import { recentActivity } from "@/core/dashboard/activity";
@@ -21,6 +21,9 @@ import { storageInfo } from "@/core/storage/service";
 import { presentStorage } from "@/core/storage/present";
 import { PendingButton } from "@/components/admin/PendingButton";
 import { Callout } from "@/components/admin/Page";
+import { AttentionCard, type AttentionTone } from "@/components/admin/AttentionCard";
+import { ChecklistCard, type ChecklistStep } from "@/components/admin/ChecklistCard";
+import { checklistLabels } from "@/components/admin/brickLabels";
 import { MoreOptions } from "@/components/admin/MoreOptions";
 import { APPEARANCE_HREF, AUDIT_HREF, SETTINGS_HREF, SOCIAL_HREF } from "@/core/adminLinks";
 
@@ -50,28 +53,17 @@ export async function SetupBlock({ c }: { c: BlockCtx }) {
   const state = await loadSetup({ contentInstanceIds: c.contentIds, locale: c.locale, links: { settings: SETTINGS_HREF, appearance: APPEARANCE_HREF, social: SOCIAL_HREF, newPage: c.newPageHref } }).catch(() => null);
   if (!state?.visible) return null;
   const { t } = c;
+  // R8, R26: the checklist card draws the steps and the action of the NEXT one only; the list goes away on its own when every step is done.
+  const steps: ChecklistStep[] = state.steps.map((s) => ({
+    id: s.id,
+    label: t(`dash.setup.${s.id}`),
+    done: s.done,
+    action: !s.done && canOpen(c.user, s.href, c.owners) ? <a href={s.href} className={`${ui.btn} min-h-11`} aria-label={`${t(`dash.setup.act.${s.id}`)} (${t(`dash.setup.${s.id}`)})`}>{t(`dash.setup.act.${s.id}`)}</a> : undefined,
+  }));
   return (
-    <section aria-labelledby="dash-setup" data-testid="dash-setup" className={`${ui.card} space-y-3`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="dash-setup" className="text-lg font-semibold">{t("dash.setup.title")}</h2>
-        </div>
-        <form action={hideSetup}><button type="submit" className={`${ui.btn} min-h-11`}>{t("dash.setup.hide")}</button></form>
-      </div>
-      <div>
-        <div role="progressbar" aria-valuemin={0} aria-valuemax={state.total} aria-valuenow={state.done} aria-label={t("dash.setup.progress", { done: state.done, total: state.total })} className="h-2 overflow-hidden rounded-full bg-line">
-          <div className="h-full rounded-full bg-accent" style={{ width: `${state.percent}%` }} />
-        </div>
-        <p className="mt-1 text-xs text-muted">{t("dash.setup.progress", { done: state.done, total: state.total })}</p>
-      </div>
-      <ul className="divide-y divide-line">
-        {state.steps.map((s) => (
-          <li key={s.id} className="flex items-center justify-between gap-3 py-2">
-            <span className="flex min-w-0 items-center gap-2"><span aria-hidden="true">{s.done ? "✅" : "⬜"}</span><span className={s.done ? "text-muted line-through" : "font-medium"}>{t(`dash.setup.${s.id}`)}</span></span>
-            {!s.done && canOpen(c.user, s.href, c.owners) && <a href={s.href} className={`${ui.btn} min-h-11`}>{t("dash.setup.go")}{ARROW}</a>}
-          </li>
-        ))}
-      </ul>
+    <section data-testid="dash-setup" className="space-y-2">
+      <ChecklistCard title={t("dash.setup.title")} steps={steps} labels={checklistLabels(t)} level={2} testid="dash-setup-card" />
+      <form action={hideSetup} className="flex justify-end"><button type="submit" className={`${ui.btn} min-h-11`}>{t("dash.setup.hide")}</button></form>
     </section>
   );
 }
@@ -110,56 +102,61 @@ export async function StorageBlock({ c }: { c: BlockCtx }) {
   if (!info) return null;
   const v = presentStorage(info, t, locale);
   const measured = info.measuredAt ? new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" }).format(new Date(info.measuredAt)) : null;
+  // Folded to one line (the state in words) while all is well; open as soon as the disk needs a look, which is where the health points lead (#storage).
   return (
-    <section id="storage" aria-labelledby="dash-storage" data-testid="dash-storage" className={`${ui.card} scroll-mt-20 space-y-3`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h2 id="dash-storage" className="text-lg font-semibold">{t("storage.title")}</h2>
-          <p className="mt-1 text-sm text-muted">{t("storage.intro")}</p>
+    <div data-testid="dash-storage" className="scroll-mt-20">
+      <MoreOptions id="storage" title={t("storage.title")} summary={v.level === "unknown" ? undefined : v.stateText} defaultOpen={v.level !== "ok" && v.level !== "unknown"}>
+        <div className="flex items-center justify-end gap-2">
+          <HelpTip help={t("storage.intro")} name={t("storage.title")} always />
+          <form action={refreshStorage}><PendingButton pendingLabel={t("storage.measuring")} testid="storage-refresh">{t("storage.refresh")}</PendingButton></form>
         </div>
-        <form action={refreshStorage}><PendingButton pendingLabel={t("storage.measuring")} testid="storage-refresh">{t("storage.refresh")}</PendingButton></form>
-      </div>
-      {v.level === "unknown" ? (
-        <p className="text-sm text-muted" data-testid="storage-unknown">{t("storage.unknown")}</p>
-      ) : (
-        <>
-          <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v.usedShare)} aria-label={t("storage.barLabel", { used: String(Math.round(v.usedShare)) })} className="flex h-3 overflow-hidden rounded-full bg-line">
-            <div className="h-full bg-accent" style={{ width: `${v.barSite}%` }} />
-            <div className="h-full bg-muted/50" style={{ width: `${v.barOther}%` }} />
-          </div>
-          {v.legend && (
-            <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-testid="storage-legend">
-              {v.legend.map((l) => (
-                <li key={l.id} className="flex items-center gap-1.5">
-                  <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${l.id === "site" ? "bg-accent" : l.id === "other" ? "bg-muted/50" : "border border-line bg-line"}`} />
-                  <span className="text-muted">{l.label}</span> <span className="font-medium">{l.text}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="text-sm" data-testid="storage-sentence">
-            <span aria-hidden="true">{v.icon} </span><span className="font-medium">{v.stateText}</span>
-          </p>
-          {v.pending && <p className="text-sm text-muted" role="status" data-testid="storage-pending">{t("storage.pending")}</p>}
-          {v.warning && <Callout tone={v.level === "critical" ? "danger" : "warn"} role="status" testid="storage-warning">{v.warning}</Callout>}
-          <MoreOptions title={t("storage.details")} summary={v.categories ? undefined : t("storage.pendingShort")} defaultOpen={v.level !== "ok"}>
-            {v.categories ? (
-              <>
-                <ul className="divide-y divide-line text-sm" data-testid="storage-categories">
-                  {v.categories.map((cat) => <li key={cat.id} className="flex items-center justify-between gap-3 py-2"><span>{cat.label}</span><span className="text-muted">{cat.text}</span></li>)}
-                </ul>
-                {v.partial && <p className="text-sm text-muted">{t("storage.partial")}</p>}
-                <p className="text-xs text-muted">{t("storage.disk", { free: v.freeText ?? "", total: v.totalText ?? "" })}{measured ? ` · ${t("storage.measuredAt", { when: measured })}` : ""}</p>
-              </>
-            ) : <p className="text-sm text-muted">{t("storage.pending")}</p>}
-          </MoreOptions>
-        </>
-      )}
-    </section>
+        {v.level === "unknown" ? (
+          <p className="text-sm text-muted" data-testid="storage-unknown">{t("storage.unknown")}</p>
+        ) : (
+          <>
+            <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(v.usedShare)} aria-label={t("storage.barLabel", { used: String(Math.round(v.usedShare)) })} className="flex h-3 overflow-hidden rounded-full bg-line">
+              <div className="h-full bg-accent" style={{ width: `${v.barSite}%` }} />
+              <div className="h-full bg-muted/50" style={{ width: `${v.barOther}%` }} />
+            </div>
+            {v.legend && (
+              <ul className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-testid="storage-legend">
+                {v.legend.map((l) => (
+                  <li key={l.id} className="flex items-center gap-1.5">
+                    <span aria-hidden="true" className={`inline-block h-2.5 w-2.5 rounded-full ${l.id === "site" ? "bg-accent" : l.id === "other" ? "bg-muted/50" : "border border-line bg-line"}`} />
+                    <span className="text-muted">{l.label}</span> <span className="font-medium">{l.text}</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <p className="text-sm" data-testid="storage-sentence">
+              <span aria-hidden="true">{v.icon} </span><span className="font-medium">{v.stateText}</span>
+            </p>
+            {v.pending && <p className="text-sm text-muted" role="status" data-testid="storage-pending">{t("storage.pending")}</p>}
+            {v.warning && <Callout tone={v.level === "critical" ? "danger" : "warn"} role="status" testid="storage-warning">{v.warning}</Callout>}
+            <MoreOptions title={t("storage.details")} summary={v.categories ? undefined : t("storage.pendingShort")} defaultOpen={v.level !== "ok"}>
+              {v.categories ? (
+                <>
+                  <ul className="divide-y divide-line text-sm" data-testid="storage-categories">
+                    {v.categories.map((cat) => <li key={cat.id} className="flex items-center justify-between gap-3 py-2"><span>{cat.label}</span><span className="text-muted">{cat.text}</span></li>)}
+                  </ul>
+                  {v.partial && <p className="text-sm text-muted">{t("storage.partial")}</p>}
+                  <p className="text-xs text-muted">{t("storage.disk", { free: v.freeText ?? "", total: v.totalText ?? "" })}{measured ? ` · ${t("storage.measuredAt", { when: measured })}` : ""}</p>
+                </>
+              ) : <p className="text-sm text-muted">{t("storage.pending")}</p>}
+            </MoreOptions>
+          </>
+        )}
+      </MoreOptions>
+    </div>
   );
 }
 
 // ── À faire ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
+
+/** How serious each kind of line is: a missing backup or a module to set up blocks something; an update can wait (the tone is also a shape, never colour alone). */
+const TODO_TONE: Record<TodoItem["kind"], AttentionTone> = { ai: "warn", setup: "warn", backup: "warn", drafts: "info", "update-core": "info", "update-modules": "info", "update-skins": "info", badge: "info", module: "info" };
+/** Lines shown at once; the rest is one fold away (R33: the first screen holds what matters most). */
+export const TODO_VISIBLE = 5;
 
 export async function TodoBlock({ c }: { c: BlockCtx }) {
   const { t } = c;
@@ -173,19 +170,20 @@ export async function TodoBlock({ c }: { c: BlockCtx }) {
   const items = openable(c.user, mergeTodo(core, mods), c.owners);
   // R33: an empty "to do" card shows nothing.
   if (items.length === 0) return null;
+  // One card per line, each with its own verb (R3); a card without an action draws nothing, so a line always leads somewhere.
+  const card = (i: TodoItem) => {
+    const go = t(`dash.todo.go.${i.kind}`);
+    return (
+      <AttentionCard key={i.id} tone={TODO_TONE[i.kind]} title={i.label} reason={i.detail}
+        action={<a href={i.href} data-testid={i.kind === "setup" ? "todo-setup" : undefined} className={`${ui.btn} min-h-11`} aria-label={`${go} (${i.label})`}>{go}</a>} />
+    );
+  };
+  const shown = items.slice(0, TODO_VISIBLE), rest = items.slice(TODO_VISIBLE);
   return (
-    <section aria-labelledby="dash-todo" data-testid="todo" className={`${ui.card} space-y-2`}>
+    <section id="todo" aria-labelledby="dash-todo" data-testid="todo" className="scroll-mt-20 space-y-3">
       <h2 id="dash-todo" className="text-lg font-semibold">{t("dash.todo.title")}</h2>
-      <ul className="space-y-1">
-        {items.map((i) => (
-          <li key={i.id}>
-            <a href={i.href} data-testid={i.kind === "setup" ? "todo-setup" : undefined} className={`${row} flex-wrap`}>
-              <span className="min-w-0 flex-1 basis-56"><span aria-hidden="true">{i.icon} </span>{i.label}{i.detail && <span className="block text-xs text-muted">{i.detail}</span>}</span>
-              <span className="inline-flex items-center gap-2 text-sm font-medium text-accent">{i.count ? <span className="rounded-full bg-accent px-2 text-sm font-semibold text-accent-fg">{i.count}</span> : null}{t("dash.todo.open")}{ARROW}</span>
-            </a>
-          </li>
-        ))}
-      </ul>
+      <div className="space-y-3">{shown.map(card)}</div>
+      {rest.length > 0 && <MoreOptions title={t("dash.todo.more", { n: rest.length })}><div className="space-y-3">{rest.map(card)}</div></MoreOptions>}
     </section>
   );
 }
@@ -202,7 +200,7 @@ export async function CreateBlock({ c }: { c: BlockCtx }) {
     <section aria-labelledby="dash-create" data-testid="dash-create" className="space-y-3">
       <h2 id="dash-create" className="text-lg font-semibold">{t("dash.create.title")}</h2>
       {actions.length === 0 ? (
-        <p className="text-sm" data-testid="create-none"><a href={EXTENSIONS_ADD_HREF} className="underline hover:text-accent">{t("dash.create.add")}{ARROW}</a></p>
+        <p data-testid="create-none"><a href={EXTENSIONS_ADD_HREF} className={`${ui.btn} min-h-11`}>{t("dash.create.add")}</a></p>
       ) : (
         <ul className="flex flex-wrap gap-2">
           {actions.map((a) => <li key={a.id}><a href={a.href} className={`${ui.btn} min-h-11`}><span aria-hidden="true">{a.icon}</span>{a.label}</a></li>)}
@@ -218,23 +216,22 @@ export async function ActivityBlock({ c }: { c: BlockCtx }) {
   const { t, locale } = c;
   const { lines, fullJournal } = await recentActivity(c.user, { t, locale, defaultLocale: c.defaultLocale, advanced: c.advanced });
   const when = new Intl.DateTimeFormat(locale, { dateStyle: "medium", timeStyle: "short" });
-  // R33: no recent activity, nothing to show.
+  // R33: no recent activity, nothing to show. The last block, folded to one line that counts the events.
   if (lines.length === 0) return null;
   return (
-    <section aria-labelledby="dash-activity" data-testid="dash-activity" className={`${ui.card} space-y-3`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="dash-activity" className="text-lg font-semibold">{t("dash.activity.title")}</h2>
-        {fullJournal && c.advanced && <a href={AUDIT_HREF} className="text-sm underline hover:text-accent">{t("dash.activity.all")}{ARROW}</a>}
-      </div>
-      <ul className="divide-y divide-line">
-        {lines.map((l) => (
-          <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
-            <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.similar > 0 ? <span className="text-muted"> · {t("dash.activity.similar", { count: l.similar })}</span> : l.target && <span className="text-muted"> · {l.target}</span>}</span>
-            <span className="text-xs text-muted">{t("dash.activity.by", { who: l.who })} · <time dateTime={l.when.toISOString()}>{when.format(l.when)}</time></span>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div data-testid="dash-activity">
+      <MoreOptions title={t("dash.activity.title")} summary={t("dash.activity.count", { n: lines.length })}>
+        <ul className="divide-y divide-line">
+          {lines.map((l) => (
+            <li key={l.id} className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5 py-2">
+              <span className="min-w-0 flex-1 basis-56 break-words">{l.sentence}{l.similar > 0 ? <span className="text-muted"> · {t("dash.activity.similar", { count: l.similar })}</span> : l.target && <span className="text-muted"> · {l.target}</span>}</span>
+              <span className="text-xs text-muted">{t("dash.activity.by", { who: l.who })} · <time dateTime={l.when.toISOString()}>{when.format(l.when)}</time></span>
+            </li>
+          ))}
+        </ul>
+        {fullJournal && c.advanced && <a href={AUDIT_HREF} className="inline-block text-sm underline hover:text-accent">{t("dash.activity.all")}{ARROW}</a>}
+      </MoreOptions>
+    </div>
   );
 }
 
@@ -251,61 +248,58 @@ export async function VisitsBlock({ c }: { c: BlockCtx }) {
   const { t } = c;
   const [o, pages, links, stats] = await Promise.all([visitsOverview(), topPagesTitled({ t, locale: c.locale, defaultLocale: c.defaultLocale }).catch(() => []), topLinks().catch(() => ({ enabled: false, links: [] })), statsSummary()]);
   const peak = Math.max(1, ...o.days.map((d) => d.visitors));
+  const hasRobots = stats.robots.last30.total > 0;
+  // R33: with no visit, no robot and no list there is nothing to read or act on: the block is not drawn.
+  if (o.empty && !hasRobots && pages.length === 0 && links.links.length === 0 && stats.topSources.length === 0) return null;
   return (
-    <section aria-labelledby="dash-visits" data-testid="visits" className={`${ui.card} space-y-4`}>
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <h2 id="dash-visits" className="text-lg font-semibold">{t("dashboard.visits")}</h2>
-        <p className="text-xs text-muted">{t("dashboard.visitsPrivacy")}</p>
-      </div>
-      {o.empty ? (
-        <p className="text-sm text-muted">{t("dashboard.visitsEmpty")}</p>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div><p className="text-2xl font-bold">{o.today.visitors}</p><p className="text-xs text-muted">{t("dashboard.visits.today")}</p></div>
-            <div><p className="text-2xl font-bold">{o.week.current.visitors}</p><p className="text-xs text-muted">{t("dash.visits.last7")}</p><Change c={c} cmp={o.week} /></div>
-            <div><p className="text-2xl font-bold">{o.month.current.visitors}</p><p className="text-xs text-muted">{t("dash.visits.last30")}</p><Change c={c} cmp={o.month} /></div>
-          </div>
-          <div className="flex h-20 items-end gap-px" role="img" aria-label={t("dashboard.visitsChart")}>
-            {o.days.map((d) => <div key={d.day} title={`${d.day} : ${d.visitors}`} className="min-h-px flex-1 rounded-t bg-accent/70" style={{ height: `${Math.max(2, (d.visitors / peak) * 100)}%`, opacity: d.visitors ? 1 : 0.25 }} />)}
-          </div>
-        </>
-      )}
-      <div data-testid="robots">
-        <h3 className="mb-1 text-sm font-semibold">{t("dash.robots.title")}</h3>
-        {stats.robots.last30.total === 0 ? (
-          <p className="text-sm text-muted">{t("dash.robots.none")}</p>
-        ) : (
-          <div className="grid grid-cols-2 gap-3">
-            <div><p className="text-2xl font-bold">{stats.robots.last30.total}</p><p className="text-xs text-muted">{t("dash.robots.total")}</p></div>
-            <div><p className="text-2xl font-bold">{stats.robots.last30.ai}</p><p className="text-xs text-muted">{t("dash.robots.ai")}</p></div>
+    <div data-testid="visits">
+      <MoreOptions title={t("dashboard.visits")} summary={o.empty ? t("dashboard.visitsEmpty") : t("dash.visits.summary", { n: o.month.current.visitors })}>
+        {!o.empty && (
+          <>
+            <div className="flex items-center gap-1.5 text-xs text-muted">{t("dash.visits.visitors")}<HelpTip help={t("dashboard.visitsPrivacy")} name={t("dashboard.visits")} always /></div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+              <div><p className="text-2xl font-bold">{o.today.visitors}</p><p className="text-xs text-muted">{t("dashboard.visits.today")}</p></div>
+              <div><p className="text-2xl font-bold">{o.week.current.visitors}</p><p className="text-xs text-muted">{t("dash.visits.last7")}</p><Change c={c} cmp={o.week} /></div>
+              <div><p className="text-2xl font-bold">{o.month.current.visitors}</p><p className="text-xs text-muted">{t("dash.visits.last30")}</p><Change c={c} cmp={o.month} /></div>
+            </div>
+            <div className="flex h-20 items-end gap-px" role="img" aria-label={t("dashboard.visitsChart")}>
+              {o.days.map((d) => <div key={d.day} title={`${d.day} : ${d.visitors}`} className="min-h-px flex-1 rounded-t bg-accent/70" style={{ height: `${Math.max(2, (d.visitors / peak) * 100)}%`, opacity: d.visitors ? 1 : 0.25 }} />)}
+            </div>
+          </>
+        )}
+        {hasRobots && (
+          <div data-testid="robots">
+            <h3 className="mb-1 flex items-center gap-1.5 text-sm font-semibold">{t("dash.robots.title")}<HelpTip help={t("dash.robots.hint")} name={t("dash.robots.title")} always /></h3>
+            <div className="grid grid-cols-2 gap-3">
+              <div><p className="text-2xl font-bold">{stats.robots.last30.total}</p><p className="text-xs text-muted">{t("dash.robots.total")}</p></div>
+              <div><p className="text-2xl font-bold">{stats.robots.last30.ai}</p><p className="text-xs text-muted">{t("dash.robots.ai")}</p></div>
+            </div>
           </div>
         )}
-        <p className="mt-1 text-xs text-muted">{t("dash.robots.hint")}</p>
-      </div>
-      {(pages.length > 0 || links.links.length > 0 || stats.topSources.length > 0) && (
-        <div className="grid gap-4 sm:grid-cols-2">
-          {pages.length > 0 && (
-            <div>
-              <h3 className="mb-1 text-sm font-semibold">{t("dashboard.topPages")}</h3>
-              <ul className="space-y-0.5 text-sm">{pages.map((p) => <li key={p.path} className="flex justify-between gap-3"><a href={p.path} target="_blank" rel="noopener" className="truncate underline-offset-2 hover:text-accent hover:underline" title={p.path}>{p.title}</a><span className="text-muted">{p.views}</span></li>)}</ul>
-            </div>
-          )}
-          {links.links.length > 0 && (
-            <div>
-              <h3 className="mb-1 text-sm font-semibold">{t("dash.visits.links")}</h3>
-              <ul className="space-y-0.5 text-sm">{links.links.map((l) => <li key={l.destination} className="flex justify-between gap-3"><span className="truncate" title={l.destination}>{l.destination.replace(/^https?:\/\/(www\.)?/, "")}<span className="text-muted"> · {l.shortLinks.slice(0, 2).join(", ")}</span></span><span className="text-muted">{t("dash.visits.clicks", { n: l.month })}</span></li>)}</ul>
-            </div>
-          )}
-          {stats.topSources.length > 0 && (
-            <div>
-              <h3 className="mb-1 text-sm font-semibold">{t("dashboard.topSources")}</h3>
-              <ul className="space-y-0.5 text-sm">{stats.topSources.map((s) => <li key={s.host} className="flex justify-between gap-3"><span className="truncate">{s.host}</span><span className="text-muted">{s.views}</span></li>)}</ul>
-            </div>
-          )}
-        </div>
-      )}
-    </section>
+        {(pages.length > 0 || links.links.length > 0 || stats.topSources.length > 0) && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {pages.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-sm font-semibold">{t("dashboard.topPages")}</h3>
+                <ul className="space-y-0.5 text-sm">{pages.map((p) => <li key={p.path} className="flex justify-between gap-3"><a href={p.path} target="_blank" rel="noopener" className="truncate underline-offset-2 hover:text-accent hover:underline" title={p.path}>{p.title}</a><span className="text-muted">{p.views}</span></li>)}</ul>
+              </div>
+            )}
+            {links.links.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-sm font-semibold">{t("dash.visits.links")}</h3>
+                <ul className="space-y-0.5 text-sm">{links.links.map((l) => <li key={l.destination} className="flex justify-between gap-3"><span className="truncate" title={l.destination}>{l.destination.replace(/^https?:\/\/(www\.)?/, "")}<span className="text-muted"> · {l.shortLinks.slice(0, 2).join(", ")}</span></span><span className="text-muted">{t("dash.visits.clicks", { n: l.month })}</span></li>)}</ul>
+              </div>
+            )}
+            {stats.topSources.length > 0 && (
+              <div>
+                <h3 className="mb-1 text-sm font-semibold">{t("dashboard.topSources")}</h3>
+                <ul className="space-y-0.5 text-sm">{stats.topSources.map((s) => <li key={s.host} className="flex justify-between gap-3"><span className="truncate">{s.host}</span><span className="text-muted">{s.views}</span></li>)}</ul>
+              </div>
+            )}
+          </div>
+        )}
+      </MoreOptions>
+    </div>
   );
 }
 
@@ -316,7 +310,7 @@ export async function CardsBlock({ c, max }: { c: BlockCtx; max: number }) {
   const cards = (await moduleCards(env(c)).catch(() => [])).slice(0, max);
   if (cards.length === 0) return null;
   return (
-    <section aria-label="Modules" data-testid="dash-cards" className="grid gap-4 sm:grid-cols-2">
+    <section aria-label={c.t("dashboard.modules")} data-testid="dash-cards" className="grid gap-4 sm:grid-cols-2">
       {cards.map((card) => {
         const body = (
           <>

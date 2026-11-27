@@ -5,7 +5,7 @@
 export const AUDIT_ACTIONS = [
   "invite.create", "invite.resend", "invite.revoke", "invite.accept", "invite.expire", "invite.denied", "user.suspend", "user.reactivate", "password.reset.request", "password.reset.done",
   "login", "login.recovery", "login.passkey", "login.locked", "setup.completed",
-  "user.create", "user.delete", "user.role", "user.roles", "role.create", "role.update", "role.delete", "access.denied", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
+  "user.create", "user.delete", "user.role", "user.roles", "role.create", "role.update", "role.duplicate", "role.delete", "access.denied", "user.password", "user.password.reset", "user.password.chosen", "user.unlock", "user.sessions.revoke",
   "user.2fa.enable", "user.2fa.disable", "user.2fa.reset", "user.2fa.codes", "user.passkey.add", "user.passkey.remove",
   "security.2fa.require", "security.2fa.optional",
   "entry.create", "entry.update", "entry.delete", "entry.deleteTranslation", "entry.publish", "entry.unpublish", "entry.meta.update",
