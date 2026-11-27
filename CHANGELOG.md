@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **« Comptes et connexions » est un seul tableau.** Chaque compte et chaque connexion est une ligne, avec son type, son état et la raison. Recherche en direct, filtres et un seul bouton par ligne.
+- **(English) “Accounts and connections” is one table.** Each account and connection is one row, with its type, its state and the reason. Live search, filters and one button per row.
 - **La liste des pages d'overlay se lit comme les autres listes.** Une recherche en direct, un interrupteur par ligne, un bouton « Copier l'adresse » et « Modifier » ; le reste (dupliquer, renommer, changer l'adresse secrète, supprimer) est dans « ⋯ ».
 - **(English) The overlay pages list reads like the other lists.** Live search, one switch per row, a “Copy the address” and an “Edit” button; the rest (duplicate, rename, change the secret address, delete) is in “⋯”.
 - **L'onglet « Adresses pour OBS » garde le titre « Pages d'overlay ».** Chaque ligne a un bouton vers la page ou le module qui produit l'adresse, et l'explication d'OBS passe dans une info-bulle.

@@ -51,6 +51,8 @@ type Props = {
   track?: string;
   /** Identifiant du formulaire : des champs ailleurs dans la page peuvent s'y rattacher par `form="…"` (leurs valeurs partent avec lui). */
   id?: string;
+  /** (C5c) Called once after each successful save (the edit window of an account closes itself with it). */
+  onSaved?: () => void;
   /** (C5b) The send button is inactive (nothing to save yet: a role dialog whose choice has not changed). The server still checks everything. */
   submitDisabled?: boolean;
 };
@@ -78,7 +80,7 @@ function snapshot(form: HTMLFormElement): string {
 }
 
 /** Formulaire branché sur une action serveur, avec retour d'erreur / succès. */
-export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, submitDisabled }: Props) {
+export function ActionForm({ action, children, submitLabel, className = "space-y-4", hideSubmit, secondary, danger, confirm: confirmMessage, reset = false, submitTabs, floating, pendingLabel, track, id: formId, submitDisabled, onSaved }: Props) {
   const [state, formAction, pending] = useActionState(action, null);
   const p = useProgressText();
   const tracker = useTrackedRun();
@@ -111,6 +113,10 @@ export function ActionForm({ action, children, submitLabel, className = "space-y
     if (track) data.set("_op", tracker.begin());
     startTransition(() => formAction(data));
   }
+  useEffect(() => {
+    if (state?.ok && !state.error && !state.errors) onSaved?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state]);
   useEffect(() => {
     if (!state || !ref.current) return;
     if (state.ok && reset) ref.current.reset();

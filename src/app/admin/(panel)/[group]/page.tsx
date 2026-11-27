@@ -4,10 +4,15 @@ import { adminCtx } from "@/core/admin";
 import { adminTitle } from "@/core/adminTitle";
 import { currentVocabulary } from "@/core/modules/placesLoad";
 import { loadGroupIndex } from "@/core/modules/connectionsIndex";
+import { loadAccountsTable, EDIT_PARAM } from "@/components/admin/connectionsLoad";
+import { ConnectionsTable } from "@/components/admin/ConnectionsTable";
+import { AccountEditor } from "@/components/admin/AccountEditor";
+import { connectionsLabels } from "@/components/admin/connectionRows";
 import { EXTENSIONS_ADD_HREF } from "@/core/modules/extensionsLinks";
 import { EmptyState, PageHeader } from "@/components/admin/Page";
 import { ui } from "@/components/admin/ui";
 import { hasRole } from "@/core/auth/access";
+import { NETWORKS_HREF } from "@/core/adminLinks";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +34,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
  * (C2b) The index of a group of places: `/admin/networks` is "Accounts and connections", the page that replaces the Networks group and the Connections section of the sidebar.
  * It lists what this person may open (the access table decides, as for the sidebar); an unknown group, or a group with nothing to open, is a 404.
  */
-export default async function GroupIndexPage({ params }: { params: Promise<Params> }) {
+export default async function GroupIndexPage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const { group } = await params;
   const { user, t, locale, config, advanced } = await adminCtx("member");
   const index = await loadGroupIndex(user, { group, advanced, locale, defaultLocale: config.defaultLocale });
@@ -43,6 +48,21 @@ export default async function GroupIndexPage({ params }: { params: Promise<Param
       );
     }
     notFound();
+  }
+  if (group === NETWORKS) {
+    // (C5c) One table of every account and connection (R30): where a row comes from and its state are columns, the search and the filters cover all of it.
+    const table = await loadAccountsTable(user, { group, advanced, locale, defaultLocale: config.defaultLocale, locales: config.locales, t });
+    if (table && table.rows.length > 0) {
+      const asked = (await searchParams)[EDIT_PARAM];
+      const editing = typeof asked === "string" ? table.addresses.get(asked) : undefined;
+      return (
+        <div className="space-y-6">
+          <PageHeader title={t("nav.accounts")} intro={t("connections.intro")} />
+          <ConnectionsTable rows={table.rows} labels={connectionsLabels(t)} />
+          {editing && <AccountEditor loaded={editing} closeHref={NETWORKS_HREF} t={t} locale={locale} config={config} advanced={advanced} />}
+        </div>
+      );
+    }
   }
   const title = group === NETWORKS ? t("nav.accounts") : index.title;
   return (

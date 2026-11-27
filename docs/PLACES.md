@@ -174,6 +174,7 @@ its places (groups, core pages): it never needs the network for them. Offline or
   "aliases": { "old.place": "new.place" },
   "deprecated": { "old.place": "why" } }
 // a page may also carry "sectionsReason": "why more than 3 sections of one module are fine here"
+// a page may also carry "layout": "table": its sections that are one single address each (a profile link) show as the rows of ONE table (core: networks.accounts)
 ```
 
 The catalogue can never set an address, a status, or a page of a reserved or additive core group.
