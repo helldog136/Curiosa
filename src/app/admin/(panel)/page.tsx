@@ -7,6 +7,7 @@ import { prisma } from "@/core/db";
 import { getAdminNav } from "@/core/modules/adminNav";
 import { ui } from "@/components/admin/ui";
 import { Callout, PageHeader } from "@/components/admin/Page";
+import { AttentionCard } from "@/components/admin/AttentionCard";
 import { EXTENSIONS_ADD_HREF, EXTENSIONS_HREF } from "@/core/modules/extensionsLinks";
 import { ModulePill } from "@/components/admin/ModulePill";
 import { dashboardEntryCounts, listDrafts, unlistedEntries, type EntryCount } from "@/core/content/dashboardCounts";
@@ -53,13 +54,13 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const link = `${ui.card} block transition hover:-translate-y-0.5 hover:border-accent`;
   // Un chiffre qui ouvre une page se voit comme tel (flèche, survol) ; un chiffre seul ne ressemble pas à un bouton.
   const stat = (label: string, value: number, href: string | null, testid?: string) => {
-    const body = (<><p className="text-3xl font-bold">{value}</p><p className="text-sm text-muted">{label}{href && ARROW}</p></>);
+    const body = (<><p className="text-2xl font-bold">{value}</p><p className="text-sm text-muted">{label}{href && ARROW}</p></>);
     return href ? <a href={href} data-testid={testid} className={link}>{body}</a> : <div data-testid={testid} className={plain}>{body}</div>;
   };
   // Contenus publiés : le total, puis une ligne par extension qui ouvre sa liste (jamais de lien vers une liste qui ne montrerait rien).
   const publishedStat = (c: EntryCount) => (
     <div data-testid="stat-published" className={plain}>
-      <p className="text-3xl font-bold">{c.total}</p>
+      <p className="text-2xl font-bold">{c.total}</p>
       <p className="text-sm text-muted">{t("dashboard.published")}</p>
       {c.parts.length > 0 && (
         <ul className="mt-2 space-y-0.5 text-sm">
@@ -74,33 +75,33 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
     </div>
   );
   const first = user.name.split(" ")[0] ?? user.name;
-  const draftsBlock = canEdit ? (
+  // R33: no draft, no card (nothing to finish, nothing to say).
+  const draftsBlock = canEdit && draftList.total > 0 ? (
     <section key="drafts" aria-label={t("dashboard.toFinish")} data-testid="to-finish" className={`${ui.card} space-y-3`}>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 className="text-lg font-semibold">{t("dashboard.toFinish")}</h2>
-            {draftList.total > 0 && <a href={DRAFTS_HREF} data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>}
+            <a href={DRAFTS_HREF} data-testid="drafts-all" className="text-sm underline hover:text-accent">{t("dashboard.draftsAll", { n: draftList.total })}{ARROW}</a>
           </div>
-          {draftList.total === 0 ? (
-            <p className="text-sm text-muted" data-testid="drafts-none">{counts.published.total > 0 ? t("dashboard.draftsNone") : t("dashboard.draftsNoneYet")}</p>
-          ) : (
-            <ul className="divide-y divide-line">
-              {draftList.rows.map((d) => (
-                <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
-                  <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
-                  <ModulePill id={d.key} name={d.name} icon={d.icon} />
-                  <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
-                  <a href={entryHref(d.id)} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
-                </li>
-              ))}
-            </ul>
-          )}
+          <ul className="divide-y divide-line">
+            {draftList.rows.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5">
+                <span className="min-w-0 flex-1 basis-48 truncate font-medium" title={d.title || undefined}>{d.title || "—"}</span>
+                <ModulePill id={d.key} name={d.name} icon={d.icon} />
+                <span className="text-xs text-muted">{new Intl.DateTimeFormat(locale, { dateStyle: "medium" }).format(d.updatedAt)}</span>
+                <a href={entryHref(d.id)} className={ui.btn}>{t("dashboard.draftOpen")}{ARROW}</a>
+              </li>
+            ))}
+          </ul>
         </section>
   ) : null;
-  const numbersBlock = (
+  // R35: a number is shown only when it leads to a page this person can open (the published total leads to the lists it is made of).
+  const openableParts = counts.published.parts.filter((p) => canOpen(user, entriesHref(p.key), owners));
+  const showNumbers = openableParts.length > 0 || canOpen(user, EXTENSIONS_HREF, owners) || (redirects > 0 && canOpen(user, REDIRECTS_HREF, owners));
+  const numbersBlock = !showNumbers ? null : (
     <section key="numbers" aria-label={t("dashboard.inNumbers")} data-testid="in-numbers" className="space-y-3">
         <h2 className="text-lg font-semibold">{t("dashboard.inNumbers")}</h2>
         <div className="grid gap-4 sm:grid-cols-3">
-          {publishedStat(counts.published)}
+          {openableParts.length > 0 && publishedStat(counts.published)}
           {/* R35: a tile is shown only to someone who can open the page it leads to (the number alone is not offered to a person who cannot act on it). */}
           {canOpen(user, EXTENSIONS_HREF, owners) && stat(t("dashboard.extensions"), allNav.length, EXTENSIONS_HREF, "stat-extensions")}
           {redirects > 0 && canOpen(user, REDIRECTS_HREF, owners) && stat(t("dashboard.shortLinks"), redirects, REDIRECTS_HREF, "stat-redirects")}
@@ -125,14 +126,16 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   };
   return (
     <div className="space-y-6">
-      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : undefined}>
+      <PageHeader title={advanced ? t("dashboard.title", { name: config.name }) : t("dashboard.hello", { name: first })} intro={advanced ? t("dashboard.introAdvanced") : t("dashboard.intro")}>
         <div className="flex flex-wrap items-center gap-2">
           {plan.blocks.includes("health") && <Slot label={t("dash.loading")} height="h-10"><HealthPill c={c} /></Slot>}
           <a href="/" target="_blank" rel="noopener" className={`${ui.btn} min-h-11`}>{t("dash.view")}{ARROW}</a>
         </div>
       </PageHeader>
-      {welcome && !advanced && <Callout tone="ok" role="status">🎉 {t("dashboard.welcome", { name: first })}</Callout>}
-      {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && <Callout tone="warn" role="status" testid="setup-modules-failed">{t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")}</Callout>}
+      {welcome && (setupModulesState === "failed" || setupModulesState === "partial") && (
+        <AttentionCard testid="setup-modules-failed" level={2} title={t(setupModulesState === "failed" ? "dashboard.modulesFailed" : "dashboard.modulesPartial")} reason={t("dashboard.modulesReason")}
+          action={canOpen(user, EXTENSIONS_ADD_HREF, owners) ? <a href={EXTENSIONS_ADD_HREF} className={`${ui.btn} min-h-11`}>{t("dash.create.add")}</a> : null} />
+      )}
       {denied && <Callout tone="danger" testid="denied">{denialText(t, deniedNeed)}</Callout>}
       {plan.blocks.filter((b) => b !== "health").map((b) => blocks[b] ?? null)}
     </div>

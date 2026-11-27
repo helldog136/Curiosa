@@ -81,7 +81,9 @@ test("assistant : étape facultative qui dit qu'on peut la passer sans risque ; 
   assert.ok(!/preselected/.test(wizard), "rien n'est coché d'avance");
   const fr = JSON.parse(fs.readFileSync("src/locales/fr.json", "utf8"));
   assert.ok(!("setup.modules.skip" in fr), "la note « sans aucun risque » est retirée (R33)");
-  assert.equal(fr["dashboard.modulesFailed"], "Aucun module n'a pu être installé (catalogue injoignable) : installez-les plus tard depuis Modules › Ajouter.");
+  // C5a: the notice is an attention card, title + reason + the "Add a module" button (the information is still shown, with the action).
+  assert.equal(fr["dashboard.modulesFailed"], "Aucun module n'a pu être installé");
+  assert.equal(fr["dashboard.modulesReason"], "Le catalogue est injoignable. Réessayez plus tard.");
   const actions = fs.readFileSync("src/app/admin/(auth)/setup/actions.ts", "utf8");
   assert.match(actions, /installChosenModules\(presetIds\)/, "une valeur envoyée à la main n'ajoute aucun module : seuls les suggérés sont installés");
   assert.match(actions, /modules=failed/, "le site se crée même si le catalogue est injoignable, et le tableau de bord le dit");
