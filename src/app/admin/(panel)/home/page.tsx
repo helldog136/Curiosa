@@ -10,9 +10,7 @@ import { ENTRY_SECTION_ID, getActiveInstances, sectionsOf } from "@/core/modules
 import { publishedEntryChoices } from "@/core/content/entries";
 import { localized, type SettingField } from "@/core/modules/types";
 import { ActionForm } from "@/components/admin/ActionForm";
-import { ui } from "@/components/admin/ui";
 import { HomeMenuHeader } from "@/components/admin/HomeMenuHeader";
-import { PageHeader } from "@/components/admin/Page";
 import { resolveSize } from "@/core/home";
 import { SECTION_SIZES, type SectionSize } from "@/core/modules/types";
 import { entriesHref, entryHref } from "@/core/adminLinks";
@@ -66,14 +64,12 @@ export default async function HomeAdminPage() {
   const blockLabels = Object.fromEntries(BLOCK_LABEL_KEYS.map((k) => [k, t(`block.${k}`)]));
   return (
     <div className="space-y-6">
-      <HomeMenuHeader t={t} current="home" />
-      <PageHeader level={2} title={t("nav.home")} intro={advanced ? t("home.intro") : t("home.intro.simple")} />
+      <HomeMenuHeader t={t} current="home" purpose={t("home.intro.simple")} more={advanced ? `${t("home.intro")}\n\n${t("home.optionsHint")}` : undefined} />
       {undo && <AssistantUndoNotice text={t("aim.undo.home", { name: undo.by, date: new Date(undo.at).toLocaleString(locale) })} button={t("aim.undo.home.button")} action={restoreAssistantHome} />}
       <ActionForm action={saveHome} floating={floatingLabels(t)} submitLabel={t("action.save")}>
         <HomeBuilder choices={choices} initial={initial} locales={config.locales.map((l) => ({ code: l, name: localeName(l) }))} blockLabels={blockLabels}
           labels={{ editBlock: t("home.editBlock"), coreGroup: t("home.coreGroup"), modulesGroup: t("home.modulesGroup"), noFeatures: t("home.noFeatures"), cancel: t("home.cancel"), layoutHelpTitle: t("home.layoutHelpTitle"), empty: t("home.empty"), add: t("home.addBlock"), pick: t("home.pick"), up: t("home.up"), down: t("home.down"), remove: t("home.removeBlock"), size: t("home.size"), alone: t("home.isolated"), aloneHelp: t("home.isolatedHelp"), adjust: t("home.adjust"), editEntries: t("home.editEntries"), editEntry: t("home.editEntry"),
             sizes: Object.fromEntries(SECTION_SIZES.map((z) => [z, t(`home.size.${z}`)])), sizeHelp: t("home.sizeHelp") }} />
-        {advanced && <p className={ui.help}>{t("home.optionsHint")}</p>}
       </ActionForm>
       {/* (0.34.0) Sections that modules add to this core page (docs/PLACES.md). */}
       <HostedSections page="site.home" base={HOME_HREF} tabs={["home", "banners"]} />

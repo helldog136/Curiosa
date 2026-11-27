@@ -10,7 +10,8 @@ const en = JSON.parse(read("src/locales/en.json"));
 test("pages d'administration du site : le titre porte le même nom que le menu, en mode simple comme en mode avancé", () => {
   assert.match(page("settings"), /<h1 className=\{ui\.pageTitle\}>\{t\("nav\.settings"\)\}<\/h1>/);
   // The menu page is a tab of "Home and menu": same name in both modes ("Navigation" is gone), see tests/core/home-menu-entry.test.mjs.
-  assert.match(page("navigation"), /title=\{t\("navigation\.title"\)\}/);
+  assert.match(page("navigation"), /<HomeMenuHeader t=\{t\} current="menu" purpose=\{t\("navigation\.intro"\)\}/);
+  assert.match(page("navigation"), /adminTitle\(\(\{ t \}\) => t\("navigation\.title"\)\)/);
   assert.match(page("redirects"), /<PageHeader title=\{t\("nav\.redirects"\)\}/, "one name, \"Short links\", in both modes");
 });
 
@@ -44,7 +45,8 @@ test("raccourcis : état vide explicatif avec exemples, formulaire sans « — �
 
 test("réseaux sociaux : liste compacte à ajouter, état vide qui dit quoi faire ensuite, et le nom de la page des réglages suit le mode", () => {
   const p = page("social");
-  assert.match(p, /t\("social\.noneHelp"\)/);
+  assert.match(p, /<EmptyState testid="social-empty" title=\{t\("social\.none"\)\}/);
+  assert.match(p, /t\("social\.addFirst"\)/);
   assert.match(p, /t\("social\.header\.label"\)/);
   assert.ok(!/ui\.btnPrimary/.test(p), "un bouton « Ajouter » par ligne reste discret");
   assert.match(p, /data-testid="social-available"/);
