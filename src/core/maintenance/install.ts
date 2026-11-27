@@ -34,7 +34,7 @@ const ID_RE = /^[a-z][a-z0-9-]{1,39}$/;
 
 const problemText = (p: PlanProblem): string => {
   const what = `the service "${p.service}"${p.min > 1 ? ` (version ${p.min} or newer)` : ""}`;
-  if (p.reason === "extra") return `${what} is only offered by "${p.module}", which the official catalogue does not vouch for: the owner must install it by hand in Admin > Extensions > Add an extension`;
+  if (p.reason === "extra") return `${what} is only offered by "${p.module}", which the official catalogue does not vouch for: the owner must install it by hand in Admin > Modules > Add a module`;
   if (p.reason === "old") return `${what} is only offered in an older version`;
   if (p.reason === "cycle") return `${what} would need a module that needs this one back`;
   if (p.reason === "depth") return `${what} needs a chain of modules that is too long`;
@@ -137,7 +137,7 @@ export async function executeInstall(plan: Plan, actorLabel: string): Promise<Ou
   } catch (error) {
     console.error("[maintenance] first instance failed:", (error as Error)?.message);
   }
-  if (!instanceKey) instanceNote = " The module is installed but its first instance could not be created: the owner can set it up in Admin > Extensions.";
+  if (!instanceKey) instanceNote = " The module is installed but its first instance could not be created: the owner can set it up in Admin > Modules.";
 
   // Ce qu'il reste à régler (noms seulement) : pour que l'IA enchaîne avec maintenance_module_settings.
   let toFill: string[] = [];
@@ -152,7 +152,7 @@ export async function executeInstall(plan: Plan, actorLabel: string): Promise<Ou
 
   return {
     ok: true,
-    message: `Module "${id}" ${plan.to} installed${(result.provided?.length ?? 0) ? ` with ${result.provided!.join(", ")}` : ""}.${instanceKey ? ` Instance "${instanceKey}" is ready with default settings.` : ""}${instanceNote}${toFill.length ? ` To fill in: ${toFill.join(", ")} (see maintenance_module_settings; secret ones are typed by the owner in the admin).` : ""}${clash ? " Two modules now offer the same service: the owner must choose the main one in Admin > Extensions." : ""}`,
+    message: `Module "${id}" ${plan.to} installed${(result.provided?.length ?? 0) ? ` with ${result.provided!.join(", ")}` : ""}.${instanceKey ? ` Instance "${instanceKey}" is ready with default settings.` : ""}${instanceNote}${toFill.length ? ` To fill in: ${toFill.join(", ")} (see maintenance_module_settings; secret ones are typed by the owner in the admin).` : ""}${clash ? " Two modules now offer the same service: the owner must choose the main one in Admin > Modules." : ""}`,
     details: { module: id, version: plan.to, provided: result.provided ?? [], instance: instanceKey, settingsToFill: toFill },
   };
 }

@@ -261,8 +261,8 @@ test("install : crée une DEMANDE (rien n'est installé), avec les modules qui v
   const request = await Q.getRequest(r.requestId);
   const names = (id) => id;
   const fr = describeRequest(request, makeTranslator("fr"), names), en = describeRequest(request, makeTranslator("en"), names);
-  assert.match(fr, /Installer la fonctionnalité « Atelier » \(version 1\.2\.0\).*Carnet.*Elle demande/s);
-  assert.match(en, /Install the feature "Atelier" \(version 1\.2\.0\).*Carnet.*It asks for/s);
+  assert.match(fr, /Installer le module « Atelier » \(version 1\.2\.0\).*Carnet.*Il demande/s);
+  assert.match(en, /Install the module "Atelier" \(version 1\.2\.0\).*Carnet.*It asks for/s);
   for (const arg of [{ module: "atelier", repo: "https://example.org/x" }, { module: "https://example.org/x" }, { module: "../x" }, {}]) assert.ok((await call(token, "maintenance_module_install", arg)).error, JSON.stringify(arg));
 });
 

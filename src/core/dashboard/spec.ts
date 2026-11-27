@@ -88,7 +88,7 @@ export function hrefIssue(value: string): string | null {
   if (bare.includes("//") || bare.includes("..") || /[\\]/.test(bare)) return "a link cannot hold // or ..";
   if (bare.startsWith("?")) return null;
   if (bare === "/admin" || bare.startsWith("/admin/") || bare.startsWith("/admin?")) return null;
-  return "a link starts with ? (the page of this extension) or /admin/ (a page of the administration)";
+  return "a link starts with ? (the page of this module) or /admin/ (a page of the administration)";
 }
 
 /** L'adresse complète (« /admin/instances/<id>?tab=… »), ou null si elle n'est pas permise. */

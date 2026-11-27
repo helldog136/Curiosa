@@ -266,7 +266,7 @@ test("phrases en clair : événement déclaré rempli, action d'administration, 
   const sentences = fr.map((l) => l.sentence);
   assert.ok(sentences.includes("Chose faite : Alice (3 fois, urgent : oui)"), sentences.join(" | "));
   assert.ok(sentences.includes("Passage de Bob"));
-  assert.ok(sentences.includes("Événement de l'extension"), "action non déclarée : phrase générique, jamais le code");
+  assert.ok(sentences.includes("Événement du module"), "action non déclarée : phrase générique, jamais le code");
   assert.ok(sentences.includes("Action dans une fonctionnalité"), "action d'administration");
   assert.ok(sentences.includes("Action d'un assistant IA"));
   assert.ok(sentences.includes("Connexion"), "ligne du cœur connue : sa phrase");
@@ -284,7 +284,7 @@ test("une extension ne peut pas se faire passer pour le cœur : une action non d
   await prisma.auditLog.create({ data: { actor: "module:k", actorKind: "module", action: "backup.restore", module: "demo-journal", instance: "k" } });
   const { rows: all } = await listAudit();
   const [line] = await describeRows(all, { t: makeTranslator("fr"), locale: "fr", defaultLocale: "fr" });
-  assert.equal(line.sentence, "Événement de l'extension");
+  assert.equal(line.sentence, "Événement du module");
 });
 
 /* ───────────── Outil MCP en lecture seule ───────────── */

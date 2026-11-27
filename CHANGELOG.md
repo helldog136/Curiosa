@@ -11,6 +11,8 @@ Les sections sont rédigées avant chaque publication (un test vérifie que la v
 
 ### Nouveautés
 
+- **Une pièce installée s'appelle « module », partout.** « Extension » et « fonctionnalité » disparaissent des textes du site, de l'assistant IA, du journal et des messages de maintenance ; les adresses des pages ne changent pas. Une vérification automatique empêche le retour de ces mots.
+- **(English) An installed piece is called “module”, everywhere.** “Extension” and “feature” are gone from the texts of the site, the AI assistant, the journal and the maintenance messages; page addresses do not change. An automatic check keeps these words from coming back.
 - **Le menu de l'administration est rangé autrement.** « En direct », « Agenda » et « Overlays » sont dans « Outils » ; « Comptes et connexions » (dans « Site ») remplace « Réseaux » et « Connexions » ; « Rôles » a son entrée, près d'« Équipe ».
 - **(English) The administration menu is laid out differently.** “Live”, “Calendar” and “Overlays” are inside “Tools”; “Accounts and connections” (in “Site”) replaces “Networks” and “Connections”; “Roles” has its own entry, near “Team”.
 - **Les pièces installées s'appellent « Modules » dans le menu, et les pages d'overlay « Pages d'overlay ».** L'entrée « Extensions » devient « Modules » ; « Personnalisés » devient « Pages d'overlay » et « Prédéfinis » devient « Overlays intégrés ».

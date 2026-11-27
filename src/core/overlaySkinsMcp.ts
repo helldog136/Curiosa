@@ -29,7 +29,7 @@ function explain(issues: readonly LookIssue[]): string {
   const m: Record<LookIssue["code"], string> = {
     skin: "skin: this skin is not installed or does not work. List the usable ones with overlay_skins_list.",
     ruleSkin: "skin: this skin is not installed or does not work. List the usable ones with overlay_skins_list.",
-    context: "context: no active extension offers this context. See availableContexts in overlay_skin_rules_list.",
+    context: "context: no active module offers this context. See availableContexts in overlay_skin_rules_list.",
     tooMany: "rules: 200 rules at most per page.",
     value: "value: give the value to match.",
     duplicate: "value: this value already has a rule; use overlay_skin_rules_update.",
@@ -62,7 +62,7 @@ async function resolveValue(ref: ContextRef, asked: string): Promise<{ id: strin
   if (exact) return exact;
   const byName = seen.filter((v) => v.name.toLowerCase() === asked.toLowerCase());
   if (byName.length === 1) return byName[0]!;
-  throw new McpToolError(`value: "${asked}" is not one of the values this extension has seen. Call overlay_skin_rules_list with query "${asked.slice(0, 40)}" and use one of the knownValues (its "id").`);
+  throw new McpToolError(`value: "${asked}" is not one of the values this module has seen. Call overlay_skin_rules_list with query "${asked.slice(0, 40)}" and use one of the knownValues (its "id").`);
 }
 
 export const overlaySkinsToolProvider: McpToolProvider = {
@@ -90,7 +90,7 @@ export const overlaySkinsToolProvider: McpToolProvider = {
       },
       {
         ...base, name: "overlay_skin_rules_list", title: "Overlay skins: rules of a page", readOnly: true, default: true, input: rulesSchema,
-        description: "Read the skin rules of one overlay page (\"page\" = its id): the default skin, whether the skin per context is on, the rules (value → skin), the contexts that active extensions offer (for example the current game) and the values each one has seen so far (\"knownValues\": use their \"id\" in rules; \"query\" filters them). Read only.",
+        description: "Read the skin rules of one overlay page (\"page\" = its id): the default skin, whether the skin per context is on, the rules (value → skin), the contexts that active modules offer (for example the current game) and the values each one has seen so far (\"knownValues\": use their \"id\" in rules; \"query\" filters them). Read only.",
         call: async (raw) => { const a = validateArgs(rulesSchema, raw); return lookView(a.page as string, (a.query as string | undefined) ?? ""); },
       },
       {
@@ -104,7 +104,7 @@ export const overlaySkinsToolProvider: McpToolProvider = {
           const contexts = await listContexts(lang, defaultLocale);
           const b = page.look.byContext;
           const chosen = (a.instance && a.context ? contexts.find((c) => c.instance === a.instance && c.context === a.context) : undefined) ?? contexts.find((c) => c.instance === b.instance && c.context === b.context) ?? (contexts.length === 1 ? contexts[0] : undefined);
-          if (!chosen) throw new McpToolError("context: no active extension offers a context for this page. See availableContexts in overlay_skin_rules_list.");
+          if (!chosen) throw new McpToolError("context: no active module offers a context for this page. See availableContexts in overlay_skin_rules_list.");
           const value = await resolveValue(chosen, a.value as string);
           if (b.rules.some((r) => r.value === value.id)) throw new McpToolError(`value: "${value.name}" already has a rule; use overlay_skin_rules_update.`);
           const r = await updateLook(page.id, (cur) => {
