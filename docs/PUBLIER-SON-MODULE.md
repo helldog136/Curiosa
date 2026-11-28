@@ -118,7 +118,7 @@ Pour **l'essayer dans un vrai site** (facultatif) : lancez Curiosa chez vous ([I
 - Un changement **majeur** (`v2.0.0`) est signalé à la personne (« lisez les notes de version avant ») : écrivez ces notes (page *Releases* de votre dépôt) et dites ce qui change pour lui. Données, réglages et instances sont conservés dans tous les cas.
 - Une version **invalide** (manifeste illisible, autre `id`, fichier `main` absent, code qui ne se charge pas, plus de 10 Mo) est **refusée** : l'ancienne reste en service. La personne voit « Aucun module.json valide à la racine du dépôt » ou « Cette version du module ne se charge pas sur ce site » : **lancez `npm test` avant chaque étiquette.**
 - Si vous changez la **forme de vos données**, augmentez `dataVersion` et écrivez la migration ([CREATE-A-MODULE.md §12 bis](CREATE-A-MODULE.md#12-bis-faire-évoluer-ses-données-migrations)).
-- Une installation épinglée sur un **commit** ne bouge jamais ; sans `#`, elle suit le dernier commit de la branche par défaut (déconseillé : la mise à jour part à chaque commit).
+- Une installation épinglée sur un **commit** ne bouge jamais ; sans `#`, elle suit la branche par défaut : une mise à jour n'est proposée que si la `version` de `module.json` y est plus haute.
 
 ## 6. Tests automatiques : un workflow GitHub Actions à copier
 

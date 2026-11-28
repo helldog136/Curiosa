@@ -72,5 +72,10 @@ test("F6: a skin pinned to a BRANCH named like a release (release/v1.2.0) is sti
   commit("b2");
   const c = await S.checkUpdate("branchy");
   assert.equal(c.available, true, JSON.stringify(c));
-  assert.match(c.target, /^[0-9a-f]{7}$/, "compared by commit, as before");
+  assert.deepEqual([c.target, c.level], ["1.1.0", "minor"], "compared by version, never by commit");
+  commit("b3");   // still offered: the installed skin is 1.0.0
+  assert.deepEqual(await S.checkUpdate("branchy"), { available: true, target: "1.1.0", level: "minor" });
+  assert.equal((await S.update("branchy", { actor: "o@e.org" })).ok, true);
+  commit("b4");
+  assert.deepEqual(await S.checkUpdate("branchy"), { available: false }, "a new commit under the installed version is not an update");
 });

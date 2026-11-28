@@ -7,6 +7,20 @@ Ce que chaque version change pour vous. Chaque version reprend ici **ce qui a ch
 Les sections sont rédigées avant chaque publication (un test vérifie que la version de `package.json` a la sienne).
 
 
+## 0.52.1 — 2026-11-28
+
+### Corrections
+
+- **Une mise à jour de module n'est proposée que si son numéro de version est plus élevé.** Du nouveau contenu sous le même numéro n'est plus une mise à jour ; un numéro plus bas ou une version candidate non plus. Fini les « 1.2.0 → f2f2c30 » : la cible est toujours un numéro de version.
+- **(English) A module update is offered only when its version number is higher.** New content under the same number is no longer an update, nor is a lower number or a release candidate. No more “1.2.0 → f2f2c30”: the target is always a version number.
+- **Les skins suivent la même règle.** Un skin suivi sur une branche n'est proposé que si sa version est plus haute, et l'est avec ce numéro plutôt qu'avec un code de commit.
+- **(English) Skins follow the same rule.** A skin that follows a branch is offered only when its version is higher, and with that number rather than a commit code.
+
+### Pour les développeurs
+
+- Une seule règle, `judgeModuleUpdate` (installer, sur `versionSignal` de `updates/versions.ts`) : vérification, mise à jour, « Tout mettre à jour », liste « en retard » et outils IA s'y plient. Numéro illisible : le contenu décide comme avant, sans afficher de commit. Les étapes d'une sauvegarde restaurée restent exemptées.
+- **(English)** One rule, `judgeModuleUpdate` (installer, on `versionSignal` of `updates/versions.ts`): check, update, “Update all”, late list and AI tools follow it. Unreadable number: content decides as before, never showing a commit. Restored-backup steps stay exempt.
+
 ## 0.52.0 — 2026-11-27
 
 ### Nouveautés
